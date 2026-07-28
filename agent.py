@@ -32,9 +32,21 @@ SYSTEM = r"""你是一个具备规划能力的编码助手，可以执行 bash �
 只有验证结果后才标记为 completed。
 同一时间只能有一个 in_progress 项目。
 
-重要：不要用 bash 启动会长期运行的服务器进程（如 npm start、node server.js、python -m http.server），
-这会导致命令永久阻塞。验证服务请用"后台启动 → curl 测试端口 → 终止进程"的方式，
-或直接用 read_file 检查关键代码是否正确，避免命令阻塞。
+重要：禁止把服务器启动命令（npm start、node server.js、python -m http.server、flask run 等）
+单独执行——这会触发 30s 超时被强杀。
+验证 HTTP 服务的唯一允许方式是用一条组合命令完成
+「后台启动 → 等待 → 测试 → 杀进程」：
+
+  start /b cmd /c "node server.js > server.log 2>&1" & timeout /t 3 /nobreak >nul & curl -s http://localhost:3000/api/users & taskkill /f /im node.exe
+
+逐段解释：
+- start /b cmd /c "..."：后台启动服务，输出重定向到 server.log，不阻塞当前命令
+- timeout /t 3 /nobreak >nul：等 3 秒让服务起好
+- curl -s http://localhost:PORT/...：发请求测接口
+- taskkill /f /im node.exe：测完立刻杀掉 node 进程（Python 服务换成 python.exe）
+
+如果用 Python 启动的服务，把 node.exe 换成 python.exe；
+如果端口不是 3000，按实际改。整条命令用 & 串联，一次性执行完。
 
 重要：写入文件内容时，必须使用 write_file 工具，不要用 bash 重定向（如 `echo > file`、`python x.py > out.txt`）。
 因为 bash 重定向在 Windows 上走 GBK 编码，遇到 emoji 或特殊字符会丢失成问号；
@@ -68,24 +80,44 @@ def safe_path(p: str) -> Path:
 
 # ---------- 工具函数实现 ----------
 def run_bash(command: str) -> str:
-    """执行命令并返回 stdout/stderr，含基本安全防护（Windows）"""
+    """执行命令并返回 stdout/stderr，含基本安全防护（Windows）。
+
+    用 Popen + 手动 taskkill /f /t /pid 杀进程树，避免 subprocess.run 在
+    shell=True 下 timeout 死锁（cmd.exe 被杀但孙子进程 node.exe 持有管道
+    导致 communicate 永不返回）。
+    """
     dangerous = [
         "del /f /s", "rd /s /q", "format",
         "diskpart", "reg delete", "shutdown",
     ]
     if any(d in command.lower() for d in dangerous):
         return "Error: Dangerous command blocked"
+    proc = subprocess.Popen(
+        command, shell=True, cwd=os.getcwd(),
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True, encoding="utf-8", errors="replace",
+        env={**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"},
+    )
     try:
-        r = subprocess.run(
-            command, shell=True, cwd=os.getcwd(),
-            capture_output=True, text=True, timeout=120,
-            encoding="utf-8", errors="replace",
-            env={**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"},
-        )
-        out = (r.stdout + r.stderr).strip()
-        return out[:50000] if out else "(no output)"
+        out, _ = proc.communicate(timeout=30)
     except subprocess.TimeoutExpired:
-        return "Error: Timeout (120s)"
+        subprocess.run(
+            f"taskkill /f /t /pid {proc.pid}",
+            shell=True, capture_output=True,
+        )
+        try:
+            out, _ = proc.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            out = ""
+        return ("Error: Timeout (30s) — 进程树已被强杀。\n"
+                "如果你在启动服务器（node server.js / npm start / python -m http.server），"
+                "禁止单独执行启动命令。必须用一条组合命令完成"
+                "「后台启动 → 等待 → 测试 → 杀进程」：\n"
+                "  start /b cmd /c \"node server.js > server.log 2>&1\" & "
+                "timeout /t 3 /nobreak >nul & curl -s http://localhost:3000/api/users & "
+                "taskkill /f /im node.exe")
+    out = (out or "").strip()
+    return out[:50000] if out else "(no output)"
 
 
 def run_read(path: str, limit: int = None) -> str:
@@ -325,6 +357,7 @@ if __name__ == "__main__":
     if not os.environ.get("DEEPSEEK_API_KEY"):
         print("Error: DEEPSEEK_API_KEY environment variable not set")
         exit(1)
-    messages = [{"role": "user", "content": "在当前目录下创建一个子文件夹叫 demo，然后在里面创建一个 Python 文件 hello.py，内容是打印当前时间和一句问候语。运行这个文件确认能输出。最后把运行结果写进 demo 目录下的 result.txt 文件。"}]
+    task ="创建一个带 CRUD 的用户管理模块"
+    messages = [{"role": "user", "content": task}]
     final_response = agent_loop(messages)
     print(final_response)
