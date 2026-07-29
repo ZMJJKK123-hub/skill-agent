@@ -348,4 +348,15 @@ TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "compact",
+            "description": "Compress the conversation history into a summary. Use when the context is getting long and you want to clean up before continuing.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+            },
+        },
+    },
 ]
