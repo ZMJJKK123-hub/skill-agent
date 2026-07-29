@@ -35,15 +35,17 @@ SYSTEM = r"""你是一个具备规划能力的编码助手，可以执行 bash �
 验证 HTTP 服务的唯一允许方式是用一条组合命令完成
 「后台启动 → 等待 → 测试 → 杀进程」：
 
-  start /b cmd /c "node server.js > server.log 2>&1" & timeout /t 3 /nobreak >nul & curl -s http://localhost:3000/api/users & taskkill /f /im node.exe
+  start /b cmd /c "node server.js > server.log 2>&1" & timeout /t 3 /nobreak >nul & curl -s http://localhost:3000/api/users & for /f "tokens=5" %a in ('netstat -aon ^| findstr :3000 ^| findstr LISTENING') do taskkill /f /pid %a
 
 逐段解释：
 - start /b cmd /c "..."：后台启动服务，输出重定向到 server.log，不阻塞当前命令
 - timeout /t 3 /nobreak >nul：等 3 秒让服务起好
 - curl -s http://localhost:PORT/...：发请求测接口
-- taskkill /f /im node.exe：测完立刻杀掉 node 进程（Python 服务换成 python.exe）
+- for /f "tokens=5" %a in ('netstat -aon ^| findstr :PORT ^| findstr LISTENING') do taskkill /f /pid %a：按端口杀占用该端口的进程
 
-如果用 Python 启动的服务，把 node.exe 换成 python.exe；
+致命警告：绝对禁止使用 taskkill /f /im python.exe 或 taskkill /f /im node.exe。
+Agent 自身就运行在 python.exe 里，taskkill /f /im python.exe 会杀掉 Agent 自身进程，
+导致任务中途崩溃。必须用上面的 netstat+findstr 按端口精确定杀。
 如果端口不是 3000，按实际改。整条命令用 & 串联，一次性执行完。
 
 重要：写入文件内容时，必须使用 write_file 工具，不要用 bash 重定向（如 `echo > file`、`python x.py > out.txt`）。

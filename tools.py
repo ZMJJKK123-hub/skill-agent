@@ -17,6 +17,10 @@ def run_bash(command: str) -> str:
     dangerous = [
         "del /f /s", "rd /s /q", "format",
         "diskpart", "reg delete", "shutdown",
+        # 致命：taskkill /im 会杀掉 Agent 自身进程（python.exe）
+        "taskkill /f /im python.exe",
+        "taskkill /f /im node.exe",
+        "taskkill /f /im cmd.exe",
     ]
     if any(d in command.lower() for d in dangerous):
         return "Error: Dangerous command blocked"
@@ -43,7 +47,8 @@ def run_bash(command: str) -> str:
                 "「后台启动 → 等待 → 测试 → 杀进程」：\n"
                 "  start /b cmd /c \"node server.js > server.log 2>&1\" & "
                 "timeout /t 3 /nobreak >nul & curl -s http://localhost:3000/api/users & "
-                "taskkill /f /im node.exe")
+                "for /f \"tokens=5\" %a in ('netstat -aon ^| findstr :3000 ^| findstr LISTENING') do taskkill /f /pid %a\n"
+                "注意：禁止用 taskkill /f /im python.exe，会杀掉 Agent 自身。")
     out = (out or "").strip()
     return out[:50000] if out else "(no output)"
 
