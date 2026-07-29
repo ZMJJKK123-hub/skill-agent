@@ -1,0 +1,96 @@
+import os
+import sys
+import logging
+from pathlib import Path
+from dotenv import load_dotenv
+from openai import OpenAI
+
+# ── 强制 stdout/stderr 走 UTF-8 ──────────────────────
+# Windows 终端默认 GBK，print emoji/中文会崩。
+# 在导入其他东西之前先 reconfigure，彻底解决 UnicodeEncodeError。
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
+load_dotenv()
+
+# ---------- 日志系统 ----------
+logging.basicConfig(
+    filename="agent.log",
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    encoding="utf-8",
+)
+logger = logging.getLogger("agent")
+
+# ---------- 配置 ----------
+MODEL = "deepseek-v4-pro"
+SYSTEM = r"""你是一个具备规划能力的编码助手，可以执行 bash 命令。
+对于多步骤任务，必须始终（ALWAYS）先使用 todo 工具创建计划——
+将任务拆解为可验证的子步骤，然后在工作时逐个更新条目状态。
+只有验证结果后才标记为 completed。
+同一时间只能有一个 in_progress 项目。
+
+重要：禁止把服务器启动命令（npm start、node server.js、python -m http.server、flask run 等）
+单独执行——这会触发 30s 超时被强杀。
+验证 HTTP 服务的唯一允许方式是用一条组合命令完成
+「后台启动 → 等待 → 测试 → 杀进程」：
+
+  start /b cmd /c "node server.js > server.log 2>&1" & timeout /t 3 /nobreak >nul & curl -s http://localhost:3000/api/users & taskkill /f /im node.exe
+
+逐段解释：
+- start /b cmd /c "..."：后台启动服务，输出重定向到 server.log，不阻塞当前命令
+- timeout /t 3 /nobreak >nul：等 3 秒让服务起好
+- curl -s http://localhost:PORT/...：发请求测接口
+- taskkill /f /im node.exe：测完立刻杀掉 node 进程（Python 服务换成 python.exe）
+
+如果用 Python 启动的服务，把 node.exe 换成 python.exe；
+如果端口不是 3000，按实际改。整条命令用 & 串联，一次性执行完。
+
+重要：写入文件内容时，必须使用 write_file 工具，不要用 bash 重定向（如 `echo > file`、`python x.py > out.txt`）。
+因为 bash 重定向在 Windows 上走 GBK 编码，遇到 emoji 或特殊字符会丢失成问号；
+write_file 工具强制 UTF-8，能保证中文和 emoji 都不丢。如需保存命令输出到文件，先用 bash 拿到输出，
+再用 write_file 写入。
+
+重要：你运行在 Windows cmd 上，必须使用 Windows 命令语法，禁止使用 Linux 专属语法：
+- 创建目录用 `mkdir 文件夹名`，禁止用 `mkdir -p`（cmd 不识别 -p，会创建名为 -p 的文件夹）
+- 列目录用 `dir`，禁止用 `ls`
+- 查看文件内容用 `type 文件名`，禁止用 `cat`
+- 复制文件用 `copy` 或 `xcopy`，禁止用 `cp`
+- 删除文件用 `del 文件名`，删除文件夹用 `rd /s /q 文件夹名`，禁止用 `rm -rf`
+- 查找文件用 `where` 或 `dir /s /b`，禁止用 `find` / `which`
+- 路径分隔符用反斜杠 `\` 或正斜杠 `/` 都行，但不要在同一命令里混用
+
+对于需要大量探索/分析但中间过程不需要保留的子任务，使用 task 工具派发给子 Agent。
+子 Agent 在隔离上下文中执行，只返回最终摘要，不污染父上下文。
+
+每个子步骤应当是可独立验证的原子任务，粒度细化到单个文件或单个功能点。"""
+
+# ---------- Subagent 系统（第 4 课：隔离上下文的子任务派发）----------
+MAX_SUBAGENT_TURNS = 10  # 硬上限，防止子 Agent 失控死循环
+
+SUBAGENT_SYSTEM = """You are a focused research and analysis agent.
+Your job is to complete the specific task given to you, then provide
+a clear, concise summary of your findings.
+Guidelines:
+- Stay focused on the given task
+- Be thorough but efficient
+- End with a clear summary of findings
+- Do not ask for clarification — work with what you have
+- You are running on Windows cmd. Use Windows command syntax (dir, type, copy, taskkill).
+- Do not start long-running servers directly; use the combined
+  "start /b ... & timeout /t 3 ... & curl ... & taskkill" pattern.
+"""
+
+client = OpenAI(
+    api_key=os.environ.get("DEEPSEEK_API_KEY", ""),
+    base_url="https://api.deepseek.com",
+)
+
+# ---------- 路径安全沙箱 ----------
+WORKDIR = Path.cwd()
+
+def safe_path(p: str) -> Path:
+    path = (WORKDIR / p).resolve()
+    if not path.is_relative_to(WORKDIR):
+        raise ValueError(f"Path escapes workspace: {p}")
+    return path
