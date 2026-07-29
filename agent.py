@@ -6,6 +6,7 @@ import subprocess
 import logging
 from pathlib import Path
 from dotenv import load_dotenv
+import yaml
 
 # ── 强制 stdout/stderr 走 UTF-8 ──────────────────────
 # Windows 终端默认 GBK，print emoji/中文会崩。
@@ -62,7 +63,26 @@ write_file 工具强制 UTF-8，能保证中文和 emoji 都不丢。如需保�
 - 查找文件用 `where` 或 `dir /s /b`，禁止用 `find` / `which`
 - 路径分隔符用反斜杠 `\` 或正斜杠 `/` 都行，但不要在同一命令里混用
 
+对于需要大量探索/分析但中间过程不需要保留的子任务，使用 task 工具派发给子 Agent。
+子 Agent 在隔离上下文中执行，只返回最终摘要，不污染父上下文。
+
 每个子步骤应当是可独立验证的原子任务，粒度细化到单个文件或单个功能点。"""
+
+# ---------- Subagent 系统（第 4 课：隔离上下文的子任务派发）----------
+MAX_SUBAGENT_TURNS = 10  # 硬上限，防止子 Agent 失控死循环
+
+SUBAGENT_SYSTEM = """You are a focused research and analysis agent.
+Your job is to complete the specific task given to you, then provide
+a clear, concise summary of your findings.
+Guidelines:
+- Stay focused on the given task
+- Be thorough but efficient
+- End with a clear summary of findings
+- Do not ask for clarification — work with what you have
+- You are running on Windows cmd. Use Windows command syntax (dir, type, copy, taskkill).
+- Do not start long-running servers directly; use the combined
+  "start /b ... & timeout /t 3 ... & curl ... & taskkill" pattern.
+"""
 
 client = OpenAI(
     api_key=os.environ.get("DEEPSEEK_API_KEY", ""),
@@ -186,6 +206,100 @@ class TodoManager:
 todo_manager = TodoManager()
 
 
+# ---------- SkillLoader（第 5 课：两层知识注入）----------
+class SkillLoader:
+    """扫描 skills/ 目录，提供目录描述和按需加载。
+
+    第一层：get_descriptions() 返回技能目录（名称+描述），拼接到 system prompt。
+    第二层：get_content(name) 返回完整技能内容，通过 load_skill 工具按需注入。
+    """
+
+    def __init__(self, skills_dir: str = "skills"):
+        self.skills_dir = skills_dir
+        self.skills = {}  # name → {description, content, path}
+        self._scan()
+        logger.info(
+            f"SkillLoader 初始化 | 扫描到 {len(self.skills)} 个技能: "
+            f"{list(self.skills.keys())}"
+        )
+
+    def _scan(self):
+        """扫描所有 skills/*/SKILL.md，解析 frontmatter。"""
+        if not os.path.isdir(self.skills_dir):
+            logger.info(f"SkillLoader: 目录 {self.skills_dir} 不存在，跳过扫描")
+            return
+        for entry in sorted(os.listdir(self.skills_dir)):
+            skill_path = os.path.join(self.skills_dir, entry, "SKILL.md")
+            if not os.path.isfile(skill_path):
+                continue
+            with open(skill_path, "r", encoding="utf-8") as f:
+                raw = f.read()
+
+            meta, body = self._parse_frontmatter(raw)
+            name = meta.get("name", entry)
+            description = meta.get("description", "")
+
+            self.skills[name] = {
+                "description": description,
+                "content": body.strip(),
+                "path": skill_path,
+            }
+            logger.info(
+                f"SkillLoader 扫描技能: {entry} | name={name} | "
+                f"desc={description} | content_len={len(body.strip())}"
+            )
+
+    @staticmethod
+    def _parse_frontmatter(raw: str) -> tuple[dict, str]:
+        """分离 YAML frontmatter 和 markdown 正文。"""
+        if not raw.startswith("---"):
+            return {}, raw
+        parts = raw.split("---", 2)
+        if len(parts) < 3:
+            return {}, raw
+        meta = yaml.safe_load(parts[1]) or {}
+        body = parts[2]
+        return meta, body
+
+    def get_descriptions(self) -> str:
+        """生成 system prompt 中的技能目录（第一层注入）。"""
+        if not self.skills:
+            return ""
+        lines = ["Available skills (use load_skill to access):"]
+        for name, info in self.skills.items():
+            lines.append(f"  - {name}: {info['description']}")
+        result = "\n".join(lines)
+        logger.info(f"SkillLoader.get_descriptions 生成技能目录:\n{result}")
+        return result
+
+    def get_content(self, skill_name: str) -> str:
+        """返回完整技能内容（第二层注入），用 XML 标签包裹。"""
+        if skill_name not in self.skills:
+            available = ", ".join(self.skills.keys())
+            logger.info(
+                f"SkillLoader.get_content: 技能 '{skill_name}' 未找到 | "
+                f"可用: {available}"
+            )
+            return f"Error: Skill '{skill_name}' not found. Available: {available}"
+        content = self.skills[skill_name]["content"]
+        result = f'<skill name="{skill_name}">\n{content}\n</skill>'
+        logger.info(
+            f"SkillLoader.get_content: 加载技能 '{skill_name}' | "
+            f"{len(content)} 字符"
+        )
+        return result
+
+
+skill_loader = SkillLoader("skills")
+
+# 第一层注入：把技能目录拼接到 system prompt
+SYSTEM += (
+    "\n\n" + skill_loader.get_descriptions() +
+    "\n\nWhen a task involves a specific domain (testing, git, security, etc.), "
+    "use the load_skill tool to load the relevant guidelines before proceeding."
+)
+
+
 # ---------- 工具调度映射 ----------
 TOOL_HANDLERS = {
     "bash":       lambda **kw: run_bash(kw["command"]),
@@ -194,6 +308,8 @@ TOOL_HANDLERS = {
     "edit_file":  lambda **kw: run_edit(kw["path"], kw["old_text"],
                                         kw["new_text"]),
     "todo":       lambda **kw: todo_manager.update(kw["items"]),
+    "task":       lambda **kw: run_subagent(kw["prompt"]),
+    "load_skill": lambda **kw: skill_loader.get_content(kw["skill_name"]),
 }
 
 # ---------- 工具定义（DeepSeek / OpenAI 格式）----------
@@ -285,7 +401,111 @@ TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "task",
+            "description": "Run a subtask in an isolated context. Use this for research, analysis, or any work whose intermediate output the parent does not need to see. Returns only the final text summary.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "prompt": {
+                        "type": "string",
+                        "description": "The task description for the subagent",
+                    }
+                },
+                "required": ["prompt"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "load_skill",
+            "description": "Load domain-specific guidelines and best practices. Use this when the current task involves a specific domain like testing, git workflow, code review, etc.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "skill_name": {
+                        "type": "string",
+                        "description": "Name of the skill to load",
+                    }
+                },
+                "required": ["skill_name"],
+            },
+        },
+    },
 ]
+
+
+# ---------- Subagent 执行函数 ----------
+def extract_text(message) -> str:
+    """从响应消息中提取纯文本，丢弃工具调用块。"""
+    parts = []
+    if message.content:
+        parts.append(message.content)
+    return "\n".join(parts) if parts else "(subagent produced no text output)"
+
+
+def run_subagent(prompt: str) -> str:
+    """在隔离上下文中执行子任务，仅返回最终文本。
+
+    子 Agent 拥有除 task 外的所有工具（防递归），
+    用独立的 sub_messages 启动——完全干净的上下文。
+    子 Agent 的消息历史直接丢弃，不污染父上下文。
+    """
+    sub_messages = [{"role": "user", "content": prompt}]
+
+    # 子 Agent 可用的工具：排除 task（防递归）
+    sub_tools = [t for t in TOOLS if t["function"]["name"] != "task"]
+
+    logger.info(f"=== Subagent 启动 | prompt={prompt[:200]} ===")
+
+    response = None
+    for turn in range(MAX_SUBAGENT_TURNS):
+        logger.info(f"--- Subagent 第 {turn + 1} 轮 ---")
+        response = client.chat.completions.create(
+            model=MODEL,
+            messages=[{"role": "system", "content": SUBAGENT_SYSTEM}] + sub_messages,
+            tools=sub_tools,
+            max_tokens=8000,
+        )
+
+        choice = response.choices[0]
+        message = choice.message
+
+        # 打印子 Agent 思考过程（不进 sub_messages）
+        reasoning = getattr(message, "reasoning_content", None)
+        if reasoning:
+            print(f"\n[subagent 思考] {reasoning}")
+            logger.info(f"subagent reasoning:\n{reasoning}")
+
+        sub_messages.append(message.to_dict())
+        logger.info(f"subagent finish_reason={choice.finish_reason}")
+
+        # 子 Agent 决定不再调工具 → 任务完成
+        if choice.finish_reason != "tool_calls":
+            break
+
+        # 执行工具，收集结果
+        for tc in message.tool_calls:
+            args = json.loads(tc.function.arguments)
+            handler = TOOL_HANDLERS.get(tc.function.name)
+            output = handler(**args) if handler else f"Unknown tool: {tc.function.name}"
+            logger.info(f"subagent 工具调用: {tc.function.name} | output={output[:200]}")
+            print(f"[subagent:{tc.function.name}] {output[:200]}")
+            sub_messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tc.id,
+                    "content": output,
+                }
+            )
+
+    # ★ 关键：只提取最终文本，sub_messages 整个丢弃
+    final_text = extract_text(message) if response else "(subagent produced no text output)"
+    logger.info(f"=== Subagent 结束 | 最终文本={final_text[:200]} ===")
+    return final_text
 
 
 def agent_loop(messages: list) -> str:
@@ -357,7 +577,7 @@ if __name__ == "__main__":
     if not os.environ.get("DEEPSEEK_API_KEY"):
         print("Error: DEEPSEEK_API_KEY environment variable not set")
         exit(1)
-    task ="创建一个带 CRUD 的用户管理模块"
+    task ="阅读2025013613-李义鑫文件夹内容 总结这个文件夹干了什么"
     messages = [{"role": "user", "content": task}]
     final_response = agent_loop(messages)
     print(final_response)
