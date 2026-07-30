@@ -380,6 +380,24 @@ class TaskManager:
             lines.append(f"  {icon} #{t['id']} {t['subject']}{blocked}{owner}")
         return "\n".join(lines)
 
+    def all_completed(self) -> bool:
+        """检查是否所有任务都完成了（或没有任务）。"""
+        tasks = self.list_tasks()
+        if not tasks:
+            return True
+        return all(t["status"] == "completed" for t in tasks)
+
+    def clear(self) -> dict:
+        """清空所有任务文件，重置 ID 计数器。"""
+        cleared = 0
+        for tid in self._all_task_ids():
+            path = self._task_path(tid)
+            os.remove(path)
+            cleared += 1
+        self._next_id = 1
+        logger.info(f"TaskManager.clear | 已清空 {cleared} 个任务文件")
+        return {"cleared": cleared, "next_id": self._next_id}
+
 
 task_manager = TaskManager()
 
@@ -398,6 +416,7 @@ TOOL_HANDLERS = {
     "task_update":  lambda **kw: json.dumps(task_manager.update(**kw), ensure_ascii=False),
     "task_list":    lambda **kw: json.dumps(task_manager.list_tasks(**kw), ensure_ascii=False),
     "task_get":     lambda **kw: json.dumps(task_manager.get_task(**kw), ensure_ascii=False),
+    "task_clear":   lambda **kw: json.dumps(task_manager.clear(), ensure_ascii=False),
 }
 
 # ---------- 工具定义（DeepSeek / OpenAI 格式）----------
@@ -605,6 +624,17 @@ TOOLS = [
                     "task_id": {"type": "integer"},
                 },
                 "required": ["task_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "task_clear",
+            "description": "Clear all tasks and reset the task ID counter. Use this after all tasks are completed to clean up for the next session.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
             },
         },
     },

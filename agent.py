@@ -2,7 +2,7 @@ import json
 import os
 
 from config import client, MODEL, SYSTEM, logger
-from tools import TOOLS, TOOL_HANDLERS
+from tools import TOOLS, TOOL_HANDLERS, task_manager, todo_manager
 from subagent import run_subagent
 from compact import (
     micro_compact,
@@ -58,6 +58,11 @@ def agent_loop(messages: list) -> str:
         # 退出条件：模型不再调工具
         if choice.finish_reason != "tool_calls":
             logger.info(f"循环结束，最终回复:\n{message.content}")
+            # ★ 任务全部完成时，自动清空 .tasks 和 todo（为下次运行保持干净状态）
+            if task_manager.all_completed():
+                task_manager.clear()
+                todo_manager.todos = []
+                logger.info("所有任务已完成，已自动清空 .tasks 和 todo")
             return message.content
 
         # 执行工具，收集结果
@@ -117,38 +122,102 @@ if __name__ == "__main__":
         print("Error: DEEPSEEK_API_KEY environment variable not set")
         exit(1)
     task = """
-                在当前目录创建一个 `inventory` 文件夹，完成一个完整的库存管理系统 CLI 项目，要求：
-            1. 用 Python 实现，核心文件 `inventory/cli.py`，不要修改当前目录下任何文件，只能修改 inventory 文件夹内的东西
-            2. 实现以下 CLI 命令（用 argparse）：
-            - `python -m inventory.cli add --name "商品名" --qty 10 --price 9.99` — 添加商品
-            - `python -m inventory.cli list` — 列出所有商品（表格格式）
-            - `python -m inventory.cli update <id> --qty 20` — 更新数量
-            - `python -m inventory.cli delete <id>` — 删除商品
-            - `python -m inventory.cli search --name "关键词"` — 按名称搜索
-            - `python -m inventory.cli stats` — 统计：总商品数、总价值、平均价格
-            3. 数据存在 `inventory/data.json`（JSON 文件持久化，非内存）
-            4. 创建 `inventory/__init__.py` 使其成为可导入的包
-            5. 创建 `inventory/requirements.txt`（如有第三方依赖）
-            6. 加载 testing 技能，按规范写 `inventory/test_cli.py` 测试文件，要求：
-            - 单元测试覆盖每个命令
-            - 每个测试函数至少 3 个用例（正常、边界、异常）
-            - 用 tmp_path fixture 隔离测试数据
-            7. 运行测试，确保全部通过
-            8. 加载 git-workflow 技能，在 inventory 文件夹内初始化 git 仓库并提交代码
-            9. 派发一个子 Agent 做代码审查，检查：
-            - 边界条件处理（空列表、不存在的 ID、负数数量）
-            - 数据持久化的并发安全
-            - CLI 参数校验完整性
-            - 错误信息是否友好
-            10. 根据子 Agent 审查意见修复所有发现的问题
-            11. 再次运行测试确保修复后全部通过
-            12. 最终交付：cli.py + __init__.py + data.json + test_cli.py + requirements.txt，全部测试通过
+    在当前目录创建一个 `blog` 文件夹，完成一个完整的博客系统项目，要求：
 
-            注意：
-            - 启动测试用 pytest，禁止单独运行 python -m inventory.cli 交互式等待
-            - 所有文件操作只在 inventory 文件夹内
-            - 上下文变长时可以主动调用 compact 工具压缩对话
-            """
+    1. 用 Python 实现，不要修改当前目录下任何文件，只能修改 blog 文件夹内的东西
+    2. 项目结构：
+       - blog/__init__.py（包初始化）
+       - blog/models.py（数据模型：Post、Author、Comment）
+       - blog/storage.py（JSON 文件持久化层）
+       - blog/api.py（API 层：增删改查逻辑）
+       - blog/cli.py（CLI 入口，用 argparse）
+       - blog/requirements.txt（依赖）
+       - blog/test_models.py（模型测试）
+       - blog/test_storage.py（存储层测试）
+       - blog/test_api.py（API 测试）
+       - blog/test_cli.py（CLI 集成测试）
+       - blog/README.md（项目文档）
+
+    3. 数据模型（models.py）：
+       - Post: id, title, content, author_id, created_at, updated_at, tags(list), status(draft/published)
+       - Author: id, name, email, bio
+       - Comment: id, post_id, author_name, content, created_at
+       - 实现模型的 __repr__、to_dict、from_dict 方法
+
+    4. 存储层（storage.py）：
+       - JSON 文件持久化（blog/data.json）
+       - 实现泛型 CRUD：save_all、load_all、find_by_id、delete_by_id
+       - 支持 Post、Author、Comment 三种实体的独立存储
+       - 写操作要线程安全（用文件锁或原子写入）
+
+    5. API 层（api.py）：
+       - create_post(title, content, author_id, tags)
+       - get_post(post_id)
+       - list_posts(status_filter=None, tag_filter=None)
+       - update_post(post_id, **fields)
+       - delete_post(post_id)
+       - publish_post(post_id)  # draft → published
+       - create_author(name, email, bio)
+       - get_author(author_id)
+       - list_authors()
+       - add_comment(post_id, author_name, content)
+       - list_comments(post_id)
+       - 每个方法返回 (success: bool, data, message: str) 元组
+
+    6. CLI（cli.py）：
+       - python -m blog.cli post create --title "标题" --content "内容" --author 1 --tags "tag1,tag2"
+       - python -m blog.cli post list [--status published] [--tag "xxx"]
+       - python -m blog.cli post get <id>
+       - python -m blog.cli post update <id> [--title "新标题"] [--content "新内容"]
+       - python -m blog.cli post delete <id>
+       - python -m blog.cli post publish <id>
+       - python -m blog.cli author create --name "作者名" --email "a@b.com" [--bio "简介"]
+       - python -m blog.cli author list
+       - python -m blog.cli comment add --post 1 --author "评论者" --content "评论内容"
+       - python -m blog.cli comment list <post_id>
+       - python -m blog.cli stats  # 统计：总文章数、已发布数、总评论数、作者数
+       - 输出用表格格式，错误用红色标记
+
+    7. 加载 testing 技能，按规范写 4 个测试文件：
+       - test_models.py：模型创建、序列化、反序列化、字段校验
+       - test_storage.py：CRUD 全覆盖、并发写入、文件不存在处理
+       - test_api.py：每个 API 方法（正常、边界、异常），publish 状态流转
+       - test_cli.py：CLI 命令集成测试，用 subprocess 调用
+       - 每个测试函数至少 3 个用例（正常、边界、异常）
+       - 用 tmp_path fixture 隔离测试数据
+       - 总测试用例数不少于 40 个
+
+    8. 派发一个子 Agent 做代码审查，检查：
+       - 边界条件（空列表、不存在的 ID、重复创建、非法 status）
+       - 数据持久化的并发安全
+       - CLI 参数校验完整性
+       - API 返回值一致性
+       - 错误信息是否友好
+       - 代码风格一致性
+
+    9. 派发一个子 Agent 做安全扫描，检查：
+       - JSON 注入风险（恶意构造的 title/content）
+       - 路径遍历（文件名是否可被注入 ../）
+       - 邮箱格式校验
+       - 大输入 DoS 防护（超长 content）
+       - 返回安全评估报告
+
+    10. 根据两个子 Agent 的审查意见修复所有发现的问题
+
+    11. 加载 git-workflow 技能，在 blog 文件夹内初始化 git 仓库并提交代码：
+        - 初始化仓库
+        - 创建 .gitignore（忽略 data.json、__pycache__、.pytest_cache）
+        - 分阶段提交（models → storage → api → cli → tests → docs）
+
+    12. 最终交付：所有文件 + 全部测试通过 + git 仓库干净
+
+    注意：
+    - 启动测试用 pytest，禁止单独运行 python -m blog.cli 交互式等待
+    - 所有文件操作只在 blog 文件夹内
+    - 上下文变长时可以主动调用 compact 工具压缩对话
+    - 这个任务有 12 步，务必用 todo 工具跟踪进度，每完成一步就更新状态
+    - 步骤间有依赖关系：models → storage → api → cli → tests，可以用 task 系列工具管理 DAG
+    """
     messages = [{"role": "user", "content": task}]
     final_response = agent_loop(messages)
     print(final_response)
