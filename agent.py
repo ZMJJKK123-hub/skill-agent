@@ -2,7 +2,7 @@ import json
 import os
 
 from config import client, MODEL, SYSTEM, logger
-from tools import TOOLS, TOOL_HANDLERS, task_manager, todo_manager
+from tools import TOOLS, TOOL_HANDLERS, task_manager, todo_manager, bg_manager, format_background_results
 from subagent import run_subagent
 from compact import (
     micro_compact,
@@ -22,6 +22,14 @@ TOOL_HANDLERS["task"] = lambda **kw: run_subagent(kw["prompt"])
 def agent_loop(messages: list) -> str:
     rounds_since_todo = 0
     while True:
+        # ── Layer 0: 排空后台通知（第 8 课）──
+        # 在 micro_compact 之前注入，让通知作为新数据参与后续 compact 估算
+        notifications = bg_manager.drain_notifications()
+        if notifications:
+            bg_results = format_background_results(notifications)
+            messages.append({"role": "user", "content": bg_results})
+            logger.info(f"注入后台通知:\n{bg_results}")
+
         # ── Layer 1: micro_compact（每轮自动，静默裁剪旧 tool_result）──
         micro_compact(messages)
 

@@ -1,6 +1,12 @@
 import json
 import os
 import subprocess
+import threading
+import queue
+import time
+from dataclasses import dataclass
+from typing import Optional
+
 import yaml
 
 import config
@@ -402,6 +408,129 @@ class TaskManager:
 task_manager = TaskManager()
 
 
+# ---------- BackgroundManager（第 8 课：异步后台执行 + 通知队列）----------
+@dataclass
+class BackgroundTask:
+    """后台任务数据结构。status: running | completed | failed"""
+    task_id: str
+    command: str
+    status: str = "running"
+    result: Optional[str] = None
+
+
+class BackgroundManager:
+    """后台任务管理器。慢操作丢守护线程，主循环不阻塞。
+
+    线程安全：tasks 字典用 lock 保护，通知用 queue.Queue（自带线程安全）。
+    主循环每轮开头 drain_notifications()，把完成的结果注入为 user 消息。
+    daemon=True 保证主进程退出时自动清理后台线程，无僵尸进程。
+    """
+    def __init__(self):
+        self.tasks: dict[str, BackgroundTask] = {}
+        self.notification_queue: queue.Queue = queue.Queue()
+        self.lock = threading.Lock()
+
+    def run(self, command: str) -> str:
+        """启动后台任务，立即返回 task_id。调用方不阻塞。"""
+        # 复用 run_bash 的危险命令检查
+        dangerous = [
+            "del /f /s", "rd /s /q", "format",
+            "diskpart", "reg delete", "shutdown",
+            "taskkill /f /im python.exe",
+            "taskkill /f /im node.exe",
+            "taskkill /f /im cmd.exe",
+        ]
+        if any(d in command.lower() for d in dangerous):
+            return "Error: Dangerous command blocked"
+
+        task_id = f"bg_{len(self.tasks)}_{int(time.time())}"
+        task = BackgroundTask(task_id=task_id, command=command)
+        with self.lock:
+            self.tasks[task_id] = task
+
+        thread = threading.Thread(
+            target=self._execute,
+            args=(task_id, command),
+            daemon=True,
+        )
+        thread.start()
+        logger.info(f"BackgroundManager.run | task_id={task_id} | command={command}")
+        return task_id
+
+    def _execute(self, task_id: str, command: str):
+        """在守护线程里跑子进程。Windows 适配：Popen + taskkill，不用 subprocess.run。"""
+        proc = subprocess.Popen(
+            command, shell=True, cwd=os.getcwd(),
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, encoding="utf-8", errors="replace",
+            env={**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"},
+        )
+        try:
+            out, _ = proc.communicate(timeout=600)
+            result = (out or "").strip()[:50000] or "(no output)"
+            status = "completed"
+        except subprocess.TimeoutExpired:
+            subprocess.run(
+                f"taskkill /f /t /pid {proc.pid}",
+                shell=True, capture_output=True,
+            )
+            try:
+                proc.communicate(timeout=5)
+            except:
+                pass
+            result = "Error: Background task timed out (600s)"
+            status = "failed"
+        except Exception as e:
+            result = f"Error: {e}"
+            status = "failed"
+
+        # 更新任务状态
+        with self.lock:
+            self.tasks[task_id].status = status
+            self.tasks[task_id].result = result
+
+        # 通知主线程
+        self.notification_queue.put({
+            "task_id": task_id,
+            "command": command,
+            "status": status,
+            "result": result,
+        })
+        logger.info(
+            f"BackgroundManager._execute 完成 | task_id={task_id} | "
+            f"status={status} | result_len={len(result)}"
+        )
+
+    def drain_notifications(self) -> list[dict]:
+        """排空通知队列。非阻塞：有消息就取，没消息立刻返回空列表。"""
+        notifications = []
+        while True:
+            try:
+                notifications.append(self.notification_queue.get_nowait())
+            except queue.Empty:
+                break
+        return notifications
+
+
+bg_manager = BackgroundManager()
+
+
+def format_background_results(notifications: list[dict]) -> str:
+    """把后台通知格式化为 <background-results> 标签包裹的文本。
+
+    让模型明确区分这是异步事件，不是用户输入或工具结果。
+    """
+    parts = ["<background-results>"]
+    for n in notifications:
+        parts.append(
+            f"[{n['task_id']}] {n['command']}\n"
+            f"Status: {n['status']}\n"
+            f"Result: {n['result'][:2000]}"
+        )
+    parts.append("</background-results>")
+    return "\n".join(parts)
+
+
 # ---------- 工具调度映射 ----------
 # 注意：task handler 不在此注册，由 agent.py 接线（打破循环依赖）
 TOOL_HANDLERS = {
@@ -417,6 +546,7 @@ TOOL_HANDLERS = {
     "task_list":    lambda **kw: json.dumps(task_manager.list_tasks(**kw), ensure_ascii=False),
     "task_get":     lambda **kw: json.dumps(task_manager.get_task(**kw), ensure_ascii=False),
     "task_clear":   lambda **kw: json.dumps(task_manager.clear(), ensure_ascii=False),
+    "run_in_background": lambda **kw: bg_manager.run(kw["command"]),
 }
 
 # ---------- 工具定义（DeepSeek / OpenAI 格式）----------
@@ -635,6 +765,20 @@ TOOLS = [
             "parameters": {
                 "type": "object",
                 "properties": {},
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_in_background",
+            "description": "Run a shell command in the background. Returns immediately with a task ID. Use for long-running commands like npm install, pytest, docker build, pip install. Results delivered as background notifications in subsequent turns.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "command": {"type": "string"},
+                },
+                "required": ["command"],
             },
         },
     },

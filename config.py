@@ -77,7 +77,14 @@ compact 会把之前的对话压缩为一个结构化摘要（保留目标、已
 - 开始做某任务时用 task_update 设为 in_progress，完成后设为 completed
 - 完成任务时系统自动清除下游任务的依赖——无需手动解锁
 - 用 task_list 查看全局任务状态，了解什么可以做、什么被卡住、什么做完了
-- todo 工具适合轻量线性清单（内存），task 系列工具适合重量 DAG 图（文件持久化）"""
+- todo 工具适合轻量线性清单（内存），task 系列工具适合重量 DAG 图（文件持久化）
+
+后台执行系统（异步任务与通知队列）：
+对于耗时命令（npm install、pytest 全量测试、docker build、pip install 大包等），
+使用 run_in_background 工具而非 bash——它会在守护线程里跑，立即返回 task_id，
+不阻塞主循环。完成后结果会在下一轮以 <background-results> 标签注入。
+快命令（dir、type、echo、git status 等）继续用 bash。
+判断标准：预计超过 5 秒的命令走 run_in_background，其余走 bash。"""
 
 # ---------- Subagent 系统（第 4 课：隔离上下文的子任务派发）----------
 MAX_SUBAGENT_TURNS = 10  # 硬上限，防止子 Agent 失控死循环
