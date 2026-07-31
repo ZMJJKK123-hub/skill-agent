@@ -113,6 +113,23 @@ Guidelines:
   "start /b ... & timeout /t 3 ... & curl ... & taskkill" pattern.
 """
 
+# ---------- Teammate 安全前缀（第 9 课修复：teammate 缺失 Windows 规则）----------
+# teammate 的 system prompt 只有用户传的那句话，完全没有主 agent 的 Windows 安全规则，
+# 导致 teammate 用 mkdir -p（创建名为 -p 的文件夹）、ls、cat 等 Linux 命令。
+# 此前缀强制拼接到每个 teammate 的 system prompt 前面，确保 Windows 规则始终生效。
+TEAMMATE_SYSTEM_PREFIX = """IMPORTANT: You are running on Windows cmd. You MUST use Windows command syntax.
+- Create directories with `mkdir dirname`; do NOT use `mkdir -p` (cmd does not recognize -p and will create a folder named "-p")
+- List directories with `dir`; do NOT use `ls`
+- View file contents with `type filename`; do NOT use `cat`
+- Copy files with `copy` or `xcopy`; do NOT use `cp`
+- Delete files with `del filename`, delete folders with `rd /s /q foldername`; do NOT use `rm -rf`
+- Find files with `where` or `dir /s /b`; do NOT use `find` / `which`
+- When writing file content, use the write_file tool, not bash redirection (echo > file loses UTF-8 on Windows)
+- Never start servers standalone (npm start, node server.js, python -m http.server); use the combined
+  "start /b cmd /c \"...\" & timeout /t 3 /nobreak >nul & curl -s http://localhost:PORT/... & for /f \"tokens=5\" %a in ('netstat -aon ^| findstr :PORT ^| findstr LISTENING') do taskkill /f /pid %a" pattern
+- NEVER use taskkill /f /im python.exe or taskkill /f /im node.exe (kills the Agent itself)
+"""
+
 client = OpenAI(
     api_key=os.environ.get("DEEPSEEK_API_KEY", ""),
     base_url="https://api.deepseek.com",

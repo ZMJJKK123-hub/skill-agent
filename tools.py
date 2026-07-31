@@ -750,7 +750,7 @@ class TeammateManager:
 
         队友拥有除团队管理工具和 task 外的所有工具（防递归）。
         """
-        from config import client, MODEL, MAX_SUBAGENT_TURNS
+        from config import client, MODEL, MAX_SUBAGENT_TURNS, TEAMMATE_SYSTEM_PREFIX
 
         sub_messages = [{"role": "user", "content": task}]
 
@@ -766,7 +766,7 @@ class TeammateManager:
             logger.info(f"--- 队友 Agent 第 {turn + 1} 轮 ---")
             response = client.chat.completions.create(
                 model=MODEL,
-                messages=[{"role": "system", "content": system}] + sub_messages,
+                messages=[{"role": "system", "content": TEAMMATE_SYSTEM_PREFIX + system}] + sub_messages,
                 tools=teammate_tools,
                 max_tokens=8000,
             )
