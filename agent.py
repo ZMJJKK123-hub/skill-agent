@@ -2,7 +2,7 @@ import json
 import os
 
 from config import client, MODEL, SYSTEM, logger
-from tools import TOOLS, TOOL_HANDLERS, task_manager, todo_manager, bg_manager, format_background_results
+from tools import TOOLS, TOOL_HANDLERS, task_manager, todo_manager, bg_manager, format_background_results, teammate_manager
 from subagent import run_subagent
 from compact import (
     micro_compact,
@@ -29,6 +29,20 @@ def agent_loop(messages: list) -> str:
             bg_results = format_background_results(notifications)
             messages.append({"role": "user", "content": bg_results})
             logger.info(f"注入后台通知:\n{bg_results}")
+
+        # ── Layer 0b: 排空 leader 收件箱（第 9 课：队友汇报）──
+        # 队友完成任务后结果发回 leader 收件箱，这里 drain 并注入为 user 消息
+        teammate_msgs = teammate_manager.bus.read_inbox("leader")
+        if teammate_msgs:
+            parts = ["<teammate-reports>"]
+            for msg in teammate_msgs:
+                parts.append(
+                    f"[from {msg['from']}]\n{msg['content']}"
+                )
+            parts.append("</teammate-reports>")
+            teammate_report = "\n".join(parts)
+            messages.append({"role": "user", "content": teammate_report})
+            logger.info(f"注入队友汇报:\n{teammate_report}")
 
         # ── Layer 1: micro_compact（每轮自动，静默裁剪旧 tool_result）──
         micro_compact(messages)

@@ -531,6 +531,285 @@ def format_background_results(notifications: list[dict]) -> str:
     return "\n".join(parts)
 
 
+# ---------- MessageBus（第 9 课：JSONL 收件箱，drain-on-read）----------
+class MessageBus:
+    """append-only 的 JSONL 收件箱系统。
+
+    每个队友一个 .jsonl 文件，send 追加一行，read_inbox 读取全部并清空。
+    drain-on-read：消息只需处理一次，读完就清，不需要已读标记。
+    线程安全：用 threading.Lock 保护文件操作（队友在同进程线程中）。
+    """
+
+    def __init__(self, inbox_dir: str = ".team/inbox"):
+        self.inbox_dir = inbox_dir
+        os.makedirs(inbox_dir, exist_ok=True)
+        self._lock = threading.Lock()
+        logger.info(f"MessageBus 初始化 | inbox_dir={inbox_dir}")
+
+    def send(self, from_name: str, to_name: str, content: str):
+        """往目标队友的收件箱追加一条消息。"""
+        msg = {
+            "from": from_name,
+            "to": to_name,
+            "content": content,
+            "timestamp": time.time(),
+        }
+        path = os.path.join(self.inbox_dir, f"{to_name}.jsonl")
+        with self._lock:
+            with open(path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(msg, ensure_ascii=False) + "\n")
+        logger.info(f"MessageBus.send | {from_name} → {to_name} | content={content[:100]}")
+
+    def broadcast(self, from_name: str, content: str, team: dict):
+        """群发给所有队友（除自己外）。"""
+        for name in team:
+            if name != from_name:
+                self.send(from_name, name, content)
+
+    def read_inbox(self, name: str) -> list:
+        """读取并清空收件箱（drain-on-read）。"""
+        path = os.path.join(self.inbox_dir, f"{name}.jsonl")
+        if not os.path.exists(path):
+            return []
+        with self._lock:
+            with open(path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+            # 读完即清
+            with open(path, "w", encoding="utf-8") as f:
+                pass  # truncate to empty
+        msgs = [json.loads(l) for l in lines if l.strip()]
+        logger.info(f"MessageBus.read_inbox | {name} | 读取 {len(msgs)} 条消息")
+        return msgs
+
+
+# ---------- TeammateManager（第 9 课：持久 Agent + 身份管理 + 通信）----------
+@dataclass
+class TeammateConfig:
+    """队友配置：name, system_prompt, status (idle/working/shutdown)。"""
+    name: str
+    system_prompt: str
+    status: str = "idle"
+
+
+class TeammateManager:
+    """团队名册管理器。spawn/shutdown 队友，每个队友在独立线程中运行。
+
+    队友不是函数调用，是被委托任务的独立 Agent——有自己的 messages、
+    自己的工具、自己的上下文。跟第 1 课的 while 循环完全一样。
+    状态持久化到 .team/config.json，Agent 重启后团队名册还在。
+    """
+
+    def __init__(self):
+        self.team_dir = ".team"
+        self.config_path = os.path.join(self.team_dir, "config.json")
+        os.makedirs(self.team_dir, exist_ok=True)
+        os.makedirs(os.path.join(self.team_dir, "inbox"), exist_ok=True)
+        self.team: dict = self._load_team_config()
+        self.bus = MessageBus(os.path.join(self.team_dir, "inbox"))
+        self.threads: dict = {}
+        self._lock = threading.Lock()
+        logger.info(
+            f"TeammateManager 初始化 | 现有队友: {list(self.team.keys())}"
+        )
+
+    def _load_team_config(self) -> dict:
+        """从 .team/config.json 加载团队名册。"""
+        if not os.path.exists(self.config_path):
+            return {}
+        try:
+            with open(self.config_path, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+            # 重建为 TeammateConfig
+            team = {}
+            for name, cfg in raw.items():
+                team[name] = TeammateConfig(
+                    name=cfg.get("name", name),
+                    system_prompt=cfg.get("system_prompt", ""),
+                    status=cfg.get("status", "idle"),
+                )
+            return team
+        except Exception as e:
+            logger.warning(f"TeammateManager._load_team_config 失败: {e}")
+            return {}
+
+    def _save_team_config(self):
+        """保存团队名册到 .team/config.json。"""
+        raw = {
+            name: {
+                "name": cfg.name,
+                "system_prompt": cfg.system_prompt,
+                "status": cfg.status,
+            }
+            for name, cfg in self.team.items()
+        }
+        with open(self.config_path, "w", encoding="utf-8") as f:
+            json.dump(raw, f, indent=2, ensure_ascii=False)
+
+    def spawn(self, name: str, system_prompt: str) -> str:
+        """创建队友并启动守护线程。"""
+        with self._lock:
+            if name in self.team and self.team[name].status != "shutdown":
+                return f"Error: Teammate '{name}' already exists and is {self.team[name].status}"
+            config_obj = TeammateConfig(name=name, system_prompt=system_prompt)
+            self.team[name] = config_obj
+            self._save_team_config()
+
+        thread = threading.Thread(
+            target=self._teammate_loop, args=(name,), daemon=True
+        )
+        self.threads[name] = thread
+        thread.start()
+        logger.info(f"TeammateManager.spawn | 队友 {name} 已创建并启动")
+        return f"队友 {name} 已创建并启动"
+
+    def send_task(self, to_name: str, task: str) -> str:
+        """给队友发送任务消息。"""
+        with self._lock:
+            if to_name not in self.team:
+                return f"Error: Teammate '{to_name}' not found. Use spawn_teammate first."
+            if self.team[to_name].status == "shutdown":
+                return f"Error: Teammate '{to_name}' is shutdown."
+        self.bus.send("leader", to_name, task)
+        with self._lock:
+            if self.team[to_name].status == "idle":
+                self.team[to_name].status = "working"
+                self._save_team_config()
+        logger.info(f"TeammateManager.send_task | leader → {to_name} | task={task[:100]}")
+        return f"任务已发送给 {to_name}"
+
+    def shutdown(self, name: str) -> str:
+        """关闭队友。"""
+        with self._lock:
+            if name not in self.team:
+                return f"Error: Teammate '{name}' not found."
+            self.team[name].status = "shutdown"
+            self._save_team_config()
+        logger.info(f"TeammateManager.shutdown | 队友 {name} 已关闭")
+        return f"队友 {name} 已关闭"
+
+    def render_status(self) -> str:
+        """渲染团队名册，让模型看到全局状态。"""
+        if not self.team:
+            return "(no teammates)"
+        icons = {"idle": "💤", "working": "🔧", "shutdown": "🚫"}
+        lines = ["📋 团队名册:"]
+        for name, cfg in self.team.items():
+            icon = icons.get(cfg.status, "?")
+            prompt_preview = cfg.system_prompt[:50] + "..." if len(cfg.system_prompt) > 50 else cfg.system_prompt
+            lines.append(f"  {icon} {name} [{cfg.status}] — {prompt_preview}")
+        return "\n".join(lines)
+
+    def _teammate_loop(self, name: str):
+        """队友循环：轮询收件箱 → 有消息就跑 Agent Loop → 结果发回 leader。"""
+        while True:
+            with self._lock:
+                cfg = self.team.get(name)
+                if cfg is None or cfg.status == "shutdown":
+                    logger.info(f"TeammateManager._teammate_loop | {name} 退出")
+                    return
+
+            # 检查收件箱
+            messages = self.bus.read_inbox(name)
+            if not messages:
+                time.sleep(1)  # 空闲等待，避免忙轮询
+                continue
+
+            # 有消息，设为 working
+            with self._lock:
+                if self.team[name].status != "shutdown":
+                    self.team[name].status = "working"
+                    self._save_team_config()
+
+            # 处理每条消息
+            for msg in messages:
+                # 检查是否被 shutdown 了
+                with self._lock:
+                    cfg = self.team.get(name)
+                    if cfg is None or cfg.status == "shutdown":
+                        break
+
+                logger.info(
+                    f"TeammateManager._teammate_loop | {name} 处理消息: "
+                    f"{msg['content'][:100]}"
+                )
+                result = self._run_teammate_agent(
+                    system=cfg.system_prompt,
+                    task=msg["content"],
+                )
+                # 结果发回 leader
+                self.bus.send(name, msg["from"], f"[{name} 完成] {result}")
+
+            # 处理完，设为 idle
+            with self._lock:
+                if self.team[name].status != "shutdown":
+                    self.team[name].status = "idle"
+                    self._save_team_config()
+
+    def _run_teammate_agent(self, system: str, task: str) -> str:
+        """执行一轮独立的 Agent Loop——跟 subagent.py 模式一样。
+
+        队友拥有除团队管理工具和 task 外的所有工具（防递归）。
+        """
+        from config import client, MODEL, MAX_SUBAGENT_TURNS
+
+        sub_messages = [{"role": "user", "content": task}]
+
+        # 队友可用的工具：排除团队管理工具（防递归）和 task（防子 Agent 递归）
+        excluded = {"spawn_teammate", "send_to_teammate", "team_status", "task"}
+        teammate_tools = [t for t in TOOLS if t["function"]["name"] not in excluded]
+
+        logger.info(f"=== 队友 Agent 启动 | task={task[:200]} ===")
+
+        response = None
+        message = None
+        for turn in range(MAX_SUBAGENT_TURNS):
+            logger.info(f"--- 队友 Agent 第 {turn + 1} 轮 ---")
+            response = client.chat.completions.create(
+                model=MODEL,
+                messages=[{"role": "system", "content": system}] + sub_messages,
+                tools=teammate_tools,
+                max_tokens=8000,
+            )
+
+            choice = response.choices[0]
+            message = choice.message
+
+            # 打印队友思考过程
+            reasoning = getattr(message, "reasoning_content", None)
+            if reasoning:
+                print(f"\n[teammate 思考] {reasoning}")
+                logger.info(f"teammate reasoning:\n{reasoning}")
+
+            sub_messages.append(message.to_dict())
+            logger.info(f"teammate finish_reason={choice.finish_reason}")
+
+            # 队友决定不再调工具 → 任务完成
+            if choice.finish_reason != "tool_calls":
+                break
+
+            # 执行工具，收集结果
+            for tc in message.tool_calls:
+                args = json.loads(tc.function.arguments)
+                handler = TOOL_HANDLERS.get(tc.function.name)
+                output = handler(**args) if handler else f"Unknown tool: {tc.function.name}"
+                logger.info(f"teammate 工具调用: {tc.function.name} | output={output[:200]}")
+                print(f"[teammate:{tc.function.name}] {output[:200]}")
+                sub_messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": output,
+                    }
+                )
+
+        final_text = message.content if message and message.content else "(teammate produced no text output)"
+        logger.info(f"=== 队友 Agent 结束 | 最终文本={final_text[:200]} ===")
+        return final_text
+
+
+teammate_manager = TeammateManager()
+
+
 # ---------- 工具调度映射 ----------
 # 注意：task handler 不在此注册，由 agent.py 接线（打破循环依赖）
 TOOL_HANDLERS = {
@@ -547,6 +826,9 @@ TOOL_HANDLERS = {
     "task_get":     lambda **kw: json.dumps(task_manager.get_task(**kw), ensure_ascii=False),
     "task_clear":   lambda **kw: json.dumps(task_manager.clear(), ensure_ascii=False),
     "run_in_background": lambda **kw: bg_manager.run(kw["command"]),
+    "spawn_teammate":  lambda **kw: teammate_manager.spawn(kw["name"], kw["system_prompt"]),
+    "send_to_teammate": lambda **kw: teammate_manager.send_task(kw["to_name"], kw["task"]),
+    "team_status":     lambda **kw: teammate_manager.render_status(),
 }
 
 # ---------- 工具定义（DeepSeek / OpenAI 格式）----------
@@ -779,6 +1061,59 @@ TOOLS = [
                     "command": {"type": "string"},
                 },
                 "required": ["command"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "spawn_teammate",
+            "description": "Create a persistent teammate agent that runs in its own thread with its own Agent Loop. The teammate has an independent context and can use all tools except team management tools (no recursion). Use this to delegate work to specialized agents (e.g., coder, tester, reviewer).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Unique name for the teammate (e.g., 'coder', 'tester')",
+                    },
+                    "system_prompt": {
+                        "type": "string",
+                        "description": "System prompt defining the teammate's role and expertise",
+                    },
+                },
+                "required": ["name", "system_prompt"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "send_to_teammate",
+            "description": "Send a task message to a teammate. The teammate will process it in its own Agent Loop and send the result back to your inbox. Results arrive as <teammate-reports> in subsequent turns.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "to_name": {
+                        "type": "string",
+                        "description": "Name of the teammate to send the task to",
+                    },
+                    "task": {
+                        "type": "string",
+                        "description": "The task description to send",
+                    },
+                },
+                "required": ["to_name", "task"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "team_status",
+            "description": "Show the current team roster with each teammate's status (idle/working/shutdown) and role. Use this to check on your team's progress.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
             },
         },
     },

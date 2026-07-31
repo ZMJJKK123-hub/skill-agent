@@ -84,7 +84,17 @@ compact 会把之前的对话压缩为一个结构化摘要（保留目标、已
 使用 run_in_background 工具而非 bash——它会在守护线程里跑，立即返回 task_id，
 不阻塞主循环。完成后结果会在下一轮以 <background-results> 标签注入。
 快命令（dir、type、echo、git status 等）继续用 bash。
-判断标准：预计超过 5 秒的命令走 run_in_background，其余走 bash。"""
+判断标准：预计超过 5 秒的命令走 run_in_background，其余走 bash。
+
+团队系统（持久 Agent + 身份管理 + 通信）：
+对于可以并行或独立执行的工作，使用 spawn_teammate 创建持久队友 Agent。
+队友在独立线程中运行自己的 Agent Loop，拥有独立上下文和工具集（除团队管理工具外）。
+- spawn_teammate(name, system_prompt)：创建队友并启动守护线程，队友立即开始轮询收件箱
+- send_to_teammate(to_name, task)：给队友发送任务，队友处理完会把结果发回你的收件箱
+- team_status()：查看团队名册和各队友状态（idle/working/shutdown）
+队友的汇报会在下一轮以 <teammate-reports> 标签注入到你的上下文中。
+适合用队友的场景：代码审查、安全扫描、并行测试、独立研究——这些任务不需要你盯着中间过程。
+队友状态持久化到 .team/config.json，Agent 重启后团队名册还在（但线程需重新 spawn）。"""
 
 # ---------- Subagent 系统（第 4 课：隔离上下文的子任务派发）----------
 MAX_SUBAGENT_TURNS = 10  # 硬上限，防止子 Agent 失控死循环
