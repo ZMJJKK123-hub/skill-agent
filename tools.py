@@ -113,7 +113,7 @@ class TodoManager:
         icons = {"pending": "☐", "in_progress": "▶", "completed": "✓"}
         done = sum(1 for i in self.todos if i["status"] == "completed")
         total = len(self.todos)
-        header = f"📋 待办清单 ({done}/{total} 完成)"
+        header = f"📋 Todo List ({done}/{total} completed)"
         lines = [header]
         for idx, item in enumerate(self.todos, 1):
             icon = icons.get(item["status"], "?")
@@ -660,7 +660,7 @@ class TeammateManager:
         self.threads[name] = thread
         thread.start()
         logger.info(f"TeammateManager.spawn | 队友 {name} 已创建并启动")
-        return f"队友 {name} 已创建并启动"
+        return f"Teammate {name} spawned and started"
 
     def send_task(self, to_name: str, task: str) -> str:
         """给队友发送任务消息。"""
@@ -675,7 +675,7 @@ class TeammateManager:
                 self.team[to_name].status = "working"
                 self._save_team_config()
         logger.info(f"TeammateManager.send_task | leader → {to_name} | task={task[:100]}")
-        return f"任务已发送给 {to_name}"
+        return f"Task sent to {to_name}"
 
     def shutdown(self, name: str) -> str:
         """关闭队友。"""
@@ -685,14 +685,14 @@ class TeammateManager:
             self.team[name].status = "shutdown"
             self._save_team_config()
         logger.info(f"TeammateManager.shutdown | 队友 {name} 已关闭")
-        return f"队友 {name} 已关闭"
+        return f"Teammate {name} shut down"
 
     def render_status(self) -> str:
         """渲染团队名册，让模型看到全局状态。"""
         if not self.team:
             return "(no teammates)"
         icons = {"idle": "💤", "working": "🔧", "shutdown": "🚫"}
-        lines = ["📋 团队名册:"]
+        lines = ["📋 Team Roster:"]
         for name, cfg in self.team.items():
             icon = icons.get(cfg.status, "?")
             prompt_preview = cfg.system_prompt[:50] + "..." if len(cfg.system_prompt) > 50 else cfg.system_prompt
