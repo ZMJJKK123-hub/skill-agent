@@ -54,7 +54,7 @@ The write_file tool forces UTF-8, ensuring Chinese and emoji are preserved. If y
 first get the output via bash, then write it with write_file.
 
 IMPORTANT: You are running on Windows cmd. You MUST use Windows command syntax. Do NOT use Linux-specific syntax:
-- Create directories with `mkdir dirname`; do NOT use `mkdir -p` (cmd does not recognize -p and will create a folder named -p)
+- Create directories with `mkdir dirname`; do NOT use `mkdir -p` (cmd does not recognize -p and will create a folder named "-p")
 - List directories with `dir`; do NOT use `ls`
 - View file contents with `type filename`; do NOT use `cat`
 - Copy files with `copy` or `xcopy`; do NOT use `cp`
@@ -75,7 +75,7 @@ Each sub-step should be an independently verifiable atomic task, with granularit
 Task graph system (DAG dependency management):
 For multi-step tasks with complex dependency relationships, use task_create / task_update / task_list / task_get tools to manage the task graph:
 - Use task_create to create subtasks, specifying dependencies via the blocked_by parameter (dependency tasks must complete first)
-- When starting a task, use task_update to set it to in_progress; when done, set it to completed
+- When starting a task, use task_update to set it in_progress; when done, set it to completed
 - Completing a task automatically clears the dependency of downstream tasks—no manual unblocking needed
 - Use task_list to view the global task state—what can be done, what is blocked, what is done
 - The todo tool is for lightweight linear lists (in-memory); the task_* tools are for heavyweight DAG graphs (file-persisted)
@@ -95,7 +95,10 @@ Teammates run their own Agent Loop in a separate thread, with their own context 
 - team_status(): view the team roster and each teammate's status (idle/working/shutdown)
 Teammate reports are injected into your context in the next round as a <teammate-reports> tag.
 Good scenarios for teammates: code review, security scanning, parallel testing, independent research—tasks where you don't need to watch the intermediate process.
-Teammate state is persisted to .team/config.json; the team roster survives an Agent restart (but threads need to be re-spawned)."""
+Teammate state is mirrored to .team/config.json during a run (for debugging).
+Each run starts clean: the roster does NOT persist across Agent restarts,
+because teammates have no persistent memory—spawning them again from scratch is
+cheaper and avoids stale state. When all tasks complete, the team is cleared."""
 
 # ---------- Subagent 系统（第 4 课：隔离上下文的子任务派发）----------
 MAX_SUBAGENT_TURNS = 10  # 硬上限，防止子 Agent 失控死循环

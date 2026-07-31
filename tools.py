@@ -544,7 +544,18 @@ class MessageBus:
         self.inbox_dir = inbox_dir
         os.makedirs(inbox_dir, exist_ok=True)
         self._lock = threading.Lock()
-        logger.info(f"MessageBus 初始化 | inbox_dir={inbox_dir}")
+        # 每次启动清空残留的 inbox 文件——上一次 session 的消息已无意义
+        # （队友线程随进程退出而死亡，无人再读取这些孤儿消息）
+        self._clean_stale_inbox()
+        logger.info(f"MessageBus 初始化 | inbox_dir={inbox_dir} | 已清空残留消息")
+
+    def _clean_stale_inbox(self):
+        """清空 inbox 目录下所有 .jsonl 文件的残留内容。"""
+        for fname in os.listdir(self.inbox_dir):
+            if fname.endswith(".jsonl"):
+                path = os.path.join(self.inbox_dir, fname)
+                with open(path, "w", encoding="utf-8") as f:
+                    pass  # truncate to empty
 
     def send(self, from_name: str, to_name: str, content: str):
         """往目标队友的收件箱追加一条消息。"""
@@ -604,33 +615,17 @@ class TeammateManager:
         self.config_path = os.path.join(self.team_dir, "config.json")
         os.makedirs(self.team_dir, exist_ok=True)
         os.makedirs(os.path.join(self.team_dir, "inbox"), exist_ok=True)
-        self.team: dict = self._load_team_config()
+        self.team: dict = {}
         self.bus = MessageBus(os.path.join(self.team_dir, "inbox"))
         self.threads: dict = {}
         self._lock = threading.Lock()
+        # 每次运行干净开始：不跨 session 持久化团队状态
+        # 队友无持久记忆（每次 task 都是全新 context），跨 session 保留名册无意义
+        self._save_team_config()
         logger.info(
-            f"TeammateManager 初始化 | 现有队友: {list(self.team.keys())}"
+            f"TeammateManager 初始化 | 干净启动，team 已清空 | "
+            f"活跃线程: {list(self.threads.keys())}"
         )
-
-    def _load_team_config(self) -> dict:
-        """从 .team/config.json 加载团队名册。"""
-        if not os.path.exists(self.config_path):
-            return {}
-        try:
-            with open(self.config_path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            # 重建为 TeammateConfig
-            team = {}
-            for name, cfg in raw.items():
-                team[name] = TeammateConfig(
-                    name=cfg.get("name", name),
-                    system_prompt=cfg.get("system_prompt", ""),
-                    status=cfg.get("status", "idle"),
-                )
-            return team
-        except Exception as e:
-            logger.warning(f"TeammateManager._load_team_config 失败: {e}")
-            return {}
 
     def _save_team_config(self):
         """保存团队名册到 .team/config.json。"""
@@ -646,13 +641,24 @@ class TeammateManager:
             json.dump(raw, f, indent=2, ensure_ascii=False)
 
     def spawn(self, name: str, system_prompt: str) -> str:
-        """创建队友并启动守护线程。"""
+        """创建队友并启动守护线程。已存在的 idle 队友会重启线程。"""
         with self._lock:
-            if name in self.team and self.team[name].status != "shutdown":
-                return f"Error: Teammate '{name}' already exists and is {self.team[name].status}"
-            config_obj = TeammateConfig(name=name, system_prompt=system_prompt)
-            self.team[name] = config_obj
-            self._save_team_config()
+            if name in self.team:
+                if self.team[name].status == "shutdown":
+                    # shutdown 状态可以重新创建
+                    self.team[name] = TeammateConfig(name=name, system_prompt=system_prompt)
+                    self._save_team_config()
+                elif self.team[name].status == "idle":
+                    # idle 状态：更新 system_prompt，重启线程
+                    self.team[name].system_prompt = system_prompt
+                    self._save_team_config()
+                    logger.info(f"TeammateManager.spawn | 队友 {name} 已存在(idle)，重启线程")
+                else:
+                    # working 状态：不能重新 spawn
+                    return f"Error: Teammate '{name}' already exists and is {self.team[name].status}"
+            else:
+                self.team[name] = TeammateConfig(name=name, system_prompt=system_prompt)
+                self._save_team_config()
 
         thread = threading.Thread(
             target=self._teammate_loop, args=(name,), daemon=True
@@ -684,6 +690,8 @@ class TeammateManager:
                 return f"Error: Teammate '{name}' not found."
             self.team[name].status = "shutdown"
             self._save_team_config()
+            # 清理线程引用（线程自身会在下次循环检测到 shutdown 后退出）
+            self.threads.pop(name, None)
         logger.info(f"TeammateManager.shutdown | 队友 {name} 已关闭")
         return f"Teammate {name} shut down"
 
@@ -829,6 +837,7 @@ TOOL_HANDLERS = {
     "spawn_teammate":  lambda **kw: teammate_manager.spawn(kw["name"], kw["system_prompt"]),
     "send_to_teammate": lambda **kw: teammate_manager.send_task(kw["to_name"], kw["task"]),
     "team_status":     lambda **kw: teammate_manager.render_status(),
+    "shutdown_teammate": lambda **kw: teammate_manager.shutdown(kw["name"]),
 }
 
 # ---------- 工具定义（DeepSeek / OpenAI 格式）----------
@@ -1114,6 +1123,23 @@ TOOLS = [
             "parameters": {
                 "type": "object",
                 "properties": {},
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "shutdown_teammate",
+            "description": "Shut down a teammate agent. The teammate's thread will exit on its next loop iteration. Use this when a teammate's work is done and you want to clean up resources.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Name of the teammate to shut down",
+                    },
+                },
+                "required": ["name"],
             },
         },
     },

@@ -96,11 +96,15 @@ def agent_loop(messages: list) -> str:
                 continue
 
             logger.info(f"循环结束，最终回复:\n{message.content}")
-            # ★ 任务全部完成时，自动清空 .tasks 和 todo（为下次运行保持干净状态）
+            # ★ 任务全部完成时，自动清空 .tasks、todo 和 team config
+            # 每次运行干净开始：不跨 session 持久化（队友无持久记忆，保留名册无意义）
             if task_manager.all_completed():
                 task_manager.clear()
                 todo_manager.todos = []
-                logger.info("所有任务已完成，已自动清空 .tasks 和 todo")
+                teammate_manager.team.clear()
+                teammate_manager.threads.clear()
+                teammate_manager._save_team_config()
+                logger.info("所有任务已完成，已自动清空 .tasks、todo 和 team config")
             return message.content
 
         # 执行工具，收集结果
@@ -159,7 +163,7 @@ if __name__ == "__main__":
     if not os.environ.get("DEEPSEEK_API_KEY"):
         print("Error: DEEPSEEK_API_KEY environment variable not set")
         exit(1)
-    task = """
+    task = """首先 严禁动当前文件夹内的文件 你只能在当前目录下创建一个demo新文件夹 你产生和修改的所有文件只能在demo文件夹中进行 以此为规则 完成下面任务
                     Spawn alice (coder) + bob (tester)
                 用 send_to_teammate 给 alice 发任务
                 用 send_to_teammate 给 bob 发任务
