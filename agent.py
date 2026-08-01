@@ -132,7 +132,13 @@ def agent_loop(messages: list) -> str:
                 continue
 
             handler = TOOL_HANDLERS.get(tc.function.name)
-            output = handler(**args) if handler else f"Unknown tool: {tc.function.name}"
+            # ── 工具调用兜底防线：任何 handler 抛异常都不能炸掉 agent 主循环 ──
+            # 把异常转成温和错误文本塞回给 LLM，让它继续思考而非整个进程崩溃。
+            try:
+                output = handler(**args) if handler else f"Unknown tool: {tc.function.name}"
+            except Exception as e:
+                logger.exception(f"工具调用异常 | {tc.function.name} | {e}")
+                output = f"Error executing {tc.function.name}: {e}"
             if tc.function.name == "todo":
                 used_todo = True
                 print(f"\n[todo]\n{output}")   # 终端显示完整 todo 清单

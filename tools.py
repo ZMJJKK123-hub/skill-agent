@@ -909,10 +909,20 @@ def _submit_plan(kw: dict) -> str:
 
 
 def _respond_to_request(kw: dict) -> str:
-    """leader 审批/响应协议请求。decision ∈ approve | reject。"""
+    """leader 审批/响应协议请求。decision ∈ approve | reject。
+
+    状态守卫温和化：LLM 可能传一个已决议的 req_id（误用/测试/幻觉），
+    此时 tracker.respond() 会抛 ValueError。如果让它冒泡，整个 agent 主循环
+    会被一个工具调用炸毁。这里捕获并转成温和错误文本，LLM 拿到的只是
+    一条 Error 消息，可以继续思考，程序不中断。
+    """
     decision = kw.get("decision", "approve")
     reason = kw.get("reason", "")
-    return coordinator.handle_plan_review(kw["req_id"], decision, reason)
+    try:
+        return coordinator.handle_plan_review(kw["req_id"], decision, reason)
+    except ValueError as e:
+        logger.info(f"respond_to_request 捕获状态守卫异常 | {e}")
+        return f"Error: {e}"
 
 
 TOOL_HANDLERS = {
