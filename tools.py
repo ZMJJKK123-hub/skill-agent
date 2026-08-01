@@ -11,6 +11,12 @@ import yaml
 
 import config
 from config import logger, safe_path
+from protocol import (
+    coordinator,
+    RequestStatus,
+    parse_protocol_flag,
+    inject_pending_requests,
+)
 
 # ---------- 工具函数实现 ----------
 def run_bash(command: str) -> str:
@@ -708,7 +714,7 @@ class TeammateManager:
         return "\n".join(lines)
 
     def _teammate_loop(self, name: str):
-        """队友循环：轮询收件箱 → 有消息就跑 Agent Loop → 结果发回 leader。"""
+        """队友循环：轮询收件箱 → 协议消息走代码，任务消息跑 Agent Loop。"""
         while True:
             with self._lock:
                 cfg = self.team.get(name)
@@ -736,13 +742,49 @@ class TeammateManager:
                     if cfg is None or cfg.status == "shutdown":
                         break
 
+                content = msg["content"]
+
+                # ── 协议消息（第 10 课）：确定性代码处理，不走 LLM ──
+                parsed = parse_protocol_flag(content)
+                if parsed:
+                    ptype, pargs = parsed
+                    if ptype == "shutdown":
+                        outcome = coordinator.handle_shutdown_request(name, pargs[0])
+                        if outcome == "exit":
+                            self.bus.send(
+                                name, "leader",
+                                f"[{name} 完成] Shutdown approved & buffers flushed, "
+                                f"teammate thread exiting now",
+                            )
+                            with self._lock:
+                                self.team[name].status = "shutdown"
+                                self._save_team_config()
+                            logger.info(f"TeammateManager._teammate_loop | {name} 安全退出（关机握手批准）")
+                            return
+                        # REJECTED：把拒绝原因也照常发回 leader（走普通汇报格式）
+                        self.bus.send(
+                            name, "leader",
+                            f"[{name} 完成] {outcome}",
+                        )
+                        logger.info(f"TeammateManager._teammate_loop | {name} 拒绝关机，继续运行: {outcome[:100]}")
+                        continue
+                    elif ptype in ("plan_result", "shutdown_result"):
+                        # 审批结果回执/关机结果回执：无需队友处理，已由 tracker 记录
+                        logger.info(f"TeammateManager._teammate_loop | {name} 收到回执: {content[:100]}")
+                        continue
+                    else:
+                        logger.info(f"TeammateManager._teammate_loop | {name} 未知协议消息: {content[:100]}")
+                        continue
+
+                # ── 普通任务消息：跑 Agent Loop ──
                 logger.info(
                     f"TeammateManager._teammate_loop | {name} 处理消息: "
-                    f"{msg['content'][:100]}"
+                    f"{content[:100]}"
                 )
                 result = self._run_teammate_agent(
                     system=cfg.system_prompt,
-                    task=msg["content"],
+                    task=content,
+                    agent_id=name,
                 )
                 # 结果发回 leader
                 self.bus.send(name, msg["from"], f"[{name} 完成] {result}")
@@ -753,24 +795,34 @@ class TeammateManager:
                     self.team[name].status = "idle"
                     self._save_team_config()
 
-    def _run_teammate_agent(self, system: str, task: str) -> str:
+    def _run_teammate_agent(self, system: str, task: str, agent_id: str) -> str:
         """执行一轮独立的 Agent Loop——跟 subagent.py 模式一样。
 
         队友拥有除团队管理工具和 task 外的所有工具（防递归）。
+
+        第 10 课改造：
+        1. 每轮注入该队友的 pending-requests（计划审批结果 / 关机请求）
+        2. 执行 write_file / edit_file 时自动登记到 AgentWriteTracker
         """
         from config import client, MODEL, MAX_SUBAGENT_TURNS, TEAMMATE_SYSTEM_PREFIX
 
         sub_messages = [{"role": "user", "content": task}]
 
-        # 队友可用的工具：排除团队管理工具（防递归）和 task（防子 Agent 递归）
-        excluded = {"spawn_teammate", "send_to_teammate", "team_status", "task"}
+        # 队友可用的工具：排除团队管理工具（防递归）和 task（防子 Agent 递归）。
+        # 队友保留 submit_plan / respond_to_request（第 10 课：队友提计划、响应协议）；
+        # 排除 request_shutdown（只有 leader 能发起关机）。
+        excluded = {"spawn_teammate", "send_to_teammate", "team_status", "task",
+                    "request_shutdown"}
         teammate_tools = [t for t in TOOLS if t["function"]["name"] not in excluded]
 
-        logger.info(f"=== 队友 Agent 启动 | task={task[:200]} ===")
+        logger.info(f"=== 队友 Agent 启动 | agent={agent_id} | task={task[:200]} ===")
 
         response = None
         message = None
         for turn in range(MAX_SUBAGENT_TURNS):
+            # ── 第 10 课：每轮开始注入协议请求（计划审批结果 / 关机请求）──
+            inject_pending_requests(sub_messages, agent_id)
+
             logger.info(f"--- 队友 Agent 第 {turn + 1} 轮 ---")
             response = client.chat.completions.create(
                 model=MODEL,
@@ -798,6 +850,9 @@ class TeammateManager:
             # 执行工具，收集结果
             for tc in message.tool_calls:
                 args = json.loads(tc.function.arguments)
+                # 第 10 课：submit_plan 需要记录发起方（队友身份）
+                if tc.function.name == "submit_plan":
+                    args["_agent_id"] = agent_id
                 handler = TOOL_HANDLERS.get(tc.function.name)
                 output = handler(**args) if handler else f"Unknown tool: {tc.function.name}"
                 logger.info(f"teammate 工具调用: {tc.function.name} | output={output[:200]}")
@@ -810,16 +865,56 @@ class TeammateManager:
                     }
                 )
 
+                # 第 10 课：写入文件后自动登记（关机握手依赖此登记判断未提交写入）
+                if tc.function.name in ("write_file", "edit_file"):
+                    coordinator.writes.record_write(agent_id, args.get("path", "?"))
+
         final_text = message.content if message and message.content else "(teammate produced no text output)"
-        logger.info(f"=== 队友 Agent 结束 | 最终文本={final_text[:200]} ===")
+
+        # 第 10 课修复：队友完成一轮任务后，本轮所有 write_file/edit_file 已同步落盘
+        # （write_file 是同步写盘，不是异步缓冲），此时清空写入登记是准确反映
+        # "已提交"状态。否则登记永久残留，关机握手会无限 REJECTED（死循环）。
+        coordinator.writes.flush(agent_id)
+
+        logger.info(f"=== 队友 Agent 结束 | agent={agent_id} | 最终文本={final_text[:200]} ===")
         return final_text
 
 
 teammate_manager = TeammateManager()
 
 
+# ---------- 第 10 课接线：协调器注入消息总线 / 团队名册（打破循环依赖）----------
+# request_shutdown 的"协议协商"路径：coordinator 通过 bus 发 [PROTOCOL] shutdown，
+# 队友 loop 收到后确定性处理并回复；只有 APPROVED 才真正关闭线程（不再直接杀）。
+# _force_shutdown 保留为兜底（不自杀场景），协议路径不用它。
+coordinator.wire(
+    bus=teammate_manager.bus,
+    team=teammate_manager.team,
+    force_shutdown_fn=teammate_manager.shutdown,
+)
+
+
 # ---------- 工具调度映射 ----------
 # 注意：task handler 不在此注册，由 agent.py 接线（打破循环依赖）
+def _submit_plan(kw: dict) -> str:
+    """队友提交计划审批。用 current_agent_id 记录发起方。"""
+    agent = kw.get("_agent_id", "unknown")
+    plan = {
+        "summary": kw.get("plan_summary", ""),
+        "files": kw.get("affected_files", []),
+        "risk": kw.get("risk_level", "low"),
+        "change_count": kw.get("estimated_changes", 0),
+    }
+    return coordinator.submit_plan_for_review(agent, plan)
+
+
+def _respond_to_request(kw: dict) -> str:
+    """leader 审批/响应协议请求。decision ∈ approve | reject。"""
+    decision = kw.get("decision", "approve")
+    reason = kw.get("reason", "")
+    return coordinator.handle_plan_review(kw["req_id"], decision, reason)
+
+
 TOOL_HANDLERS = {
     "bash":         lambda **kw: run_bash(kw["command"]),
     "read_file":    lambda **kw: run_read(kw["path"], kw.get("limit")),
@@ -838,6 +933,12 @@ TOOL_HANDLERS = {
     "send_to_teammate": lambda **kw: teammate_manager.send_task(kw["to_name"], kw["task"]),
     "team_status":     lambda **kw: teammate_manager.render_status(),
     "shutdown_teammate": lambda **kw: teammate_manager.shutdown(kw["name"]),
+    # ── 第 10 课：协议工具 ──
+    "request_shutdown": lambda **kw: coordinator.request_shutdown(
+        kw["name"], kw.get("reason", "task_complete")),
+    "submit_plan":      lambda **kw: _submit_plan(kw),
+    "respond_to_request": lambda **kw: _respond_to_request(kw),
+    "protocol_status":  lambda **kw: coordinator.render_status(),
 }
 
 # ---------- 工具定义（DeepSeek / OpenAI 格式）----------
@@ -1140,6 +1241,95 @@ TOOLS = [
                     },
                 },
                 "required": ["name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "request_shutdown",
+            "description": "Request a graceful shutdown of a teammate via the Shutdown Handshake Protocol. Sends a shutdown request; the teammate checks for uncommitted writes and either approves (safe exit after flushing buffers) or rejects (still has pending work). Use this instead of shutdown_teammate so the teammate gets a chance to finish/clean up. The result appears in <pending-requests> in a later turn.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Name of the teammate to shut down gracefully",
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Why the teammate is being shut down",
+                    },
+                },
+                "required": ["name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "submit_plan",
+            "description": "Submit an implementation plan for leader approval (Plan Approval Protocol). High-risk changes MUST be approved before execution. If the plan is rejected, revise it and submit again. Wait for the approval result in <pending-requests> before executing.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "plan_summary": {
+                        "type": "string",
+                        "description": "What you plan to do",
+                    },
+                    "affected_files": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Files you plan to modify/create",
+                    },
+                    "risk_level": {
+                        "type": "string",
+                        "enum": ["low", "medium", "high"],
+                        "description": "Risk level: high = refactor/delete API/database migration",
+                    },
+                    "estimated_changes": {
+                        "type": "integer",
+                        "description": "Estimated number of changes",
+                    },
+                },
+                "required": ["plan_summary", "affected_files", "risk_level", "estimated_changes"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "respond_to_request",
+            "description": "Approve or reject a protocol request (Plan Approval Protocol). Called by the leader to respond to a teammate's plan submission. On reject, provide a reason; the teammate will revise and resubmit.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "req_id": {
+                        "type": "string",
+                        "description": "The request ID shown in <pending-requests>",
+                    },
+                    "decision": {
+                        "type": "string",
+                        "enum": ["approve", "reject"],
+                        "description": "approve = proceed with execution; reject = revise the plan",
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Reason for the decision (especially on reject)",
+                    },
+                },
+                "required": ["req_id", "decision"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "protocol_status",
+            "description": "Show all protocol requests (shutdown handshakes and plan approvals) and their current status: pending/approved/rejected.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
             },
         },
     },

@@ -98,7 +98,25 @@ Good scenarios for teammates: code review, security scanning, parallel testing, 
 Teammate state is mirrored to .team/config.json during a run (for debugging).
 Each run starts clean: the roster does NOT persist across Agent restarts,
 because teammates have no persistent memory—spawning them again from scratch is
-cheaper and avoids stale state. When all tasks complete, the team is cleared."""
+cheaper and avoids stale state. When all tasks complete, the team is cleared.
+
+Team protocols (request-response + shared FSM; Lesson 10):
+There are two coordination protocols, both driven by the same state machine: pending → approved | rejected.
+1) Shutdown Handshake (leader → teammate):
+   To stop a teammate, use request_shutdown(name, reason) instead of shutdown_teammate.
+   This sends a shutdown request; the teammate deterministically checks for uncommitted file writes:
+   - if it still has uncommitted writes, it REJECTS the shutdown and keeps working,
+   - once its writes are finished/flushed, it APPROVES and safely exits.
+   The result appears in <pending-requests> in a later turn. Only approved teammates actually stop.
+2) Plan Approval (teammate → leader):
+   Teammates submit implementation plans with submit_plan(plan_summary, affected_files, risk_level, estimated_changes).
+   High-risk changes (refactoring core modules, deleting APIs, database migrations) MUST be approved before execution.
+   When a teammate submits a plan, you will see it in <pending-requests> as a pending plan request.
+   Review it and respond with respond_to_request(req_id, decision='approve'|'reject', reason=...).
+   - On approve, the teammate starts executing.
+   - On reject, the teammate revises the plan and resubmits.
+<pending-requests> injection is a protocol event injected every round — treat it as coordination traffic,
+not user input. Use protocol_status to see all requests and their statuses."""
 
 # ---------- Subagent 系统（第 4 课：隔离上下文的子任务派发）----------
 MAX_SUBAGENT_TURNS = 10  # 硬上限，防止子 Agent 失控死循环
@@ -131,6 +149,13 @@ TEAMMATE_SYSTEM_PREFIX = """IMPORTANT: You are running on Windows cmd. You MUST 
 - Never start servers standalone (npm start, node server.js, python -m http.server); use the combined
   "start /b cmd /c \"...\" & timeout /t 3 /nobreak >nul & curl -s http://localhost:PORT/... & for /f \"tokens=5\" %a in ('netstat -aon ^| findstr :PORT ^| findstr LISTENING') do taskkill /f /pid %a" pattern
 - NEVER use taskkill /f /im python.exe or taskkill /f /im node.exe (kills the Agent itself)
+
+Team protocol rules (Lesson 10):
+- For high-risk changes (refactoring core modules, deleting APIs, database migrations), you MUST call
+  submit_plan(plan_summary, affected_files, risk_level, estimated_changes) and WAIT for the leader's
+  approval in <pending-requests> before executing. If rejected, revise the plan and submit again.
+- When you see a <pending-requests> block in your context, read it carefully—it contains plan
+  approval results or shutdown requests and is part of the coordination protocol.
 """
 
 client = OpenAI(
