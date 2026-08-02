@@ -187,47 +187,48 @@ if __name__ == "__main__":
         print("Error: DEEPSEEK_API_KEY environment variable not set")
         exit(1)
     task = """
-    首先 严禁动当前文件夹内的文件。你只能在当前目录下创建一个 demo 新文件夹，你产生和修改的所有文件只能在 demo 文件夹中进行。测试完成后删除 demo 文件夹与一切运行时残留（.team/.tasks/.transcripts/__pycache__/agent.log）。以此为规则，完成以下全功能测试任务：
+    规则：严禁动当前文件夹内的文件。所有操作只能在 demo 文件夹内进行，
+测试完成后删除 demo 文件夹与全部运行时残留（.worktrees/.tasks/.team/.transcripts/__pycache__/agent.log）。
 
-## 阶段一：任务看板 + 规划系统（第 1/3/7 课）
-1. 用 todo 建立 8 步计划，跟踪整个测试流程。
-2. 用 task_create 创建 6 个任务，形成 3 层依赖 DAG：
-   [1] Design schema（无依赖）
-   [2] Build backend  calculator  （blocked_by 1）
-   [3] Build frontend  CLI        （blocked_by 1）
-   [4] Integration tests          （blocked_by 2,3）   ← 汇聚
-   [5] Deploy README+report       （blocked_by 4）
-   [6] Code review 安全审查        （blocked_by 4）     ← 并行分支
-   用 task_list 确认 DAG 结构正确。
+### 阶段一：搭建隔离环境（验证 worktree_create + 双状态机联动 + worktree_list）
+1. 用 bash 创建 demo 文件夹，在其中 git init 一个干净仓库（`git init -b main demo-s12`），
+   用 write_file 写入 config.py（内容 `value = 'base'`），git add + commit 作为基线。
+2. 用 task_create 创建两个任务：#1「重构 config.py」、#2「给 config.py 加校验」。
+3. 用 worktree_create 给 #1 和 #2 各建一个 worktree。
+   验证：worktree_create 返回值指向 demo-s12/.worktrees/task-N；
+   用 task_get 确认两个任务都自动从 pending 变为 in_progress（双状态机联动点①）。
+4. 用 worktree_list 确认注册表里有 task-1、task-2 两条 active 记录，目录都存在。
 
-## 阶段二：自组织任务认领（第 11 课）
-3. 用 spawn_teammate 创建三个队友：alice(developer)、bob(tester)、eve(reviewer)。
-   不要用 send_to_teammate 指派任何任务——完全交给它们自主扫描看板认领。
-4. 用 team_status 观察：三个队友从 idle 自动进入 working（自主认领）。
-   验证关键行为：
-   - 依赖阻塞：任务 4/5/6 在 1/2/3 完成前不可被认领（blocked）
-   - 原子认领：同一个任务只可能被一个队友认领成功（另一个认领报错）
-   - 依赖解锁：1 完成后 → 2/3 同时解锁；2/3 都完成后 → 4/6 解锁；4 完成后 → 5 解锁
-   - 并行分叉与汇聚：2/3 并行、5/6 并行、4 等两者聚拢
-5. 用 task_list 最终验证所有任务都有 owner 且全部 completed。
+### 阶段二：并行隔离核心验证（验证 worktree_use + 文件工具基座 + run_in_worktree）
+5. worktree_use(1) 切进 task-1 的隔间，用 write_file 把 config.py 改成 value = 'A'。
+6. worktree_use(2) 切进 task-2 的隔间，用 write_file 把 config.py 改成 value = 'B'。
+7. 用 worktree_run(1, "type config.py") 和 worktree_run(2, "type config.py") 验证两个隔间各持己见（A / B）。
+8. 用 bash 切回主目录，type 主目录的 config.py，验证仍是 'base'（主目录不受影响）。
+   —— 这是 s12 的核心：同一文件被两个 Agent 各改一遍，互不覆盖、无静默丢失。
 
-## 阶段三：团队协议（第 10 课）
-6. 等队友全部完成自治任务后，对 alice 用 request_shutdown 发起关机握手（reason="任务完成"）。
-   → 验证：若 alice 还有未提交写入，第一次被 REJECTED；无未提交则直接 APPROVED→安全退出。
-7. 用 protocol_status 展示关机请求的状态流转，用 team_status 确认 alice 已 shutdown。
-8. 故意用 respond_to_request 对一个已决议的请求再次审批 → 应返回 "already resolved"（状态守卫温和拦截，不崩溃）。
-9. 故意用 respond_to_request 审批一个 shutdown 类型请求 → 应返回 "不是 plan 类型，shutdown 由系统自动处理"（角色守卫）。
+### 阶段三：收工合并（验证 worktree_remove + merge 回主 + 状态机联动点②）
+9. worktree_remove(1, complete_task=True, merge=True)：
+   验证主目录 config.py 变成 value = 'A'（改动合并回主分支）；
+   task_get(1) 确认任务 completed；worktree_list 确认 task-1 已注销，目录已删除。
+10. 用 bash 确认分支 task-1 已被清理。
 
-## 阶段四：后台执行 + 技能 + 压缩（第 2/5/6/8 课）
-10. 用 run_in_background 在 demo 下跑一条慢命令（如 pytest/长循环），确认收到 <background-results> 通知。
-11. 用 load_skill 加载 git-workflow 或 testing 技能，确认技能内容注入。
-12. 当上下文变长时调用 compact，确认压缩后仍能继续任务（身份重注入会保证队友不丢角色）。
+### 阶段四：崩溃恢复（验证 worktree_recover）
+11. 先 worktree_recover() 验证健康状态下无孤儿（incomplete_ops 为空）。
+12. 制造故障：用 bash 在 demo-s12/.worktrees 下手动 mkdir 一个未注册目录 orphan-xyz；
+    再 worktree_recover()，验证返回的 orphaned_worktrees 包含 orphan-xyz（磁盘有、注册表无 → 孤儿目录标记）。
 
-## 阶段五：清理与汇总
-13. 确认三个队友中未被协议的自动 shutdown（60s 无活自动退出）。
-14. 用 task_list + team_status + protocol_status 汇总最终状态。
-15. 删除 demo 文件夹；确认工作区只剩课程代码（agent/compact/config/protocol/subagent/tools + skills + requirements），无任何运行时残留。
-16. 汇报以下验证结果表格：DAG 依赖✓、原子认领✓、依赖解锁✓、并行分叉汇聚✓、关机握手✓、状态守卫✓、角色守卫✓、后台执行✓、技能加载✓、自动退出✓、清理✓。
+### 阶段五：后台任务跟随基座（验证 run_in_background 感知 worktree）
+13. worktree_use(2) 后，用 run_in_background 跑一条命令（如 `cd & cd` 打印当前路径或
+    写一个文件），通知到达后验证该命令是在 task-2 的 worktree 目录内执行的。
+
+### 阶段六：收尾与汇总（验证 worktree_remove + 清理）
+14. worktree_remove(2, complete_task=True)，task_get(2) 确认 completed、任务全部完成。
+15. worktree_recover() 最终扫一遍，确认注册表空、无孤儿、事件流完整。
+16. 删除 demo 文件夹与一切运行时残留。
+17. 汇报验证结果表格：worktree_create 建隔间✓、任务自动 in_progress✓、worktree_use 切换✓、
+    文件工具落进隔间✓、并行互不覆盖✓、主目录不受影响✓、worktree_run✓、
+    merge 回主✓、任务 completed✓、注册表注销✓、分支清理✓、worktree_recover 孤儿检测✓、
+    run_in_background 跟随基座✓、清理✓。
 """
     messages = [{"role": "user", "content": task}]
     final_response = agent_loop(messages)

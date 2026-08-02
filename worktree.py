@@ -94,8 +94,15 @@ class WorktreeManager:
             f"WorktreeManager._save_index | 已保存 {len(worktrees)} 条注册记录"
         )
 
-    def _register_worktree(self, task_id: int, branch: str, path: str) -> None:
-        """登记 worktree 元信息（status=active）。"""
+    def _register_worktree(self, task_id: int, branch: str, path: str,
+                           repo_root: Path | None = None) -> None:
+        """登记 worktree 元信息（status=active）。
+
+        Bug B 修复：记录实际 worktree 所属的 git 仓库根目录（repo_root），
+        默认取 worktree 路径的父父目录（<repo>/.worktrees/task-N）。
+        remove/recover 用它定位正确的 git 仓库执行 git 命令。
+        """
+        repo_root = repo_root or Path(path).resolve().parent.parent
         with self._io_lock:
             index = self._load_index()
             index[f"task-{task_id}"] = {
@@ -103,10 +110,14 @@ class WorktreeManager:
                 "branch": branch,
                 "path": path,
                 "status": "active",
+                "repo": str(repo_root),
                 "created_at": datetime.now(timezone.utc).isoformat(),
             }
             self._save_index(index)
-        logger.info(f"WorktreeManager._register_worktree | task #{task_id} | branch={branch}")
+        logger.info(
+            f"WorktreeManager._register_worktree | task #{task_id} | "
+            f"branch={branch} | repo={repo_root}"
+        )
 
     def _unregister_worktree(self, task_id: int | str) -> None:
         """从注册表移除 worktree 记录。"""
@@ -125,6 +136,14 @@ class WorktreeManager:
 
     def _get_worktree_info(self, task_id: int) -> dict | None:
         return self._load_index().get(f"task-{task_id}")
+
+    def _repo_of(self, info: dict | None) -> Path:
+        """从注册信息反推 worktree 所属的 git 仓库根目录。"""
+        if info and info.get("repo"):
+            return Path(info["repo"])
+        if info:
+            return Path(info["path"]).resolve().parent.parent
+        return self.project_root
 
     # ── 事件流（.tasks/events.jsonl，append-only）────────────────
     def _events_path(self) -> Path:
@@ -146,41 +165,61 @@ class WorktreeManager:
         )
 
     # ── Worktree 生命周期 ────────────────────────────────────
-    def worktree_create(self, task_id: int, branch: str | None = None) -> str:
+    def _resolve_repo(self, repo: str | None) -> Path:
+        """解析目标 git 仓库根目录。
+
+        Bug B 修复：worktree 不一定建在 project_root——任务可能要求
+        "在 demo/demo-s12 这个子仓库里建 worktree 做隔离测试"。
+        repo 为空时回退到 project_root（与课文/selftest 行为一致）。
+        """
+        if repo:
+            return Path(repo).resolve()
+        return self.project_root
+
+    def worktree_create(self, task_id: int, branch: str | None = None,
+                        repo: str | None = None) -> str:
         """创建 worktree 并绑定到任务，自动推进任务到 in_progress。
+
+        Bug B 修复：新增 repo 参数——指定在哪个 git 仓库下建 worktree
+        （例如 demo/demo-s12 子仓库），worktree 目录落在 <repo>/.worktrees/。
+        不传则与课文一致，建在 project_root/.worktrees/。
 
         一个方法做三件事（双状态机联动）：
           1. git worktree add 创建独立工作目录（执行面）
-          2. 注册到 index.json（控制面）
+          2. 注册到 index.json（控制面，记录实际 repo 根）
           3. 任务 pending → in_progress（控制面）
         调用方只需要一行代码。
         """
+        repo_root = self._resolve_repo(repo)
         branch = branch or f"task-{task_id}"
-        wt_path = self.worktrees_dir / f"task-{task_id}"
-        self._emit("worktree.create.before", task_id=task_id, branch=branch)
+        wt_path = repo_root / ".worktrees" / f"task-{task_id}"
+        self._emit("worktree.create.before", task_id=task_id, branch=branch,
+                   repo=str(repo_root))
         try:
             subprocess.run(
                 ["git", "worktree", "add", str(wt_path), "-b", branch],
-                cwd=str(self.project_root),
+                cwd=str(repo_root),
                 check=True,
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
                 errors="replace",
             )
-            self._register_worktree(task_id, branch, str(wt_path))
+            self._register_worktree(task_id, branch, str(wt_path), repo_root)
             # 双状态机联动点①：绑定 worktree → 任务自动 in_progress
             self.task_manager.update_status(task_id, "in_progress")
-            self._emit("worktree.create.after", task_id=task_id, path=str(wt_path))
+            self._emit("worktree.create.after", task_id=task_id, path=str(wt_path),
+                       repo=str(repo_root))
             logger.info(
                 f"WorktreeManager.worktree_create 成功 | task #{task_id} → {wt_path} "
-                f"(branch={branch}) | 任务状态 → in_progress"
+                f"(branch={branch}, repo={repo_root}) | 任务状态 → in_progress"
             )
             return str(wt_path)
         except subprocess.CalledProcessError as e:
             self._emit(
                 "worktree.create.failed", task_id=task_id,
                 error=(e.stderr or str(e)).strip(),
+                repo=str(repo_root),
             )
             logger.exception(
                 f"WorktreeManager.worktree_create 失败 | task #{task_id} | "
@@ -189,8 +228,15 @@ class WorktreeManager:
             raise
 
     def _merge_branch(self, task_id: int, branch: str) -> None:
-        """把 worktree 分支合并回主分支（先提交 worktree 里的改动）。"""
-        self._emit("worktree.merge.before", task_id=task_id, branch=branch)
+        """把 worktree 分支合并回其所属仓库的主分支（先提交 worktree 改动）。
+
+        Bug B 修复：merge 的目标是 worktree 所属的仓库（repo），
+        而不是 project_root——否则子仓库场景会 merge 到错误的仓库。
+        """
+        info = self._get_worktree_info(task_id)
+        repo_root = self._repo_of(info)
+        self._emit("worktree.merge.before", task_id=task_id, branch=branch,
+                   repo=str(repo_root))
         wt_path = self._get_worktree_path(task_id)
         if wt_path and wt_path.exists():
             # 1. 提交 worktree 内的全部改动（若无改动，git commit 报错，忽略即可）
@@ -209,10 +255,10 @@ class WorktreeManager:
                     f"WorktreeManager._merge_branch | {branch} 无改动可提交"
                     f"（{commit.stderr.strip()[:100]}）"
                 )
-        # 2. 在主仓库把该分支 merge 回来（--no-ff 保留合并记录）
+        # 2. 在所属仓库把该分支 merge 回来（--no-ff 保留合并记录）
         merge = subprocess.run(
             ["git", "merge", "--no-ff", branch, "-m", f"Merge {branch} (task #{task_id})"],
-            cwd=str(self.project_root), capture_output=True, text=True,
+            cwd=str(repo_root), capture_output=True, text=True,
         )
         if merge.returncode != 0:
             self._emit("worktree.merge.failed", task_id=task_id,
@@ -220,21 +266,25 @@ class WorktreeManager:
             raise RuntimeError(
                 f"Merge branch {branch} failed: {(merge.stderr or merge.stdout).strip()}"
             )
-        self._emit("worktree.merge.after", task_id=task_id, branch=branch)
-        logger.info(f"WorktreeManager._merge_branch | {branch} 已合并回主分支")
+        self._emit("worktree.merge.after", task_id=task_id, branch=branch,
+                   repo=str(repo_root))
+        logger.info(f"WorktreeManager._merge_branch | {branch} 已合并回 {repo_root}")
 
     def worktree_remove(self, task_id: int,
                         complete_task: bool = True, merge: bool = False) -> None:
         """拆除 worktree（双状态机联动点②）。
 
         complete_task=True → 任务 in_progress → completed
-        merge=True         → 先把 worktree 分支合并回主分支，再拆除
+        merge=True         → 先把 worktree 分支合并回所属仓库主分支，再拆除
+        Bug B 修复：git 命令在 worktree 所属仓库（repo）上执行，
+        而不是 project_root——子仓库场景下拆错仓库会失败。
         一个调用搞定四件事：完成任务(可选) + 拆目录 + 注销注册 + 清理分支。
         """
-        self._emit("worktree.remove.before", task_id=task_id,
-                   complete_task=complete_task, merge=merge)
         info = self._get_worktree_info(task_id)
-        # 1. 可选：合并 worktree 分支回主分支
+        repo_root = self._repo_of(info)
+        self._emit("worktree.remove.before", task_id=task_id,
+                   complete_task=complete_task, merge=merge, repo=str(repo_root))
+        # 1. 可选：合并 worktree 分支回所属仓库主分支
         if merge and info:
             self._merge_branch(task_id, info["branch"])
         # 2. 可选：完成任务
@@ -246,17 +296,17 @@ class WorktreeManager:
         if wt_path and wt_path.exists():
             subprocess.run(
                 ["git", "worktree", "remove", str(wt_path), "--force"],
-                cwd=str(self.project_root), capture_output=True, text=True,
+                cwd=str(repo_root), capture_output=True, text=True,
             )
             logger.info(f"WorktreeManager.worktree_remove | 已移除目录 {wt_path}")
         # 4. 清理分支（-d 只删已合并分支；未合并失败则忽略，分支留着无碍）
         subprocess.run(
             ["git", "branch", "-d", f"task-{task_id}"],
-            cwd=str(self.project_root), capture_output=True, text=True,
+            cwd=str(repo_root), capture_output=True, text=True,
         )
         # 5. 从注册表注销
         self._unregister_worktree(task_id)
-        self._emit("worktree.remove.after", task_id=task_id)
+        self._emit("worktree.remove.after", task_id=task_id, repo=str(repo_root))
         logger.info(f"WorktreeManager.worktree_remove 完成 | task #{task_id}")
 
     # ── 执行（在 worktree 内跑命令 / 切换 session 基座）──────────
@@ -426,6 +476,9 @@ class WorktreeManager:
             exists = "✓" if Path(info["path"]).exists() else "✗(missing)"
             lines.append(
                 f"  {wt_id} | task #{info['task_id']} | {info['branch']} | "
-                f"{info['status']} | {exists} | {info.get('created_at', '')[:19]}"
+                f"{info['status']} | {exists} | repo={info.get('repo', '?')} | "
+                f"{info.get('created_at', '')[:19]}"
             )
         return "\n".join(lines)
+
+

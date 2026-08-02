@@ -282,6 +282,16 @@ class TaskManager:
         return max(existing, default=0) + 1
 
     def _all_task_ids(self) -> list[int]:
+        # Bug A 修复：Agent 收尾阶段可能用 bash 物理删除 .tasks 目录
+        # （任务清理指令里就要求删掉 .tasks）。目录不存在时按"空任务列表"
+        # 处理，避免 all_completed() 在 os.listdir() 处抛 FileNotFoundError
+        # 导致主循环收尾崩溃。
+        if not os.path.isdir(self.task_dir):
+            logger.info(
+                f"TaskManager._all_task_ids | 目录 {self.task_dir} 不存在，"
+                f"按空任务列表处理"
+            )
+            return []
         ids = []
         for fname in os.listdir(self.task_dir):
             if fname.startswith("task_") and fname.endswith(".json"):
@@ -559,22 +569,28 @@ class BackgroundManager:
         with self.lock:
             self.tasks[task_id] = task
 
+        # Bug C 修复：threading.local 只对当前线程可见。后台线程是新线程，
+        # 读不到主线程 worktree_use 设置的 base，必须在这里（启动前、主线程内）
+        # 捕获，作为参数传给后台线程，后台任务才能落在主线程当前 worktree 里。
+        base = worktree_manager.resolve_dir() if worktree_manager else os.getcwd()
         thread = threading.Thread(
             target=self._execute,
-            args=(task_id, command),
+            args=(task_id, command, base),
             daemon=True,
         )
         thread.start()
-        logger.info(f"BackgroundManager.run | task_id={task_id} | command={command}")
+        logger.info(
+            f"BackgroundManager.run | task_id={task_id} | command={command} | "
+            f"base={base}"
+        )
         return task_id
 
-    def _execute(self, task_id: str, command: str):
+    def _execute(self, task_id: str, command: str, base: str):
         """在守护线程里跑子进程。Windows 适配：Popen + taskkill，不用 subprocess.run。
 
-        第 12 课：捕获启动时的 session 基座，后台任务落在当前 worktree 内。
+        第 12 课：base 由 run() 在启动前于主线程捕获并传入——
+        后台任务落在主线程当前 worktree 内（若已 worktree_use）。
         """
-        # run_in_background 时若已 worktree_use，后台任务也应落在 worktree 里
-        base = worktree_manager.resolve_dir() if worktree_manager else os.getcwd()
         proc = subprocess.Popen(
             command, shell=True, cwd=base,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -1190,7 +1206,7 @@ TOOL_HANDLERS = {
     "protocol_status":  lambda **kw: coordinator.render_status(),
     # ── 第 12 课：Worktree 终极隔离工具 ──
     "worktree_create":  lambda **kw: worktree_manager.worktree_create(
-        kw["task_id"], kw.get("branch")),
+        kw["task_id"], kw.get("branch"), kw.get("repo")),
     "worktree_remove":  lambda **kw: _worktree_remove(kw),
     "worktree_run":     lambda **kw: worktree_manager.run_in_worktree(
         kw["task_id"], kw["command"]),
@@ -1615,12 +1631,13 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "worktree_create",
-            "description": "Create a git worktree for a task and bind it: the task gets an isolated working directory under .worktrees/task-<id> and auto-advances to in_progress. Work on the task inside that directory so parallel agents never overwrite each other.",
+            "description": "Create a git worktree for a task and bind it: the task gets an isolated working directory under <repo>/.worktrees/task-<id> and auto-advances to in_progress. Work on the task inside that directory so parallel agents never overwrite each other. If the target repo is NOT the project root (e.g. a sub-repo like demo/demo-s12), pass repo explicitly.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "task_id": {"type": "integer", "description": "ID of the task to isolate"},
                     "branch": {"type": "string", "description": "Optional branch name (default: task-<id>)"},
+                    "repo": {"type": "string", "description": "Optional git repo root to create the worktree in (default: project root)"},
                 },
                 "required": ["task_id"],
             },
