@@ -682,7 +682,13 @@ class MessageBus:
         logger.info(f"MessageBus 初始化 | inbox_dir={inbox_dir} | 已清空残留消息")
 
     def _clean_stale_inbox(self):
-        """清空 inbox 目录下所有 .jsonl 文件的残留内容。"""
+        """清空 inbox 目录下所有 .jsonl 文件的残留内容。
+
+        Bug D 修复：Agent 收尾可能物理删除 .team 目录，inbox 可能不存在。
+        目录不存在时跳过，避免 os.listdir 抛 FileNotFoundError。
+        """
+        if not os.path.isdir(self.inbox_dir):
+            return
         for fname in os.listdir(self.inbox_dir):
             if fname.endswith(".jsonl"):
                 path = os.path.join(self.inbox_dir, fname)
@@ -728,7 +734,12 @@ class MessageBus:
         """第 11 课：清空所有收件箱文件（session 收尾时调用）。
 
         只清空 .jsonl 文件内容，保留目录本身。
+
+        Bug D 修复：Agent 收尾可能物理删除 .team 目录，inbox 可能不存在。
+        目录不存在时直接跳过，避免 os.listdir 抛 FileNotFoundError 使主循环崩溃。
         """
+        if not os.path.isdir(self.inbox_dir):
+            return
         with self._lock:
             for fname in os.listdir(self.inbox_dir):
                 if fname.endswith(".jsonl"):
@@ -810,7 +821,13 @@ class TeammateManager:
         )
 
     def _save_team_config(self):
-        """保存团队名册到 .team/config.json。"""
+        """保存团队名册到 .team/config.json。
+
+        Bug D 修复：Agent 收尾可能按任务要求用 bash 物理删除 .team 目录，
+        此时 .team 可能不存在。写前确保目录存在（自愈重建空目录），
+        避免 open('.team/config.json','w') 抛 FileNotFoundError 使主循环崩溃。
+        """
+        os.makedirs(self.team_dir, exist_ok=True)
         raw = {
             name: {
                 "name": cfg.name,
