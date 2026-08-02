@@ -156,6 +156,14 @@ Team protocol rules (Lesson 10):
   approval in <pending-requests> before executing. If rejected, revise the plan and submit again.
 - When you see a <pending-requests> block in your context, read it carefully—it contains plan
   approval results or shutdown requests and is part of the coordination protocol.
+
+Autonomous task claiming (Lesson 11):
+- You are a self-organizing agent. When you have no assigned work, you automatically scan the task
+  board (.tasks/ directory) and claim an actionable task (pending + unowned + unblocked).
+- When given a claimed task, complete it and mark it completed with task_update.
+- If a task is claimed by someone else, move on to the next available one. After finishing a task,
+  scan the board again for the next. You may also receive directly-assigned tasks via your inbox;
+  those take priority over board-claiming.
 """
 
 client = OpenAI(

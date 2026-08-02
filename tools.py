@@ -238,6 +238,9 @@ class TaskManager:
         self.task_dir = task_dir
         os.makedirs(task_dir, exist_ok=True)
         self._next_id = self._compute_next_id()
+        # 第 11 课：任务看板的并发访问锁——两个队友抢同一任务时
+        # 原子认领必须互斥，否则会同时认领成功（数据竞争）。
+        self._lock = threading.Lock()
         logger.info(
             f"TaskManager 初始化 | task_dir={task_dir} | "
             f"next_id={self._next_id} | 现有任务数={len(self._all_task_ids())}"
@@ -377,6 +380,54 @@ class TaskManager:
             t for t in self.list_tasks()
             if t["status"] == "pending" and not t["blockedBy"]
         ]
+
+    def unclaimed_actionable(self) -> list[dict]:
+        """第 11 课：扫描看板，返回可认领任务（pending + 无 owner + 未被阻塞）。
+
+        is_blocked 检查 blockedBy 依赖——任一依赖未完成则任务不可拿。
+        """
+        result = []
+        for t in self.list_tasks():
+            if t["status"] != "pending":
+                continue
+            if t.get("owner") is not None:
+                continue
+            if self._is_blocked(t):
+                continue
+            result.append(t)
+        logger.info(f"TaskManager.unclaimed_actionable | 返回 {len(result)} 个可认领任务")
+        return result
+
+    def _is_blocked(self, task: dict) -> bool:
+        """判断任务是否被未完成的依赖阻塞（第 11 课 is_blocked）。"""
+        for dep_id in task.get("blockedBy", []):
+            dep = self._read_task(dep_id)
+            if dep is not None and dep["status"] != "completed":
+                return True
+        return False
+
+    def claim(self, task_id: int, agent_id: str) -> bool:
+        """第 11 课：原子认领任务。
+
+        加锁保证并发安全：多个队友同时看到同一无主任务，
+        只有一个能认领成功（pending + owner 为空才可认领）。
+        认领失败（被别人抢了 / 已被阻塞）返回 False，调用方下一轮重试。
+        """
+        with self._lock:
+            task = self._read_task(task_id)
+            if task is None:
+                return False
+            if task["status"] != "pending":
+                return False
+            if task.get("owner") is not None:
+                return False
+            if self._is_blocked(task):
+                return False
+            task["status"] = "in_progress"
+            task["owner"] = agent_id
+            self._write_task(task)
+            logger.info(f"TaskManager.claim | task #{task_id} 已被 {agent_id} 认领")
+        return True
 
     def render(self) -> str:
         """渲染任务图全景，供模型快速了解全局状态。"""
@@ -599,6 +650,40 @@ class MessageBus:
         return msgs
 
 
+# ---------- 第 11 课：身份重注入（Context Compact 后防止角色丢失）----------
+IDENTITY_THRESHOLD = 3  # 消息列表低于该数时认为刚经历过压缩，需要重注入身份
+
+
+def maybe_reinject_identity(agent_id: str, role_prompt: str,
+                            messages: list) -> list:
+    """第 11 课机制四：消息列表过短时在开头插入 <identity> 身份块。
+
+    Context Compact（第 6 课）会压缩消息历史，包括可能丢掉的 system 身份信息。
+    若消息列表数量骤降（< IDENTITY_THRESHOLD），说明刚被压缩过——
+    此时把"我是谁"用 <identity> 标签重新注入，防止队友角色越权
+    （coder 开始审查代码、tester 开始写业务逻辑）。
+
+    用 user 消息而不是改 system——因为 system 在 API 层面只设一次，
+    身份重注入需要在对话过程中动态触发。
+
+    :param agent_id: 队友名字（如 "coder"）
+    :param role_prompt: 队友的完整 system prompt（角色定义）
+    :param messages: 当前对话消息列表
+    :return: 注入后的新消息列表（未触发则原样返回）
+    """
+    if len(messages) >= IDENTITY_THRESHOLD:
+        return messages
+    identity_block = {
+        "role": "user",
+        "content": (
+            f"<identity>\n你是 {agent_id}。\n"
+            f"{role_prompt}\n</identity>"
+        ),
+    }
+    logger.info(f"maybe_reinject_identity | {agent_id} | 消息数={len(messages)} < {IDENTITY_THRESHOLD}，注入身份块")
+    return [identity_block] + messages
+
+
 # ---------- TeammateManager（第 9 课：持久 Agent + 身份管理 + 通信）----------
 @dataclass
 class TeammateConfig:
@@ -713,8 +798,27 @@ class TeammateManager:
             lines.append(f"  {icon} {name} [{cfg.status}] — {prompt_preview}")
         return "\n".join(lines)
 
+    def _try_claim_from_board(self, name: str) -> dict | None:
+        """第 11 课：IDLE 阶段扫描看板，认领一个可执行任务。
+
+        返回认领到的任务 dict；没有可认领/被抢返回 None（下一轮重试）。
+        """
+        for task in task_manager.unclaimed_actionable():
+            if task_manager.claim(task["id"], name):
+                return task
+        return None
+
     def _teammate_loop(self, name: str):
-        """队友循环：轮询收件箱 → 协议消息走代码，任务消息跑 Agent Loop。"""
+        """队友循环：IDLE 阶段（收件箱 + 扫看板认领）→ WORK 阶段（跑 Agent Loop）。
+
+        第 11 课自治：
+        1. 收件箱有直接指派 → 优先处理（与第 9-10 课一致）
+        2. 收件箱无活 → 扫描 .tasks 看板自由认领（pending + 无主 + 未阻塞）
+        3. 认领成功 → 构造工作消息走 WORK
+        4. 每 5s 扫一次，60s 无活 → 自动 SHUTDOWN
+        """
+        idle_deadline = time.time() + 60  # IDLE 阶段最多等 60s，超时自动关机
+
         while True:
             with self._lock:
                 cfg = self.team.get(name)
@@ -722,13 +826,42 @@ class TeammateManager:
                     logger.info(f"TeammateManager._teammate_loop | {name} 退出")
                     return
 
-            # 检查收件箱
+            # ── IDLE 阶段 ──
+            # 1) 收件箱（直接指派优先）
             messages = self.bus.read_inbox(name)
-            if not messages:
-                time.sleep(1)  # 空闲等待，避免忙轮询
-                continue
 
-            # 有消息，设为 working
+            # 2) 收件箱没活 → 扫描看板认领（第 11 课）
+            if not messages:
+                try:
+                    claimed = self._try_claim_from_board(name)
+                except Exception as e:
+                    logger.exception(f"TeammateManager._teammate_loop | {name} 扫看板异常: {e}")
+                    claimed = None
+
+                if claimed is None:
+                    # 没活干：IDLE 超时自动关机
+                    if time.time() >= idle_deadline:
+                        logger.info(f"TeammateManager._teammate_loop | {name} IDLE 超时 60s 无任务，自动关机")
+                        with self._lock:
+                            if self.team[name].status != "shutdown":
+                                self.team[name].status = "shutdown"
+                                self._save_team_config()
+                        return
+                    time.sleep(5)  # 每 5s 扫一次看板（课文 idle_poll 间隔）
+                    continue
+
+                # 3) 认领成功 → 构造工作消息走 WORK
+                idle_deadline = time.time() + 60  # WORK 完成后重置 IDLE 超时
+                logger.info(f"TeammateManager._teammate_loop | {name} 认领看板任务 #{claimed['id']}，进入 WORK")
+                messages = [{
+                    "from": "board",
+                    "content": (
+                        f"你从任务看板认领了任务 #{claimed['id']}：{claimed['subject']}\n"
+                        f"完成该任务后，用 task_update 把任务 #{claimed['id']} 标记为 completed。"
+                    ),
+                }]
+
+            # ── WORK 阶段 ──
             with self._lock:
                 if self.team[name].status != "shutdown":
                     self.team[name].status = "working"
@@ -786,10 +919,10 @@ class TeammateManager:
                     task=content,
                     agent_id=name,
                 )
-                # 结果发回 leader
+                # 结果发回 leader（看板认领的任务回报给 leader，便于观测）
                 self.bus.send(name, msg["from"], f"[{name} 完成] {result}")
 
-            # 处理完，设为 idle
+            # 处理完，回到 idle
             with self._lock:
                 if self.team[name].status != "shutdown":
                     self.team[name].status = "idle"
@@ -803,6 +936,8 @@ class TeammateManager:
         第 10 课改造：
         1. 每轮注入该队友的 pending-requests（计划审批结果 / 关机请求）
         2. 执行 write_file / edit_file 时自动登记到 AgentWriteTracker
+        第 11 课改造：身份重注入——compact 后消息列表骤降（<阈值）时，
+        在开头插入 <identity> 块，防止队友忘了"我是谁"导致角色越权。
         """
         from config import client, MODEL, MAX_SUBAGENT_TURNS, TEAMMATE_SYSTEM_PREFIX
 
@@ -820,6 +955,9 @@ class TeammateManager:
         response = None
         message = None
         for turn in range(MAX_SUBAGENT_TURNS):
+            # ── 第 11 课：身份重注入（Context Compact 后消息列表骤降时触发）──
+            sub_messages = maybe_reinject_identity(agent_id, system, sub_messages)
+
             # ── 第 10 课：每轮开始注入协议请求（计划审批结果 / 关机请求）──
             inject_pending_requests(sub_messages, agent_id)
 
@@ -925,6 +1063,15 @@ def _respond_to_request(kw: dict) -> str:
         return f"Error: {e}"
 
 
+def _claim_task(kw: dict) -> str:
+    """第 11 课：队友显式认领任务。调用方需提供自己的 agent_id（由调度层注入）。"""
+    agent = kw.get("_agent_id", "unknown")
+    ok = task_manager.claim(kw["task_id"], agent)
+    if ok:
+        return f"Claimed task #{kw['task_id']} for {agent}"
+    return f"Error: Task {kw['task_id']} could not be claimed (already claimed / not pending / blocked)"
+
+
 TOOL_HANDLERS = {
     "bash":         lambda **kw: run_bash(kw["command"]),
     "read_file":    lambda **kw: run_read(kw["path"], kw.get("limit")),
@@ -938,6 +1085,7 @@ TOOL_HANDLERS = {
     "task_list":    lambda **kw: json.dumps(task_manager.list_tasks(**kw), ensure_ascii=False),
     "task_get":     lambda **kw: json.dumps(task_manager.get_task(**kw), ensure_ascii=False),
     "task_clear":   lambda **kw: json.dumps(task_manager.clear(), ensure_ascii=False),
+    "claim_task":   lambda **kw: _claim_task(kw),
     "run_in_background": lambda **kw: bg_manager.run(kw["command"]),
     "spawn_teammate":  lambda **kw: teammate_manager.spawn(kw["name"], kw["system_prompt"]),
     "send_to_teammate": lambda **kw: teammate_manager.send_task(kw["to_name"], kw["task"]),
@@ -1340,6 +1488,23 @@ TOOLS = [
             "parameters": {
                 "type": "object",
                 "properties": {},
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "claim_task",
+            "description": "Atomically claim a task from the task board (.tasks/) so it becomes yours (in_progress + owner). Only pending, unowned, unblocked tasks can be claimed. If another agent already claimed it, this fails and you should try another task. Use task_list to see available tasks, then claim_task to grab one.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task_id": {
+                        "type": "integer",
+                        "description": "ID of the task to claim",
+                    },
+                },
+                "required": ["task_id"],
             },
         },
     },
