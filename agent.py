@@ -22,6 +22,11 @@ from compact import (
 # task 工具的定义在 TOOLS 列表里，但 handler 在此接线。
 TOOL_HANDLERS["task"] = lambda **kw: run_subagent(kw["prompt"])
 
+# 第 11 课修复：leader 侧排除 submit_plan。
+# submit_plan 语义是"队友→领导"，leader 是审批方，不该自己提交计划；
+# 否则 _agent_id 缺省 "unknown"，审批回执会发到不存在的收件箱。
+LEADER_TOOLS = [t for t in TOOLS if t["function"]["name"] != "submit_plan"]
+
 
 def agent_loop(messages: list) -> str:
     rounds_since_todo = 0
@@ -70,7 +75,7 @@ def agent_loop(messages: list) -> str:
         response = client.chat.completions.create(
             model=MODEL,
             messages=[{"role": "system", "content": SYSTEM}] + messages,
-            tools=TOOLS,
+            tools=LEADER_TOOLS,  # 第 11 课：leader 侧排除 submit_plan
             max_tokens=8000,
         )
 
@@ -114,8 +119,9 @@ def agent_loop(messages: list) -> str:
                 teammate_manager.team.clear()
                 teammate_manager.threads.clear()
                 teammate_manager._save_team_config()
+                teammate_manager.bus.clear_all()  # 第 11 课：清空 .team/inbox/*.jsonl 消息文件
                 coordinator.reset()  # 第 10 课：清空协议请求与写入登记
-                logger.info("所有任务已完成，已自动清空 .tasks、todo、team config 和协议状态")
+                logger.info("所有任务已完成，已自动清空 .tasks、todo、team config、inbox 和协议状态")
             return message.content
 
         # 执行工具，收集结果
@@ -180,48 +186,48 @@ if __name__ == "__main__":
     if not os.environ.get("DEEPSEEK_API_KEY"):
         print("Error: DEEPSEEK_API_KEY environment variable not set")
         exit(1)
-    task = """首先 严禁动当前文件夹内的文件，你只能在当前目录下创建一个 demo 新文件夹，你产生和修改的所有文件只能在 demo 文件夹中进行，测试完成后删除 demo 文件夹。以此为规则，完成第 10 课全功能测试任务。
+    task = """
+    首先 严禁动当前文件夹内的文件。你只能在当前目录下创建一个 demo 新文件夹，你产生和修改的所有文件只能在 demo 文件夹中进行。测试完成后删除 demo 文件夹与一切运行时残留（.team/.tasks/.transcripts/__pycache__/agent.log）。以此为规则，完成以下全功能测试任务：
 
-## 阶段一：验证 4 个协议工具已注册
-先用 protocol_status 查看请求列表（应为空或仅有历史记录），确认你能看到以下工具：
-① request_shutdown  ② submit_plan  ③ respond_to_request  ④ protocol_status
+## 阶段一：任务看板 + 规划系统（第 1/3/7 课）
+1. 用 todo 建立 8 步计划，跟踪整个测试流程。
+2. 用 task_create 创建 6 个任务，形成 3 层依赖 DAG：
+   [1] Design schema（无依赖）
+   [2] Build backend  calculator  （blocked_by 1）
+   [3] Build frontend  CLI        （blocked_by 1）
+   [4] Integration tests          （blocked_by 2,3）   ← 汇聚
+   [5] Deploy README+report       （blocked_by 4）
+   [6] Code review 安全审查        （blocked_by 4）     ← 并行分支
+   用 task_list 确认 DAG 结构正确。
 
-## 阶段二：计划审批协议（队友 → 领导）
-1. 用 spawn_teammate 创建 alice (coder)。给 alice 发一个高风险重构任务：重构 demo/auth_service.py（删除旧 API、改 token 格式、加回调），明确要求它必须先用 submit_plan 提交计划并等批准。
-2. 等 alice 提交计划。当 <pending-requests> 出现 plan 请求时：
-   → 检查它的 risk_level。如果是 high：
-      用 respond_to_request 拒绝，reason 写"高风险，请拆分为低风险增量步骤"
-      → 验证：alice 收到 REJECTED 后没有立即写代码，而是重新 submit_plan（风险降级）
-   → 等 alice 第二次提交 medium/low 计划：
-      用 respond_to_request 批准
-      → 验证：alice 收到 APPROVED 后，才开始真正写文件（用 team_status 确认它从 idle 变 working 后才开始改文件）
-3. 用 spawn_teammate 创建 bob (tester)。给 bob 发低风险任务：给 demo/auth_service.py 写单元测试。要求它也必须先 submit_plan。
-   → 等 bob 提交计划，确认 risk_level 是 low → 直接批准
-   → 验证：bob 拿到 APPROVED 后开始写 test 文件
+## 阶段二：自组织任务认领（第 11 课）
+3. 用 spawn_teammate 创建三个队友：alice(developer)、bob(tester)、eve(reviewer)。
+   不要用 send_to_teammate 指派任何任务——完全交给它们自主扫描看板认领。
+4. 用 team_status 观察：三个队友从 idle 自动进入 working（自主认领）。
+   验证关键行为：
+   - 依赖阻塞：任务 4/5/6 在 1/2/3 完成前不可被认领（blocked）
+   - 原子认领：同一个任务只可能被一个队友认领成功（另一个认领报错）
+   - 依赖解锁：1 完成后 → 2/3 同时解锁；2/3 都完成后 → 4/6 解锁；4 完成后 → 5 解锁
+   - 并行分叉与汇聚：2/3 并行、5/6 并行、4 等两者聚拢
+5. 用 task_list 最终验证所有任务都有 owner 且全部 completed。
 
-## 阶段三：关机握手协议（领导 → 队友）
-1. 等 alice 完成重构后，用 request_shutdown 给 alice 发起第一次关机（reason="任务完成，检查未提交写入"）。
-   → 预期：因为 alice 还有未提交写入（写文件被自动登记在 AgentWriteTracker），第一次应被 REJECTED，alice 继续运行。
-   → 用 protocol_status 验证该 shutdown 请求状态为 rejected，且 response 里有 uncommitted_writes 和文件清单。
-2. 给 alice 发消息："请把剩余文件写完并确认完成"。
-   → alice 完成一轮后写入登记自动 flush。
-3. 第二次用 request_shutdown 给 alice 发起关机。
-   → 预期：这次无未提交写入 → APPROVED → alice 状态变为 shutdown，线程安全退出。
-   → 用 team_status 验证 alice 已 shutdown。
+## 阶段三：团队协议（第 10 课）
+6. 等队友全部完成自治任务后，对 alice 用 request_shutdown 发起关机握手（reason="任务完成"）。
+   → 验证：若 alice 还有未提交写入，第一次被 REJECTED；无未提交则直接 APPROVED→安全退出。
+7. 用 protocol_status 展示关机请求的状态流转，用 team_status 确认 alice 已 shutdown。
+8. 故意用 respond_to_request 对一个已决议的请求再次审批 → 应返回 "already resolved"（状态守卫温和拦截，不崩溃）。
+9. 故意用 respond_to_request 审批一个 shutdown 类型请求 → 应返回 "不是 plan 类型，shutdown 由系统自动处理"（角色守卫）。
 
-## 阶段四：状态守卫与角色守卫验证
-1. 状态守卫：对已 APPROVED 的关闭请求，尝试再次 respond_to_request（或让代码路径再 respond）→ 应报 "already resolved"，不允许双重响应。
-2. 角色守卫：尝试用 respond_to_request 去 approve 一个 shutdown 类型的请求 → 应被拒绝（提示"不是 plan 类型，shutdown 由系统自动处理"），不允许手动绕过。
-3. 用 protocol_status 完整展示所有请求的状态流转：plan_b3e1a0b5 → rejected → plan_c3a430b9 → approved；shutdown_x1 → rejected → shutdown_x2 → approved。
+## 阶段四：后台执行 + 技能 + 压缩（第 2/5/6/8 课）
+10. 用 run_in_background 在 demo 下跑一条慢命令（如 pytest/长循环），确认收到 <background-results> 通知。
+11. 用 load_skill 加载 git-workflow 或 testing 技能，确认技能内容注入。
+12. 当上下文变长时调用 compact，确认压缩后仍能继续任务（身份重注入会保证队友不丢角色）。
 
-## 阶段五：<pending-requests> 注入验证
-1. 确认你在每轮开头可以看到 <pending-requests> 标签（含待审批 plan / 已决议结果）。
-2. 确认 alice/bob 作为队友也能看到自己的 pending 请求（计划审批结果、关机结果）——它们靠这个才知道"批准了可以干"、"被拒了要改"。
-
-## 阶段六：汇总与清理
-1. 用 protocol_status + team_status 汇总：alice=shutdown、bob=idle、计划 x 个 rejected + y 个 approved、关机 x 个 rejected + y 个 approved。
-2. 验证 demo/auth_service.py 与 demo/test_auth_service.py 存在且内容正确（alice 的 login_v2/logout_v2 已加入、bob 的测试文件覆盖新 API）。
-3. 测试全部完成后：删除 demo 文件夹（含 __pycache__/.pytest_cache 缓存），确认工作区只剩课程代码，不留任何测试产物。
+## 阶段五：清理与汇总
+13. 确认三个队友中未被协议的自动 shutdown（60s 无活自动退出）。
+14. 用 task_list + team_status + protocol_status 汇总最终状态。
+15. 删除 demo 文件夹；确认工作区只剩课程代码（agent/compact/config/protocol/subagent/tools + skills + requirements），无任何运行时残留。
+16. 汇报以下验证结果表格：DAG 依赖✓、原子认领✓、依赖解锁✓、并行分叉汇聚✓、关机握手✓、状态守卫✓、角色守卫✓、后台执行✓、技能加载✓、自动退出✓、清理✓。
 """
     messages = [{"role": "user", "content": task}]
     final_response = agent_loop(messages)

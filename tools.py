@@ -649,6 +649,22 @@ class MessageBus:
         logger.info(f"MessageBus.read_inbox | {name} | 读取 {len(msgs)} 条消息")
         return msgs
 
+    def clear_all(self):
+        """第 11 课：清空所有收件箱文件（session 收尾时调用）。
+
+        只清空 .jsonl 文件内容，保留目录本身。
+        """
+        with self._lock:
+            for fname in os.listdir(self.inbox_dir):
+                if fname.endswith(".jsonl"):
+                    path = os.path.join(self.inbox_dir, fname)
+                    try:
+                        with open(path, "w", encoding="utf-8") as f:
+                            pass  # truncate to empty
+                    except OSError:
+                        pass
+        logger.info(f"MessageBus.clear_all | 已清空 {self.inbox_dir} 下所有收件箱文件")
+
 
 # ---------- 第 11 课：身份重注入（Context Compact 后防止角色丢失）----------
 IDENTITY_THRESHOLD = 3  # 消息列表低于该数时认为刚经历过压缩，需要重注入身份
