@@ -116,7 +116,22 @@ There are two coordination protocols, both driven by the same state machine: pen
    - On approve, the teammate starts executing.
    - On reject, the teammate revises the plan and resubmits.
 <pending-requests> injection is a protocol event injected every round — treat it as coordination traffic,
-not user input. Use protocol_status to see all requests and their statuses."""
+not user input. Use protocol_status to see all requests and their statuses.
+
+Worktree isolation (parallel task execution; Lesson 12):
+All tasks share the same repository, so parallel agents writing the same file silently overwrite each other.
+Each task gets its own git worktree — an isolated working directory with its own filesystem and HEAD.
+The control plane (.tasks/) schedules; the execution plane (.worktrees/) does the work.
+- worktree_create(task_id): create a worktree for a task and bind it (task auto-advances to in_progress).
+- worktree_use(task_id): switch THIS agent's working base to that worktree. After switching,
+  all your bash / read_file / write_file / edit_file operations are confined to that worktree
+  (thread-isolated: leader and each teammate have independent working directories).
+- worktree_run(task_id, command): run a command inside a task's worktree without switching base.
+- worktree_remove(task_id, complete_task=True, merge=False): tear down the worktree.
+  complete_task=True marks the task completed; merge=True merges the worktree branch back to main first.
+- worktree_list(): show the worktree registry; worktree_recover(): rebuild state after a crash.
+When working on a task that has a worktree (parallel/team scenarios), ALWAYS switch to it with
+worktree_use and operate inside it — never touch shared files directly in the main directory."""
 
 # ---------- Subagent 系统（第 4 课：隔离上下文的子任务派发）----------
 MAX_SUBAGENT_TURNS = 10  # 硬上限，防止子 Agent 失控死循环
@@ -174,8 +189,16 @@ client = OpenAI(
 # ---------- 路径安全沙箱 ----------
 WORKDIR = Path.cwd()
 
-def safe_path(p: str) -> Path:
-    path = (WORKDIR / p).resolve()
+def safe_path(p: str, base: str | None = None) -> Path:
+    """把相对路径解析为绝对路径，并强制不越出工作区。
+
+    第 12 课扩展：base 参数支持 worktree 根作为路径基座——
+    worktree 位于 WORKDIR 之下，天然不会越界，但能实现
+    "每个任务在自己目录里操作"的执行面隔离。
+    base 为空时行为与 s11 一致（基座 = 项目根目录）。
+    """
+    root = Path(base) if base else WORKDIR
+    path = (root / p).resolve()
     if not path.is_relative_to(WORKDIR):
         raise ValueError(f"Path escapes workspace: {p}")
     return path

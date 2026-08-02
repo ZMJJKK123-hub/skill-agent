@@ -18,6 +18,14 @@ from protocol import (
     inject_pending_requests,
 )
 
+# ---------- 第 12 课：Worktree 隔离占位 ----------
+# worktree_manager 在模块底部 wire（仿 coordinator.wire 打破循环依赖）。
+# run_bash / run_read / run_write / run_edit / bg_manager 都通过
+# worktree_manager.resolve_dir() 决定当前线程的操作基座：
+#   未 worktree_use → 项目根目录（与 s11 行为一致）
+#   worktree_use(task_id) → 该任务的 worktree 目录（执行面隔离）
+worktree_manager = None
+
 # ---------- 工具函数实现 ----------
 def run_bash(command: str) -> str:
     """执行命令并返回 stdout/stderr，含基本安全防护（Windows）。
@@ -36,8 +44,10 @@ def run_bash(command: str) -> str:
     ]
     if any(d in command.lower() for d in dangerous):
         return "Error: Dangerous command blocked"
+    # 第 12 课：cwd 跟随线程 session 基座（worktree_use 后落在 worktree 内）
+    base = worktree_manager.resolve_dir() if worktree_manager else os.getcwd()
     proc = subprocess.Popen(
-        command, shell=True, cwd=os.getcwd(),
+        command, shell=True, cwd=base,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         text=True, encoding="utf-8", errors="replace",
         env={**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"},
@@ -67,7 +77,9 @@ def run_bash(command: str) -> str:
 
 def run_read(path: str, limit: int = None) -> str:
     try:
-        text = safe_path(path).read_text(encoding="utf-8")
+        # 第 12 课：基座跟随线程 session（worktree_use 后落在 worktree 内）
+        base = worktree_manager.resolve_dir() if worktree_manager else None
+        text = safe_path(path, base).read_text(encoding="utf-8")
         lines = text.splitlines()
         if limit and limit < len(lines):
             lines = lines[:limit] + [f"... ({len(lines) - limit} more lines)"]
@@ -78,7 +90,9 @@ def run_read(path: str, limit: int = None) -> str:
 
 def run_write(path: str, content: str) -> str:
     try:
-        fp = safe_path(path)
+        # 第 12 课：基座跟随线程 session（worktree_use 后落在 worktree 内）
+        base = worktree_manager.resolve_dir() if worktree_manager else None
+        fp = safe_path(path, base)
         fp.parent.mkdir(parents=True, exist_ok=True)
         fp.write_text(content, encoding="utf-8")
         return f"Wrote {len(content)} bytes to {path}"
@@ -88,7 +102,9 @@ def run_write(path: str, content: str) -> str:
 
 def run_edit(path: str, old_text: str, new_text: str) -> str:
     try:
-        fp = safe_path(path)
+        # 第 12 课：基座跟随线程 session（worktree_use 后落在 worktree 内）
+        base = worktree_manager.resolve_dir() if worktree_manager else None
+        fp = safe_path(path, base)
         content = fp.read_text(encoding="utf-8")
         if old_text not in content:
             return f"Error: Text not found in {path}"
@@ -450,6 +466,44 @@ class TaskManager:
             return True
         return all(t["status"] == "completed" for t in tasks)
 
+    def update_status(self, task_id: int, status: str) -> dict:
+        """第 12 课：WorktreeManager 双状态机联动用的薄封装。
+
+        只改状态、不动 owner（worktree_create 推进 in_progress、
+        worktree_remove 推进 completed 时，任务可能还没有 owner——
+        保持 owner 原样，避免覆盖队友认领信息）。
+        """
+        logger.info(
+            f"TaskManager.update_status | task_id={task_id} | status={status}"
+        )
+        task = self._read_task(task_id)
+        if task is None:
+            error_msg = f"Task {task_id} not found"
+            logger.warning(f"TaskManager.update_status 失败: {error_msg}")
+            return {"error": error_msg}
+
+        # 不能把被阻塞的任务直接设为 in_progress
+        if status == "in_progress" and task["blockedBy"]:
+            unfinished = []
+            for dep_id in task["blockedBy"]:
+                dep = self._read_task(dep_id)
+                if dep is None or dep["status"] != "completed":
+                    unfinished.append(dep_id)
+            if unfinished:
+                error_msg = f"Task {task_id} is blocked by unfinished tasks: {unfinished}"
+                logger.warning(f"TaskManager.update_status 失败: {error_msg}")
+                return {"error": error_msg}
+
+        task["status"] = status
+        self._write_task(task)
+        logger.info(
+            f"TaskManager.update_status 成功 | task={json.dumps(task, ensure_ascii=False)}"
+        )
+        # 完成时同样自动解锁下游任务
+        if status == "completed":
+            self._clear_dependency(task_id)
+        return task
+
     def clear(self) -> dict:
         """清空所有任务文件，重置 ID 计数器。"""
         cleared = 0
@@ -515,9 +569,14 @@ class BackgroundManager:
         return task_id
 
     def _execute(self, task_id: str, command: str):
-        """在守护线程里跑子进程。Windows 适配：Popen + taskkill，不用 subprocess.run。"""
+        """在守护线程里跑子进程。Windows 适配：Popen + taskkill，不用 subprocess.run。
+
+        第 12 课：捕获启动时的 session 基座，后台任务落在当前 worktree 内。
+        """
+        # run_in_background 时若已 worktree_use，后台任务也应落在 worktree 里
+        base = worktree_manager.resolve_dir() if worktree_manager else os.getcwd()
         proc = subprocess.Popen(
-            command, shell=True, cwd=os.getcwd(),
+            command, shell=True, cwd=base,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             text=True, encoding="utf-8", errors="replace",
             env={**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"},
@@ -1088,6 +1147,22 @@ def _claim_task(kw: dict) -> str:
     return f"Error: Task {kw['task_id']} could not be claimed (already claimed / not pending / blocked)"
 
 
+def _worktree_remove(kw: dict) -> str:
+    """第 12 课：拆除 worktree 的工具封装。
+
+    worktree_remove 无返回值，这里补一个可读文本：
+    complete_task 决定任务是否推进到 completed；merge 决定是否先合并回主分支。
+    """
+    worktree_manager.worktree_remove(
+        kw["task_id"],
+        complete_task=kw.get("complete_task", True),
+        merge=kw.get("merge", False),
+    )
+    merged = "（已合并回主分支）" if kw.get("merge", False) else ""
+    completed = "任务已标记 completed" if kw.get("complete_task", True) else "任务保留原状态"
+    return f"Removed worktree for task #{kw['task_id']}{merged} | {completed}"
+
+
 TOOL_HANDLERS = {
     "bash":         lambda **kw: run_bash(kw["command"]),
     "read_file":    lambda **kw: run_read(kw["path"], kw.get("limit")),
@@ -1113,6 +1188,17 @@ TOOL_HANDLERS = {
     "submit_plan":      lambda **kw: _submit_plan(kw),
     "respond_to_request": lambda **kw: _respond_to_request(kw),
     "protocol_status":  lambda **kw: coordinator.render_status(),
+    # ── 第 12 课：Worktree 终极隔离工具 ──
+    "worktree_create":  lambda **kw: worktree_manager.worktree_create(
+        kw["task_id"], kw.get("branch")),
+    "worktree_remove":  lambda **kw: _worktree_remove(kw),
+    "worktree_run":     lambda **kw: worktree_manager.run_in_worktree(
+        kw["task_id"], kw["command"]),
+    "worktree_use":     lambda **kw: worktree_manager.worktree_use(
+        kw.get("task_id")),
+    "worktree_list":    lambda **kw: worktree_manager.render_list(),
+    "worktree_recover": lambda **kw: json.dumps(worktree_manager.recover(),
+                                                ensure_ascii=False),
 }
 
 # ---------- 工具定义（DeepSeek / OpenAI 格式）----------
@@ -1524,4 +1610,100 @@ TOOLS = [
             },
         },
     },
+    # ── 第 12 课：Worktree 终极隔离工具 ──
+    {
+        "type": "function",
+        "function": {
+            "name": "worktree_create",
+            "description": "Create a git worktree for a task and bind it: the task gets an isolated working directory under .worktrees/task-<id> and auto-advances to in_progress. Work on the task inside that directory so parallel agents never overwrite each other.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "integer", "description": "ID of the task to isolate"},
+                    "branch": {"type": "string", "description": "Optional branch name (default: task-<id>)"},
+                },
+                "required": ["task_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "worktree_remove",
+            "description": "Tear down a task's worktree: removes the directory, unregisters it, and cleans up the branch. complete_task=True also marks the task completed; merge=True first merges the worktree branch back to the main branch.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "integer"},
+                    "complete_task": {"type": "boolean", "description": "Mark the task completed (default true)"},
+                    "merge": {"type": "boolean", "description": "Merge the worktree branch back to main before removing (default false)"},
+                },
+                "required": ["task_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "worktree_run",
+            "description": "Run a shell command inside a task's worktree directory without switching your working base.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "integer"},
+                    "command": {"type": "string"},
+                },
+                "required": ["task_id", "command"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "worktree_use",
+            "description": "Switch THIS agent's working base to a task's worktree (thread-isolated). After switching, all your bash/read_file/write_file/edit_file operations are confined to that worktree. Pass task_id=0 or omit to switch back to the main directory.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "integer", "description": "Task whose worktree to switch into; 0 or null switches back to main"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "worktree_list",
+            "description": "Show the worktree registry: each worktree's task binding, branch, status and whether its directory exists.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "worktree_recover",
+            "description": "Rebuild state after a crash by cross-checking the event stream, the worktree registry and the disk: roll back half-finished create ops, clean orphaned registry entries and flag orphaned directories.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+            },
+        },
+    },
 ]
+
+# ---------- 第 12 课接线：WorktreeManager 注入（打破循环依赖） ----------
+# worktree.py 不 import tools.py（TaskManager 由构造参数注入），因此可以在这里
+# 安全地 import worktree 并把真实单例挂到占位符上（顶部 worktree_manager = None）。
+# 注入之后：
+#   - run_bash / run_read / run_write / run_edit / bg_manager 通过 resolve_dir()
+#     感知 worktree_use 切换的 session 基座（线程隔离）
+#   - worktree_create/remove 通过 task_manager.update_status 完成双状态机联动
+from worktree import WorktreeManager
+worktree_manager = WorktreeManager(str(config.WORKDIR), task_manager)
+logger.info(
+    f"第 12 课 wiring 完成 | worktree_manager 已注入 | "
+    f"root={config.WORKDIR} | 现有 worktree 注册数={len(worktree_manager._load_index())}"
+)
