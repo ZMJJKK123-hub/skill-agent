@@ -1,12 +1,11 @@
 ---
 title: Myweb
-emoji: 🏆
-colorFrom: yellow
+emoji: 🚀
+colorFrom: blue
 colorTo: green
-sdk: static
+sdk: docker
+app_port: 7860
 pinned: false
-license: mit
-short_description: a web fot test
 ---
 
 Check out the configuration reference at https://huggingface.co/docs/hub/spaces-config-reference
