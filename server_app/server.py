@@ -17,6 +17,7 @@
 运行：python server.py  （或 uvicorn server:app --host 0.0.0.0 --port 8000）
 """
 
+import os
 import shutil
 import subprocess
 import sys
@@ -166,12 +167,15 @@ def start_task(req: TaskRequest):
         f"请直接创建/修改需要的所有文件，完成后汇总你创建了哪些文件。"
     )
     # 启动隔离子进程：cwd 切到该会话的 mod 目录（run_task.py 内部 os.chdir）。
+    # PYTHONUNBUFFERED=1：强制子进程 stdout 无缓冲，否则 print 会积压到
+    # ~8KB 才写盘（前端要等 20 秒才能看到思考过程）。这是实时日志的关键。
     proc = subprocess.Popen(
         [sys.executable, str(RUN_TASK),
          str(sess.mod_dir), sess.api_key, prompt],
         cwd=str(BASE_DIR),
         stdout=open(sess.log_path, "w", encoding="utf-8"),
         stderr=subprocess.STDOUT,
+        env={**os.environ, "PYTHONUNBUFFERED": "1"},
     )
     sess.proc = proc
     sess.started_at = time.time()
