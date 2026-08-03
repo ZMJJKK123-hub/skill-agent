@@ -7,3 +7,5 @@ agent.log
 .transcripts/
 .team/
 .worktrees/
+data/
+cloudflared.exe
