@@ -22,7 +22,7 @@ import uuid
 import time
 import threading
 
-from config import logger
+from .config import logger
 
 # [PROTOCOL] 前缀：MessageBus 里标记协议消息，不走普通任务 Agent Loop
 PROTOCOL_FLAG = "[PROTOCOL]"

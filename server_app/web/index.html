@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOD Agent 制作器</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 760px; margin: 40px auto; padding: 0 16px; background: #fafafa; color: #222; }
+  h1 { font-size: 24px; }
+  .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+  label { font-weight: 600; display: block; margin: 12px 0 4px; }
+  input, textarea, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
+  button { margin-top: 14px; padding: 10px 18px; font-size: 15px; border: none; border-radius: 6px; background: #2563eb; color: #fff; cursor: pointer; }
+  button:disabled { background: #94a3b8; cursor: not-allowed; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 6px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; max-height: 300px; overflow-y: auto; }
+  .step { display: none; }
+  .step.active { display: block; }
+  #sid { word-break: break-all; }
+</style>
+</head>
+<body>
+<h1>🧩 MOD Agent 制作器</h1>
+<p>粘贴你的 DeepSeek API Key（只在你自己本次会话中使用，不落盘），输入想做的 MOD 需求，agent 会自动生成 mod 文件供你下载。</p>
+
+<!-- 步骤 1：创建会话 -->
+<div class="card step active" id="step1">
+  <label>DeepSeek API Key</label>
+  <input id="api_key" type="password" placeholder="sk-...">
+  <label>目标游戏</label>
+  <select id="game">
+    <option value="minecraft">Minecraft</option>
+    <option value="stardew">Stardew Valley（骨架待加）</option>
+  </select>
+  <button id="btn_create">创建会话</button>
+</div>
+
+<!-- 步骤 2：输入需求并生成 -->
+<div class="card step" id="step2">
+  <label>会话 ID（交给服务端即可，无需记住）</label>
+  <div id="sid">-</div>
+  <label>你的 MOD 需求（提示词）</label>
+  <textarea id="prompt" rows="5" placeholder="例：做一个能加血的工具 mod，右键使用恢复 5 点生命，合成配方 xx..."></textarea>
+  <button id="btn_run">开始生成</button>
+</div>
+
+<!-- 步骤 3：进度与下载 -->
+<div class="card step" id="step3">
+  <label>生成进度（自动刷新）：</label>
+  <div id="status_text">等待启动…</div>
+  <pre id="log"></pre>
+  <a id="download_btn" style="display:none" href="#" download><button>⬇ 下载生成的 mod.zip</button></a>
+  <div id="not_started_warn" style="display:none;margin-top:10px;color:#b91c1c;background:#fee2e2;padding:8px;border-radius:6px;">任务未能启动（可能是 API Key 无效或服务异常）。请返回重新创建会话并确认 Key 后再试。</div>
+</div>
+
+<script>
+let sid = null;
+let taskStarted = false;   // 后端是否确认任务已启动（running/finished 任一为真即视为已启动）
+
+async function j(url, opts) {
+  const r = await fetch(url, opts);
+  if (!r.ok) {
+    let msg = r.statusText;
+    try { msg = (await r.json()).detail || msg; } catch (e) {}
+    throw new Error(msg);
+  }
+  return r.json();
+}
+
+document.getElementById('btn_create').onclick = async () => {
+  const api_key = document.getElementById('api_key').value.trim();
+  if (!api_key) { alert('请填写 API Key'); return; }
+  try {
+    const res = await j('/api/session', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ api_key, game: document.getElementById('game').value }),
+    });
+    sid = res.session_id;
+    document.getElementById('sid').textContent = res.session_id;
+    show('step2');
+  } catch (e) { alert('创建会话失败: ' + e.message); }
+};
+
+document.getElementById('btn_run').onclick = async () => {
+  const prompt = document.getElementById('prompt').value.trim();
+  if (!prompt) { alert('请填写需求'); return; }
+  try {
+    await j('/api/task', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ session_id: sid, prompt }),
+    });
+    taskStarted = true;
+    show('step3');
+    poll();
+  } catch (e) { alert('启动失败: ' + e.message); }
+};
+
+async function poll() {
+  try {
+    const st = await j('/api/status?session_id=' + encodeURIComponent(sid));
+    // 判定任务是否真正运行过：running 或 finished 有任何一个为真即可
+    if (st.running || st.finished) {
+      taskStarted = true;
+    }
+    document.getElementById('status_text').textContent =
+      st.running ? '⏳ 生成中（耗时取决于任务复杂度）…' : (st.finished ? '✅ 已完成' : '…');
+    document.getElementById('log').textContent = st.log_tail || '(暂无输出)';
+    if (st.finished) {
+      const dl = document.getElementById('download_btn');
+      dl.href = '/api/download?session_id=' + encodeURIComponent(sid);
+      dl.style.display = 'block';
+      return;
+    }
+    // 兜底：轮询到了"既没 running 也没 finished"且从未运行过 → 任务未启动，停止轮询
+    if (!taskStarted) {
+      document.getElementById('status_text').textContent = '⚠️ 任务未能启动';
+      document.getElementById('not_started_warn').style.display = 'block';
+      return;
+    }
+    setTimeout(poll, 2000);
+  } catch (e) {
+    document.getElementById('status_text').textContent = '状态获取失败: ' + e.message;
+  }
+}
+
+function show(id) {
+  document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+</script>
+</body>
+</html>

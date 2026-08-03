@@ -5,13 +5,14 @@ import threading
 import queue
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 import yaml
 
-import config
-from config import logger, safe_path
-from protocol import (
+from . import config
+from .config import logger, safe_path
+from .protocol import (
     coordinator,
     RequestStatus,
     parse_protocol_flag,
@@ -153,9 +154,15 @@ class SkillLoader:
 
     第一层：get_descriptions() 返回技能目录（名称+描述），拼接到 system prompt。
     第二层：get_content(name) 返回完整技能内容，通过 load_skill 工具按需注入。
+
+    重构：skills 目录改为相对本包（core/skills/），不依赖运行时的 cwd——
+    这样无论从项目根、server_app 还是任意目录启动，技能都能被找到。
     """
 
-    def __init__(self, skills_dir: str = "skills"):
+    def __init__(self, skills_dir: str | None = None):
+        if skills_dir is None:
+            # 默认指向 core/skills（本包所在目录下的 skills）
+            skills_dir = str(Path(__file__).resolve().parent / "skills")
         self.skills_dir = skills_dir
         self.skills = {}  # name → {description, content, path}
         self._scan()
@@ -231,7 +238,9 @@ class SkillLoader:
         return result
 
 
-skill_loader = SkillLoader("skills")
+# 重构：不再传 "skills"——缺省时自动解析为 core/skills（包相对），
+# 保证从任意启动目录都能找到技能，与 cwd 无关。
+skill_loader = SkillLoader()
 
 # 第一层注入：把技能目录拼接到 system prompt
 config.SYSTEM += (
@@ -1047,7 +1056,7 @@ class TeammateManager:
         第 11 课改造：身份重注入——compact 后消息列表骤降（<阈值）时，
         在开头插入 <identity> 块，防止队友忘了"我是谁"导致角色越权。
         """
-        from config import client, MODEL, MAX_SUBAGENT_TURNS, TEAMMATE_SYSTEM_PREFIX
+        from .config import client, MODEL, MAX_SUBAGENT_TURNS, TEAMMATE_SYSTEM_PREFIX
 
         sub_messages = [{"role": "user", "content": task}]
 
@@ -1735,7 +1744,7 @@ TOOLS = [
 #   - run_bash / run_read / run_write / run_edit / bg_manager 通过 resolve_dir()
 #     感知 worktree_use 切换的 session 基座（线程隔离）
 #   - worktree_create/remove 通过 task_manager.update_status 完成双状态机联动
-from worktree import WorktreeManager
+from .worktree import WorktreeManager
 worktree_manager = WorktreeManager(str(config.WORKDIR), task_manager)
 logger.info(
     f"第 12 课 wiring 完成 | worktree_manager 已注入 | "

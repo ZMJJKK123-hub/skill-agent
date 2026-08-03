@@ -1,14 +1,14 @@
 import json
 import os
 
-from config import client, MODEL, SYSTEM, logger
-from tools import (
+from .config import client, MODEL, SYSTEM, logger
+from .tools import (
     TOOLS, TOOL_HANDLERS, task_manager, todo_manager, bg_manager,
     format_background_results, teammate_manager,
 )
-from protocol import inject_pending_requests, coordinator
-from subagent import run_subagent
-from compact import (
+from .protocol import inject_pending_requests, coordinator
+from .subagent import run_subagent
+from .compact import (
     micro_compact,
     auto_compact,
     handle_compact,

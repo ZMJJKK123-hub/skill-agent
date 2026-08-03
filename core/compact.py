@@ -12,7 +12,7 @@ import json
 import time
 from pathlib import Path
 
-from config import client, MODEL, logger
+from .config import client, MODEL, logger
 
 TOKEN_THRESHOLD = 100_000  # Layer 2 触发阈值
 

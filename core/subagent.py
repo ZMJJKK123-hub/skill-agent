@@ -1,7 +1,7 @@
 import json
 
-from config import client, MODEL, SUBAGENT_SYSTEM, MAX_SUBAGENT_TURNS, logger
-from tools import TOOLS, TOOL_HANDLERS
+from .config import client, MODEL, SUBAGENT_SYSTEM, MAX_SUBAGENT_TURNS, logger
+from .tools import TOOLS, TOOL_HANDLERS
 
 
 # ---------- Subagent 执行函数 ----------
