@@ -3,9 +3,14 @@
 架构（会话隔离 = 每会话一个子进程）：
   POST /api/session    {api_key, game}     → 复制 mod 骨架到独立会话目录
   POST /api/task       {session_id, prompt} → 启动 run_task.py 子进程跑 agent
+  GET  /api/session    ?session_id         → 会话状态汇总
   GET  /api/status     ?session_id         → 会话状态 / 运行日志尾部
   GET  /api/result     ?session_id         → 最终结果（agent 收尾文本）
   GET  /api/download   ?session_id         → 下载生成好的 mod.zip
+  GET  /api/games                        → 可用游戏模板列表
+  GET  /api/events     ?session_id&cursor  → agent 事件流（思考/工具/待办）
+  GET  /api/files      ?session_id&path    → 文件树 / 单文件预览
+  GET  /api/log        ?session_id&offset  → 原始日志增量拉取
 
 用户自己的 API Key 只通过命令行参数传入子进程环境，不落盘、不共享。
 
@@ -25,14 +30,14 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+import log_events  # 事件流 / 文件树解析（server_app 同级模块）
+
 # 项目根 = 本文件的上上级；会话/模板/前端目录基于项目根 & 本文件同目录组织
-# 注意：run_task.py 与 server.py 同目录（server_app/），不要用 PROJECT_ROOT 拼
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 RUN_TASK = Path(__file__).resolve().parent / "run_task.py"
 sys.path.insert(0, str(PROJECT_ROOT))
 
 # ---------- 目录布局（都在服务器项目根下） ----------
-# 会话/模板/前端目录都基于项目根组织（core 在 core/，server_app 只管服务本身）
 BASE_DIR = PROJECT_ROOT
 SESSIONS_DIR = BASE_DIR / "data" / "sessions"     # 每个用户独立工作区
 TEMPLATES_DIR = BASE_DIR / "mod_templates"         # 每个游戏一份骨架
@@ -54,6 +59,7 @@ class Session:
         self.finished_at: Optional[float] = None
         self.result: Optional[str] = None
         self.log_path = mod_dir.parent / "run.log"
+        self.event_cursor = None  # 事件流游标（由 /api/events 维护）
 
 
 # 内存会话表（试水规模够用；坚持到需要持久化时再换数据库）
@@ -84,6 +90,53 @@ def _copy_template(game: str, dest: Path) -> Path:
     return dest
 
 
+def _get_session(session_id: str) -> Session:
+    """按 ID 查会话，不存在抛 404。"""
+    sess = sessions.get(session_id)
+    if not sess:
+        raise HTTPException(404, f"Session {session_id} not found")
+    return sess
+
+
+def _session_stats(sess: Session) -> dict:
+    """汇总会话状态：运行状态 / 耗时 / 产物统计。"""
+    running = sess.proc is not None and sess.proc.poll() is None
+    finished = sess.proc is not None and sess.proc.poll() is not None
+    state = "running" if running else ("finished" if finished else "pending")
+
+    # 统计产物文件数量与总大小
+    file_count = 0
+    total_bytes = 0
+    try:
+        for p in sess.mod_dir.rglob("*"):
+            if p.is_file() and not any(
+                part in (".worktrees", ".team", ".tasks", ".transcripts",
+                         "__pycache__", ".git")
+                for part in p.relative_to(sess.mod_dir).parts
+            ):
+                file_count += 1
+                total_bytes += p.stat().st_size
+    except OSError:
+        pass
+
+    elapsed = None
+    if sess.started_at:
+        end = sess.finished_at if sess.finished_at else time.time()
+        elapsed = int(end - sess.started_at)
+
+    return {
+        "session_id": sess.id,
+        "state": state,
+        "running": running,
+        "finished": finished,
+        "started_at": sess.started_at,
+        "finished_at": sess.finished_at,
+        "elapsed": elapsed,
+        "file_count": file_count,
+        "total_bytes": total_bytes,
+    }
+
+
 @app.post("/api/session")
 def create_session(req: SessionRequest):
     """创建会话：复制游戏骨架 → 生成独立 mod 工作区。"""
@@ -97,9 +150,7 @@ def create_session(req: SessionRequest):
 @app.post("/api/task")
 def start_task(req: TaskRequest):
     """为会话启动 agent 子进程（每会话一进程，天然隔离）。"""
-    sess = sessions.get(req.session_id)
-    if not sess:
-        raise HTTPException(404, f"Session {req.session_id} not found")
+    sess = _get_session(req.session_id)
     if not (sess.api_key and sess.api_key.strip()):
         raise HTTPException(400, "API Key 为空，无法启动任务（用户需填写自己的 DeepSeek API Key）")
     if not req.prompt.strip():
@@ -115,7 +166,6 @@ def start_task(req: TaskRequest):
         f"请直接创建/修改需要的所有文件，完成后汇总你创建了哪些文件。"
     )
     # 启动隔离子进程：cwd 切到该会话的 mod 目录（run_task.py 内部 os.chdir）。
-    # 注意：run_task.py 与 server.py 同目录（server_app/），用 RUN_TASK 而非 BASE_DIR
     proc = subprocess.Popen(
         [sys.executable, str(RUN_TASK),
          str(sess.mod_dir), sess.api_key, prompt],
@@ -127,15 +177,21 @@ def start_task(req: TaskRequest):
     sess.started_at = time.time()
     sess.finished_at = None
     sess.result = None
+    sess.event_cursor = None
     return {"session_id": sess.id, "status": "started"}
+
+
+@app.get("/api/session")
+def get_session(session_id: str):
+    """会话状态汇总：运行状态 / 耗时 / 产物统计。"""
+    sess = _get_session(session_id)
+    return _session_stats(sess)
 
 
 @app.get("/api/status")
 def get_status(session_id: str):
     """返回会话是否运行中 + 日志尾部（前端轮询展示进度）。"""
-    sess = sessions.get(session_id)
-    if not sess:
-        raise HTTPException(404, f"Session {session_id} not found")
+    sess = _get_session(session_id)
     running = sess.proc is not None and sess.proc.poll() is None
     finished = sess.proc is not None and sess.proc.poll() is not None
     log_tail = ""
@@ -145,6 +201,7 @@ def get_status(session_id: str):
         if sess.proc is not None and finished and sess.result is None:
             sess.result = log_tail  # 简单起见：日志尾部即结果（可优化）
             sess.finished_at = time.time()
+    stats = _session_stats(sess)
     return {
         "session_id": session_id,
         "running": running,
@@ -152,14 +209,13 @@ def get_status(session_id: str):
         "started_at": sess.started_at,
         "finished_at": sess.finished_at,
         "log_tail": log_tail,
+        **stats,
     }
 
 
 @app.get("/api/result")
 def get_result(session_id: str):
-    sess = sessions.get(session_id)
-    if not sess:
-        raise HTTPException(404, f"Session {session_id} not found")
+    sess = _get_session(session_id)
     if sess.proc is None or sess.proc.poll() is None:
         return {"status": "running", "result": None}
     return {"status": "finished", "result": sess.result or ""}
@@ -168,9 +224,7 @@ def get_result(session_id: str):
 @app.get("/api/download")
 def download_mod(session_id: str):
     """把会话生成的 mod 目录打包成 zip 供用户下载。"""
-    sess = sessions.get(session_id)
-    if not sess:
-        raise HTTPException(404, f"Session {session_id} not found")
+    sess = _get_session(session_id)
     zip_path = SESSIONS_DIR / session_id / "mod.zip"
     shutil.make_archive(str(zip_path)[:-4], "zip", root_dir=str(sess.mod_dir))
     return FileResponse(
@@ -178,6 +232,83 @@ def download_mod(session_id: str):
         media_type="application/zip",
         filename=f"mod-{session_id}.zip",
     )
+
+
+# ---------- 观察与分析接口（server 层独立，不依赖 core） ----------
+
+@app.get("/api/games")
+def list_games():
+    """动态枚举 mod_templates/ 下的可用游戏模板。"""
+    games = []
+    if TEMPLATES_DIR.exists():
+        for p in sorted(TEMPLATES_DIR.iterdir()):
+            if p.is_dir() and not p.name.startswith("."):
+                # 读取模板描述（README.md 的首行）
+                desc = ""
+                readme = p / "README.md"
+                if readme.exists():
+                    try:
+                        first = readme.read_text(encoding="utf-8").strip().splitlines()
+                        if first:
+                            desc = first[0].lstrip("# ").strip()
+                    except OSError:
+                        pass
+                games.append({"id": p.name, "name": p.name, "description": desc})
+    if not games:
+        games = [{"id": "minecraft", "name": "minecraft", "description": ""}]
+    return {"games": games}
+
+
+@app.get("/api/events")
+def get_events(session_id: str, cursor: str = ""):
+    """增量拉取 agent 事件流（思考 / 工具调用 / 待办 / 系统）。
+
+    cursor 参数用 JSON 字符串传回（前台捕获上次返回的 cursor 再传入）。
+    """
+    sess = _get_session(session_id)
+    if not sess.proc or sess.proc.poll() is None:
+        # 未启动：允许读历史日志
+        pass
+    import json as _json
+    try:
+        cur = _json.loads(cursor) if cursor else None
+    except Exception:
+        cur = None
+    result = log_events.build_event_stream(sess.mod_dir.parent, cur)
+    # 记录游标，前台可不传 cursor 就直接续传
+    sess.event_cursor = result["cursor"]
+    return {
+        "session_id": session_id,
+        "events": result["events"],
+        "cursor": result["cursor"],
+    }
+
+
+@app.get("/api/files")
+def get_files(session_id: str, path: str = ""):
+    """文件树 / 单文件预览（产物下载前可检视）。"""
+    sess = _get_session(session_id)
+    if not path:
+        tree = log_events.build_file_tree(sess.mod_dir)
+        return {"session_id": session_id, "tree": tree}
+    preview = log_events.read_file_preview(sess.mod_dir, path)
+    if "error" in preview:
+        raise HTTPException(400, preview["error"])
+    return {"session_id": session_id, "path": path, **preview}
+
+
+@app.get("/api/log")
+def get_log(session_id: str, offset: int = 0):
+    """原始日志增量拉取（事件流的兜底方案，展示完整 stdio）。"""
+    sess = _get_session(session_id)
+    if not sess.log_path.exists():
+        return {"content": "", "offset": 0}
+    size = sess.log_path.stat().st_size
+    with open(sess.log_path, "r", encoding="utf-8", errors="replace") as f:
+        if offset > 0:
+            f.seek(offset)
+        content = f.read()
+    return {"content": content, "offset": size}
 
 
 # ---------- 前端静态资源 ----------

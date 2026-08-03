@@ -3,131 +3,216 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MOD Agent 制作器</title>
-<style>
-  body { font-family: system-ui, sans-serif; max-width: 760px; margin: 40px auto; padding: 0 16px; background: #fafafa; color: #222; }
-  h1 { font-size: 24px; }
-  .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
-  label { font-weight: 600; display: block; margin: 12px 0 4px; }
-  input, textarea, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
-  button { margin-top: 14px; padding: 10px 18px; font-size: 15px; border: none; border-radius: 6px; background: #2563eb; color: #fff; cursor: pointer; }
-  button:disabled { background: #94a3b8; cursor: not-allowed; }
-  pre { background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 6px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; max-height: 300px; overflow-y: auto; }
-  .step { display: none; }
-  .step.active { display: block; }
-  #sid { word-break: break-all; }
-</style>
+<title>MOD Forge — AI MOD 制作器</title>
+<link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-<h1>🧩 MOD Agent 制作器</h1>
-<p>粘贴你的 DeepSeek API Key（只在你自己本次会话中使用，不落盘），输入想做的 MOD 需求，agent 会自动生成 mod 文件供你下载。</p>
 
-<!-- 步骤 1：创建会话 -->
-<div class="card step active" id="step1">
-  <label>DeepSeek API Key</label>
-  <input id="api_key" type="password" placeholder="sk-...">
-  <label>目标游戏</label>
-  <select id="game">
-    <option value="minecraft">Minecraft</option>
-    <option value="stardew">Stardew Valley（骨架待加）</option>
-  </select>
-  <button id="btn_create">创建会话</button>
-</div>
+<!-- 导航栏 -->
+<nav class="nav">
+  <div class="nav-brand">
+    <span class="logo">MF</span>
+    <span>MOD Forge</span>
+  </div>
+  <div class="nav-links">
+    <button class="nav-link active" data-view="workbench">制作台</button>
+    <button class="nav-link" data-view="history">历史记录</button>
+  </div>
+</nav>
 
-<!-- 步骤 2：输入需求并生成 -->
-<div class="card step" id="step2">
-  <label>会话 ID（交给服务端即可，无需记住）</label>
-  <div id="sid">-</div>
-  <label>你的 MOD 需求（提示词）</label>
-  <textarea id="prompt" rows="5" placeholder="例：做一个能加血的工具 mod，右键使用恢复 5 点生命，合成配方 xx..."></textarea>
-  <button id="btn_run">开始生成</button>
-</div>
+<main class="page">
 
-<!-- 步骤 3：进度与下载 -->
-<div class="card step" id="step3">
-  <label>生成进度（自动刷新）：</label>
-  <div id="status_text">等待启动…</div>
-  <pre id="log"></pre>
-  <a id="download_btn" style="display:none" href="#" download><button>⬇ 下载生成的 mod.zip</button></a>
-  <div id="not_started_warn" style="display:none;margin-top:10px;color:#b91c1c;background:#fee2e2;padding:8px;border-radius:6px;">任务未能启动（可能是 API Key 无效或服务异常）。请返回重新创建会话并确认 Key 后再试。</div>
-</div>
+  <!-- Hero -->
+  <section class="hero">
+    <h1>AI 驱动的游戏 MOD 制作器</h1>
+    <p class="sub">输入你的需求，智能体将自动完成工程搭建、代码编写与资源生成。全程可视化观察智能体的思考与决策过程。</p>
+    <div class="hero-badges">
+      <span class="badge"><span class="dot"></span>深度思考可视化</span>
+      <span class="badge"><span class="dot"></span>文件级产物检视</span>
+      <span class="badge"><span class="dot"></span>API Key 不落盘</span>
+    </div>
+  </section>
 
-<script>
-let sid = null;
-let taskStarted = false;   // 后端是否确认任务已启动（running/finished 任一为真即视为已启动）
+  <!-- 制作台视图 -->
+  <div id="view-workbench">
 
-async function j(url, opts) {
-  const r = await fetch(url, opts);
-  if (!r.ok) {
-    let msg = r.statusText;
-    try { msg = (await r.json()).detail || msg; } catch (e) {}
-    throw new Error(msg);
-  }
-  return r.json();
-}
+    <!-- 步骤指示器 -->
+    <div class="step-indicator" id="stepIndicator">
+      <span class="step-chip active" data-chip="1"><span class="idx"><span>1</span></span>配置</span>
+      <span class="step-arrow">→</span>
+      <span class="step-chip" data-chip="2"><span class="idx"><span>2</span></span>需求</span>
+      <span class="step-arrow">→</span>
+      <span class="step-chip" data-chip="3"><span class="idx"><span>3</span></span>生成</span>
+    </div>
 
-document.getElementById('btn_create').onclick = async () => {
-  const api_key = document.getElementById('api_key').value.trim();
-  if (!api_key) { alert('请填写 API Key'); return; }
-  try {
-    const res = await j('/api/session', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ api_key, game: document.getElementById('game').value }),
-    });
-    sid = res.session_id;
-    document.getElementById('sid').textContent = res.session_id;
-    show('step2');
-  } catch (e) { alert('创建会话失败: ' + e.message); }
-};
+    <!-- 步骤 1：配置 -->
+    <div class="step active" id="step1">
+      <div class="card">
+        <div class="card-title"><span class="step-num">1</span>配置生成环境</div>
 
-document.getElementById('btn_run').onclick = async () => {
-  const prompt = document.getElementById('prompt').value.trim();
-  if (!prompt) { alert('请填写需求'); return; }
-  try {
-    await j('/api/task', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ session_id: sid, prompt }),
-    });
-    taskStarted = true;
-    show('step3');
-    poll();
-  } catch (e) { alert('启动失败: ' + e.message); }
-};
+        <label class="field-label" for="apiKey">DeepSeek API Key</label>
+        <div class="input-group">
+          <input class="input" id="apiKey" type="password" placeholder="sk-..." autocomplete="off" spellcheck="false">
+          <button class="toggle-eye" id="toggleKey" type="button" title="显示 / 隐藏">显示</button>
+        </div>
+        <div class="info-note">你的 API Key 仅用于本次会话的生成过程，通过命令行参数传递，不会写入磁盘、不会共享给其他用户。</div>
 
-async function poll() {
-  try {
-    const st = await j('/api/status?session_id=' + encodeURIComponent(sid));
-    // 判定任务是否真正运行过：running 或 finished 有任何一个为真即可
-    if (st.running || st.finished) {
-      taskStarted = true;
-    }
-    document.getElementById('status_text').textContent =
-      st.running ? '⏳ 生成中（耗时取决于任务复杂度）…' : (st.finished ? '✅ 已完成' : '…');
-    document.getElementById('log').textContent = st.log_tail || '(暂无输出)';
-    if (st.finished) {
-      const dl = document.getElementById('download_btn');
-      dl.href = '/api/download?session_id=' + encodeURIComponent(sid);
-      dl.style.display = 'block';
-      return;
-    }
-    // 兜底：轮询到了"既没 running 也没 finished"且从未运行过 → 任务未启动，停止轮询
-    if (!taskStarted) {
-      document.getElementById('status_text').textContent = '⚠️ 任务未能启动';
-      document.getElementById('not_started_warn').style.display = 'block';
-      return;
-    }
-    setTimeout(poll, 2000);
-  } catch (e) {
-    document.getElementById('status_text').textContent = '状态获取失败: ' + e.message;
-  }
-}
+        <label class="field-label">目标游戏</label>
+        <div class="game-grid" id="gameGrid">
+          <div class="game-card selected" data-game="minecraft">
+            <div class="game-icon">◆</div>
+            <div class="game-name">Minecraft</div>
+            <div class="game-desc">Java 版 MOD</div>
+          </div>
+        </div>
+        <div class="text-dim" id="gameLoading" style="margin-top:8px;font-size:12px;">正在加载可用模板…</div>
 
-function show(id) {
-  document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-}
-</script>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btnCreate">创建会话<span class="shine"></span></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 步骤 2：需求 -->
+    <div class="step" id="step2">
+      <div class="card">
+        <div class="card-title"><span class="step-num">2</span>描述你的 MOD 需求</div>
+
+        <div class="flex flex-between">
+          <span class="mono text-dim" id="sessionIdLabel" style="font-size:12px;">会话 ID: -</span>
+          <button class="btn btn-ghost btn-sm" id="btnCopyId" type="button">复制会话 ID</button>
+        </div>
+
+        <label class="field-label" for="promptInput">需求描述</label>
+        <textarea class="textarea" id="promptInput" placeholder="例：做一个能加血的工具 MOD，右键使用恢复 5 点生命，附带合成配方与对应贴图资源。"></textarea>
+        <div class="char-count" id="charCount">0 字</div>
+
+        <label class="field-label">快速填充示例</label>
+        <div class="prompt-templates" id="templates">
+          <button class="template-chip" data-tpl="weapon">
+            <span class="t-name">武器</span>
+            新增一把水晶长剑，附带独特附魔效果与合成配方
+          </button>
+          <button class="template-chip" data-tpl="food">
+            <span class="t-name">食物</span>
+            添加一种可恢复生命与饱食度的魔法果实，含稀有获取方式
+          </button>
+          <button class="template-chip" data-tpl="block">
+            <span class="t-name">方块</span>
+            制作一种会发光的矿石方块，开采掉落稀有材料
+          </button>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-ghost" id="btnBack1" type="button">返回</button>
+          <button class="btn btn-primary" id="btnRun">开始生成<span class="shine"></span></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 步骤 3：生成 -->
+    <div class="step" id="step3">
+      <div class="workspace">
+
+        <!-- 左栏：状态与控制 -->
+        <div class="panel">
+          <div class="panel-head">
+            <span class="panel-title">生成状态</span>
+            <span class="status-signal" id="signal"><span class="light online"></span>服务在线</span>
+          </div>
+          <div class="panel-body">
+
+            <div class="state-grid">
+              <div class="state-item">
+                <div class="state-label">状态</div>
+                <div class="state-value" id="stateValue">等待启动</div>
+              </div>
+              <div class="state-item">
+                <div class="state-label">已用时间</div>
+                <div class="timer" id="timer">00:00</div>
+              </div>
+            </div>
+
+            <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+
+            <div class="phase-strip">
+              <span class="phase" data-phase="thinking">思考</span>
+              <span class="phase" data-phase="executing">执行</span>
+              <span class="phase" data-phase="generating">生成</span>
+              <span class="phase" data-phase="done">完成</span>
+            </div>
+
+            <div class="state-item mb-2">
+              <div class="state-label">产物统计</div>
+              <div class="mono text-dim" id="artifactStats" style="font-size:13px;">尚无文件</div>
+            </div>
+
+            <div class="btn-row">
+              <a class="btn btn-primary hidden" id="btnDownload" href="#">下载 mod.zip<span class="shine"></span></a>
+              <button class="btn btn-ghost hidden" id="btnRestart" type="button">重新生成</button>
+            </div>
+            <div class="hidden" id="failureWarn" style="margin-top:12px;padding:12px;border-radius:8px;background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.35);color:#fca5a5;font-size:13px;">
+              任务未能启动，可能是 API Key 无效或服务异常。请返回重新创建会话。
+            </div>
+          </div>
+        </div>
+
+        <!-- 右栏：智能体工作台（事件时间线） -->
+        <div class="panel">
+          <div class="panel-head">
+            <span class="panel-title">智能体工作台</span>
+            <span class="mono text-dim" id="eventCount" style="font-size:11px;">0 个事件</span>
+          </div>
+          <div class="panel-body">
+            <div class="timeline" id="timeline"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 产物浏览器 -->
+      <div class="card hidden mt-4" id="artifactCard">
+        <div class="flex-between">
+          <div class="card-title" style="margin-bottom:0;">产物浏览器</div>
+          <span class="mono text-dim" id="artifactCount" style="font-size:12px;"></span>
+        </div>
+        <div class="explorer mt-4">
+          <div class="file-tree" id="fileTree"></div>
+          <div class="preview-pane">
+            <div class="preview-head" id="previewHead">选择文件以预览</div>
+            <pre class="preview-body" id="previewBody"><div class="preview-empty">从左侧选择文件，查看生成的内容。</div></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 历史记录视图 -->
+  <div id="view-history" class="hidden">
+    <div class="card">
+      <div class="card-title">历史记录</div>
+      <div class="history-list" id="historyList"></div>
+    </div>
+  </div>
+
+</main>
+
+<footer class="footer">
+  <div class="tech">
+    <span>FastAPI</span>
+    <span>DeepSeek</span>
+    <span>Agent Core</span>
+    <span>Vanilla JS</span>
+  </div>
+  <div>API Key 仅存活于本次会话的子进程环境中，不落盘、不共享。生成的产物仅供学习与本地使用。</div>
+</footer>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script src="/js/api.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/app.js"></script>
 </body>
 </html>
+</｜｜DSML｜｜ation>

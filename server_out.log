@@ -1,21 +1,23 @@
-INFO:     Started server process [47832]
+INFO:     Started server process [21308]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 MOD Agent 制作器已启动: http://localhost:8000
-INFO:     127.0.0.1:63917 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63921 - "POST /api/session HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63950 - "POST /api/session HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51044 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54015 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54917 - "POST /api/session HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60778 - "POST /api/task HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60778 - "GET /api/status?session_id=c456f240f161 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60778 - "GET /api/status?session_id=c456f240f161 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64664 - "GET /api/download?session_id=c456f240f161 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64799 - "GET /api/download?session_id=c456f240f161 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65245 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65317 - "POST /api/session HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65319 - "POST /api/task HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:55415 - "POST /api/task HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55417 - "GET /api/status?session_id=05486d73fb9b HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51778 - "GET /api/games HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51910 - "GET /css/style.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51912 - "GET /js/app.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64481 - "POST /api/session HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52464 - "GET /api/events?session_id=24a8bfbf35b7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63363 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63363 - "GET /css/style.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63363 - "GET /js/api.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63363 - "GET /js/ui.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63363 - "GET /js/app.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63363 - "GET /api/games HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63363 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55421 - "POST /api/session HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50565 - "POST /api/task HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50565 - "GET /api/events?session_id=c29d47ffc779 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50565 - "GET /api/session?session_id=c29d47ffc779 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50565 - "GET /api/events?session_id=c29d47ffc779&cursor=%7B%22run%22%3A0%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50565 - "GET /api/session?session_id=c29d47ffc779 HTTP/1.1" 200 OK
