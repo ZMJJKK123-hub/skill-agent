@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { KeyRound, Loader2, LogIn, UserPlus, UserRound } from "lucide-react";
+import { Eye, EyeOff, KeyRound, Loader2, LogIn, UserPlus, UserRound } from "lucide-react";
 import { login, register } from "../lib/auth";
 
 interface AuthModalProps {
@@ -13,12 +13,15 @@ export default function AuthModal({ onAuthed }: AuthModalProps) {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPwd, setConfirmPwd] = useState("");
+  const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const switchMode = (m: "login" | "register") => {
     setMode(m);
     setError("");
+    setConfirmPwd("");
   };
 
   async function handleSubmit() {
@@ -28,6 +31,10 @@ export default function AuthModal({ onAuthed }: AuthModalProps) {
     }
     if (password.length < 6) {
       setError("密码至少 6 位");
+      return;
+    }
+    if (mode === "register" && confirmPwd !== password) {
+      setError("两次输入的密码不一致");
       return;
     }
     setLoading(true);
@@ -120,17 +127,57 @@ export default function AuthModal({ onAuthed }: AuthModalProps) {
                 className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600"
               />
               <input
-                type="password"
+                type={showPwd ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={mode === "register" ? "至少 6 位" : "输入密码"}
                 autoComplete={mode === "login" ? "current-password" : "new-password"}
-                className="input-forge pl-9"
+                className="input-forge pl-9 pr-10"
                 aria-label="密码"
               />
+              <button
+                type="button"
+                onClick={() => setShowPwd((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 transition-colors hover:text-zinc-300"
+                aria-label={showPwd ? "隐藏密码" : "显示密码"}
+              >
+                {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
           </div>
+
+          {mode === "register" && (
+            <div>
+              <label className="mb-2 block text-sm font-medium text-zinc-400">
+                确认密码
+              </label>
+              <div className="relative">
+                <KeyRound
+                  size={16}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600"
+                />
+                <input
+                  type={showPwd ? "text" : "password"}
+                  value={confirmPwd}
+                  onChange={(e) => setConfirmPwd(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="再次输入密码"
+                  autoComplete="new-password"
+                  className="input-forge pl-9 pr-10"
+                  aria-label="确认密码"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwd((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 transition-colors hover:text-zinc-300"
+                  aria-label={showPwd ? "隐藏密码" : "显示密码"}
+                >
+                  {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-400">
