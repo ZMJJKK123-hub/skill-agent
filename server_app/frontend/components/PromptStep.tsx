@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, Box, Cherry, Copy, Skull, Sparkles } from "lucide-react";
+import { ArrowLeft, Copy, Sparkles } from "lucide-react";
 
 interface PromptStepProps {
   sessionId: string;
@@ -13,7 +13,7 @@ const TEMPLATES = [
   {
     id: "weapon",
     name: "武器",
-    icon: Skull,
+    icon: "/assets/mc_diamondsword_icon.png",
     desc: "水晶长剑，特殊附魔与合成配方",
     prompt:
       "新增一把水晶长剑武器 MOD：拥有高攻击力与独特附魔效果，附带可合成的配方（需要水晶与铁锭），并生成对应的物品贴图资源。",
@@ -21,7 +21,7 @@ const TEMPLATES = [
   {
     id: "food",
     name: "食物",
-    icon: Cherry,
+    icon: "/assets/mc_bread_icon.png",
     desc: "魔法果实，恢复生命与速度效果",
     prompt:
       "添加一种魔法果实食物 MOD：使用后可恢复大量生命与饱食度，并赋予短暂的速度提升效果，通过稀有掉落或特定结构获取。",
@@ -29,7 +29,7 @@ const TEMPLATES = [
   {
     id: "block",
     name: "方块",
-    icon: Box,
+    icon: "/assets/mc_grassblock_icon.png",
     desc: "发光矿石，开采掉落稀有材料",
     prompt:
       "制作一种发光矿石方块 MOD：在特定群系自然生成，开采掉落稀有材料，可用于合成高级装备，方块本身会发光。",
@@ -101,16 +101,18 @@ export default function PromptStep({ sessionId, onBack, onRun }: PromptStepProps
           快速填充
         </label>
         <div className="grid gap-3 sm:grid-cols-3">
-          {TEMPLATES.map(({ id, name, icon: Icon, desc, prompt: p }) => (
+          {TEMPLATES.map(({ id, name, icon, desc, prompt: p }) => (
             <button
               key={id}
               onClick={() => setPrompt(p)}
               className="group rounded-xl border border-white/[0.05] bg-white/[0.02] p-4 text-left transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/30 hover:bg-zinc-800/50 hover:shadow-lg hover:shadow-emerald-900/10"
             >
               <div className="mb-1.5 flex items-center gap-2">
-                <Icon
-                  size={18}
-                  className="text-zinc-400 transition-colors duration-300 group-hover:text-emerald-400"
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={icon}
+                  alt={name}
+                  className="h-7 w-7 object-contain"
                 />
                 <span className="text-sm font-semibold text-zinc-200 transition-colors duration-300 group-hover:text-emerald-400">
                   {name}
