@@ -109,9 +109,6 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
                   <span className="block text-sm font-semibold text-zinc-100">
                     {g.name}
                   </span>
-                  <span className="block truncate text-xs text-zinc-500">
-                    {g.description || "可用模板"}
-                  </span>
                 </span>
                 {selected && (
                   <span className="ml-auto grid h-4 w-4 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/15 text-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.4)]">
