@@ -38,6 +38,59 @@
   animation: drawerIn 0.3s ease-out both;
 }
 
+/* ===== 错误物理反馈：左右震动 ===== */
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+}
+.shake {
+  animation: shake 0.4s ease-in-out both;
+}
+
+/* ===== Toast 滑入动画 ===== */
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.toast-in {
+  animation: toastIn 0.3s ease-out both;
+}
+
+/* ===== 内联警告平滑下拉展开 ===== */
+@keyframes warnIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.warn-in {
+  animation: warnIn 0.25s ease-out both;
+}
+
 @layer base {
   html {
     @apply antialiased;

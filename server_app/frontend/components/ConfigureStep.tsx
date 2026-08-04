@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Eye, EyeOff, Lock, RotateCcw } from "lucide-react";
+import { Check, Eye, EyeOff, Lock, RotateCcw, TriangleAlert, XCircle } from "lucide-react";
 import clsx from "clsx";
 import type { Game } from "../lib/types";
+import { useToast } from "./Toast";
 
 interface ConfigureStepProps {
   games: Game[];
@@ -20,10 +21,12 @@ const LOADERS = [
   { id: "fabric", label: "Fabric", wip: true },
 ];
 
-/** 可选的游戏版本 */
+/** 可选的游戏版本：全部可选（老版本不锁，仅给非阻塞警告） */
 const VERSIONS = ["1.21.1", "1.20.1", "1.19.2"];
+const LATEST_VERSION = "1.21.1";
 
 export default function ConfigureStep({ games, onCreateSession }: ConfigureStepProps) {
+  const toast = useToast();
   const [apiKey, setApiKey] = useState("");
   const [showKey, setShowKey] = useState(false);
   /** 初始全部为空：游戏 / Loader / Version 均无默认 */
@@ -32,24 +35,48 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
   const [version, setVersion] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  /** 错误标记：apiKeyError / selectError（游戏/loader/version 未满） */
+  const [apiKeyError, setApiKeyError] = useState(false);
+  const [selectError, setSelectError] = useState(false);
+  /** shake 触发计数（改变 key 重新播放动画） */
+  const [shakeTick, setShakeTick] = useState(0);
 
   /** 点亮条件：三个必选项全部就绪 */
   const active = !!game && !!loader && !!version;
+  /** 非最新版本 → 非阻塞兼容警告 */
+  const versionWarning = !!version && version !== LATEST_VERSION;
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") handleCreate();
   };
 
   async function handleCreate() {
-    if (!active || !apiKey.trim()) return;
+    // 硬错误：按序校验并给出 Toast + 就地反馈
+    if (!apiKey.trim()) {
+      toast("请填写 DeepSeek API Key", "error");
+      setApiKeyError(true);
+      setShakeTick((v) => v + 1);
+      return;
+    }
+    if (!game) {
+      toast("请先选择目标游戏", "error");
+      setSelectError(true);
+      setShakeTick((v) => v + 1);
+      return;
+    }
+    if (!loader || !version) {
+      toast("请完成 LOADER 与 VERSION 配置", "error");
+      setSelectError(true);
+      setShakeTick((v) => v + 1);
+      return;
+    }
     setLoading(true);
-    setError("");
     try {
-      await onCreateSession(apiKey.trim(), game!);
+      await onCreateSession(apiKey.trim(), game);
+      // 创建成功后立即清空，前端不再持有 API Key
       setApiKey("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "创建会话失败");
+      toast(err instanceof Error ? err.message : "创建会话失败", "error");
     } finally {
       setLoading(false);
     }
@@ -57,22 +84,26 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
 
   const handleReset = () => {
     setApiKey("");
-    setError("");
+    setShowKey(false);
     setGame(null);
     setLoader(null);
     setVersion(null);
     setDrawerOpen(false);
+    setSelectError(false);
+    setShowKey(false);
   };
 
   /** 点击卡片：仅切换面板展开，不点亮 */
   const toggleDrawer = () => {
     setGame("minecraft");
+    setSelectError(false);
     setDrawerOpen((v) => !v);
   };
 
   /** Loader 药丸 toggle：已选再点则取消 */
   const toggleLoader = (id: string) => {
     setLoader((cur) => (cur === id ? null : id));
+    setSelectError(false);
   };
 
   return (
@@ -88,16 +119,23 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
             </label>
           </div>
           <div className="sm:col-span-2">
-            <div className="relative">
+            <div className={clsx("relative", apiKeyError && shakeTick > 0 && "shake")}>
               <input
                 type={showKey ? "text" : "password"}
                 value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
+                onChange={(e) => {
+                  setApiKey(e.target.value);
+                  setApiKeyError(false);
+                }}
                 onKeyDown={handleKeyPress}
                 autoComplete="new-password"
                 name="deepseek-api-key-field"
                 spellCheck={false}
-                className="input-forge pr-12"
+                className={clsx(
+                  "input-forge pr-12",
+                  apiKeyError &&
+                    "!border-rose-500/50 !ring-1 !ring-rose-500/20 focus:!border-rose-500/50 focus:!ring-rose-500/20"
+                )}
                 aria-label="DeepSeek API Key"
               />
               <button
@@ -109,6 +147,13 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
                 {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
+            {/* API 内联错误提示 */}
+            {apiKeyError && (
+              <p className="mt-1.5 flex items-center gap-1 text-xs text-rose-400">
+                <XCircle size={12} className="text-rose-400" />
+                请填写 DeepSeek API Key
+              </p>
+            )}
           </div>
         </div>
 
@@ -117,7 +162,7 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
           <label className="mb-3 block text-sm font-medium text-zinc-400">
             目标游戏
           </label>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+          <div className={clsx("grid grid-cols-2 gap-4 md:grid-cols-3", selectError && shakeTick > 0 && "shake rounded-xl")}>
             {games.map((g) => {
               const isActive = active && game === g.id;
               return (
@@ -128,7 +173,9 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
                     "relative flex aspect-[4/3] w-full flex-col items-center justify-center gap-3 rounded-xl border p-4 text-center transition-all duration-200",
                     isActive
                       ? "border-emerald-500/50 bg-gradient-to-b from-emerald-500/10 to-transparent"
-                      : "border-white/[0.05] bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.03]"
+                      : selectError && drawerOpen && game === g.id
+                        ? "border-rose-500/50 bg-gradient-to-b from-rose-500/10 to-transparent"
+                        : "border-white/[0.05] bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.03]"
                   )}
                 >
                   <span className="grid h-11 w-11 place-items-center rounded-lg bg-gradient-to-br from-green-600/30 to-green-800/30">
@@ -142,7 +189,6 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
                   <span className="block text-sm font-semibold text-zinc-100">
                     {g.name}
                   </span>
-                  {/* 三态文案：未选 / 待选满 / 回显 */}
                   {isActive ? (
                     <span className="block font-mono text-[10px] tracking-widest text-emerald-400">
                       {loader!.toUpperCase()} · {version}
@@ -161,7 +207,6 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
                       <Check size={10} strokeWidth={3} />
                     </span>
                   )}
-                  {/* 展开指示箭头 */}
                   <span
                     className={clsx(
                       "absolute bottom-2 right-3 text-[10px] text-zinc-600 transition-transform duration-200",
@@ -190,7 +235,7 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
             ))}
           </div>
 
-          {/* Inline Drawer：选满前常驻提示，展开后显示配置面板 */}
+          {/* Inline Drawer */}
           {drawerOpen && game === "minecraft" && (
             <div className="drawer-in mt-6 w-full rounded-xl border border-white/5 bg-black/40 p-5 shadow-inner shadow-black/60">
               <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
@@ -244,15 +289,19 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
                     {VERSIONS.map((v) => (
                       <option key={v} value={v}>
                         {v}
-                        {v === "1.21.1" ? "（最新）" : ""}
                       </option>
                     ))}
                   </select>
-                  <p className="mt-2 text-xs text-zinc-600">
-                    {version
-                      ? "已选择，可重新下拉更换"
-                      : "请选择一个版本"}
-                  </p>
+
+                  {/* 非最新版本：非阻塞内联警告 */}
+                  {versionWarning && (
+                    <div className="warn-in mt-2 flex items-start gap-1.5 rounded-lg border border-amber-900/50 bg-amber-950/20 px-3 py-2">
+                      <TriangleAlert size={13} className="mt-0.5 shrink-0 text-amber-500/90" />
+                      <p className="text-[11px] leading-tight text-amber-500/90">
+                        当前非最新版本。高版本生成的 MOD 架构可能具备一定的向下兼容性，但仍存在潜在适配风险，请谨慎测试。
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -266,13 +315,7 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
           )}
         </div>
 
-        {error && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-400">
-            {error}
-          </div>
-        )}
-
-        {/* 操作区：提交拦截 */}
+        {/* 操作区 */}
         <div className="border-t border-zinc-800 pt-6">
           <div className="flex items-center justify-end gap-3">
             <button onClick={handleReset} className="btn-ghost text-zinc-400" type="button">
@@ -281,7 +324,7 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
             </button>
             <button
               onClick={handleCreate}
-              disabled={!active || !apiKey.trim() || loading}
+              disabled={loading}
               className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-600/50 bg-emerald-900/60 px-6 py-2.5 text-sm font-medium text-emerald-400 transition-all duration-300 hover:bg-emerald-800/80 hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-emerald-900/60 disabled:hover:shadow-none"
             >
               {loading ? (

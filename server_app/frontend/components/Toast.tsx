@@ -22,14 +22,14 @@ const ToastContext = createContext<ToastFn>(() => {});
 
 const ICONS = {
   success: <CheckCircle2 size={16} className="text-forge-emerald" />,
-  error: <XCircle size={16} className="text-red-400" />,
+  error: <XCircle size={16} className="text-rose-400" />,
   warn: <AlertTriangle size={16} className="text-forge-amber" />,
 } as const;
 
 const TOAST_CLASS = {
-  success: "border-emerald-500/30 bg-emerald-950/60 text-emerald-300",
-  error: "border-red-500/30 bg-red-950/60 text-red-300",
-  warn: "border-amber-500/30 bg-amber-950/60 text-amber-300",
+  success: "border-emerald-500/20 text-emerald-200",
+  error: "border-rose-500/20 text-rose-200",
+  warn: "border-amber-500/20 text-amber-200",
 } as const;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
@@ -51,7 +51,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`animate-fadeUp pointer-events-auto flex items-start gap-2.5 rounded-lg border px-4 py-2.5 text-sm shadow-lg backdrop-blur-md ${TOAST_CLASS[t.type]}`}
+            className={`toast-in pointer-events-auto flex items-start gap-2.5 rounded-xl border bg-zinc-900/90 px-4 py-2.5 text-sm shadow-2xl shadow-black/80 backdrop-blur-md ${TOAST_CLASS[t.type]}`}
           >
             {ICONS[t.type]}
             <span>{t.message}</span>
