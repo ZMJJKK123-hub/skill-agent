@@ -32,6 +32,7 @@ function AppInner() {
   const [user, setUser] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
 
   // 轮询 Hook：事件流 + 状态（去重、AbortController、800ms）
   const polling = useSessionPolling();
@@ -199,7 +200,12 @@ function AppInner() {
 
       {/* 登录/注册弹窗（首次访问自动弹，也可点右上角按钮打开；可关闭浏览） */}
       {authOpen && (
-        <AuthModal onAuthed={handleAuthed} onClose={() => setAuthOpen(false)} />
+        <AuthModal
+          key={authMode}
+          initialMode={authMode}
+          onAuthed={handleAuthed}
+          onClose={() => setAuthOpen(false)}
+        />
       )}
 
       <div className="relative z-10 flex min-h-screen flex-col">
@@ -207,8 +213,14 @@ function AppInner() {
           active={view}
           onChange={setView}
           username={user}
-          onLoginClick={() => setAuthOpen(true)}
-          onRegisterClick={() => setAuthOpen(true)}
+          onLoginClick={() => {
+            setAuthMode("login");
+            setAuthOpen(true);
+          }}
+          onRegisterClick={() => {
+            setAuthMode("register");
+            setAuthOpen(true);
+          }}
           onLogout={handleLogout}
         />
 

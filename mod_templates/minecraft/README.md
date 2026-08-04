@@ -1,4 +1,4 @@
-# Minecraft MOD 骨架（最小可编译空壳占位）
+# Minecraft MOD 生成模板
 
 此目录会被复制到每个用户的会话目录，作为 agent 生成 MOD 的起点。
 

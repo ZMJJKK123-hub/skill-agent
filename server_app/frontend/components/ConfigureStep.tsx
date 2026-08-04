@@ -87,8 +87,8 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
                 className={clsx(
                   "group relative flex items-center gap-3 rounded-xl border p-4 text-left transition-all duration-200",
                   selected
-                    ? "border-forge-cyan/50 bg-forge-cyan/[0.06] shadow-glow"
-                    : "border-white/5 bg-ink-950/40 hover:border-white/15 hover:bg-white/[0.03]"
+                    ? "border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 to-transparent"
+                    : "border-white/[0.05] bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.03]"
                 )}
               >
                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-green-600/30 to-green-800/30">
@@ -114,10 +114,10 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
                   </span>
                 </span>
                 {selected && (
-                  <span className="ml-auto grid h-5 w-5 place-items-center rounded-full bg-forge-emerald text-ink-950">
+                  <span className="ml-auto grid h-4 w-4 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/15 text-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.4)]">
                     <svg
                       viewBox="0 0 16 16"
-                      className="h-3 w-3"
+                      className="h-2.5 w-2.5"
                       fill="none"
                       stroke="currentColor"
                       strokeWidth="3"

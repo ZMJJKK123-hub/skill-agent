@@ -9,10 +9,12 @@ interface AuthModalProps {
   onAuthed: (username: string) => void;
   /** 关闭弹窗（点遮罩/×）回调 */
   onClose: () => void;
+  /** 初始 Tab（登录/注册按钮手动打开时指定，默认登录） */
+  initialMode?: "login" | "register";
 }
 
-export default function AuthModal({ onAuthed, onClose }: AuthModalProps) {
-  const [mode, setMode] = useState<"login" | "register">("login");
+export default function AuthModal({ onAuthed, onClose, initialMode }: AuthModalProps) {
+  const [mode, setMode] = useState<"login" | "register">(initialMode ?? "login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
@@ -218,9 +220,6 @@ export default function AuthModal({ onAuthed, onClose }: AuthModalProps) {
           </button>
         </div>
 
-        <p className="mt-6 text-center text-xs text-zinc-600">
-          每个账号的历史记录与生成产物相互隔离
-        </p>
       </div>
     </div>
   );

@@ -52,9 +52,11 @@
 }
 
 @layer components {
-  /* 毛玻璃卡片 */
+  /* 黑曜石玻璃卡片：深邃半透明 + 微光边框 + 内高光 + 深空外阴影 */
   .glass {
-    @apply bg-ink-900/50 backdrop-blur-md border border-white/5 rounded-xl;
+    @apply bg-[#0A0A0A]/80 backdrop-blur-xl border border-white/[0.08] rounded-xl
+           shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]
+           shadow-2xl shadow-black/80;
   }
 
   /* 幽灵按钮 */
@@ -65,25 +67,23 @@
            disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium;
   }
 
-  /* 主渐变按钮 */
+  /* 深绿主按钮：克制深邃，实体按键质感 */
   .btn-primary {
     @apply relative inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg
-           bg-gradient-to-r from-forge-cyan to-forge-emerald text-ink-950
-           font-semibold transition-all duration-200 hover:brightness-110 hover:-translate-y-0.5
-           shadow-lg shadow-forge-cyan/20 focus:outline-none focus:ring-2 focus:ring-forge-cyan/50
-           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 text-sm overflow-hidden;
-  }
-  .btn-primary::after {
-    content: "";
-    @apply absolute inset-y-0 -left-1/3 w-1/4 bg-white/30 blur-md;
-    animation: shine 3s ease-in-out infinite;
+           bg-emerald-950/50 border border-emerald-900/80 text-emerald-400
+           font-semibold transition-all duration-200 hover:bg-emerald-900/60
+           hover:drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]
+           shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]
+           focus:outline-none focus:ring-1 focus:ring-emerald-500/30
+           disabled:opacity-50 disabled:cursor-not-allowed text-sm;
   }
 
-  /* 输入框（保险箱质感）：暗色底 + 保持绿 focus ring */
+  /* 输入框（凹槽质感）：暗底 + 内阴影，聚焦极弱绿环 */
   .input-forge {
-    @apply w-full px-4 py-2.5 rounded-lg bg-zinc-900/60 border border-white/10 text-zinc-300
+    @apply w-full px-4 py-2.5 rounded-lg bg-black/50 border border-white/5 text-zinc-300
            text-sm outline-none transition-all duration-200 placeholder:text-zinc-600
-           focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 font-mono;
+           shadow-inner shadow-black/80 font-mono
+           focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20;
   }
 
   /* 等宽小字 */
