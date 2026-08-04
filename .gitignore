@@ -9,6 +9,7 @@ agent.log
 .worktrees/
 data/
 cloudflared.exe
+.vscode/
 
 # ---- 运行时日志 ----
 server_out.log
