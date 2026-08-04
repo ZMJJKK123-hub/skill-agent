@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 const frontendDir = join(dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = join(frontendDir, "out");
 const webDir = join(frontendDir, "..", "web");
+const assetsDir = join(frontendDir, "..", "assets");
 
 if (!existsSync(join(outDir, "index.html"))) {
   console.error("[export] out/index.html 不存在，请先执行 next build");
@@ -34,6 +35,13 @@ for (const entry of readdirSync(outDir)) {
     recursive: true,
     force: true,
   });
+}
+
+// 拷贝 server_app/assets/（mc_icon.png 等静态素材）到 web/assets/，供前端 <img> 引用
+if (existsSync(assetsDir)) {
+  const dest = join(webDir, "assets");
+  rmSync(dest, { recursive: true, force: true });
+  cpSync(assetsDir, dest, { recursive: true, force: true });
 }
 
 console.log("[export] 前端产物已部署到 server_app/web/");

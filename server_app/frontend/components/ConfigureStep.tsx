@@ -13,15 +13,6 @@ interface ConfigureStepProps {
 /** 即将支持的占位游戏（虚线锁定卡片，体现选择器阵列） */
 const COMING_SOON = ["Stardew Valley", "Terraria"];
 
-function MinecraftIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6">
-      <path d="M4 10 L12 5 L20 10 L20 18 L12 22 L4 18 Z" fill="rgba(52,211,153,0.35)" />
-      <path d="M4 10 L12 14 L20 10" fill="none" stroke="rgba(52,211,153,0.7)" />
-    </svg>
-  );
-}
-
 export default function ConfigureStep({ games, onCreateSession }: ConfigureStepProps) {
   const [apiKey, setApiKey] = useState("");
   const [showKey, setShowKey] = useState(false);
@@ -63,7 +54,7 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
       {/* 各区大间距 */}
       <div className="mt-8 space-y-10">
         {/* API Key 区：桌面端左右分栏 */}
-        <div className="grid items-start gap-4 sm:grid-cols-3 sm:gap-6">
+        <div className="grid items-center gap-4 sm:grid-cols-3 sm:gap-6">
           <div className="flex flex-col gap-1.5">
             <label className="block text-sm font-medium text-zinc-400">
               DeepSeek API Key
@@ -115,13 +106,18 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
                   )}
                 >
                   <span className="grid h-11 w-11 place-items-center rounded-lg bg-gradient-to-br from-green-600/30 to-green-800/30">
-                    <MinecraftIcon />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/assets/mc_icon.png"
+                      alt="Minecraft"
+                      className="h-10 w-10 object-contain drop-shadow-[0_0_6px_rgba(52,211,153,0.35)]"
+                    />
                   </span>
                   <span className="block text-sm font-semibold text-zinc-100">
                     {g.name}
                   </span>
                   <span className="mt-1 block font-mono text-[10px] tracking-widest text-zinc-500">
-                    ENGINE · Forge
+                    ENGINE · FORGE
                   </span>
                   {selected && (
                     <span className="absolute right-3 top-3 grid h-4 w-4 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/15 text-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.4)]">
