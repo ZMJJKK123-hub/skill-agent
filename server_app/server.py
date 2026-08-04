@@ -243,6 +243,21 @@ def create_session(req: SessionRequest, authorization: str = Header(default=""))
     return {"session_id": session_id, "mod_dir": str(mod_dir)}
 
 
+@app.delete("/api/session")
+def delete_session(session_id: str, authorization: str = Header(default="")):
+    """删除未运行任务的会话（10 分钟未开始任务时前端自动调用），
+    同时顺带清理已过期的登录 token（auth_sessions 不随会话删除，保住登录态）。"""
+    username = _auth_username(authorization)
+    sess = _get_session(session_id)
+    _assert_owner(sess, username)
+    if sess.proc is not None and sess.proc.poll() is None:
+        raise HTTPException(400, "任务运行中，不能删除")
+    sessions.pop(session_id, None)
+    shutil.rmtree(sess.mod_dir.parent, ignore_errors=True)
+    auth_store.prune_expired()
+    return {"ok": True}
+
+
 @app.post("/api/task")
 def start_task(req: TaskRequest, authorization: str = Header(default="")):
     """为会话启动 agent 子进程（每会话一进程，天然隔离）。"""

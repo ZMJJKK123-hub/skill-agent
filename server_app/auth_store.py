@@ -128,6 +128,17 @@ def revoke_token(token: str) -> None:
         _save_json(SESSIONS_FILE, sessions)
 
 
+def prune_expired() -> None:
+    """清理已过期的登录 token（auth_sessions 不随会话删除，避免登录态丢失）。"""
+    sessions = _load_json(SESSIONS_FILE, {})
+    now = time.time()
+    expired = [t for t, rec in sessions.items() if rec.get("expires_at", 0) < now]
+    if expired:
+        for t in expired:
+            sessions.pop(t, None)
+        _save_json(SESSIONS_FILE, sessions)
+
+
 # ---------- 每用户历史记录 ----------
 
 def _history_path(username: str) -> Path:

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Download, Play, Trash2 } from "lucide-react";
 import { loadHistory, clearHistory } from "../lib/history";
-import { getToken } from "../lib/auth";
+import { downloadSession } from "../lib/api";
 import type { HistoryEntry } from "../lib/types";
 
 interface HistoryViewProps {
@@ -40,31 +40,7 @@ export default function HistoryView({ onResume, onClear }: HistoryViewProps) {
 
   const handleDownload = async (sessionId: string) => {
     try {
-      // 下载需要带登录头，<a href> 做不到，用 fetch 流式下载
-      const token = getToken();
-      const res = await fetch(
-        `/api/download?session_id=${encodeURIComponent(sessionId)}`,
-        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
-      );
-      if (!res.ok) {
-        let msg = res.statusText || "下载失败";
-        try {
-          const data = (await res.json()) as { detail?: string };
-          if (data?.detail) msg = data.detail;
-        } catch {
-          /* ignore */
-        }
-        throw new Error(msg);
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `mod-${sessionId}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      await downloadSession(sessionId);
     } catch (err) {
       alert(err instanceof Error ? err.message : "下载失败");
     }

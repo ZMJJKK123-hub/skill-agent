@@ -48,6 +48,13 @@ export function createSession(apiKey: string, game: string): Promise<CreateSessi
   });
 }
 
+export function deleteSession(sessionId: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(
+    `/api/session?session_id=${encodeURIComponent(sessionId)}`,
+    { method: "DELETE" }
+  );
+}
+
 export function startTask(sessionId: string, prompt: string): Promise<StartTaskResult> {
   return request<StartTaskResult>("/api/task", {
     method: "POST",
@@ -100,9 +107,31 @@ export function getGames(): Promise<{ games: Game[] }> {
   return request<{ games: Game[] }>("/api/games");
 }
 
-/** 下载 URL（登录态通过 Authorization 头传递，<a> 无法带自定义头，用 fetch 流式下载替代） */
-export const downloadUrl = (sessionId: string): string =>
-  `/api/download?session_id=${encodeURIComponent(sessionId)}`;
+/** 下载 mod.zip（带登录头，<a> 无法携带自定义头所以用 fetch 流式下载） */
+export async function downloadSession(sessionId: string): Promise<void> {
+  const res = await fetch(`/api/download?session_id=${encodeURIComponent(sessionId)}`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    let msg = res.statusText || `HTTP ${res.status}`;
+    try {
+      const data = (await res.json()) as { detail?: string };
+      if (data?.detail) msg = data.detail;
+    } catch {
+      /* 非 JSON 响应 */
+    }
+    throw new Error(msg);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `mod-${sessionId}.zip`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 // ===== 服务端历史记录（按用户隔离） =====
 

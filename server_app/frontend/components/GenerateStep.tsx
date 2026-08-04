@@ -4,7 +4,7 @@ import { Download, Home, RefreshCcw } from "lucide-react";
 import clsx from "clsx";
 import EventTimeline from "./EventTimeline";
 import ArtifactExplorer from "./ArtifactExplorer";
-import { downloadUrl } from "../lib/api";
+import { downloadSession } from "../lib/api";
 import type { AgentEvent, SessionStats } from "../lib/types";
 
 interface GenerateStepProps {
@@ -166,9 +166,11 @@ export default function GenerateStep({
 
             {/* 操作按钮 */}
             <div className="flex gap-2 pt-1">
-              <a
-                href={finished ? downloadUrl(sessionId) : "#"}
-                onClick={(e) => !finished && e.preventDefault()}
+              <button
+                onClick={() => {
+                  if (!finished) return;
+                  downloadSession(sessionId).catch(() => undefined);
+                }}
                 className={clsx(
                   "btn-primary flex-1",
                   !finished && "pointer-events-none opacity-40"
@@ -176,7 +178,7 @@ export default function GenerateStep({
               >
                 <Download size={15} />
                 下载 mod.zip
-              </a>
+              </button>
               <button onClick={onRegenerate} className="btn-ghost">
                 <RefreshCcw size={14} />
                 重新生成

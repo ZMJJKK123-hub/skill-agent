@@ -38,6 +38,29 @@ function AppInner() {
   // 组件实例级的最后一次 prompt（历史记录保存用）
   const lastPrompt = useRef("");
 
+  // 会话超时清理：创建会话后未开始任务，10 分钟后删除并回退
+  const cleanupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearCleanupTimer = useCallback(() => {
+    if (cleanupTimer.current) {
+      clearTimeout(cleanupTimer.current);
+      cleanupTimer.current = null;
+    }
+  }, []);
+
+  const deleteSessionAndReset = useCallback(
+    (sid: string, silent: boolean) => {
+      clearCleanupTimer();
+      API.deleteSession(sid).catch(() => undefined);
+      setStep(1);
+      setSessionId(null);
+      setView("workbench");
+      polling.clear();
+      if (!silent) toast("会话已超时，自动清理");
+    },
+    [clearCleanupTimer, polling, toast]
+  );
+
   // 启动时恢复登录态（token 有效则免登）
   useEffect(() => {
     checkSession()
@@ -64,12 +87,15 @@ function AppInner() {
       return API.createSession(apiKey, g).then((res) => {
         setSessionId(res.session_id);
         setStep(2);
+        clearCleanupTimer();
+        cleanupTimer.current = setTimeout(() => {
+          deleteSessionAndReset(res.session_id, false);
+        }, 10 * 60 * 1000);
         toast("会话创建成功");
       });
     },
-    [game, toast]
+    [game, toast, clearCleanupTimer, deleteSessionAndReset]
   );
-
   const handleRun = useCallback(
     async (prompt: string) => {
       if (!sessionId) return;
@@ -78,9 +104,10 @@ function AppInner() {
       polling.clear();
       polling.start(sessionId);
       setStep(3);
+      clearCleanupTimer();
       toast("生成任务已启动");
     },
-    [sessionId, polling, toast]
+    [sessionId, polling, toast, clearCleanupTimer]
   );
 
   // 复用历史会话：hydrate 一次性灌入历史事件+状态；
@@ -93,29 +120,32 @@ function AppInner() {
         setView("workbench");
         setStep(3);
         lastPrompt.current = "";
+        clearCleanupTimer();
         setHistoryVersion((v) => v + 1);
         toast("已复用会话");
       } catch (err) {
         toast(err instanceof Error ? err.message : "复用会话失败", "error");
       }
     },
-    [polling, toast]
+    [polling, toast, clearCleanupTimer]
   );
 
   // 返回首页（彻底清场）
   const handleHome = useCallback(() => {
+    clearCleanupTimer();
     polling.clear();
     setStep(1);
     setSessionId(null);
     setView("workbench");
     setHistoryVersion((v) => v + 1);
-  }, [polling]);
+  }, [polling, clearCleanupTimer]);
 
   // 重新生成 = 回到需求页
   const handleRegenerate = useCallback(() => {
+    clearCleanupTimer();
     polling.clear();
     setStep(2);
-  }, [polling]);
+  }, [polling, clearCleanupTimer]);
 
   // 登录/注册成功（AuthModal 回调）
   const handleAuthed = useCallback(
@@ -130,13 +160,14 @@ function AppInner() {
   // 退出登录：清空本地 token 与页面状态
   const handleLogout = useCallback(async () => {
     await logout();
+    clearCleanupTimer();
     polling.clear();
     setUser(null);
     setView("workbench");
     setStep(1);
     setSessionId(null);
     setHistoryVersion((v) => v + 1);
-  }, [polling]);
+  }, [polling, clearCleanupTimer]);
 
   // 检测轮询中任务完成 → 写入历史（真正的 useEffect：deps 变化才触发）
   useEffect(() => {
@@ -185,7 +216,7 @@ function AppInner() {
               {step === 2 && sessionId && (
                 <PromptStep
                   sessionId={sessionId}
-                  onBack={() => setStep(1)}
+                  onBack={() => deleteSessionAndReset(sessionId, true)}
                   onRun={handleRun}
                 />
               )}
