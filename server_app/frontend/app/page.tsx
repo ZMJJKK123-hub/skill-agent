@@ -8,12 +8,14 @@ import ConfigureStep from "../components/ConfigureStep";
 import PromptStep from "../components/PromptStep";
 import GenerateStep from "../components/GenerateStep";
 import HistoryView from "../components/HistoryView";
+import AuthModal from "../components/AuthModal";
 import VoxelBackground from "../components/VoxelBackground";
 import MouseEffect from "../components/MouseEffect";
 import { ToastProvider, useToast } from "../components/Toast";
 import * as API from "../lib/api";
 import { useSessionPolling } from "../lib/useSessionPolling";
 import { saveHistory } from "../lib/history";
+import { checkSession, logout } from "../lib/auth";
 
 type View = "workbench" | "history";
 type Step = 1 | 2 | 3;
@@ -27,12 +29,23 @@ function AppInner() {
   const [game, setGame] = useState("minecraft");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [historyVersion, setHistoryVersion] = useState(0);
+  const [user, setUser] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
   // 轮询 Hook：事件流 + 状态（去重、AbortController、800ms）
   const polling = useSessionPolling();
 
   // 组件实例级的最后一次 prompt（历史记录保存用）
   const lastPrompt = useRef("");
+
+  // 启动时恢复登录态（token 有效则免登）
+  useEffect(() => {
+    checkSession()
+      .then((name) => {
+        if (name) setUser(name);
+      })
+      .finally(() => setAuthChecked(true));
+  }, []);
 
   // 加载游戏模板（仅挂载一次）
   useEffect(() => {
@@ -104,6 +117,27 @@ function AppInner() {
     setStep(2);
   }, [polling]);
 
+  // 登录/注册成功（AuthModal 回调）
+  const handleAuthed = useCallback(
+    (name: string) => {
+      setUser(name);
+      setHistoryVersion((v) => v + 1);
+      toast(`欢迎，${name}`);
+    },
+    [toast]
+  );
+
+  // 退出登录：清空本地 token 与页面状态
+  const handleLogout = useCallback(async () => {
+    await logout();
+    polling.clear();
+    setUser(null);
+    setView("workbench");
+    setStep(1);
+    setSessionId(null);
+    setHistoryVersion((v) => v + 1);
+  }, [polling]);
+
   // 检测轮询中任务完成 → 写入历史（真正的 useEffect：deps 变化才触发）
   useEffect(() => {
     if (!polling.finished || !polling.sessionId) return;
@@ -125,8 +159,18 @@ function AppInner() {
       <VoxelBackground />
       <MouseEffect selectedGame={game} />
 
+      {/* 未登录：全屏登录/注册引导 */}
+      {authChecked && !user && (
+        <AuthModal onAuthed={handleAuthed} />
+      )}
+
       <div className="relative z-10 flex min-h-screen flex-col">
-        <Navbar active={view} onChange={setView} />
+        <Navbar
+          active={view}
+          onChange={setView}
+          username={user}
+          onLogout={handleLogout}
+        />
 
         <main className="mx-auto w-full max-w-6xl flex-1 px-5 pb-16">
           <Hero />

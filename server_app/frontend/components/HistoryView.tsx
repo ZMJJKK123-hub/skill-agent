@@ -1,8 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Download, Play, Trash2 } from "lucide-react";
 import { loadHistory, clearHistory } from "../lib/history";
-import { downloadUrl } from "../lib/api";
+import { getToken } from "../lib/auth";
 import type { HistoryEntry } from "../lib/types";
 
 interface HistoryViewProps {
@@ -18,12 +19,67 @@ function formatDuration(totalSeconds: number | null | undefined): string {
 }
 
 export default function HistoryView({ onResume, onClear }: HistoryViewProps) {
-  const history: HistoryEntry[] = loadHistory();
+  const [history, setHistory] = useState<HistoryEntry[] | null>(null);
 
-  const handleClear = () => {
-    clearHistory();
+  // 进入页面时拉取当前用户的历史（服务端）
+  useEffect(() => {
+    let active = true;
+    loadHistory().then((list) => {
+      if (active) setHistory(list);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleClear = async () => {
+    await clearHistory();
+    setHistory([]);
     onClear();
   };
+
+  const handleDownload = async (sessionId: string) => {
+    try {
+      // 下载需要带登录头，<a href> 做不到，用 fetch 流式下载
+      const token = getToken();
+      const res = await fetch(
+        `/api/download?session_id=${encodeURIComponent(sessionId)}`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+      );
+      if (!res.ok) {
+        let msg = res.statusText || "下载失败";
+        try {
+          const data = (await res.json()) as { detail?: string };
+          if (data?.detail) msg = data.detail;
+        } catch {
+          /* ignore */
+        }
+        throw new Error(msg);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `mod-${sessionId}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "下载失败");
+    }
+  };
+
+  if (history === null) {
+    return (
+      <div className="glass mx-auto max-w-2xl p-10 text-center">
+        <div className="flex items-center justify-center gap-2 font-mono text-sm text-zinc-600">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/10 border-t-forge-cyan" />
+          加载历史记录...
+        </div>
+      </div>
+    );
+  }
 
   if (history.length === 0) {
     return (
@@ -71,15 +127,13 @@ export default function HistoryView({ onResume, onClear }: HistoryViewProps) {
                 <span>{h.fileCount != null ? `${h.fileCount} 文件` : ""}</span>
               </div>
               <div className="flex gap-1.5">
-                <a
-                  href={downloadUrl(h.sessionId)}
-                  target="_blank"
-                  rel="noreferrer"
+                <button
+                  onClick={() => handleDownload(h.sessionId)}
                   className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 text-zinc-400 transition-all duration-150 hover:border-forge-cyan/40 hover:text-forge-cyan"
                   title="下载"
                 >
                   <Download size={14} />
-                </a>
+                </button>
                 <button
                   onClick={() => onResume(h.sessionId)}
                   className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 text-zinc-400 transition-all duration-150 hover:border-forge-emerald/40 hover:text-forge-emerald"

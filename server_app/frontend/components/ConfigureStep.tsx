@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import clsx from "clsx";
 import type { Game } from "../lib/types";
 
@@ -69,10 +69,6 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
             {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
         </div>
-        <p className="mt-2 flex items-center gap-1.5 text-xs text-amber-500/70">
-          <ShieldCheck size={13} />
-          仅用于本次会话，创建后即从页面清除
-        </p>
       </div>
 
       {/* 目标游戏 */}

@@ -26,11 +26,12 @@ import uuid
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+import auth_store  # 用户注册/登录/token/历史（文件存储）
 import log_events  # 事件流 / 文件树解析（server_app 同级模块）
 
 # 项目根 = 本文件的上上级；会话/模板/前端目录基于项目根 & 本文件同目录组织
@@ -51,10 +52,11 @@ TEMPLATES_DIR.mkdir(parents=True, exist_ok=True)
 class Session:
     """一个用户的生成会话：独立 mod 工作目录 + 子进程状态。"""
 
-    def __init__(self, session_id: str, mod_dir: Path, api_key: str):
+    def __init__(self, session_id: str, mod_dir: Path, api_key: str, owner: str = ""):
         self.id = session_id
         self.mod_dir = mod_dir
         self.api_key = api_key
+        self.owner = owner  # 归属用户名（空 = 未绑定/历史遗留会话，不可访问）
         self.proc: Optional[subprocess.Popen] = None
         self.started_at: Optional[float] = None
         self.finished_at: Optional[float] = None
@@ -86,7 +88,10 @@ def _restore_sessions() -> None:
         session_id = child.name
         if session_id in sessions:
             continue
-        sess = Session(session_id, mod_dir, api_key="")
+        # 恢复的历史会话：owner 从 owner.txt 读（重启后仍归原用户）
+        owner_txt = child / "owner.txt"
+        owner = owner_txt.read_text(encoding="utf-8").strip() if owner_txt.exists() else ""
+        sess = Session(session_id, mod_dir, api_key="", owner=owner)
         sessions[session_id] = sess
 
         # 有 run.log 说明跑过任务；有 mod.zip 说明已打包完成
@@ -119,6 +124,20 @@ class TaskRequest(BaseModel):
     prompt: str
 
 
+class AuthRequest(BaseModel):
+    username: str
+    password: str
+
+
+class HistoryEntry(BaseModel):
+    sessionId: str
+    game: str = "minecraft"
+    prompt: str = ""
+    elapsed: Optional[int] = None
+    fileCount: Optional[int] = None
+    date: Optional[str] = None
+
+
 # ---------- 会话生命周期 ----------
 def _copy_template(game: str, dest: Path) -> Path:
     """把 mod_templates/<game>/ 复制到会话目录，作为 agent 的起点。"""
@@ -136,6 +155,23 @@ def _get_session(session_id: str) -> Session:
     if not sess:
         raise HTTPException(404, f"Session {session_id} not found")
     return sess
+
+
+def _auth_username(authorization: str) -> str:
+    """从 Authorization: Bearer <token> 取用户名；无效抛 401。"""
+    token = ""
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization[len("Bearer "):].strip()
+    username = auth_store.validate_token(token)
+    if not username:
+        raise HTTPException(401, "登录已失效，请重新登录")
+    return username
+
+
+def _assert_owner(sess: Session, username: str) -> None:
+    """校验会话归属；非本人或未绑定会话一律 403，保证用户间隔离。"""
+    if not sess.owner or sess.owner != username:
+        raise HTTPException(403, "无权访问该会话")
 
 
 def _session_stats(sess: Session) -> dict:
@@ -192,19 +228,27 @@ def _session_stats(sess: Session) -> dict:
 
 
 @app.post("/api/session")
-def create_session(req: SessionRequest):
-    """创建会话：复制游戏骨架 → 生成独立 mod 工作区。"""
+def create_session(req: SessionRequest, authorization: str = Header(default="")):
+    """创建会话：复制游戏骨架 → 生成独立 mod 工作区，并绑定当前登录用户。"""
+    username = _auth_username(authorization)
     session_id = uuid.uuid4().hex[:12]
     mod_dir = SESSIONS_DIR / session_id / "mod"
     _copy_template(req.game, mod_dir)
-    sessions[session_id] = Session(session_id, mod_dir, req.api_key)
+    # 持久化归属：重启后恢复会话仍能返回原用户（owner.txt）
+    try:
+        (mod_dir.parent / "owner.txt").write_text(username, encoding="utf-8")
+    except OSError:
+        pass
+    sessions[session_id] = Session(session_id, mod_dir, req.api_key, owner=username)
     return {"session_id": session_id, "mod_dir": str(mod_dir)}
 
 
 @app.post("/api/task")
-def start_task(req: TaskRequest):
+def start_task(req: TaskRequest, authorization: str = Header(default="")):
     """为会话启动 agent 子进程（每会话一进程，天然隔离）。"""
+    username = _auth_username(authorization)
     sess = _get_session(req.session_id)
+    _assert_owner(sess, username)
     if not (sess.api_key and sess.api_key.strip()):
         raise HTTPException(400, "API Key 为空，无法启动任务（用户需填写自己的 DeepSeek API Key）")
     if not req.prompt.strip():
@@ -239,16 +283,20 @@ def start_task(req: TaskRequest):
 
 
 @app.get("/api/session")
-def get_session(session_id: str):
+def get_session(session_id: str, authorization: str = Header(default="")):
     """会话状态汇总：运行状态 / 耗时 / 产物统计。"""
+    username = _auth_username(authorization)
     sess = _get_session(session_id)
+    _assert_owner(sess, username)
     return _session_stats(sess)
 
 
 @app.get("/api/status")
-def get_status(session_id: str):
+def get_status(session_id: str, authorization: str = Header(default="")):
     """返回会话是否运行中 + 日志尾部（前端轮询展示进度）。"""
+    username = _auth_username(authorization)
     sess = _get_session(session_id)
+    _assert_owner(sess, username)
     running = sess.proc is not None and sess.proc.poll() is None
     finished = sess.proc is not None and sess.proc.poll() is not None
     log_tail = ""
@@ -271,17 +319,21 @@ def get_status(session_id: str):
 
 
 @app.get("/api/result")
-def get_result(session_id: str):
+def get_result(session_id: str, authorization: str = Header(default="")):
+    username = _auth_username(authorization)
     sess = _get_session(session_id)
+    _assert_owner(sess, username)
     if sess.proc is None or sess.proc.poll() is None:
         return {"status": "running", "result": None}
     return {"status": "finished", "result": sess.result or ""}
 
 
 @app.get("/api/download")
-def download_mod(session_id: str):
+def download_mod(session_id: str, authorization: str = Header(default="")):
     """把会话生成的 mod 目录打包成 zip 供用户下载。"""
+    username = _auth_username(authorization)
     sess = _get_session(session_id)
+    _assert_owner(sess, username)
     zip_path = SESSIONS_DIR / session_id / "mod.zip"
     shutil.make_archive(str(zip_path)[:-4], "zip", root_dir=str(sess.mod_dir))
     return FileResponse(
@@ -317,12 +369,14 @@ def list_games():
 
 
 @app.get("/api/events")
-def get_events(session_id: str, cursor: str = ""):
+def get_events(session_id: str, cursor: str = "", authorization: str = Header(default="")):
     """增量拉取 agent 事件流（思考 / 工具调用 / 待办 / 系统）。
 
     cursor 参数用 JSON 字符串传回（前台捕获上次返回的 cursor 再传入）。
     """
+    username = _auth_username(authorization)
     sess = _get_session(session_id)
+    _assert_owner(sess, username)
     if not sess.proc or sess.proc.poll() is None:
         # 未启动：允许读历史日志
         pass
@@ -342,9 +396,11 @@ def get_events(session_id: str, cursor: str = ""):
 
 
 @app.get("/api/files")
-def get_files(session_id: str, path: str = ""):
+def get_files(session_id: str, path: str = "", authorization: str = Header(default="")):
     """文件树 / 单文件预览（产物下载前可检视）。"""
+    username = _auth_username(authorization)
     sess = _get_session(session_id)
+    _assert_owner(sess, username)
     if not path:
         tree = log_events.build_file_tree(sess.mod_dir)
         return {"session_id": session_id, "tree": tree}
@@ -355,9 +411,11 @@ def get_files(session_id: str, path: str = ""):
 
 
 @app.get("/api/log")
-def get_log(session_id: str, offset: int = 0):
+def get_log(session_id: str, offset: int = 0, authorization: str = Header(default="")):
     """原始日志增量拉取（事件流的兜底方案，展示完整 stdio）。"""
+    username = _auth_username(authorization)
     sess = _get_session(session_id)
+    _assert_owner(sess, username)
     if not sess.log_path.exists():
         return {"content": "", "offset": 0}
     size = sess.log_path.stat().st_size
@@ -366,6 +424,69 @@ def get_log(session_id: str, offset: int = 0):
             f.seek(offset)
         content = f.read()
     return {"content": content, "offset": size}
+
+
+# ---------- 认证与用户历史 ----------
+
+@app.post("/api/register")
+def register_user(req: AuthRequest):
+    """注册新用户，成功后直接返回登录 token（免二次登录）。"""
+    try:
+        auth_store.register(req.username, req.password)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    token = auth_store.create_token(req.username.strip())
+    return {"username": req.username.strip(), "token": token}
+
+
+@app.post("/api/login")
+def login_user(req: AuthRequest):
+    """登录：校验密码，返回 token。"""
+    user = auth_store.check_credentials(req.username, req.password)
+    if not user:
+        raise HTTPException(401, "用户名或密码错误")
+    token = auth_store.create_token(user["username"])
+    return {"username": user["username"], "token": token}
+
+
+@app.get("/api/me")
+def me(authorization: str = Header(default="")):
+    """校验 token 有效性，返回当前用户（前端启动时免登检查用）。"""
+    username = _auth_username(authorization)
+    return {"username": username}
+
+
+@app.post("/api/logout")
+def logout(authorization: str = Header(default="")):
+    """注销：吊销 token。"""
+    token = ""
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization[len("Bearer "):].strip()
+    auth_store.revoke_token(token)
+    return {"ok": True}
+
+
+@app.get("/api/history")
+def get_history(authorization: str = Header(default="")):
+    """当前登录用户的历史记录（按用户隔离）。"""
+    username = _auth_username(authorization)
+    return {"history": auth_store.load_history(username)}
+
+
+@app.put("/api/history")
+def put_history(entry: HistoryEntry, authorization: str = Header(default="")):
+    """按 session_id 去重合并一条历史记录。"""
+    username = _auth_username(authorization)
+    history = auth_store.upsert_history(username, entry.model_dump())
+    return {"history": history}
+
+
+@app.delete("/api/history")
+def delete_history(authorization: str = Header(default="")):
+    """清空当前用户的历史记录。"""
+    username = _auth_username(authorization)
+    auth_store.clear_history(username)
+    return {"history": []}
 
 
 # ---------- 前端静态资源 ----------

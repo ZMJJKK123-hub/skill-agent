@@ -1,62 +1,32 @@
 /**
- * 历史记录管理（localStorage 持久化）
+ * 历史记录管理（服务端存储，按登录用户隔离）
  *
- * 核心修复：按 sessionId 去重。
- *  - 已存在的会话 → 合并更新耗时/文件数/时间，但【保留首次记录的 prompt】
- *  - 不存在的会话 → 插入到最前
+ * 所有读写都走后端 /api/history（带 Authorization 头），
+ * 不再使用 localStorage——不同用户之间的历史完全隔离。
  */
 
 import type { HistoryEntry } from "./types";
+import { fetchHistory, saveHistoryToServer, clearHistoryOnServer } from "./api";
 
-const KEY = "modforge_history_v2";
-const MAX = 20;
-
-export function loadHistory(): HistoryEntry[] {
+export async function loadHistory(): Promise<HistoryEntry[]> {
   try {
-    const raw = localStorage.getItem(KEY);
-    const list = raw ? JSON.parse(raw) : [];
-    return Array.isArray(list) ? (list as HistoryEntry[]) : [];
+    return await fetchHistory();
   } catch {
     return [];
   }
 }
 
-export function saveHistory(entry: HistoryEntry): HistoryEntry[] {
-  const list = loadHistory();
-  const idx = list.findIndex((h) => h.sessionId === entry.sessionId);
-  if (idx >= 0) {
-    // 已存在：仅更新耗时/文件数/时间，保留首次 prompt
-    const old = list[idx];
-    list[idx] = {
-      ...old,
-      elapsed: entry.elapsed ?? old.elapsed,
-      fileCount: entry.fileCount ?? old.fileCount,
-      date: entry.date || old.date,
-    };
-  } else {
-    list.unshift({
-      sessionId: entry.sessionId,
-      game: entry.game || "minecraft",
-      prompt: entry.prompt || "",
-      elapsed: entry.elapsed ?? null,
-      fileCount: entry.fileCount ?? null,
-      date:
-        entry.date ||
-        new Date().toLocaleString("zh-CN", { hour12: false }),
-    });
-  }
-  const trimmed = list.slice(0, MAX);
+export async function saveHistory(entry: HistoryEntry): Promise<void> {
   try {
-    localStorage.setItem(KEY, JSON.stringify(trimmed));
+    await saveHistoryToServer(entry);
   } catch {
-    /* 存储失败忽略 */
+    /* 网络/鉴权失败静默忽略，避免阻塞生成流程 */
   }
-  return trimmed;
 }
 
-export function clearHistory(): void {
+export async function clearHistory(): Promise<void> {
   try {
-    localStorage.removeItem(KEY);
+    await clearHistoryOnServer();
   } catch {
     /* noop */
   }
