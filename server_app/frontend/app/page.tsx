@@ -31,6 +31,7 @@ function AppInner() {
   const [historyVersion, setHistoryVersion] = useState(0);
   const [user, setUser] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
 
   // 轮询 Hook：事件流 + 状态（去重、AbortController、800ms）
   const polling = useSessionPolling();
@@ -61,11 +62,16 @@ function AppInner() {
     [clearCleanupTimer, polling, toast]
   );
 
-  // 启动时恢复登录态（token 有效则免登）
+  // 启动时恢复登录态（token 有效则免登）；未登录时自动弹出登录框（可关闭浏览）
   useEffect(() => {
     checkSession()
       .then((name) => {
-        if (name) setUser(name);
+        if (name) {
+          setUser(name);
+          setAuthOpen(false);
+        } else {
+          setAuthOpen(true);
+        }
       })
       .finally(() => setAuthChecked(true));
   }, []);
@@ -151,6 +157,7 @@ function AppInner() {
   const handleAuthed = useCallback(
     (name: string) => {
       setUser(name);
+      setAuthOpen(false);
       setHistoryVersion((v) => v + 1);
       toast(`欢迎，${name}`);
     },
@@ -190,9 +197,9 @@ function AppInner() {
       <VoxelBackground />
       <MouseEffect selectedGame={game} />
 
-      {/* 未登录：全屏登录/注册引导 */}
-      {authChecked && !user && (
-        <AuthModal onAuthed={handleAuthed} />
+      {/* 登录/注册弹窗（首次访问自动弹，也可点右上角按钮打开；可关闭浏览） */}
+      {authOpen && (
+        <AuthModal onAuthed={handleAuthed} onClose={() => setAuthOpen(false)} />
       )}
 
       <div className="relative z-10 flex min-h-screen flex-col">
@@ -200,6 +207,8 @@ function AppInner() {
           active={view}
           onChange={setView}
           username={user}
+          onLoginClick={() => setAuthOpen(true)}
+          onRegisterClick={() => setAuthOpen(true)}
           onLogout={handleLogout}
         />
 

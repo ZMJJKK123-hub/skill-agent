@@ -1,15 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, EyeOff, KeyRound, Loader2, LogIn, UserPlus, UserRound } from "lucide-react";
+import { Eye, EyeOff, KeyRound, Loader2, LogIn, UserPlus, UserRound, X } from "lucide-react";
 import { login, register } from "../lib/auth";
 
 interface AuthModalProps {
   /** 登录/注册成功后回调（携带用户名） */
   onAuthed: (username: string) => void;
+  /** 关闭弹窗（点遮罩/×）回调 */
+  onClose: () => void;
 }
 
-export default function AuthModal({ onAuthed }: AuthModalProps) {
+export default function AuthModal({ onAuthed, onClose }: AuthModalProps) {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -57,9 +59,24 @@ export default function AuthModal({ onAuthed }: AuthModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-zinc-950/80 backdrop-blur-sm">
-      {/* 中央玻璃卡片 */}
-      <div className="glass w-full max-w-sm p-8 !bg-ink-900/70">
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-zinc-950/80 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      {/* 中央玻璃卡片（阻止冒泡，点卡片内部不关闭） */}
+      <div
+        className="glass relative w-full max-w-sm p-8 !bg-ink-900/70"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 关闭按钮 */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-3 top-3 grid h-7 w-7 place-items-center rounded text-zinc-500 transition-colors hover:bg-white/10 hover:text-zinc-200"
+          aria-label="关闭"
+        >
+          <X size={16} />
+        </button>
         {/* 徽标 */}
         <div className="mb-6 flex flex-col items-center gap-3">
           <div className="grid h-14 w-14 place-items-center rounded-xl bg-gradient-to-br from-forge-cyan to-forge-emerald shadow-lg shadow-forge-cyan/25">
