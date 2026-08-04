@@ -67,7 +67,6 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 onKeyDown={handleKeyPress}
-                placeholder="sk-..."
                 autoComplete="new-password"
                 name="deepseek-api-key-field"
                 spellCheck={false}

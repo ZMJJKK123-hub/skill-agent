@@ -129,7 +129,6 @@ export default function AuthModal({ onAuthed, onClose, initialMode }: AuthModalP
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="输入用户名"
                 autoComplete="username"
                 spellCheck={false}
                 className="input-forge pl-9"
@@ -150,7 +149,6 @@ export default function AuthModal({ onAuthed, onClose, initialMode }: AuthModalP
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={mode === "register" ? "至少 6 位" : "输入密码"}
                 autoComplete={mode === "login" ? "current-password" : "new-password"}
                 className="input-forge pl-9 pr-10"
                 aria-label="密码"
@@ -181,7 +179,6 @@ export default function AuthModal({ onAuthed, onClose, initialMode }: AuthModalP
                   value={confirmPwd}
                   onChange={(e) => setConfirmPwd(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="再次输入密码"
                   autoComplete="new-password"
                   className="input-forge pl-9 pr-10"
                   aria-label="确认密码"
