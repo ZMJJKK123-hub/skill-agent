@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Navbar from "../components/Navbar";
 import Hero from "../components/Hero";
 import Stepper from "../components/Stepper";
@@ -9,6 +9,7 @@ import PromptStep from "../components/PromptStep";
 import GenerateStep from "../components/GenerateStep";
 import HistoryView from "../components/HistoryView";
 import VoxelBackground from "../components/VoxelBackground";
+import MouseEffect from "../components/MouseEffect";
 import { ToastProvider, useToast } from "../components/Toast";
 import * as API from "../lib/api";
 import { useSessionPolling } from "../lib/useSessionPolling";
@@ -33,20 +34,15 @@ function AppInner() {
   // 组件实例级的最后一次 prompt（历史记录保存用）
   const lastPrompt = useRef("");
 
-  // 加载游戏模板
-  const [gamesLoaded, setGamesLoaded] = useState(false);
-  useMemoInit(
-    () => {
-      if (gamesLoaded) return;
-      setGamesLoaded(true);
-      API.getGames()
-        .then((data) => {
-          if (data?.games?.length) setGames(data.games);
-        })
-        .catch(() => toast("游戏模板加载失败", "warn"));
-    },
-    [gamesLoaded, toast]
-  );
+  // 加载游戏模板（仅挂载一次）
+  useEffect(() => {
+    API.getGames()
+      .then((data) => {
+        if (data?.games?.length) setGames(data.games);
+      })
+      .catch(() => toast("游戏模板加载失败", "warn"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleCreated = useCallback(
     (apiKey: string, selectedGame: string) => {
@@ -74,21 +70,16 @@ function AppInner() {
     [sessionId, polling, toast]
   );
 
-  // 复用历史会话
+  // 复用历史会话：hydrate 一次性灌入历史事件+状态；
+  // 运行中自动续轮询，已完成静态展示；lastPrompt 清空避免复用被误记历史
   const handleResume = useCallback(
     async (sid: string) => {
       try {
-        const st = await API.getSession(sid);
+        await polling.hydrate(sid);
         setSessionId(sid);
         setView("workbench");
         setStep(3);
-        if (st.state === "running") {
-          polling.clear();
-          polling.start(sid);
-        } else {
-          // 已完成的会话直接展示产物（不重复记录历史）
-          polling.clear();
-        }
+        lastPrompt.current = "";
         setHistoryVersion((v) => v + 1);
         toast("已复用会话");
       } catch (err) {
@@ -113,28 +104,26 @@ function AppInner() {
     setStep(2);
   }, [polling]);
 
-  // 检测轮询中任务完成 → 写入历史（仅自然完成触发一次）
-  useMemoInit(
-    () => {
-      if (!polling.finished || !polling.sessionId) return;
-      if (lastPrompt.current === "") return;
-      saveHistory({
-        sessionId: polling.sessionId,
-        game,
-        prompt: lastPrompt.current,
-        elapsed: polling.status?.elapsed ?? null,
-        fileCount: polling.status?.file_count ?? null,
-        date: new Date().toLocaleString("zh-CN", { hour12: false }),
-      });
-      lastPrompt.current = ""; // 防重复记录
-      setHistoryVersion((v) => v + 1);
-    },
-    [polling.finished, polling.sessionId, polling.status, game]
-  );
+  // 检测轮询中任务完成 → 写入历史（真正的 useEffect：deps 变化才触发）
+  useEffect(() => {
+    if (!polling.finished || !polling.sessionId) return;
+    if (lastPrompt.current === "") return;
+    saveHistory({
+      sessionId: polling.sessionId,
+      game,
+      prompt: lastPrompt.current,
+      elapsed: polling.status?.elapsed ?? null,
+      fileCount: polling.status?.file_count ?? null,
+      date: new Date().toLocaleString("zh-CN", { hour12: false }),
+    });
+    lastPrompt.current = ""; // 防重复记录
+    setHistoryVersion((v) => v + 1);
+  }, [polling.finished, polling.sessionId, polling.status, game]);
 
   return (
     <div className="relative min-h-screen">
       <VoxelBackground />
+      <MouseEffect selectedGame={game} />
 
       <div className="relative z-10 flex min-h-screen flex-col">
         <Navbar active={view} onChange={setView} />
@@ -179,22 +168,6 @@ function AppInner() {
             />
           )}
         </main>
-
-        <footer className="border-t border-white/5 py-6 text-center">
-          <div className="mb-3 flex flex-wrap justify-center gap-2">
-            {["FastAPI", "DeepSeek", "Agent Core", "React"].map((t) => (
-              <span
-                key={t}
-                className="rounded-full border border-white/5 bg-white/[0.03] px-3 py-0.5 text-xs text-zinc-500"
-              >
-                {t}
-              </span>
-            ))}
-          </div>
-          <p className="text-xs text-zinc-600">
-            生成的产物仅供学习与本地使用，API Key 不落盘、不共享。
-          </p>
-        </footer>
       </div>
     </div>
   );
@@ -204,16 +177,6 @@ function AppInner() {
 const API_GAMES_FALLBACK = [
   { id: "minecraft", name: "minecraft", description: "" },
 ];
-
-/** 极简 useEffect 封装：仅在依赖变化时执行一次副作用 */
-function useMemoInit(fn: () => void, deps: unknown[]) {
-  const ref = useRef(false);
-  if (!ref.current) {
-    ref.current = true;
-    fn();
-  }
-  void deps;
-}
 
 export default function Page() {
   return (

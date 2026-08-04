@@ -49,7 +49,7 @@ export default function HistoryView({ onResume, onClear }: HistoryViewProps) {
         {history.map((h) => (
           <div
             key={h.sessionId}
-            className="glass group flex flex-col p-4 transition-all duration-200 hover:border-white/15 hover:shadow-glow"
+            className="glass group flex flex-col p-4 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/30 hover:shadow-[0_0_15px_rgba(16,185,129,0.1)]"
           >
             {/* 顶部：游戏 + 时间 */}
             <div className="flex items-center justify-between">

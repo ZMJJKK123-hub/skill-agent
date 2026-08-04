@@ -194,7 +194,7 @@ export default function GenerateStep({
               {events.length} 事件
             </span>
           </div>
-          <div className="max-h-[520px] overflow-y-auto">
+          <div className="terminal-scroll max-h-[520px] overflow-y-auto">
             <EventTimeline events={events} loading={running} />
           </div>
         </div>

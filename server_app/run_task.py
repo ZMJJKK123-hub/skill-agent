@@ -27,6 +27,16 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 
 def main() -> int:
+    # 强制 stdout 行缓冲 + 直写：print 每行立即落盘（run.log），
+    # 否则 Windows 重定向下 print 积压到 ~8KB 才写出，
+    # 前端实时轮询读不到增量 → 表现为"卡住、结束才全部蹦出来"。
+    # 覆盖 run_task.py 与 core 里所有不带 flush=True 的 print。
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(line_buffering=True, write_through=True)
+        except (AttributeError, ValueError, OSError):
+            pass
+
     # 参数：会话目录（独立 mod 工作区）、用户自己的 API Key、任务提示词
     if len(sys.argv) < 4:
         print("Usage: python run_task.py <session_dir> <api_key> <task_prompt>")

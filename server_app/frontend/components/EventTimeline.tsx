@@ -37,18 +37,29 @@ function parseToolArgs(content: string): string {
   return idx === -1 ? "" : content.slice(idx + 1).trim();
 }
 
-/** 事件类型 → 图标颜色类 */
+/** 事件类型 → 图标颜色类（思考=琥珀 / 工具=蓝 / 待办=绿 / 其余灰） */
 function iconColor(type: AgentEventType): string {
   switch (type) {
     case "thinking":
-      return "text-forge-purple";
+      return "text-amber-400/80";
     case "tool_call":
-      return "text-forge-cyan";
+      return "text-blue-400/80";
     case "todo":
       return "text-forge-emerald";
+    case "round":
+      return "text-zinc-500";
     default:
       return "text-zinc-600";
   }
+}
+
+/** 检测事件内容是否含错误关键词（回报错的部分用暗红渲染） */
+const ERROR_PATTERN =
+  /(error|exception|failed|failed:|失败|报错|错误|Traceback|Error)/i;
+
+function isErrorEvent(ev: AgentEvent): boolean {
+  if (ERROR_PATTERN.test(ev.content)) return true;
+  return false;
 }
 
 function SkeletonEvents() {
@@ -86,14 +97,35 @@ export default function EventTimeline({ events, loading }: EventTimelineProps) {
         const Icon = TYPE_ICON[ev.type] || FileText;
         const isTool = ev.type === "tool_call";
         const label = TYPE_LABEL[ev.type] || ev.type;
+        const isErr = isErrorEvent(ev);
 
         return (
           <div key={`${ev.id}-${idx}`} className="group animate-fadeUp">
-            <div className="flex items-start gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-white/[0.03]">
-              <Icon size={13} className={`mt-0.5 shrink-0 ${iconColor(ev.type)}`} />
+            <div
+              className={[
+                "flex items-start gap-2 rounded-md px-2 py-1.5 transition-colors",
+                isErr
+                  ? "bg-rose-500/[0.04] hover:bg-rose-500/[0.08]"
+                  : "hover:bg-white/[0.03]",
+              ].join(" ")}
+            >
+              <Icon
+                size={13}
+                className={`mt-0.5 shrink-0 ${
+                  isErr ? "text-rose-400/80" : iconColor(ev.type)
+                }`}
+              />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className={ev.type === "log" ? "text-zinc-500" : "text-zinc-300"}>
+                  <span
+                    className={
+                      isErr
+                        ? "text-rose-300/90"
+                        : ev.type === "log"
+                          ? "text-zinc-500"
+                          : "text-zinc-300"
+                    }
+                  >
                     {label}
                   </span>
                   {ev.peer && (
@@ -109,17 +141,25 @@ export default function EventTimeline({ events, loading }: EventTimelineProps) {
                 </div>
 
                 {isTool ? (
-                  <div className="mt-0.5 break-all text-zinc-400">
-                    <span className="text-forge-cyan/80">{parseToolText(ev.content)}</span>
+                  <div className={isErr ? "mt-0.5 break-all text-rose-300/80" : "mt-0.5 break-all text-zinc-400"}>
+                    <span className={isErr ? "text-rose-300/90" : "text-forge-cyan/80"}>
+                      {parseToolText(ev.content)}
+                    </span>
                     {parseToolArgs(ev.content) && (
-                      <span className="text-zinc-500">
+                      <span className={isErr ? "text-rose-300/60" : "text-zinc-500"}>
                         {" "}
                         · {parseToolArgs(ev.content).slice(0, 80)}
                       </span>
                     )}
                   </div>
                 ) : (
-                  <div className="mt-0.5 whitespace-pre-wrap break-words text-zinc-400">
+                  <div
+                    className={
+                      isErr
+                        ? "mt-0.5 whitespace-pre-wrap break-words text-rose-300/80"
+                        : "mt-0.5 whitespace-pre-wrap break-words text-zinc-400"
+                    }
+                  >
                     {ev.content}
                   </div>
                 )}

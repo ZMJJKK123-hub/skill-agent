@@ -87,8 +87,41 @@ export function useSessionPolling() {
     [stop]
   );
 
+  /** 复用会话：一次拉取全量事件+状态；running 则续上轮询，已完成则静态展示（含 finished 标记） */
+  const hydrate = useCallback(
+    async (sid: string) => {
+      stop();
+      seenIds.current.clear();
+      cursorRef.current = null;
+      setSessionId(sid);
+      setEvents([]);
+      setStatus(null);
+      setRunning(false);
+      setFinished(false);
+      try {
+        const [evData, st] = await Promise.all([
+          API.getEvents(sid, null),
+          API.getSession(sid),
+        ]);
+        cursorRef.current = evData.cursor;
+        const fresh = evData.events ?? [];
+        fresh.forEach((e) => seenIds.current.add(e.id));
+        setEvents(fresh);
+        setStatus(st);
+        setRunning(st.state === "running");
+        setFinished(st.state === "finished");
+        if (st.state === "running") {
+          start(sid);
+        }
+      } catch {
+        /* 由调用方统一处理错误 */
+      }
+    },
+    [start, stop]
+  );
+
   // 卸载清理
   useEffect(() => stop, [stop]);
 
-  return { sessionId, events, status, running, finished, start, stop, clear };
+  return { sessionId, events, status, running, finished, start, stop, clear, hydrate };
 }

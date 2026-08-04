@@ -63,8 +63,47 @@ class Session:
         self.event_cursor = None  # 事件流游标（由 /api/events 维护）
 
 
-# 内存会话表（试水规模够用；坚持到需要持久化时再换数据库）
+# 会话表：新会话进内存；服务启动时从磁盘恢复历史会话（供下载/预览/事件）
+# 注意：恢复的会话 api_key 为空（key 不落盘），只能查看产物，不能重新跑任务
 sessions: dict[str, Session] = {}
+
+
+def _restore_sessions() -> None:
+    """启动时扫描 data/sessions/*/，把历史会话重建进内存表。
+
+    这样服务重启后，之前的 mod.zip / 产物树 / 事件日志依然可访问（下载、
+    文件预览、事件回放），解决“历史记录点下载提示会话不存在”的问题。
+    api_key 不落盘 → 恢复的会话置空，下载/回放不受影响。
+    """
+    if not SESSIONS_DIR.exists():
+        return
+    for child in sorted(SESSIONS_DIR.iterdir()):
+        if not child.is_dir():
+            continue
+        mod_dir = child / "mod"
+        if not mod_dir.exists():
+            continue
+        session_id = child.name
+        if session_id in sessions:
+            continue
+        sess = Session(session_id, mod_dir, api_key="")
+        sessions[session_id] = sess
+
+        # 有 run.log 说明跑过任务；有 mod.zip 说明已打包完成
+        run_log = child / "run.log"
+        zip_file = child / "mod.zip"
+        if zip_file.exists():
+            # 已完成：锁定结束时间（用 zip 文件 mtime，幂等）
+            sess.proc = None
+            sess.started_at = zip_file.stat().st_mtime - 60  # 粗略估算开始时间(留 60s 余量)
+            sess.finished_at = zip_file.stat().st_mtime
+            sess.result = "（历史会话，产物已生成）"
+        elif run_log.exists() and run_log.stat().st_size > 0:
+            # 有日志但未打包：视为历史中已结束（进程已不在）但未打包
+            sess.started_at = run_log.stat().st_mtime - 60
+            sess.finished_at = run_log.stat().st_mtime
+            sess.result = "（历史会话，未生成 zip）"
+        # 无日志：纯骨架会话，保持 pending
 
 app = FastAPI(title="MOD Agent 制作器", version="0.1.0")
 
@@ -100,9 +139,16 @@ def _get_session(session_id: str) -> Session:
 
 
 def _session_stats(sess: Session) -> dict:
-    """汇总会话状态：运行状态 / 耗时 / 产物统计。"""
+    """汇总会话状态：运行状态 / 耗时 / 产物统计。
+
+    finished 判定：进程已退出（proc 非 None 且 poll 非 None），
+    或恢复的历史会话（proc=None 但 finished_at 已锁定，如已打包 zip）。
+    否则新建未跑任务的会话（proc=None 且 finished_at=None）保持 pending。
+    """
     running = sess.proc is not None and sess.proc.poll() is None
-    finished = sess.proc is not None and sess.proc.poll() is not None
+    finished = (sess.proc is not None and sess.proc.poll() is not None) or (
+        sess.proc is None and sess.finished_at is not None
+    )
     state = "running" if running else ("finished" if finished else "pending")
 
     # 统计产物文件数量与总大小
@@ -122,6 +168,13 @@ def _session_stats(sess: Session) -> dict:
 
     elapsed = None
     if sess.started_at:
+        # 进程已结束但 finished_at 未锁定时，幂等锁定一次。
+        # 否则每次轮询都用 time.time()，已完成任务的耗时仍在增长。
+        if (sess.finished_at is None
+                and sess.proc is not None
+                and not running
+                and finished):
+            sess.finished_at = time.time()
         end = sess.finished_at if sess.finished_at else time.time()
         elapsed = int(end - sess.started_at)
 
@@ -335,5 +388,7 @@ app.mount("/", StaticFiles(directory=str(WEB_DIR), html=True), name="web")
 if __name__ == "__main__":
     import uvicorn
 
-    print("MOD Agent 制作器已启动: http://localhost:8000")
+    # 启动时恢复历史会话（供下载/预览/事件回放），服务重启不丢失
+    _restore_sessions()
+    print(f"MOD Agent 制作器已启动: http://localhost:8000（恢复 {len(sessions)} 个历史会话）")
     uvicorn.run(app, host="0.0.0.0", port=8000)

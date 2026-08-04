@@ -87,7 +87,8 @@ function TreeNode({
   onToggle,
 }: TreeNodeProps) {
   const isDir = node.type === "dir";
-  const indent = depth * 16;
+  // VS Code 风格：每级固定递增 12px，紧凑且适合深层级
+  const indent = depth * 12 + 8;
   const isOpen = !collapsed[node.path];
   const Icon = isDir ? (isOpen ? FolderOpen : Folder) : fileIcon(node.name);
 
@@ -95,40 +96,41 @@ function TreeNode({
     <div>
       <button
         onClick={() => (isDir ? onToggle(node.path) : onSelect(node.path))}
-        style={{ paddingLeft: 12 + indent }}
-        className={`flex w-full items-center gap-1.5 rounded-md py-1.5 pr-2 text-left font-mono text-[12.5px] transition-colors duration-150 ${
+        style={{ paddingLeft: indent }}
+        className={`flex h-7 w-full items-center gap-1.5 pr-2 text-left font-mono text-[13px] transition-colors duration-100 ${
           selectedPath === node.path
-            ? "bg-forge-cyan/10 text-forge-cyan"
-            : "text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200"
+            ? "bg-zinc-800/70 text-zinc-100"
+            : "text-zinc-300 hover:bg-zinc-800/50 hover:text-zinc-100"
         }`}
       >
         {isDir ? (
           <ChevronRight
-            size={12}
-            className={`shrink-0 transition-transform duration-150 ${
+            size={11}
+            className={`shrink-0 text-zinc-500 transition-transform duration-150 ${
               isOpen ? "rotate-90" : ""
             }`}
           />
         ) : (
-          <span className="w-3 shrink-0" />
+          <span className="w-3.5 shrink-0" />
         )}
         <Icon
-          size={13}
+          size={14}
           className={`shrink-0 ${
             isDir ? "text-forge-amber/70" : "text-zinc-500"
           }`}
         />
-        <span className="min-w-0 flex-1 truncate">{node.name}</span>
+        {/* 不 truncate：深层级也完整显示文件名，超宽时父容器横向滚动 */}
+        <span className="flex-1 whitespace-nowrap">{node.name}</span>
         {node.type === "file" && (
-          <span className="shrink-0 text-[10px] text-zinc-600">
+          <span className="ml-auto shrink-0 text-xs text-zinc-600">
             {(node.size || 0) / 1024 > 0
               ? `${((node.size || 0) / 1024).toFixed(1)}k`
-              : "1KB以下"}
+              : "<1k"}
           </span>
         )}
       </button>
       {isDir && isOpen && node.children && (
-        <div>
+        <div>{/* 子节点缩进已由 depth 计算，无需额外容器样式 */}
           {node.children.map((child) => (
             <TreeNode
               key={child.path}
@@ -224,8 +226,8 @@ export default function ArtifactExplorer({ sessionId }: ArtifactExplorerProps) {
       </div>
 
       <div className="grid min-h-[320px] grid-cols-[240px_1fr] max-md:grid-cols-1">
-        {/* 左侧文件树 */}
-        <div className="max-h-[480px] overflow-auto border-r border-white/5 bg-ink-950/40 p-1">
+        {/* 左侧文件树（紧凑/高密度/整行交互/横向滚动） */}
+        <div className="file-tree-scroll max-h-[480px] overflow-x-auto overflow-y-auto border-r border-white/5 bg-ink-950/40 p-1">
           {!tree ? (
             <div className="flex h-full min-h-[280px] items-center justify-center text-xs text-zinc-600">
               暂无产物文件

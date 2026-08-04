@@ -30,20 +30,24 @@
   body {
     @apply bg-ink-950 text-zinc-300 font-sans;
   }
-  /* 自定义滚动条 */
+
+  /* 全局滚动条：极细 6px 深灰圆角（防止浏览器默认粗大白条破坏质感） */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.12);
+    background: #3f3f46; /* bg-zinc-700 */
     border-radius: 999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.22);
+    background: #52525b;
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
   }
 }
 
@@ -75,11 +79,11 @@
     animation: shine 3s ease-in-out infinite;
   }
 
-  /* 输入框（保险箱质感） */
+  /* 输入框（保险箱质感）：暗色底 + 保持绿 focus ring */
   .input-forge {
-    @apply w-full px-4 py-2.5 rounded-lg bg-ink-950/80 border border-white/10 text-zinc-200
+    @apply w-full px-4 py-2.5 rounded-lg bg-zinc-900/60 border border-white/10 text-zinc-300
            text-sm outline-none transition-all duration-200 placeholder:text-zinc-600
-           focus:border-forge-cyan/50 focus:shadow-glow font-mono;
+           focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 font-mono;
   }
 
   /* 等宽小字 */
@@ -98,4 +102,46 @@
     );
     background-size: 200% 100%;
   }
+
+  /* 终端区 / 文件树专属细滚动条（覆盖全局，更精致） */
+  .terminal-scroll::-webkit-scrollbar,
+  .file-tree-scroll::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  .terminal-scroll::-webkit-scrollbar-thumb,
+  .file-tree-scroll::-webkit-scrollbar-thumb {
+    background: #3f3f46;
+    border-radius: 999px;
+  }
+  .terminal-scroll::-webkit-scrollbar-track,
+  .file-tree-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* 文件树缩进辅助线：极暗垂直引导线，帮助看清嵌套层级 */
+  .file-tree-scroll {
+    background-image: repeating-linear-gradient(
+      90deg,
+      rgba(63, 63, 70, 0.12) 0,
+      rgba(63, 63, 70, 0.12) 1px,
+      transparent 1px,
+      transparent 12px
+    );
+    background-attachment: local;
+  }
+}
+
+/* ===== MouseEffect（仅 minecraft 时由组件给 body 添加） ===== */
+.theme-minecraft-cursor,
+.theme-minecraft-cursor * {
+  cursor: crosshair;
+}
+.theme-minecraft-cursor a,
+.theme-minecraft-cursor button,
+.theme-minecraft-cursor input,
+.theme-minecraft-cursor textarea,
+.theme-minecraft-cursor select,
+.theme-minecraft-cursor [role="button"] {
+  cursor: pointer;
 }
