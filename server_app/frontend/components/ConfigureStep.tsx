@@ -58,25 +58,16 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
 
   return (
     <div className="glass mx-auto max-w-3xl p-6 md:p-8">
-      {/* 标题 + 辅助说明 */}
-      <div>
-        <h2 className="text-lg font-bold text-zinc-100">配置生成环境</h2>
-        <p className="mt-1 text-xs text-zinc-500">
-          请配置您的底层大模型凭证与目标锻造环境
-        </p>
-      </div>
+      <h2 className="text-lg font-bold text-zinc-100">配置生成环境</h2>
 
       {/* 各区大间距 */}
-      <div className="mt-8 space-y-8">
+      <div className="mt-8 space-y-10">
         {/* API Key 区：桌面端左右分栏 */}
         <div className="grid items-start gap-4 sm:grid-cols-3 sm:gap-6">
-          <div>
+          <div className="flex flex-col gap-1.5">
             <label className="block text-sm font-medium text-zinc-400">
               DeepSeek API Key
             </label>
-            <p className="mt-1 hidden text-xs leading-relaxed text-zinc-600 sm:block">
-              仅用于本次生成，使用后即从页面清除，不落盘、不共享
-            </p>
           </div>
           <div className="sm:col-span-2">
             <div className="relative">
@@ -117,7 +108,7 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
                   key={g.id}
                   onClick={() => setGame(g.id)}
                   className={clsx(
-                    "group relative flex aspect-square flex-col items-center justify-center gap-2 rounded-xl border p-4 text-center transition-all duration-200",
+                    "group relative flex aspect-[4/3] flex-col items-center justify-center gap-3 rounded-xl border p-4 text-center transition-all duration-200",
                     selected
                       ? "border-emerald-500/30 bg-gradient-to-b from-emerald-500/10 to-transparent"
                       : "border-white/[0.05] bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.03]"
@@ -129,11 +120,11 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
                   <span className="block text-sm font-semibold text-zinc-100">
                     {g.name}
                   </span>
-                  <span className="block font-mono text-[10px] uppercase tracking-wider text-zinc-600">
-                    Engine · Fabric
+                  <span className="mt-1 block font-mono text-[10px] tracking-widest text-zinc-500">
+                    ENGINE · FABRIC
                   </span>
                   {selected && (
-                    <span className="absolute right-2 top-2 grid h-4 w-4 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/15 text-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.4)]">
+                    <span className="absolute right-3 top-3 grid h-4 w-4 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/15 text-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.4)]">
                       <svg
                         viewBox="0 0 16 16"
                         className="h-2.5 w-2.5"
@@ -157,14 +148,14 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
             {COMING_SOON.map((name) => (
               <div
                 key={name}
-                className="flex aspect-square flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/[0.06] bg-white/[0.01] p-4 text-center opacity-60"
+                className="flex aspect-[4/3] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/[0.06] bg-white/[0.01] p-4 text-center opacity-60"
               >
                 <Lock size={16} className="text-zinc-600" />
                 <span className="block text-sm font-medium text-zinc-500">
                   {name}
                 </span>
-                <span className="block font-mono text-[10px] uppercase tracking-wider text-zinc-700">
-                  即将支持
+                <span className="mt-1 block font-mono text-[10px] tracking-widest text-zinc-700">
+                  COMING SOON
                 </span>
               </div>
             ))}
@@ -180,14 +171,14 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
         {/* 操作区：分隔线 + 右侧按钮 */}
         <div className="border-t border-zinc-800 pt-6">
           <div className="flex items-center justify-end gap-3">
-            <button onClick={handleReset} className="btn-ghost" type="button">
+            <button onClick={handleReset} className="btn-ghost text-zinc-400" type="button">
               <RotateCcw size={14} />
               重置
             </button>
             <button
               onClick={handleCreate}
               disabled={loading}
-              className="btn-primary w-auto px-6"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-600/50 bg-emerald-900/60 px-6 py-2.5 text-sm font-medium text-emerald-400 transition-all duration-300 hover:bg-emerald-800/80 hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? (
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-400/30 border-t-emerald-400" />
