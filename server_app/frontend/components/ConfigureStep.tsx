@@ -121,7 +121,7 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
                     {g.name}
                   </span>
                   <span className="mt-1 block font-mono text-[10px] tracking-widest text-zinc-500">
-                    ENGINE · FABRIC
+                    ENGINE · Forge
                   </span>
                   {selected && (
                     <span className="absolute right-3 top-3 grid h-4 w-4 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/15 text-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.4)]">
