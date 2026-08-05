@@ -6,7 +6,7 @@ import Hero from "../components/common_ui/Hero";
 import Stepper from "../components/common_ui/Stepper";
 import ConfigureStep from "../components/mc_ui/ConfigureStep";
 import PromptStep from "../components/mc_ui/PromptStep";
-import GenerateStep from "../components/common_ui/GenerateStep";
+import GenerateStep from "../components/mc_ui/generate/GenerateStep";
 import HistoryView from "../components/common_ui/HistoryView";
 import AuthModal from "../components/common_ui/AuthModal";
 import VoxelBackground from "../components/mc_ui/VoxelBackground";
@@ -271,6 +271,7 @@ function AppInner() {
                 <GenerateStep
                   sessionId={sessionId}
                   game={game}
+                  prompt={savedPrompt}
                   events={polling.events}
                   status={polling.status}
                   running={polling.running}
