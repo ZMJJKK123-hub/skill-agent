@@ -78,6 +78,8 @@ export default function GenerateStep({
   const [enchantOpen, setEnchantOpen] = useState(false);
   const prevFinished = useRef(false);
   const prevFloor = useRef(0);
+  /** 是否曾见过 running 状态：历史已完成会话复用（从未 running）不触发附魔 */
+  const sawRunning = useRef(false);
 
   // 经验值推进：事件增长 → 进度增长；完成 → 升满 30
   useEffect(() => {
@@ -103,11 +105,19 @@ export default function GenerateStep({
     prevFloor.current = floor;
   }, [xpLevel]);
 
-  // 附魔动画：仅本次自然完成（running→finished）触发
+  // 记录是否真正运行过（自然生成）；历史已完成会话复用不会置 true
+  useEffect(() => {
+    if (running) sawRunning.current = true;
+  }, [running]);
+
+  // 附魔动画：仅本次自然完成（running→finished）触发；
+  // 复用历史已完成会话（从未 running）直接置 prevFinished，不触发
   useEffect(() => {
     if (finished && !prevFinished.current) {
-      const t = setTimeout(() => setEnchantOpen(true), 500);
-      return () => clearTimeout(t);
+      if (sawRunning.current) {
+        const t = setTimeout(() => setEnchantOpen(true), 500);
+        return () => clearTimeout(t);
+      }
     }
     prevFinished.current = finished;
   }, [finished]);
