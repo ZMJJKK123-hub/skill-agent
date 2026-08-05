@@ -4,8 +4,8 @@ import { Download, Home, RefreshCcw } from "lucide-react";
 import clsx from "clsx";
 import EventTimeline from "./EventTimeline";
 import ArtifactExplorer from "./ArtifactExplorer";
-import { downloadSession } from "../lib/api";
-import type { AgentEvent, SessionStats } from "../lib/types";
+import { downloadSession } from "../../lib/api";
+import type { AgentEvent, SessionStats } from "../../lib/types";
 
 interface GenerateStepProps {
   sessionId: string;

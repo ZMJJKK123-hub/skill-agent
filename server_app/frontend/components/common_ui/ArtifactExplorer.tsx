@@ -16,8 +16,8 @@ import {
   Folder,
   FolderOpen,
 } from "lucide-react";
-import * as API from "../lib/api";
-import type { FilePreview, TreeNode } from "../lib/types";
+import * as API from "../../lib/api";
+import type { FilePreview, TreeNode } from "../../lib/types";
 
 // 注册常用语言
 hljs.registerLanguage("java", java);

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Eye, EyeOff, KeyRound, Loader2, LogIn, UserPlus, UserRound, X } from "lucide-react";
-import { login, register } from "../lib/auth";
+import { login, register } from "../../lib/auth";
 
 interface AuthModalProps {
   /** 登录/注册成功后回调（携带用户名） */

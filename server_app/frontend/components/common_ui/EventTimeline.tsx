@@ -1,5 +1,5 @@
 import { Braces, Circle, Cpu, FileText, ListChecks } from "lucide-react";
-import type { AgentEvent, AgentEventType } from "../lib/types";
+import type { AgentEvent, AgentEventType } from "../../lib/types";
 
 /** 事件类型 → Lucide 图标 */
 const TYPE_ICON: Record<string, typeof Cpu> = {

@@ -1,17 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Navbar from "../components/Navbar";
-import Hero from "../components/Hero";
-import Stepper from "../components/Stepper";
-import ConfigureStep from "../components/ConfigureStep";
-import PromptStep from "../components/PromptStep";
-import GenerateStep from "../components/GenerateStep";
-import HistoryView from "../components/HistoryView";
-import AuthModal from "../components/AuthModal";
-import VoxelBackground from "../components/VoxelBackground";
-import MouseEffect from "../components/MouseEffect";
-import { ToastProvider, useToast } from "../components/Toast";
+import Navbar from "../components/common_ui/Navbar";
+import Hero from "../components/common_ui/Hero";
+import Stepper from "../components/common_ui/Stepper";
+import ConfigureStep from "../components/mc_ui/ConfigureStep";
+import PromptStep from "../components/mc_ui/PromptStep";
+import GenerateStep from "../components/common_ui/GenerateStep";
+import HistoryView from "../components/common_ui/HistoryView";
+import AuthModal from "../components/common_ui/AuthModal";
+import VoxelBackground from "../components/mc_ui/VoxelBackground";
+import MouseEffect from "../components/common_ui/MouseEffect";
+import { ToastProvider, useToast } from "../components/common_ui/Toast";
 import * as API from "../lib/api";
 import { useSessionPolling } from "../lib/useSessionPolling";
 import { saveHistory } from "../lib/history";

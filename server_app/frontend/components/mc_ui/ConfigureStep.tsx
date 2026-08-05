@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { Check, Eye, EyeOff, Lock, RotateCcw, TriangleAlert, XCircle } from "lucide-react";
 import clsx from "clsx";
-import type { Game } from "../lib/types";
-import { useToast } from "./Toast";
+import type { Game } from "../../lib/types";
+import { useToast } from "../common_ui/Toast";
 
 interface ConfigureStepProps {
   games: Game[];

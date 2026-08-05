@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Download, Play, Trash2 } from "lucide-react";
-import { loadHistory, clearHistory } from "../lib/history";
-import { downloadSession } from "../lib/api";
-import type { HistoryEntry } from "../lib/types";
+import { loadHistory, clearHistory } from "../../lib/history";
+import { downloadSession } from "../../lib/api";
+import type { HistoryEntry } from "../../lib/types";
 
 interface HistoryViewProps {
   onResume: (sessionId: string) => void;
