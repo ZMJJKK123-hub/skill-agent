@@ -1,7 +1,8 @@
 /**
  * EnchantOverlay —— 附魔完成全屏遮罩。
  * 状态机：idle → appear → flip → enchanting → enchanted → done（关闭）。
- * 书舞台（perspective）+ 旋转环 + 漂浮符文 + XP 球 + 底部提示；enchanting 阶段触发附魔音效。
+ * 布局：阶段标题（上）+ 小型附魔书图片（中，3D 动画 + 旋转环）+ 描述/符文（下）。
+ * 文字与书图片完全分离、零重叠；漂浮符文 / XP 球 / 底部提示保留。
  */
 "use client";
 
@@ -48,19 +49,19 @@ export default function EnchantOverlay({ prompt, onComplete }: EnchantOverlayPro
     if (phase === "done") onComplete();
   }, [phase, onComplete]);
 
-      // 稳定随机：悬浮符文（65 个）
-      const particles = useMemo(
-        () =>
-          Array.from({ length: 65 }, (_, i) => ({
-            left: `${(i * 37) % 100}%`,
-            top: `${(i * 53) % 100}%`,
-            delay: `${((i * 37) % 30) / 10}s`,
-            fontSize: `${14 + ((i * 17) % 32)}px`,
-            color: PARTICLE_COLORS[i % PARTICLE_COLORS.length],
-            char: RUNES[i % RUNES.length],
-          })),
-        []
-      );
+  // 稳定随机：悬浮符文（65 个）
+  const particles = useMemo(
+    () =>
+      Array.from({ length: 65 }, (_, i) => ({
+        left: `${(i * 37) % 100}%`,
+        top: `${(i * 53) % 100}%`,
+        delay: `${((i * 37) % 30) / 10}s`,
+        fontSize: `${14 + ((i * 17) % 32)}px`,
+        color: PARTICLE_COLORS[i % PARTICLE_COLORS.length],
+        char: RUNES[i % RUNES.length],
+      })),
+    []
+  );
 
   // 稳定随机：XP 球（14 个）
   const orbs = useMemo(
@@ -75,6 +76,7 @@ export default function EnchantOverlay({ prompt, onComplete }: EnchantOverlayPro
   if (phase === "idle" || phase === "done") return null;
 
   const showingRings = phase === "enchanting" || phase === "enchanted";
+  const enchanted = phase === "enchanted";
   const bookClass =
     phase === "appear"
       ? "mc-a-appear"
@@ -85,7 +87,9 @@ export default function EnchantOverlay({ prompt, onComplete }: EnchantOverlayPro
           : phase === "enchanted"
             ? "mc-a-enchanted"
             : "";
-  const enchanted = phase === "enchanted";
+
+  /** 阶段标题（独立显示在书图片上方，不与图片重叠） */
+  const title = phase === "flip" ? "📜 翻页中..." : enchanted ? "附魔完成!" : "📖 需求之书";
 
   const tip =
     phase === "appear"
@@ -120,129 +124,127 @@ export default function EnchantOverlay({ prompt, onComplete }: EnchantOverlayPro
         ))}
       </div>
 
-      {/* 书舞台 */}
-      <div className="relative" style={{ width: 280, height: 360, perspective: 1000 }}>
-        {/* 旋转环 */}
-        {showingRings && (
-          <>
-            <div
-              className="absolute rounded-full border-2 border-dashed"
-              style={{ inset: -28, borderColor: "rgba(126,252,32,0.35)", animation: "mcRingSpin 4s linear infinite" }}
-            />
-            <div
-              className="absolute rounded-full border-2 border-dashed"
-              style={{ inset: -46, borderColor: "rgba(151,122,168,0.3)", animation: "mcRingSpin 3s linear infinite reverse" }}
-            />
-            <div
-              className="absolute rounded-full border-2 border-dashed"
-              style={{ inset: -64, borderColor: "rgba(255,215,0,0.15)", animation: "mcRingSpin 5s linear infinite" }}
-            />
-          </>
-        )}
-
-        {/* 附魔书 */}
+      {/* 中央内容列：标题 → 小图框 → 描述/符文 */}
+      <div
+        className="relative flex flex-col items-center"
+        style={{ gap: 22, maxWidth: 340 }}
+      >
+        {/* 阶段标题（独立） */}
         <div
-          className={`relative h-full w-full ${bookClass}`}
           style={{
-            background: enchanted
-              ? "linear-gradient(135deg,#A88BC4,#977AA8,#6A4E7A)"
-              : "linear-gradient(135deg,#7A5C1E,#654B17,#4E380E)",
-            border: `3px solid ${enchanted ? "#5A3E6A" : "#3A2508"}`,
-            boxShadow: enchanted
-              ? "inset 0 2px 0 rgba(255,255,255,0.1), 0 0 30px rgba(151,122,168,0.6), 0 0 80px rgba(151,122,168,0.2)"
-              : "inset 0 2px 0 rgba(255,255,255,0.1), 0 6px 24px rgba(0,0,0,0.7)",
-            transition: "all .5s",
+            fontSize: 24,
+            fontWeight: 700,
+            textAlign: "center",
+            color: enchanted ? MC.RUNE_UP : "#D7CCC8",
+            textShadow: enchanted
+              ? "0 2px 0 #000, 0 0 12px rgba(151,122,168,0.8)"
+              : "0 2px 0 #000",
           }}
         >
-          {/* 书脊 */}
-          <div
-            className="absolute left-0 top-0 h-full"
-            style={{ width: 24, background: "linear-gradient(90deg,#4E380E,#654B17)", borderRight: "2px solid #2A1800" }}
-          />
-          {/* 封面装饰线 */}
-          <div className="absolute h-px" style={{ left: 24, right: 5, top: 38, background: "rgba(255,255,255,0.08)" }} />
-          <div className="absolute h-px" style={{ left: 24, right: 5, bottom: 38, background: "rgba(255,255,255,0.08)" }} />
-          {/* 书内容 */}
-          <div className="absolute left-[24px] right-0 top-0 flex h-full flex-col items-center justify-center p-[24px]">
-            {phase === "flip" ? (
-              <>
-                <span style={{ fontSize: 18, color: "#D7CCC8", fontWeight: 700, textShadow: "0 2px 0 #000" }}>
-                  📜 翻页中...
-                </span>
-                <div style={{ marginTop: 12, fontSize: 38, opacity: 0.25 }}>📄</div>
-              </>
-            ) : enchanted ? (
-              <>
-                <span style={{ fontSize: 40 }}>📚</span>
-                <div style={{ marginTop: 8 }}>
-                  <span
-                    style={{
-                      fontSize: 26,
-                      fontWeight: 700,
-                      color: MC.RUNE_UP,
-                      textShadow: "0 2px 0 #000, 0 0 10px rgba(151,122,168,0.9), 0 0 24px rgba(151,122,168,0.5)",
-                      animation: "mcEGlow 1s ease-in-out infinite",
-                    }}
-                  >
-                    附魔完成!
-                  </span>
-                </div>
-                <div className="mt-2 flex gap-1">
-                  {COMPLETE_RUNES.map((r, i) => (
-                    <span
-                      key={i}
-                      style={{
-                        fontSize: 15,
-                        color: MC.RUNE_UP,
-                        animation: "mcEGlow 0.8s ease-in-out infinite",
-                        animationDelay: `${i * 0.05}s`,
-                      }}
-                    >
-                      {r}
-                    </span>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <>
-                <span style={{ fontSize: 18, color: "#D7CCC8", fontWeight: 700, textShadow: "0 2px 0 #000" }}>
-                  📖 需求之书
-                </span>
-                <div
-                  style={{
-                    marginTop: 10,
-                    padding: "8px 10px",
-                    background: "rgba(0,0,0,0.2)",
-                    border: "1px solid rgba(255,255,255,0.06)",
-                    maxWidth: 190,
-                  }}
-                >
-                  <p style={{ fontSize: 11, color: "#BCAAA4", lineHeight: 1.4, maxHeight: 64, overflow: "hidden" }}>
-                    {prompt}
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
+          {title}
         </div>
 
-        {/* XP 球 */}
-        {showingRings && (
-          <div className="absolute flex gap-[5px]" style={{ bottom: -44, left: "50%", transform: "translateX(-50%)" }}>
-            {orbs.map((o, i) => (
-              <span
-                key={i}
-                className="rounded-full"
+        {/* 书舞台：小型附魔书图框 + 旋转环 + 3D 动画 */}
+        <div className="relative" style={{ width: 200, height: 200, perspective: 800 }}>
+          <div className="absolute inset-0 grid place-items-center">
+            {/* 小图框（带 3D 动画，居中不依赖 transform） */}
+            <div
+              className={`relative ${bookClass}`}
+              style={{
+                width: 112,
+                height: 144,
+                background: "#000",
+                border: `3px solid ${enchanted ? "#5A3E6A" : "#3A2508"}`,
+                boxShadow: enchanted
+                  ? "0 0 24px rgba(151,122,168,0.5)"
+                  : "0 4px 16px rgba(0,0,0,0.7)",
+              }}
+            >
+              {/* 旋转环（围绕小图框） */}
+              {showingRings && (
+                <>
+                  <div
+                    className="absolute rounded-full border-2 border-dashed"
+                    style={{ inset: -16, borderColor: "rgba(126,252,32,0.35)", animation: "mcRingSpin 4s linear infinite" }}
+                  />
+                  <div
+                    className="absolute rounded-full border-2 border-dashed"
+                    style={{ inset: -28, borderColor: "rgba(151,122,168,0.3)", animation: "mcRingSpin 3s linear infinite reverse" }}
+                  />
+                  <div
+                    className="absolute rounded-full border-2 border-dashed"
+                    style={{ inset: -40, borderColor: "rgba(255,215,0,0.15)", animation: "mcRingSpin 5s linear infinite" }}
+                  />
+                </>
+              )}
+
+              {/* 真实附魔书图片 */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/assets/mc_enchantedbook.png"
+                alt="附魔书"
+                className="h-full w-full object-contain [image-rendering:pixelated]"
                 style={{
-                  width: 9,
-                  height: 9,
-                  background: o.background,
-                  boxShadow: `0 0 8px ${o.background}`,
-                  animation: `mcOrbFloat 1.4s ease-out ${o.delay} infinite`,
+                  filter: enchanted
+                    ? "drop-shadow(0 0 12px rgba(151,122,168,0.7))"
+                    : undefined,
                 }}
               />
+            </div>
+          </div>
+
+          {/* XP 球（书舞台下方） */}
+          {showingRings && (
+            <div className="absolute flex gap-[5px]" style={{ bottom: 6, left: "50%", transform: "translateX(-50%)" }}>
+              {orbs.map((o, i) => (
+                <span
+                  key={i}
+                  className="rounded-full"
+                  style={{
+                    width: 9,
+                    height: 9,
+                    background: o.background,
+                    boxShadow: `0 0 8px ${o.background}`,
+                    animation: `mcOrbFloat 1.4s ease-out ${o.delay} infinite`,
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 下方文字（独立，不与图片重叠）：prompt 描述卡 / 符文行 */}
+        {enchanted ? (
+          <div className="flex gap-1">
+            {COMPLETE_RUNES.map((r, i) => (
+              <span
+                key={i}
+                style={{
+                  fontSize: 15,
+                  color: MC.RUNE_UP,
+                  animation: "mcEGlow 0.8s ease-in-out infinite",
+                  animationDelay: `${i * 0.05}s`,
+                }}
+              >
+                {r}
+              </span>
             ))}
           </div>
+        ) : phase !== "flip" ? (
+          <div
+            style={{
+              padding: "8px 10px",
+              background: "rgba(0,0,0,0.2)",
+              border: "1px solid rgba(255,255,255,0.06)",
+              maxWidth: 240,
+            }}
+          >
+            <p style={{ fontSize: 11, color: "#BCAAA4", lineHeight: 1.4, maxHeight: 64, overflow: "hidden", textAlign: "center" }}>
+              {prompt}
+            </p>
+          </div>
+        ) : (
+          <div style={{ fontSize: 30, opacity: 0.25 }}>📄</div>
         )}
       </div>
 
@@ -250,7 +252,7 @@ export default function EnchantOverlay({ prompt, onComplete }: EnchantOverlayPro
       <div
         className="absolute text-center"
         style={{
-          bottom: 150,
+          bottom: 48,
           left: "50%",
           transform: "translateX(-50%)",
           fontSize: 18,

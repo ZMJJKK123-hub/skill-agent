@@ -1,5 +1,8 @@
 /** mcSfx —— MC 原版音效纯函数（Web Audio API 合成）。移植自 v3 的 sndOrb/sndEnchant。 */
 
+/** 共享 AudioContext 单例：避免频繁 new/close 触发浏览器限制导致音效丢失 */
+let sharedCtx: AudioContext | null = null;
+
 /** 获取（或创建）共享 AudioContext，失败返回 null */
 function getCtx(): AudioContext | null {
   try {
@@ -8,9 +11,11 @@ function getCtx(): AudioContext | null {
       (window as unknown as { webkitAudioContext?: typeof AudioContext })
         .webkitAudioContext;
     if (!Ctx) return null;
-    const ctx = new Ctx();
-    if (ctx.state === "suspended") void ctx.resume();
-    return ctx;
+    if (!sharedCtx) {
+      sharedCtx = new Ctx();
+    }
+    if (sharedCtx.state === "suspended") void sharedCtx.resume();
+    return sharedCtx;
   } catch {
     return null;
   }
@@ -28,9 +33,6 @@ export function primeAudio(): boolean {
     src.start(0);
     void ctx.resume();
   } catch { /* ignore */ }
-  setTimeout(() => {
-    try { void ctx.close(); } catch { /* ignore */ }
-  }, 200);
   return true;
 }
 
@@ -103,7 +105,7 @@ export function playMcEnchantSound(onComplete?: () => void): void {
     });
 
     setTimeout(() => {
-      try { void ctx.close(); } catch { /* ignore */ }
+      /* 共享上下文不再关闭，交由 GC/页面卸载回收 */
       onComplete?.();
     }, 3200);
   } catch { onComplete?.(); }

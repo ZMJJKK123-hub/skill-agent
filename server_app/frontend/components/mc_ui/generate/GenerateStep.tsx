@@ -110,11 +110,16 @@ export default function GenerateStep({
     }
   }, [running, finished]);
 
-  // 升级音效：仅自然运行期间（xpSoundEnabled）跨整数时触发；
+  // 升级音效：仅自然运行期间（xpSoundEnabled）跨到 5 的倍数等级时触发（精确每 5 级一响）；
   // 复用历史会话 / 从历史回工作台（从未 running）绝不响
   useEffect(() => {
     const floor = Math.floor(xpLevel);
-    if (xpSoundEnabled.current && floor > prevFloor.current && floor > 0) {
+    if (
+      xpSoundEnabled.current &&
+      floor > prevFloor.current &&
+      floor > 0 &&
+      floor % 5 === 0
+    ) {
       playMcLevelUp();
     }
     prevFloor.current = floor;
