@@ -29,10 +29,16 @@ function AppInner() {
   const [game, setGame] = useState("minecraft");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [historyVersion, setHistoryVersion] = useState(0);
+  /** 保存配置页已填内容：返回配置页时回显（需求 page 返回后不重输） */
+  const [savedApiKey, setSavedApiKey] = useState("");
+  const [savedLoader, setSavedLoader] = useState("");
+  const [savedVersion, setSavedVersion] = useState("");
   const [user, setUser] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  /** 保存需求页已填的 MOD 需求：返回/重新生成后保留 */
+  const [savedPrompt, setSavedPrompt] = useState("");
 
   // 轮询 Hook：事件流 + 状态（去重、AbortController、800ms）
   const polling = useSessionPolling();
@@ -91,6 +97,10 @@ function AppInner() {
     (apiKey: string, selectedGame: string, loader?: string, version?: string) => {
       const g = selectedGame || game;
       setGame(g);
+      // 保存配置内容，返回配置页时回显
+      setSavedApiKey(apiKey);
+      setSavedLoader(loader ?? "");
+      setSavedVersion(version ?? "");
       return API.createSession(apiKey, g, loader ?? "", version ?? "").then((res) => {
         setSessionId(res.session_id);
         setStep(2);
@@ -147,12 +157,20 @@ function AppInner() {
     setHistoryVersion((v) => v + 1);
   }, [polling, clearCleanupTimer]);
 
-  // 重新生成 = 回到需求页
-  const handleRegenerate = useCallback(() => {
-    clearCleanupTimer();
-    polling.clear();
-    setStep(2);
-  }, [polling, clearCleanupTimer]);
+  // 重新生成 = 重置本次会话（保留 session_id/API Key，清空产物回复初始）+ 回需求页
+  const handleRegenerate = useCallback(
+    async (sid: string) => {
+      clearCleanupTimer();
+      polling.clear();
+      try {
+        await API.resetSession(sid);
+      } catch {
+        /* 网络失败不阻塞，仍回需求页 */
+      }
+      setStep(2);
+    },
+    [polling, clearCleanupTimer]
+  );
 
   // 登录/注册成功（AuthModal 回调）
   const handleAuthed = useCallback(
@@ -232,13 +250,21 @@ function AppInner() {
               <Stepper current={step} />
 
               {step === 1 && (
-                <ConfigureStep games={games} onCreateSession={handleCreated} />
+                <ConfigureStep
+                  games={games}
+                  onCreateSession={handleCreated}
+                  savedApiKey={savedApiKey}
+                  savedLoader={savedLoader}
+                  savedVersion={savedVersion}
+                />
               )}
               {step === 2 && sessionId && (
                 <PromptStep
                   sessionId={sessionId}
                   onBack={() => deleteSessionAndReset(sessionId, true)}
                   onRun={handleRun}
+                  value={savedPrompt}
+                  onChange={setSavedPrompt}
                 />
               )}
               {step === 3 && sessionId && (
@@ -250,7 +276,7 @@ function AppInner() {
                   running={polling.running}
                   finished={polling.finished}
                   onHome={handleHome}
-                  onRegenerate={handleRegenerate}
+                  onRegenerate={() => handleRegenerate(sessionId)}
                 />
               )}
             </>

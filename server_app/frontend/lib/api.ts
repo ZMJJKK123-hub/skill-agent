@@ -53,6 +53,13 @@ export function createSession(
   });
 }
 
+export function resetSession(sessionId: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(
+    `/api/session/reset?session_id=${encodeURIComponent(sessionId)}`,
+    { method: "POST" }
+  );
+}
+
 export function deleteSession(sessionId: string): Promise<{ ok: boolean }> {
   return request<{ ok: boolean }>(
     `/api/session?session_id=${encodeURIComponent(sessionId)}`,

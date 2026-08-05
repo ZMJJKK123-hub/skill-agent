@@ -52,11 +52,15 @@ TEMPLATES_DIR.mkdir(parents=True, exist_ok=True)
 class Session:
     """一个用户的生成会话：独立 mod 工作目录 + 子进程状态。"""
 
-    def __init__(self, session_id: str, mod_dir: Path, api_key: str, owner: str = ""):
+    def __init__(self, session_id: str, mod_dir: Path, api_key: str, owner: str = "",
+                 game: str = "minecraft", loader: str = "", version: str = ""):
         self.id = session_id
         self.mod_dir = mod_dir
         self.api_key = api_key
         self.owner = owner  # 归属用户名（空 = 未绑定/历史遗留会话，不可访问）
+        self.game = game          # 目标游戏（重置时重建骨架用）
+        self.loader = loader      # 加载器（如 forge）
+        self.version = version    # 版本（如 1.21.1）
         self.proc: Optional[subprocess.Popen] = None
         self.started_at: Optional[float] = None
         self.finished_at: Optional[float] = None
@@ -249,23 +253,67 @@ def create_session(req: SessionRequest, authorization: str = Header(default=""))
         (mod_dir.parent / "owner.txt").write_text(username, encoding="utf-8")
     except OSError:
         pass
-    sessions[session_id] = Session(session_id, mod_dir, req.api_key, owner=username)
+    sessions[session_id] = Session(session_id, mod_dir, req.api_key, owner=username,
+                                  game=req.game, loader=req.loader, version=req.version)
     return {"session_id": session_id, "mod_dir": str(mod_dir)}
 
 
 @app.delete("/api/session")
 def delete_session(session_id: str, authorization: str = Header(default="")):
-    """删除未运行任务的会话（10 分钟未开始任务时前端自动调用），
-    同时顺带清理已过期的登录 token（auth_sessions 不随会话删除，保住登录态）。"""
+    """删除会话：先中断后台子进程，再删除会话目录与记录。
+
+    用于「用户从 MOD 需求页返回 API 配置页」时彻底清理本次会话。
+    运行中的任务也会被强制终止（kill），确保能删掉。
+    """
     username = _auth_username(authorization)
     sess = _get_session(session_id)
     _assert_owner(sess, username)
     if sess.proc is not None and sess.proc.poll() is None:
-        raise HTTPException(400, "任务运行中，不能删除")
+        # 强行终止生成子进程
+        try:
+            sess.proc.kill()
+            sess.proc.wait(timeout=5)
+        except Exception:
+            pass
     sessions.pop(session_id, None)
     shutil.rmtree(sess.mod_dir.parent, ignore_errors=True)
     auth_store.prune_expired()
     return {"ok": True}
+
+
+@app.post("/api/session/reset")
+def reset_session(session_id: str, authorization: str = Header(default="")):
+    """重置会话：保留 session_id 与 API Key，清空产物/日志并恢复初始骨架。
+
+    用于「重新生成」——先中断后台子进程（若还在跑），
+    再把 mod/ 文件夹重置为最初的骨架占位（如仅 README），
+    方便用户在同一个 session 下重新生成。
+    """
+    username = _auth_username(authorization)
+    sess = _get_session(session_id)
+    _assert_owner(sess, username)
+    # 中断生成中的子进程（若存在）
+    if sess.proc is not None and sess.proc.poll() is None:
+        try:
+            sess.proc.kill()
+            sess.proc.wait(timeout=5)
+        except Exception:
+            pass
+    # 重置运行态
+    sess.proc = None
+    sess.started_at = None
+    sess.finished_at = None
+    sess.result = None
+    sess.event_cursor = None
+    # 清空 mod/ 与 run.log，重建初始骨架（保留记录的 game/loader/version）
+    shutil.rmtree(sess.mod_dir, ignore_errors=True)
+    if sess.log_path.exists():
+        try:
+            sess.log_path.unlink()
+        except OSError:
+            pass
+    _copy_template(sess.game, sess.mod_dir, sess.loader, sess.version)
+    return {"session_id": sess.id, "status": "reset"}
 
 
 @app.post("/api/task")

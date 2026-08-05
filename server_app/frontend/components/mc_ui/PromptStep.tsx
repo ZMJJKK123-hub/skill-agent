@@ -7,6 +7,9 @@ interface PromptStepProps {
   sessionId: string;
   onBack: () => void;
   onRun: (prompt: string) => Promise<void>;
+  /** 受控：MOD 需求文本（父级保存，返回/重进不清空） */
+  value: string;
+  onChange: (v: string) => void;
 }
 
 const TEMPLATES = [
@@ -36,10 +39,11 @@ const TEMPLATES = [
   },
 ];
 
-export default function PromptStep({ sessionId, onBack, onRun }: PromptStepProps) {
-  const [prompt, setPrompt] = useState("");
+export default function PromptStep({ sessionId, onBack, onRun, value, onChange }: PromptStepProps) {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
+  const prompt = value;
+  const setPrompt = onChange;
 
   const handleCopy = async () => {
     try {

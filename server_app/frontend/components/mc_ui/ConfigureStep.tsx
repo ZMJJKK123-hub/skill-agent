@@ -9,6 +9,10 @@ import { useToast } from "../common_ui/Toast";
 interface ConfigureStepProps {
   games: Game[];
   onCreateSession: (apiKey: string, game: string, loader?: string, version?: string) => Promise<void>;
+  /** 父级保存的已填内容：返回配置页时回显（需求 page 返回后不重输） */
+  savedApiKey?: string;
+  savedLoader?: string;
+  savedVersion?: string;
 }
 
 /** 即将支持的占位游戏 */
@@ -25,14 +29,20 @@ const LOADERS = [
 const VERSIONS = ["1.21.1", "1.20.1", "1.19.2"];
 const LATEST_VERSION = "1.21.1";
 
-export default function ConfigureStep({ games, onCreateSession }: ConfigureStepProps) {
+export default function ConfigureStep({
+  games,
+  onCreateSession,
+  savedApiKey = "",
+  savedLoader = "",
+  savedVersion = "",
+}: ConfigureStepProps) {
   const toast = useToast();
-  const [apiKey, setApiKey] = useState("");
+  const [apiKey, setApiKey] = useState(savedApiKey);
   const [showKey, setShowKey] = useState(false);
-  /** 初始全部为空：游戏 / Loader / Version 均无默认 */
-  const [game, setGame] = useState<string | null>(null);
-  const [loader, setLoader] = useState<string | null>(null);
-  const [version, setVersion] = useState<string | null>(null);
+  /** 游戏默认随父级选择（minecraft）；Loader/Version 用 saved 回显，无则空 */
+  const [game, setGame] = useState<string | null>("minecraft");
+  const [loader, setLoader] = useState<string | null>(savedLoader || null);
+  const [version, setVersion] = useState<string | null>(savedVersion || null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   /** 错误标记：apiKeyError / selectError（游戏/loader/version 未满） */
