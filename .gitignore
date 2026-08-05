@@ -10,6 +10,7 @@ agent.log
 data/
 cloudflared.exe
 .vscode/
+mod_material/
 
 # ---- 运行时日志 ----
 server_out.log

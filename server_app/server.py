@@ -117,6 +117,8 @@ app = FastAPI(title="MOD Agent 制作器", version="0.1.0")
 class SessionRequest(BaseModel):
     api_key: str
     game: str = "minecraft"   # 默认 Minecraft
+    loader: str = ""          # 可选：Mod Loader（如 forge / fabric）
+    version: str = ""         # 可选：游戏版本（如 1.21.1）
 
 
 class TaskRequest(BaseModel):
@@ -139,9 +141,17 @@ class HistoryEntry(BaseModel):
 
 
 # ---------- 会话生命周期 ----------
-def _copy_template(game: str, dest: Path) -> Path:
-    """把 mod_templates/<game>/ 复制到会话目录，作为 agent 的起点。"""
+def _copy_template(game: str, dest: Path, loader: str = "", version: str = "") -> Path:
+    """把对应模板复制到会话目录，作为 agent 的起点。
+
+    优先定位子目录 mod_templates/<game>/<loader>-<version>/；
+    子目录不存在或未传 loader/version 时回退到 <game>/ 根目录。
+    """
     src = TEMPLATES_DIR / game
+    if loader and version:
+        sub = TEMPLATES_DIR / game / f"{loader}-{version}"
+        if sub.exists():
+            src = sub
     dest.mkdir(parents=True, exist_ok=True)
     if src.exists():
         shutil.copytree(src, dest, dirs_exist_ok=True)
@@ -233,7 +243,7 @@ def create_session(req: SessionRequest, authorization: str = Header(default=""))
     username = _auth_username(authorization)
     session_id = uuid.uuid4().hex[:12]
     mod_dir = SESSIONS_DIR / session_id / "mod"
-    _copy_template(req.game, mod_dir)
+    _copy_template(req.game, mod_dir, req.loader, req.version)
     # 持久化归属：重启后恢复会话仍能返回原用户（owner.txt）
     try:
         (mod_dir.parent / "owner.txt").write_text(username, encoding="utf-8")

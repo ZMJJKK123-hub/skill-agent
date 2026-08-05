@@ -8,7 +8,7 @@ import { useToast } from "./Toast";
 
 interface ConfigureStepProps {
   games: Game[];
-  onCreateSession: (apiKey: string, game: string) => Promise<void>;
+  onCreateSession: (apiKey: string, game: string, loader?: string, version?: string) => Promise<void>;
 }
 
 /** 即将支持的占位游戏 */
@@ -72,7 +72,7 @@ export default function ConfigureStep({ games, onCreateSession }: ConfigureStepP
     }
     setLoading(true);
     try {
-      await onCreateSession(apiKey.trim(), game);
+      await onCreateSession(apiKey.trim(), game, loader ?? "", version ?? "");
       // 创建成功后立即清空，前端不再持有 API Key
       setApiKey("");
     } catch (err) {

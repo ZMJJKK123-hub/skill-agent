@@ -88,10 +88,10 @@ function AppInner() {
   }, []);
 
   const handleCreated = useCallback(
-    (apiKey: string, selectedGame: string) => {
+    (apiKey: string, selectedGame: string, loader?: string, version?: string) => {
       const g = selectedGame || game;
       setGame(g);
-      return API.createSession(apiKey, g).then((res) => {
+      return API.createSession(apiKey, g, loader ?? "", version ?? "").then((res) => {
         setSessionId(res.session_id);
         setStep(2);
         clearCleanupTimer();

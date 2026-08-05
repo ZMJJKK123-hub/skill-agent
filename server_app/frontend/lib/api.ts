@@ -40,11 +40,16 @@ export interface StartTaskResult {
   status: string;
 }
 
-export function createSession(apiKey: string, game: string): Promise<CreateSessionResult> {
+export function createSession(
+  apiKey: string,
+  game: string,
+  loader = "",
+  version = ""
+): Promise<CreateSessionResult> {
   return request<CreateSessionResult>("/api/session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ api_key: apiKey, game }),
+    body: JSON.stringify({ api_key: apiKey, game, loader, version }),
   });
 }
 
