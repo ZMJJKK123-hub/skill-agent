@@ -18,11 +18,11 @@ interface ConfigureStepProps {
 /** 即将支持的占位游戏 */
 const COMING_SOON = ["Stardew Valley", "Terraria"];
 
-/** 加载器：Forge 可用，NeoForge/Fabric WIP 禁用 */
+/** 加载器：Forge 可用，NeoForge/Fabric 锁定（下拉框内不可选，无警告） */
 const LOADERS = [
-  { id: "forge", label: "Forge", wip: false },
-  { id: "neoforge", label: "NeoForge", wip: true },
-  { id: "fabric", label: "Fabric", wip: true },
+  { id: "forge", label: "Forge", disabled: false },
+  { id: "neoforge", label: "NeoForge", disabled: true },
+  { id: "fabric", label: "Fabric", disabled: true },
 ];
 
 /** 可选的游戏版本：全部可选（老版本不锁，仅给非阻塞警告） */
@@ -110,11 +110,6 @@ export default function ConfigureStep({
     setDrawerOpen((v) => !v);
   };
 
-  /** Loader 药丸 toggle：已选再点则取消 */
-  const toggleLoader = (id: string) => {
-    setLoader((cur) => (cur === id ? null : id));
-    setSelectError(false);
-  };
 
   return (
     <div className="glass mx-auto max-w-3xl p-6 md:p-8">
@@ -249,35 +244,32 @@ export default function ConfigureStep({
           {drawerOpen && game === "minecraft" && (
             <div className="drawer-in mt-6 w-full rounded-xl border border-white/5 bg-black/40 p-5 shadow-inner shadow-black/60">
               <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
-                {/* 左列：MOD LOADER */}
+                {/* 左列：MOD LOADER（下拉框，与 GAME VERSION 同款；锁定项直接 disabled 不可选） */}
                 <div>
                   <div className="mb-3 font-mono text-xs tracking-widest text-zinc-500">
                     MOD LOADER
                   </div>
-                  <div className="flex flex-col gap-2">
+                  <select
+                    value={loader ?? ""}
+                    onChange={(e) => {
+                      setLoader(e.target.value || null);
+                      setSelectError(false);
+                    }}
+                    className={clsx(
+                      "w-full rounded-lg border px-4 py-2 font-mono text-sm outline-none transition-colors duration-150",
+                      loader
+                        ? "border border-emerald-500/50 bg-emerald-900/40 text-emerald-400"
+                        : "border border-zinc-800 bg-black/40 text-zinc-300"
+                    )}
+                  >
+                    <option value="">选择 Loader</option>
                     {LOADERS.map((l) => (
-                      <button
-                        key={l.id}
-                        disabled={l.wip}
-                        onClick={() => toggleLoader(l.id)}
-                        className={clsx(
-                          "flex items-center justify-between rounded-lg border px-4 py-2 text-sm transition-colors duration-150",
-                          l.wip
-                            ? "cursor-not-allowed border border-zinc-800 text-zinc-500 opacity-40"
-                            : loader === l.id
-                              ? "border border-emerald-500/50 bg-emerald-900/40 text-emerald-400"
-                              : "border border-zinc-800 text-zinc-300 hover:border-white/15 hover:text-zinc-100"
-                        )}
-                      >
+                      <option key={l.id} value={l.id} disabled={l.disabled}>
                         {l.label}
-                        {l.wip ? (
-                          <Lock size={12} className="text-zinc-600" />
-                        ) : loader === l.id ? (
-                          <Check size={12} />
-                        ) : null}
-                      </button>
+                        {l.disabled ? "（即将支持）" : ""}
+                      </option>
                     ))}
-                  </div>
+                  </select>
                 </div>
 
                 {/* 右列：GAME VERSION */}
