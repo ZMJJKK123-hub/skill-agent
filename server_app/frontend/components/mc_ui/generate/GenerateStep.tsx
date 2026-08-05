@@ -5,7 +5,7 @@
  *       + 右终端（McTerminal 智能体工作台）+ 附魔完成遮罩（EnchantOverlay）+ 产物浏览器。
  *
  * 数据接入：真实轮询事件 / 会话状态 / 文件统计；
- *   - 经验值 = 事件数映射 0→29.5（实时进度），finished 升满 30
+ *   - 经验值：running 固定速率增长 0→29.5，自然完成补满 30，复用历史会话直接满条
  *   - 升级跨整数 → playMcLevelUp；running→finished 自然完成 → 附魔动画 + 附魔音效
  *   - 复用历史会话（hydrate 的 finished）不自动播放附魔
  */
@@ -81,20 +81,28 @@ export default function GenerateStep({
   /** 是否曾见过 running 状态：历史已完成会话复用（从未 running）不触发附魔 */
   const sawRunning = useRef(false);
 
-  // 经验值推进：事件增长 → 进度增长；完成 → 升满 30
+  // 经验值推进：
+  //   - running（生成中）：固定速率平滑增长（800ms +0.3，封顶 29.5），与事件数无关
+  //   - finished 且本次自然完成过（sawRunning）：补满到 30
+  //   - finished 但从未 running（复用历史已完成会话）：直接满条 30，不再从 0 重爬
   useEffect(() => {
+    if (running) sawRunning.current = true;
+
+    if (finished && !sawRunning.current) {
+      setXpLevel(30);
+      return;
+    }
+    if (running && !finished) {
+      const id = setInterval(() => {
+        setXpLevel((v) => (v >= 29.5 ? 29.5 : v + 0.3));
+      }, 800);
+      return () => clearInterval(id);
+    }
     if (finished) {
       setXpLevel((v) => (v >= 30 ? 30 : Math.min(30, v + 0.5)));
       return;
     }
-    const target = Math.min(events.length / 3, 29.5);
-    // 平滑逼近 target（每 800ms 轮询一次，逐步靠拢）
-    setXpLevel((v) => {
-      const d = target - v;
-      if (Math.abs(d) < 0.05) return target;
-      return v + Math.sign(d) * 0.6;
-    });
-  }, [events.length, finished]);
+  }, [running, finished]);
 
   // 升级音效：跨整数
   useEffect(() => {
@@ -104,11 +112,6 @@ export default function GenerateStep({
     }
     prevFloor.current = floor;
   }, [xpLevel]);
-
-  // 记录是否真正运行过（自然生成）；历史已完成会话复用不会置 true
-  useEffect(() => {
-    if (running) sawRunning.current = true;
-  }, [running]);
 
   // 附魔动画：仅本次自然完成（running→finished）触发；
   // 复用历史已完成会话（从未 running）直接置 prevFinished，不触发
