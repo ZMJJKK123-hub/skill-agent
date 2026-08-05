@@ -52,19 +52,19 @@ export default function XpBar({ level, finished, running }: XpBarProps) {
 
   return (
     <div
-      className="relative flex flex-col gap-1.5 p-2.5"
+      className="relative flex flex-col gap-2 p-3"
       style={{ background: "rgba(0,0,0,0.6)", border: "2px solid #373737" }}
     >
       {/* 标签行：经验值 + 等级 */}
       <div className="flex items-center justify-between">
-        <span style={{ fontSize: 11, color: "#A0A0A0", textShadow: "0 1px 0 rgba(0,0,0,0.9)" }}>
+        <span style={{ fontSize: 14, color: "#A0A0A0", textShadow: "0 1px 0 rgba(0,0,0,0.9)" }}>
           经验值
         </span>
-        <div className="flex items-baseline gap-1">
+        <div className="flex items-baseline gap-1.5">
           <span
             className={finished ? "mc-xp-finished" : undefined}
             style={{
-              fontSize: 20,
+              fontSize: 28,
               fontWeight: 700,
               color: MC.XP_TOP,
               textShadow: finished
@@ -75,13 +75,13 @@ export default function XpBar({ level, finished, running }: XpBarProps) {
           >
             {floor}
           </span>
-          <span style={{ fontSize: 12, color: "#606060" }}>/ {MAX_XP}</span>
+          <span style={{ fontSize: 15, color: "#606060" }}>/ {MAX_XP}</span>
         </div>
       </div>
 
       {/* 轨道 */}
       <div
-        className="relative h-4 overflow-hidden"
+        className="relative h-6 overflow-hidden"
         style={{ background: MC.XP_TRACK, border: `2px solid ${MC.XP_TRACK_BORDER}` }}
       >
         {/* 4px 暗条纹背景 */}
@@ -105,7 +105,7 @@ export default function XpBar({ level, finished, running }: XpBarProps) {
         >
           {/* 顶部高光 */}
           <div
-            className="pointer-events-none absolute left-0 right-0 top-0 h-[3px]"
+            className="pointer-events-none absolute left-0 right-0 top-0 h-[4px]"
             style={{ background: "rgba(255,255,255,0.18)" }}
           />
         </div>
@@ -140,12 +140,12 @@ export default function XpBar({ level, finished, running }: XpBarProps) {
       {/* 升级飘字 */}
       {pop && (
         <div
-          className="pointer-events-none absolute -top-7 right-0"
+          className="pointer-events-none absolute -top-9 right-0"
           style={{ animation: "mcPopUp 1.4s ease-out forwards" }}
         >
           <span
             style={{
-              fontSize: 12,
+              fontSize: 16,
               fontWeight: 700,
               color: MC.XP_TOP,
               textShadow: "0 2px 0 #000, 0 0 8px rgba(126,252,32,0.8)",

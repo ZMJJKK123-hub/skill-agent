@@ -6,7 +6,13 @@
  */
 
 import type { HistoryEntry } from "./types";
-import { fetchHistory, saveHistoryToServer, clearHistoryOnServer } from "./api";
+import {
+  fetchHistory,
+  saveHistoryToServer,
+  clearHistoryOnServer,
+  deleteHistoryItem,
+  deleteHistoryItems,
+} from "./api";
 
 export async function loadHistory(): Promise<HistoryEntry[]> {
   try {
@@ -24,10 +30,28 @@ export async function saveHistory(entry: HistoryEntry): Promise<void> {
   }
 }
 
-export async function clearHistory(): Promise<void> {
+export async function clearHistory(): Promise<HistoryEntry[]> {
   try {
-    await clearHistoryOnServer();
+    return await clearHistoryOnServer();
   } catch {
-    /* noop */
+    return [];
+  }
+}
+
+/** 单条删除历史（后端同步删除会话目录与产物） */
+export async function removeHistoryItem(sessionId: string): Promise<HistoryEntry[]> {
+  try {
+    return await deleteHistoryItem(sessionId);
+  } catch {
+    return [];
+  }
+}
+
+/** 批量删除历史（后端同步删除会话目录与产物） */
+export async function removeHistoryItems(sessionIds: string[]): Promise<HistoryEntry[]> {
+  try {
+    return await deleteHistoryItems(sessionIds);
+  } catch {
+    return [];
   }
 }

@@ -28,22 +28,22 @@ function parseToolArgs(content: string): string {
 export default function McTerminal({ events, loading }: McTerminalProps) {
   return (
     <div
-      className="flex h-[500px] flex-col"
+      className="flex h-[640px] flex-col"
       style={{ background: "#0D0D0D", border: "2px solid #373737" }}
     >
       {/* 头部 */}
       <div
-        className="flex items-center gap-2 px-2.5 py-1.5"
+        className="flex items-center gap-2 px-3 py-2"
         style={{ background: "rgba(0,0,0,0.5)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}
       >
-        <span style={{ fontWeight: 700, fontSize: 11 }}>智能体工作台</span>
-        <span className="ml-auto" style={{ fontSize: 9, color: "#808090" }}>
+        <span style={{ fontWeight: 700, fontSize: 14 }}>智能体工作台</span>
+        <span className="ml-auto" style={{ fontSize: 12, color: "#808090" }}>
           {events.length} 事件
         </span>
       </div>
 
       {/* 事件体 */}
-      <div className="flex flex-1 flex-col gap-[3px] overflow-y-auto p-1.5" style={{ fontSize: 11 }}>
+      <div className="flex flex-1 flex-col gap-1 overflow-y-auto p-2" style={{ fontSize: 14 }}>
         {loading && events.length === 0 && (
           <div
             className="flex h-full items-center justify-center gap-1.5"

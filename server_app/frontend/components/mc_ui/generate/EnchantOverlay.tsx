@@ -48,19 +48,19 @@ export default function EnchantOverlay({ prompt, onComplete }: EnchantOverlayPro
     if (phase === "done") onComplete();
   }, [phase, onComplete]);
 
-  // 稳定随机：悬浮符文（65 个）
-  const particles = useMemo(
-    () =>
-      Array.from({ length: 65 }, (_, i) => ({
-        left: `${(i * 37) % 100}%`,
-        top: `${(i * 53) % 100}%`,
-        delay: `${((i * 37) % 30) / 10}s`,
-        fontSize: `${10 + ((i * 17) % 24)}px`,
-        color: PARTICLE_COLORS[i % PARTICLE_COLORS.length],
-        char: RUNES[i % RUNES.length],
-      })),
-    []
-  );
+      // 稳定随机：悬浮符文（65 个）
+      const particles = useMemo(
+        () =>
+          Array.from({ length: 65 }, (_, i) => ({
+            left: `${(i * 37) % 100}%`,
+            top: `${(i * 53) % 100}%`,
+            delay: `${((i * 37) % 30) / 10}s`,
+            fontSize: `${14 + ((i * 17) % 32)}px`,
+            color: PARTICLE_COLORS[i % PARTICLE_COLORS.length],
+            char: RUNES[i % RUNES.length],
+          })),
+        []
+      );
 
   // 稳定随机：XP 球（14 个）
   const orbs = useMemo(
@@ -121,7 +121,7 @@ export default function EnchantOverlay({ prompt, onComplete }: EnchantOverlayPro
       </div>
 
       {/* 书舞台 */}
-      <div className="relative" style={{ width: 200, height: 260, perspective: 800 }}>
+      <div className="relative" style={{ width: 280, height: 360, perspective: 1000 }}>
         {/* 旋转环 */}
         {showingRings && (
           <>
@@ -157,27 +157,27 @@ export default function EnchantOverlay({ prompt, onComplete }: EnchantOverlayPro
           {/* 书脊 */}
           <div
             className="absolute left-0 top-0 h-full"
-            style={{ width: 18, background: "linear-gradient(90deg,#4E380E,#654B17)", borderRight: "2px solid #2A1800" }}
+            style={{ width: 24, background: "linear-gradient(90deg,#4E380E,#654B17)", borderRight: "2px solid #2A1800" }}
           />
           {/* 封面装饰线 */}
-          <div className="absolute h-px" style={{ left: 18, right: 4, top: 28, background: "rgba(255,255,255,0.08)" }} />
-          <div className="absolute h-px" style={{ left: 18, right: 4, bottom: 28, background: "rgba(255,255,255,0.08)" }} />
+          <div className="absolute h-px" style={{ left: 24, right: 5, top: 38, background: "rgba(255,255,255,0.08)" }} />
+          <div className="absolute h-px" style={{ left: 24, right: 5, bottom: 38, background: "rgba(255,255,255,0.08)" }} />
           {/* 书内容 */}
-          <div className="absolute left-[18px] right-0 top-0 flex h-full flex-col items-center justify-center p-[18px]">
+          <div className="absolute left-[24px] right-0 top-0 flex h-full flex-col items-center justify-center p-[24px]">
             {phase === "flip" ? (
               <>
-                <span style={{ fontSize: 14, color: "#D7CCC8", fontWeight: 700, textShadow: "0 2px 0 #000" }}>
+                <span style={{ fontSize: 18, color: "#D7CCC8", fontWeight: 700, textShadow: "0 2px 0 #000" }}>
                   📜 翻页中...
                 </span>
-                <div style={{ marginTop: 10, fontSize: 28, opacity: 0.25 }}>📄</div>
+                <div style={{ marginTop: 12, fontSize: 38, opacity: 0.25 }}>📄</div>
               </>
             ) : enchanted ? (
               <>
-                <span style={{ fontSize: 30 }}>📚</span>
-                <div style={{ marginTop: 6 }}>
+                <span style={{ fontSize: 40 }}>📚</span>
+                <div style={{ marginTop: 8 }}>
                   <span
                     style={{
-                      fontSize: 20,
+                      fontSize: 26,
                       fontWeight: 700,
                       color: MC.RUNE_UP,
                       textShadow: "0 2px 0 #000, 0 0 10px rgba(151,122,168,0.9), 0 0 24px rgba(151,122,168,0.5)",
@@ -187,12 +187,12 @@ export default function EnchantOverlay({ prompt, onComplete }: EnchantOverlayPro
                     附魔完成!
                   </span>
                 </div>
-                <div className="mt-1.5 flex gap-[3px]">
+                <div className="mt-2 flex gap-1">
                   {COMPLETE_RUNES.map((r, i) => (
                     <span
                       key={i}
                       style={{
-                        fontSize: 12,
+                        fontSize: 15,
                         color: MC.RUNE_UP,
                         animation: "mcEGlow 0.8s ease-in-out infinite",
                         animationDelay: `${i * 0.05}s`,
@@ -205,19 +205,19 @@ export default function EnchantOverlay({ prompt, onComplete }: EnchantOverlayPro
               </>
             ) : (
               <>
-                <span style={{ fontSize: 14, color: "#D7CCC8", fontWeight: 700, textShadow: "0 2px 0 #000" }}>
+                <span style={{ fontSize: 18, color: "#D7CCC8", fontWeight: 700, textShadow: "0 2px 0 #000" }}>
                   📖 需求之书
                 </span>
                 <div
                   style={{
-                    marginTop: 8,
-                    padding: "6px 8px",
+                    marginTop: 10,
+                    padding: "8px 10px",
                     background: "rgba(0,0,0,0.2)",
                     border: "1px solid rgba(255,255,255,0.06)",
-                    maxWidth: 150,
+                    maxWidth: 190,
                   }}
                 >
-                  <p style={{ fontSize: 9, color: "#BCAAA4", lineHeight: 1.3, maxHeight: 50, overflow: "hidden" }}>
+                  <p style={{ fontSize: 11, color: "#BCAAA4", lineHeight: 1.4, maxHeight: 64, overflow: "hidden" }}>
                     {prompt}
                   </p>
                 </div>
@@ -234,8 +234,8 @@ export default function EnchantOverlay({ prompt, onComplete }: EnchantOverlayPro
                 key={i}
                 className="rounded-full"
                 style={{
-                  width: 7,
-                  height: 7,
+                  width: 9,
+                  height: 9,
                   background: o.background,
                   boxShadow: `0 0 8px ${o.background}`,
                   animation: `mcOrbFloat 1.4s ease-out ${o.delay} infinite`,
@@ -250,10 +250,10 @@ export default function EnchantOverlay({ prompt, onComplete }: EnchantOverlayPro
       <div
         className="absolute text-center"
         style={{
-          bottom: 120,
+          bottom: 150,
           left: "50%",
           transform: "translateX(-50%)",
-          fontSize: 14,
+          fontSize: 18,
           fontWeight: 700,
           color: MC.XP_TOP,
           textShadow: "0 2px 0 #000, 0 0 8px rgba(126,252,32,0.6)",

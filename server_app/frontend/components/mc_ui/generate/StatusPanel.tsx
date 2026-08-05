@@ -20,11 +20,11 @@ const btnBase: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  gap: 4,
-  padding: "5px 14px",
+  gap: 6,
+  padding: "8px 16px",
   cursor: "pointer",
   fontFamily: "inherit",
-  fontSize: 11,
+  fontSize: 14,
   fontWeight: 700,
   border: "2px solid #000",
   borderBottom: "3px solid #000",
@@ -35,9 +35,9 @@ const btnBase: React.CSSProperties = {
 
 function StatCard({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ padding: "6px 8px", background: MC.CARD_BG, border: `2px solid ${MC.CARD_BORDER}` }}>
-      <div style={{ fontSize: 9, color: MC.LABEL }}>{label}</div>
-      <div style={{ fontSize: 14, fontWeight: 700, color: MC.XP_TOP, marginTop: 2 }}>{children}</div>
+    <div style={{ padding: "8px 10px", background: MC.CARD_BG, border: `2px solid ${MC.CARD_BORDER}` }}>
+      <div style={{ fontSize: 11, color: MC.LABEL }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: MC.XP_TOP, marginTop: 4 }}>{children}</div>
     </div>
   );
 }
@@ -51,21 +51,21 @@ export default function StatusPanel({
   onRegenerate,
 }: StatusPanelProps) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {/* 双列 stat-card：状态 / 已用时间 */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <StatCard label="状态">{statusText}</StatCard>
         <StatCard label="已用时间">{elapsedText}</StatCard>
       </div>
 
       {/* 产物统计 */}
-      <div style={{ padding: "6px 8px", background: MC.CARD_BG, border: `2px solid ${MC.CARD_BORDER}` }}>
-        <div style={{ fontSize: 9, color: MC.LABEL }}>产物统计</div>
-        <div style={{ fontSize: 11, color: MC.TEXT, marginTop: 2 }}>{fileSummary}</div>
+      <div style={{ padding: "8px 10px", background: MC.CARD_BG, border: `2px solid ${MC.CARD_BORDER}` }}>
+        <div style={{ fontSize: 11, color: MC.LABEL }}>产物统计</div>
+        <div style={{ fontSize: 14, color: MC.TEXT, marginTop: 4 }}>{fileSummary}</div>
       </div>
 
       {/* 操作按钮 */}
-      <div style={{ display: "flex", gap: 6 }}>
+      <div style={{ display: "flex", gap: 8 }}>
         <button
           onClick={onDownload}
           disabled={!finished}

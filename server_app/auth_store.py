@@ -176,5 +176,17 @@ def upsert_history(username: str, entry: dict) -> list:
     return trimmed
 
 
+def remove_history(username: str, session_id: str) -> list:
+    """从该用户历史中移除指定 session 的记录，返回剩余历史。
+
+    session_id 不存在时静默返回原列表（幂等）。
+    """
+    history = load_history(username)
+    filtered = [h for h in history if h.get("sessionId") != session_id]
+    if len(filtered) != len(history):
+        _save_json(_history_path(username), filtered)
+    return filtered
+
+
 def clear_history(username: str) -> None:
     _save_json(_history_path(username), [])

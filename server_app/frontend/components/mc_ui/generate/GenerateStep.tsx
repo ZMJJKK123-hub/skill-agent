@@ -158,7 +158,7 @@ export default function GenerateStep({
 
       {/* 控制条：返回首页 + 会话 ID */}
       <div
-        className="mb-3.5 flex items-center gap-2.5 px-3 py-2"
+        className="mb-4 flex items-center gap-3 px-3 py-2.5"
         style={{ background: "#262846", border: "2px solid #1A1C33" }}
       >
         <button
@@ -166,11 +166,11 @@ export default function GenerateStep({
           style={{
             display: "inline-flex",
             alignItems: "center",
-            gap: 4,
-            padding: "5px 14px",
+            gap: 6,
+            padding: "8px 16px",
             cursor: "pointer",
             fontFamily: "inherit",
-            fontSize: 11,
+            fontSize: 14,
             fontWeight: 700,
             background: "#7EFC20",
             color: "#000",
@@ -181,25 +181,25 @@ export default function GenerateStep({
         >
           ◀ 返回首页
         </button>
-        <span className="ml-auto" style={{ fontSize: 10, color: "#808090" }}>
+        <span className="ml-auto" style={{ fontSize: 13, color: "#808090" }}>
           {game} · {sessionId}
         </span>
       </div>
 
       {/* 双栏：左面板 / 右终端 */}
-      <div className="grid gap-3.5" style={{ gridTemplateColumns: "340px 1fr" }}>
+      <div className="grid gap-4" style={{ gridTemplateColumns: "440px 1fr" }}>
         {/* 左面板 */}
         <div style={{ background: "rgba(0,0,0,0.75)", border: "2px solid #373737" }}>
           <div
-            className="flex items-center px-2.5 py-1.5"
+            className="flex items-center px-3 py-2"
             style={{ background: "rgba(0,0,0,0.5)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}
           >
-            <span style={{ fontSize: 12, fontWeight: 700 }}>生成状态</span>
-            <span className="ml-auto" style={{ fontSize: 9, color: "#808090" }}>
+            <span style={{ fontSize: 15, fontWeight: 700 }}>生成状态</span>
+            <span className="ml-auto" style={{ fontSize: 12, color: "#808090" }}>
               {game}
             </span>
           </div>
-          <div className="flex flex-col gap-2 p-2.5">
+          <div className="flex flex-col gap-2.5 p-3">
             <XpBar level={xpLevel} finished={finished} running={running} />
             <PhaseIndicator active={phase} running={running} finished={finished} />
             <StatusPanel
@@ -218,7 +218,7 @@ export default function GenerateStep({
       </div>
 
       {/* 产物浏览器（完成后展示） */}
-      {finished && <div className="mt-3.5">{/* 复用现有 ArtifactExplorer 保留 VS Code 文件树能力 */}
+      {finished && <div className="mt-4">{/* 复用现有 ArtifactExplorer 保留 VS Code 文件树能力 */}
         <ArtifactExplorer sessionId={sessionId} />
       </div>}
     </div>

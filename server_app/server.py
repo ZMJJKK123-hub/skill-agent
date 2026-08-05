@@ -171,6 +171,30 @@ def _get_session(session_id: str) -> Session:
     return sess
 
 
+def _purge_session(sess: Session) -> None:
+    """彻底清理一个会话：kill 子进程 + 删目录 + 移除内存记录（幂等）。
+
+    供删除会话 / 删除历史 / 批量删除 / 全部删除复用。
+    """
+    if sess.proc is not None and sess.proc.poll() is None:
+        # 强行终止生成子进程
+        try:
+            sess.proc.kill()
+            sess.proc.wait(timeout=5)
+        except Exception:
+            pass
+    sessions.pop(sess.id, None)
+    shutil.rmtree(sess.mod_dir.parent, ignore_errors=True)
+    auth_store.prune_expired()
+
+
+def _purge_session_dir(session_id: str) -> None:
+    """按 ID 清理会话目录（会话不在内存时用，如历史遗留脏目录）。"""
+    sess_dir = SESSIONS_DIR / session_id
+    if sess_dir.exists():
+        shutil.rmtree(sess_dir, ignore_errors=True)
+
+
 def _auth_username(authorization: str) -> str:
     """从 Authorization: Bearer <token> 取用户名；无效抛 401。"""
     token = ""
@@ -268,16 +292,7 @@ def delete_session(session_id: str, authorization: str = Header(default="")):
     username = _auth_username(authorization)
     sess = _get_session(session_id)
     _assert_owner(sess, username)
-    if sess.proc is not None and sess.proc.poll() is None:
-        # 强行终止生成子进程
-        try:
-            sess.proc.kill()
-            sess.proc.wait(timeout=5)
-        except Exception:
-            pass
-    sessions.pop(session_id, None)
-    shutil.rmtree(sess.mod_dir.parent, ignore_errors=True)
-    auth_store.prune_expired()
+    _purge_session(sess)
     return {"ok": True}
 
 
@@ -554,12 +569,54 @@ def put_history(entry: HistoryEntry, authorization: str = Header(default="")):
     return {"history": history}
 
 
+class HistoryBatchDelete(BaseModel):
+    session_ids: list[str]
+
+
 @app.delete("/api/history")
-def delete_history(authorization: str = Header(default="")):
-    """清空当前用户的历史记录。"""
+def delete_history(session_id: str = "", authorization: str = Header(default="")):
+    """删除历史记录（单条指定 session_id；不传则清空全部）。
+
+    同步删除 data/sessions/{session_id}/ 目录（含 kill 运行中的子进程），
+    确保历史删除后产物文件不再残留磁盘。全部删除 = 遍历该用户历史逐条清理。
+    """
     username = _auth_username(authorization)
+    if session_id:
+        # 单条删除：清历史 + 清会话目录（校验归属后彻底清理）
+        auth_store.remove_history(username, session_id)
+        sess = sessions.get(session_id)
+        if sess and sess.owner == username:
+            _purge_session(sess)
+        else:
+            _purge_session_dir(session_id)
+        return {"history": auth_store.load_history(username)}
+
+    # 全部删除：先删除每个历史会话的磁盘目录，再清历史表
+    for h in auth_store.load_history(username):
+        sid = h.get("sessionId")
+        if not sid:
+            continue
+        sess = sessions.get(sid)
+        if sess and sess.owner == username:
+            _purge_session(sess)
+        else:
+            _purge_session_dir(sid)
     auth_store.clear_history(username)
     return {"history": []}
+
+
+@app.delete("/api/history/batch")
+def delete_history_batch(req: HistoryBatchDelete, authorization: str = Header(default="")):
+    """批量删除历史：每个 session_id 清历史 + 同步清会话目录。"""
+    username = _auth_username(authorization)
+    for sid in req.session_ids:
+        auth_store.remove_history(username, sid)
+        sess = sessions.get(sid)
+        if sess and sess.owner == username:
+            _purge_session(sess)
+        else:
+            _purge_session_dir(sid)
+    return {"history": auth_store.load_history(username)}
 
 
 # ---------- 前端静态资源 ----------

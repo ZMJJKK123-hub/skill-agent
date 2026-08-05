@@ -161,6 +161,26 @@ export async function saveHistoryToServer(entry: HistoryEntry): Promise<HistoryE
   return data.history || [];
 }
 
-export async function clearHistoryOnServer(): Promise<void> {
-  await request<{ history: HistoryEntry[] }>("/api/history", { method: "DELETE" });
+export async function clearHistoryOnServer(): Promise<HistoryEntry[]> {
+  const data = await request<{ history: HistoryEntry[] }>("/api/history", { method: "DELETE" });
+  return data.history || [];
+}
+
+/** 单条删除历史（同步删除会话目录与产物文件） */
+export async function deleteHistoryItem(sessionId: string): Promise<HistoryEntry[]> {
+  const data = await request<{ history: HistoryEntry[] }>(
+    `/api/history?session_id=${encodeURIComponent(sessionId)}`,
+    { method: "DELETE" }
+  );
+  return data.history || [];
+}
+
+/** 批量删除历史（同步删除会话目录与产物文件） */
+export async function deleteHistoryItems(sessionIds: string[]): Promise<HistoryEntry[]> {
+  const data = await request<{ history: HistoryEntry[] }>("/api/history/batch", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ session_ids: sessionIds }),
+  });
+  return data.history || [];
 }

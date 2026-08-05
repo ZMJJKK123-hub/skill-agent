@@ -24,7 +24,7 @@ export default function PhaseIndicator({ active, running, finished }: PhaseIndic
         const style: React.CSSProperties = {
           flex: 1,
           textAlign: "center",
-          padding: "5px 3px",
+          padding: "8px 4px",
           border: "2px solid #1A1C33",
           background: "#262846",
           transition: "all .3s",
@@ -39,14 +39,14 @@ export default function PhaseIndicator({ active, running, finished }: PhaseIndic
         }
         return (
           <div key={i} style={style}>
-            <span style={{ fontSize: 16, display: "block" }}>
+            <span style={{ fontSize: 24, display: "block" }}>
               {isActive ? "⚡" : done ? "✓" : "○"}
             </span>
             <span
               style={{
-                fontSize: 9,
+                fontSize: 12,
                 fontWeight: 700,
-                marginTop: 2,
+                marginTop: 4,
                 display: "block",
                 color: isActive ? MC.XP_TOP : done ? "#4A8A2A" : "#606060",
               }}
