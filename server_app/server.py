@@ -21,6 +21,7 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
 import time
 import uuid
 from pathlib import Path
@@ -193,6 +194,40 @@ def _purge_session_dir(session_id: str) -> None:
     sess_dir = SESSIONS_DIR / session_id
     if sess_dir.exists():
         shutil.rmtree(sess_dir, ignore_errors=True)
+
+
+# 废弃会话清理：用户创建会话但从未开始生成（无 run.log / mod.zip），
+# 且超时未再被访问的目录视为垃圾，由后端兜底清除（弥补前端关页/刷新丢失定时器）。
+ORPHAN_TTL = 60 * 60  # 1 小时
+
+
+def _cleanup_orphan_sessions() -> None:
+    """启动时与后台定时清理从未生成过的废弃会话目录。
+
+    判定"废弃"：目录下既无 run.log 也无 mod.zip（即从未启动过任务），
+    且目录 mtime（镜像创建时间）距今超过 ORPHAN_TTL。
+    正在生成 / 已完成的会话不受影响，前端 10 分钟超时也已先删正常会话。
+    """
+    if not SESSIONS_DIR.exists():
+        return
+    now = time.time()
+    for child in SESSIONS_DIR.iterdir():
+        if not child.is_dir():
+            continue
+        if (child / "run.log").exists() or (child / "mod.zip").exists():
+            continue
+        try:
+            if now - child.stat().st_mtime < ORPHAN_TTL:
+                continue
+        except OSError:
+            continue
+        sid = child.name
+        sess = sessions.get(sid)
+        if sess:
+            _purge_session(sess)
+        else:
+            _purge_session_dir(sid)
+        print(f"[cleanup] 清除废弃会话 {sid}")
 
 
 def _auth_username(authorization: str) -> str:
@@ -641,5 +676,18 @@ if __name__ == "__main__":
 
     # 启动时恢复历史会话（供下载/预览/事件回放），服务重启不丢失
     _restore_sessions()
+    _cleanup_orphan_sessions()
+
+    # 后台守护线程：每 30 分钟清理一次废弃会话（前端关页/刷新丢失定时器时兜底）
+    def _orphan_cleanup_loop():
+        while True:
+            time.sleep(30 * 60)
+            try:
+                _cleanup_orphan_sessions()
+            except Exception:
+                pass
+
+    threading.Thread(target=_orphan_cleanup_loop, daemon=True).start()
+
     print(f"MOD Agent 制作器已启动: http://localhost:8000（恢复 {len(sessions)} 个历史会话）")
     uvicorn.run(app, host="0.0.0.0", port=8000)

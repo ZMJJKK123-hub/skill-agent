@@ -80,15 +80,21 @@ export default function GenerateStep({
   const prevFloor = useRef(0);
   /** 是否曾见过 running 状态：历史已完成会话复用（从未 running）不触发附魔 */
   const sawRunning = useRef(false);
+  /** 升级音效许可：仅真正自然运行（running）期间开启，复用/回放绝不响 */
+  const xpSoundEnabled = useRef(false);
 
   // 经验值推进：
   //   - running（生成中）：固定速率平滑增长（800ms +0.3，封顶 29.5），与事件数无关
   //   - finished 且本次自然完成过（sawRunning）：补满到 30
   //   - finished 但从未 running（复用历史已完成会话）：直接满条 30，不再从 0 重爬
   useEffect(() => {
-    if (running) sawRunning.current = true;
+    if (running) {
+      sawRunning.current = true;
+      xpSoundEnabled.current = true;
+    }
 
     if (finished && !sawRunning.current) {
+      // 复用历史已完成会话：静默满条，不触发升级音效
       setXpLevel(30);
       return;
     }
@@ -104,10 +110,11 @@ export default function GenerateStep({
     }
   }, [running, finished]);
 
-  // 升级音效：跨整数
+  // 升级音效：仅自然运行期间（xpSoundEnabled）跨整数时触发；
+  // 复用历史会话 / 从历史回工作台（从未 running）绝不响
   useEffect(() => {
     const floor = Math.floor(xpLevel);
-    if (floor > prevFloor.current && floor > 0) {
+    if (xpSoundEnabled.current && floor > prevFloor.current && floor > 0) {
       playMcLevelUp();
     }
     prevFloor.current = floor;
