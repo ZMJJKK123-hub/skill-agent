@@ -4,6 +4,7 @@
  */
 "use client";
 
+import { useState } from "react";
 import { MC } from "./mcTheme";
 
 interface StatusPanelProps {
@@ -58,6 +59,28 @@ export default function StatusPanel({
   // jar 打包状态文本（finished 前视为进行中）
   const jarStatus = !finished ? "打包中..." : hasJar ? "✓ 已打包" : "未打包";
   const jarColor = !finished ? "#A0A0A0" : hasJar ? MC.XP_TOP : "#A0A0A0";
+  // 下载进行中标记：防止用户长时间无反馈而重复点击（后端首次打包 11MB 需数秒）
+  const [busy, setBusy] = useState<null | "zip" | "jar">(null);
+
+  const handleZip = async () => {
+    if (busy) return;
+    setBusy("zip");
+    try {
+      await onDownload();
+    } finally {
+      setBusy(null);
+    }
+  };
+  const handleJar = async () => {
+    if (busy) return;
+    setBusy("jar");
+    try {
+      await onDownloadJar();
+    } finally {
+      setBusy(null);
+    }
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {/* 双列 stat-card：状态 / 已用时间 */}
@@ -83,32 +106,44 @@ export default function StatusPanel({
       {/* 操作按钮：源码 zip + jar + 重新生成 */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button
-          onClick={onDownload}
-          disabled={!finished}
+          onClick={handleZip}
+          disabled={!finished || busy !== null}
+          title={
+            finished
+              ? "源码工程（Java + Gradle 配置 + 资源）。可自行修改后用 gradlew build 重新构建。本包不包含已编译的 jar，需自行构建。"
+              : "生成完成后可下载源码工程"
+          }
           style={{
             ...btnBase,
             background: MC.BTN_LIGHT,
             color: "#3F3F3F",
             borderImage: MC.BTN_BORDER,
-            opacity: finished ? 1 : 0.4,
-            cursor: finished ? "pointer" : "default",
+            opacity: finished && busy === null ? 1 : 0.4,
+            cursor: finished && busy === null ? "pointer" : "default",
           }}
         >
-          ⬇ 源码 zip
+          {busy === "zip" ? "打包中…" : "⬇ 源码 zip"}
         </button>
         <button
-          onClick={onDownloadJar}
-          disabled={!finished || !hasJar}
+          onClick={handleJar}
+          disabled={!finished || !hasJar || busy !== null}
+          title={
+            finished && hasJar
+              ? "已编译打包的可安装模组。直接放入游戏的 mods 文件夹即可使用，无需构建。"
+              : finished
+                ? "尚未打包出 jar（构建失败或未构建）"
+                : "生成并打包完成后可下载"
+          }
           style={{
             ...btnBase,
             background: MC.BTN_LIGHT,
             color: "#3F3F3F",
             borderImage: MC.BTN_BORDER,
-            opacity: finished && hasJar ? 1 : 0.4,
-            cursor: finished && hasJar ? "pointer" : "default",
+            opacity: finished && hasJar && busy === null ? 1 : 0.4,
+            cursor: finished && hasJar && busy === null ? "pointer" : "default",
           }}
         >
-          ⬇ 下载 jar
+          {busy === "jar" ? "下载中…" : "⬇ 下载 jar"}
         </button>
         <button
           onClick={onRegenerate}

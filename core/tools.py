@@ -1238,7 +1238,27 @@ def _forge_build_jar(kw: dict) -> str:
     tail = (out or "")[-3000:]
 
     if not ok:
-        return f"[build] Gradle 构建失败 (exit={proc.returncode})。\n日志尾部:\n{tail}"
+        # 常见环境问题诊断：提炼关键错误，避免把整堆 Gradle 堆栈抛给用户
+        hint = ""
+        if "Failed to find JDK for version 8" in (out or "") and "JavaProvisionerException" in (out or ""):
+            hint = (
+                "原因：ForgeGradle 反混淆需要 JDK 8，但服务器缺少 JDK 8"
+                "（且自动下载被 SSL 证书拦截）。\n"
+                "解决：在服务器安装 Temurin JDK 8 并设置 JAVA_HOME，"
+                "或修复系统证书/代理后重新生成。"
+            )
+        elif "SSLHandshakeException" in (out or "") or "PKIX path building failed" in (out or ""):
+            hint = (
+                "原因：Gradle 下载依赖时 SSL 证书校验失败"
+                "（多为代理/公司网络拦截或系统根证书不全）。\n"
+                "解决：修复证书/代理后重新生成。"
+            )
+        else:
+            hint = "原因：构建过程出错（详见日志尾部）。"
+        return (
+            f"[build] Gradle 构建失败 (exit={proc.returncode})。\n"
+            f"{hint}\n日志尾部:\n{tail}"
+        )
 
     # 构建成功：收集 build/libs 下的 jar，复制到 dist/
     libs_dir = os.path.join(base, "build", "libs")

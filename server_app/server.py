@@ -486,17 +486,29 @@ def download_mod(session_id: str, authorization: str = Header(default="")):
             ".transcripts", "__pycache__", ".git"}
 
     with _download_lock:
-        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            if sess.mod_dir.exists():
-                for p in sorted(sess.mod_dir.rglob("*")):
-                    try:
-                        rel = p.relative_to(sess.mod_dir)
-                    except ValueError:
-                        continue
-                    if any(part in skip for part in rel.parts):
-                        continue
-                    if p.is_file():
-                        zf.write(p, rel.as_posix())
+        # 缓存逻辑：若已存在 mod.zip 且比所有源码文件都新，则直接复用，
+        # 避免每次点击都重新打包 11MB → 前端长时间无反馈 + 重复点击堆积。
+        need_build = True
+        if zip_path.exists() and sess.mod_dir.exists():
+            zip_mtime = zip_path.stat().st_mtime
+            newest_src = max(
+                (p.stat().st_mtime for p in sess.mod_dir.rglob("*") if p.is_file()),
+                default=0,
+            )
+            if zip_mtime >= newest_src:
+                need_build = False
+        if need_build:
+            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                if sess.mod_dir.exists():
+                    for p in sorted(sess.mod_dir.rglob("*")):
+                        try:
+                            rel = p.relative_to(sess.mod_dir)
+                        except ValueError:
+                            continue
+                        if any(part in skip for part in rel.parts):
+                            continue
+                        if p.is_file():
+                            zf.write(p, rel.as_posix())
         # 一次性读入内存返回：绕开 FileResponse 流式发送在 h11 下的大文件
         # Content-Length bug（uvicorn 默认 h11 对超大响应体会抛
         # "Too little data for declared Content-Length" → 前端 Failed to fetch）

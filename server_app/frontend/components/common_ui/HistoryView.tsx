@@ -167,19 +167,30 @@ export default function HistoryView({ onResume, onClear }: HistoryViewProps) {
     });
   };
 
+  /** 下载进行中标记：防止用户长时间无反馈而重复点击（首次打包 11MB 需数秒） */
+  const [busyDownload, setBusyDownload] = useState<string | null>(null);
+
   const handleDownload = async (sessionId: string) => {
+    if (busyDownload) return;
+    setBusyDownload(sessionId);
     try {
       await downloadSession(sessionId);
     } catch (err) {
       alert(err instanceof Error ? err.message : "下载失败");
+    } finally {
+      setBusyDownload(null);
     }
   };
 
   const handleDownloadJar = async (sessionId: string) => {
+    if (busyDownload) return;
+    setBusyDownload(sessionId);
     try {
       await downloadJar(sessionId);
     } catch (err) {
       alert(err instanceof Error ? err.message : "下载 jar 失败");
+    } finally {
+      setBusyDownload(null);
     }
   };
 
@@ -306,19 +317,35 @@ export default function HistoryView({ onResume, onClear }: HistoryViewProps) {
                 <div className="flex gap-1.5">
                   <button
                     onClick={() => handleDownload(h.sessionId)}
-                    className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 text-zinc-400 transition-all duration-150 hover:border-forge-cyan/40 hover:text-forge-cyan"
-                    title="下载源码 zip"
+                    disabled={busyDownload !== null}
+                    className={`grid h-8 w-8 place-items-center rounded-lg border border-white/10 transition-all duration-150 ${
+                      busyDownload === h.sessionId
+                        ? "animate-pulse text-forge-cyan"
+                        : "text-zinc-400 hover:border-forge-cyan/40 hover:text-forge-cyan"
+                    }`}
+                    title="源码工程（Java + Gradle 配置 + 资源），可自行修改后用 gradlew build 重新构建，不包含已编译的 jar"
                   >
-                    <Download size={14} />
+                    {busyDownload === h.sessionId ? (
+                      <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/10 border-t-forge-cyan" />
+                    ) : (
+                      <Download size={14} />
+                    )}
                   </button>
                   <button
                     onClick={() => h.has_jar && handleDownloadJar(h.sessionId)}
+                    disabled={!h.has_jar || busyDownload !== null}
                     className={`grid h-8 w-8 place-items-center rounded-lg border border-white/10 transition-all duration-150 ${
-                      h.has_jar
-                        ? "text-zinc-400 hover:border-forge-emerald/40 hover:text-forge-emerald"
-                        : "cursor-not-allowed text-zinc-700"
+                      busyDownload === h.sessionId
+                        ? "animate-pulse text-forge-emerald"
+                        : h.has_jar
+                          ? "text-zinc-400 hover:border-forge-emerald/40 hover:text-forge-emerald"
+                          : "cursor-not-allowed text-zinc-700"
                     }`}
-                    title={h.has_jar ? "下载打包 jar" : "未打包 jar"}
+                    title={
+                      h.has_jar
+                        ? "已编译打包的可安装模组，直接放入游戏的 mods 文件夹即可使用，无需构建"
+                        : "未打包出 jar（构建失败或未构建）"
+                    }
                   >
                     <FileArchive size={14} />
                   </button>
