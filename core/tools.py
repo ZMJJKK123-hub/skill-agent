@@ -1110,8 +1110,9 @@ class TeammateManager:
                     args["_agent_id"] = agent_id
                 handler = TOOL_HANDLERS.get(tc.function.name)
                 output = handler(**args) if handler else f"Unknown tool: {tc.function.name}"
-                logger.info(f"teammate 工具调用: {tc.function.name} | output={output[:200]}")
-                print(f"[teammate:{tc.function.name}] {output[:200]}")
+                logger.info(f"teammate 工具调用: {tc.function.name}")
+                # 调试需要：完整输出写入 run.log，不截断
+                print(f"[teammate:{tc.function.name}] {output}")
                 sub_messages.append(
                     {
                         "role": "tool",

@@ -12,14 +12,14 @@ interface McTerminalProps {
   loading: boolean;
 }
 
-/** 从工具事件内容提取工具名："write_file | 参数..." → "write_file" */
+/** 从工具事件内容提取工具名："write_file | 参数..." → "write_file"（调试需要：不截断） */
 function parseToolText(content: string): string {
   const idx = content.indexOf("|");
-  if (idx === -1) return content.trim().slice(0, 40);
+  if (idx === -1) return content.trim();
   return content.slice(0, idx).trim();
 }
 
-/** 事件详细信息（第二个字段） */
+/** 事件详细信息（第二个字段，完整保留） */
 function parseToolArgs(content: string): string {
   const idx = content.indexOf("|");
   return idx === -1 ? "" : content.slice(idx + 1).trim();
@@ -82,7 +82,7 @@ export default function McTerminal({ events, loading }: McTerminalProps) {
                 <span style={{ color: "#BFBFBF" }}> · </span>
                 <span style={{ color: "#22D3EE" }}>{parseToolText(ev.content)}</span>
                 {parseToolArgs(ev.content) && (
-                  <span style={{ color: "#808090" }}> · {parseToolArgs(ev.content).slice(0, 45)}</span>
+                  <span style={{ color: "#808090" }}> · {parseToolArgs(ev.content)}</span>
                 )}
               </span>
             )}

@@ -58,8 +58,9 @@ def run_subagent(prompt: str) -> str:
             args = json.loads(tc.function.arguments)
             handler = TOOL_HANDLERS.get(tc.function.name)
             output = handler(**args) if handler else f"Unknown tool: {tc.function.name}"
-            logger.info(f"subagent 工具调用: {tc.function.name} | output={output[:200]}")
-            print(f"[subagent:{tc.function.name}] {output[:200]}")
+            logger.info(f"subagent 工具调用: {tc.function.name}")
+            # 调试需要：完整输出写入 run.log，不截断
+            print(f"[subagent:{tc.function.name}] {output}")
             sub_messages.append(
                 {
                     "role": "tool",

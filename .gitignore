@@ -29,6 +29,7 @@ server_app/web/index.html
 server_app/web/404.html
 server_app/web/index.txt
 server_app/web/_next/
+server_app/web/assets
 
 # ---- React 重构前遗留产物 ----
 server_app/web/css/

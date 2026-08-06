@@ -6,14 +6,14 @@
  *
  * 数据接入：真实轮询事件 / 会话状态 / 文件统计；
  *   - 经验值：running 固定速率增长 0→29.5，自然完成补满 30，复用历史会话直接满条
- *   - 升级跨整数 → playMcLevelUp；running→finished 自然完成 → 附魔动画 + 附魔音效
- *   - 复用历史会话（hydrate 的 finished）不自动播放附魔
+ *   - 升级到 5 的倍数（精确每 5 级）→ playMcLevelUp 升级音效
+ *   - 附魔/旋转动画已停用（任务完成不再播特殊动画，2026-08-06，见下方注释）
  */
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MC_ANIMATION_CSS } from "./mcTheme";
-import { playMcLevelUp, primeAudio } from "./mcSfx";
+import { playMcLevelUp, playMcCompleteSound, primeAudio } from "./mcSfx";
 import XpBar from "./XpBar";
 import PhaseIndicator from "./PhaseIndicator";
 import StatusPanel from "./StatusPanel";
@@ -125,14 +125,24 @@ export default function GenerateStep({
     prevFloor.current = floor;
   }, [xpLevel]);
 
-  // 附魔动画：仅本次自然完成（running→finished）触发；
-  // 复用历史已完成会话（从未 running）直接置 prevFinished，不触发
+  // ── 附魔/旋转动画：已按需求停用（2026-08-06）──
+  // 任务完成成功后不再弹出附魔书等特殊动画，直接静态展示产物。
+  // 如需恢复，取消注释下面 useEffect 与 JSX 中的 <EnchantOverlay> 即可：
+  // useEffect(() => {
+  //   if (finished && !prevFinished.current) {
+  //     if (sawRunning.current) {
+  //       const t = setTimeout(() => setEnchantOpen(true), 500);
+  //       return () => clearTimeout(t);
+  //     }
+  //   }
+  //   prevFinished.current = finished;
+  // }, [finished]);
+
+  // 任务完成音效：本次自然生成完成（running→finished）时播放一次 mc_complete.mp3；
+  // 复用历史已完成会话（从未 running）不播；prevFinished 保证只响一次
   useEffect(() => {
-    if (finished && !prevFinished.current) {
-      if (sawRunning.current) {
-        const t = setTimeout(() => setEnchantOpen(true), 500);
-        return () => clearTimeout(t);
-      }
+    if (finished && !prevFinished.current && sawRunning.current) {
+      playMcCompleteSound();
     }
     prevFinished.current = finished;
   }, [finished]);
@@ -166,10 +176,10 @@ export default function GenerateStep({
       {/* 注入 MC 复杂 3D / 关键帧动画（Tailwind 盲区解决方案） */}
       <style>{MC_ANIMATION_CSS}</style>
 
-      {/* 附魔完成遮罩 */}
-      {enchantOpen && (
+      {/* 附魔完成遮罩（已停用，见上方 useEffect 注释说明） */}
+      {/* {enchantOpen && (
         <EnchantOverlay prompt={prompt || "(无需求记录)"} onComplete={() => setEnchantOpen(false)} />
-      )}
+      )} */}
 
       {/* 控制条：返回首页 + 会话 ID */}
       <div

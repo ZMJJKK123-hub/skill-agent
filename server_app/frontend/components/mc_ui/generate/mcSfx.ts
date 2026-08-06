@@ -36,6 +36,16 @@ export function primeAudio(): boolean {
   return true;
 }
 
+/** 任务完成音效：播放真实音频文件 /assets/mc_complete.mp3（失败静默降级） */
+export function playMcCompleteSound(): void {
+  try {
+    const audio = new Audio("/assets/mc_complete.mp3");
+    void audio.play().catch(() => {
+      /* 自动播放限制/文件缺失时静默跳过，不影响 UI */
+    });
+  } catch { /* 静默降级 */ }
+}
+
 /** MC 升级音效 —— 清脆高音叮（1300/1900Hz 三角波） */
 export function playMcLevelUp(): void {
   const ctx = getCtx();

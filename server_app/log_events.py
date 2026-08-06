@@ -25,7 +25,8 @@ def _ev(e_type: str, content: str, seq: int, **extra) -> dict:
         "ts": time.time(),
         "type": e_type,
         "source": "run",
-        "content": content[:8000],
+        # 调试需要：事件正文全量保留，不截断（便于使用者查看完整输出）
+        "content": content,
     }
     ev.update(extra)
     return ev

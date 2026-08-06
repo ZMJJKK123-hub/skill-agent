@@ -424,8 +424,8 @@ def get_status(session_id: str, authorization: str = Header(default="")):
     finished = sess.proc is not None and sess.proc.poll() is not None
     log_tail = ""
     if sess.log_path.exists():
-        # 只取末尾 2000 字符给前端，避免并发读大文件
-        log_tail = sess.log_path.read_text(encoding="utf-8", errors="replace")[-2000:]
+        # 尾部预览取末尾 20000 字符（调试需要更完整上下文）
+        log_tail = sess.log_path.read_text(encoding="utf-8", errors="replace")[-20000:]
         if sess.proc is not None and finished and sess.result is None:
             sess.result = log_tail  # 简单起见：日志尾部即结果（可优化）
             sess.finished_at = time.time()
