@@ -11,7 +11,10 @@ interface StatusPanelProps {
   elapsedText: string;
   fileSummary: string;
   finished: boolean;
+  /** 是否已打包出 jar（服务端检测） */
+  hasJar: boolean;
   onDownload: () => void;
+  onDownloadJar: () => void;
   onRegenerate: () => void;
 }
 
@@ -47,9 +50,14 @@ export default function StatusPanel({
   elapsedText,
   fileSummary,
   finished,
+  hasJar,
   onDownload,
+  onDownloadJar,
   onRegenerate,
 }: StatusPanelProps) {
+  // jar 打包状态文本（finished 前视为进行中）
+  const jarStatus = !finished ? "打包中..." : hasJar ? "✓ 已打包" : "未打包";
+  const jarColor = !finished ? "#A0A0A0" : hasJar ? MC.XP_TOP : "#A0A0A0";
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {/* 双列 stat-card：状态 / 已用时间 */}
@@ -64,8 +72,16 @@ export default function StatusPanel({
         <div style={{ fontSize: 14, color: MC.TEXT, marginTop: 4 }}>{fileSummary}</div>
       </div>
 
-      {/* 操作按钮 */}
-      <div style={{ display: "flex", gap: 8 }}>
+      {/* jar 打包状态 */}
+      <div style={{ padding: "8px 10px", background: MC.CARD_BG, border: `2px solid ${MC.CARD_BORDER}` }}>
+        <div style={{ fontSize: 11, color: MC.LABEL }}>jar 打包</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: jarColor, marginTop: 4 }}>
+          {jarStatus}
+        </div>
+      </div>
+
+      {/* 操作按钮：源码 zip + jar + 重新生成 */}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button
           onClick={onDownload}
           disabled={!finished}
@@ -78,7 +94,21 @@ export default function StatusPanel({
             cursor: finished ? "pointer" : "default",
           }}
         >
-          ⬇ 下载mod
+          ⬇ 源码 zip
+        </button>
+        <button
+          onClick={onDownloadJar}
+          disabled={!finished || !hasJar}
+          style={{
+            ...btnBase,
+            background: MC.BTN_LIGHT,
+            color: "#3F3F3F",
+            borderImage: MC.BTN_BORDER,
+            opacity: finished && hasJar ? 1 : 0.4,
+            cursor: finished && hasJar ? "pointer" : "default",
+          }}
+        >
+          ⬇ 下载 jar
         </button>
         <button
           onClick={onRegenerate}

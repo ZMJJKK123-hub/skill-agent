@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import {
   CheckSquare,
   Download,
+  FileArchive,
   Play,
   Square,
   Trash2,
@@ -20,7 +21,7 @@ import {
   removeHistoryItem,
   removeHistoryItems,
 } from "../../lib/history";
-import { downloadSession } from "../../lib/api";
+import { downloadSession, downloadJar } from "../../lib/api";
 import type { HistoryEntry } from "../../lib/types";
 
 interface HistoryViewProps {
@@ -131,7 +132,7 @@ export default function HistoryView({ onResume, onClear }: HistoryViewProps) {
     setConfirm({
       title: "删除这条记录？",
       message:
-        "删除后将同时移除本会话的服务端产物文件（mod.zip / 生成的代码），此操作不可恢复。",
+        "将同时删除服务器与本机的记录：历史条目、会话源码工程、打包 jar 与 zip 副本，此操作不可恢复。",
       action: async () => {
         const list = await removeHistoryItem(sessionId);
         refresh(list);
@@ -144,7 +145,7 @@ export default function HistoryView({ onResume, onClear }: HistoryViewProps) {
     setConfirm({
       title: `删除选中的 ${selected.size} 条记录？`,
       message:
-        "删除后将同时移除这些会话的服务端产物文件（mod.zip / 生成的代码），此操作不可恢复。",
+        "将同时删除服务器与本机这些会话的全部数据（历史条目、源码工程、打包 jar 与 zip 副本），此操作不可恢复。",
       action: async () => {
         const list = await removeHistoryItems(Array.from(selected));
         refresh(list);
@@ -157,7 +158,7 @@ export default function HistoryView({ onResume, onClear }: HistoryViewProps) {
     setConfirm({
       title: "删除全部历史记录？",
       message:
-        "将删除全部会话及其服务端产物文件（mod.zip / 生成的代码），此操作不可恢复。",
+        "将删除全部会话的服务端产物（源码工程、打包 jar 与 zip 副本）及历史记录，此操作不可恢复。",
       action: async () => {
         const list = await clearHistory();
         refresh(list);
@@ -171,6 +172,14 @@ export default function HistoryView({ onResume, onClear }: HistoryViewProps) {
       await downloadSession(sessionId);
     } catch (err) {
       alert(err instanceof Error ? err.message : "下载失败");
+    }
+  };
+
+  const handleDownloadJar = async (sessionId: string) => {
+    try {
+      await downloadJar(sessionId);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "下载 jar 失败");
     }
   };
 
@@ -298,9 +307,20 @@ export default function HistoryView({ onResume, onClear }: HistoryViewProps) {
                   <button
                     onClick={() => handleDownload(h.sessionId)}
                     className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 text-zinc-400 transition-all duration-150 hover:border-forge-cyan/40 hover:text-forge-cyan"
-                    title="下载"
+                    title="下载源码 zip"
                   >
                     <Download size={14} />
+                  </button>
+                  <button
+                    onClick={() => h.has_jar && handleDownloadJar(h.sessionId)}
+                    className={`grid h-8 w-8 place-items-center rounded-lg border border-white/10 transition-all duration-150 ${
+                      h.has_jar
+                        ? "text-zinc-400 hover:border-forge-emerald/40 hover:text-forge-emerald"
+                        : "cursor-not-allowed text-zinc-700"
+                    }`}
+                    title={h.has_jar ? "下载打包 jar" : "未打包 jar"}
+                  >
+                    <FileArchive size={14} />
                   </button>
                   <button
                     onClick={() => onResume(h.sessionId)}

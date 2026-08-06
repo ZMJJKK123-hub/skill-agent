@@ -119,7 +119,7 @@ export function getGames(): Promise<{ games: Game[] }> {
   return request<{ games: Game[] }>("/api/games");
 }
 
-/** 下载 mod.zip（带登录头，<a> 无法携带自定义头所以用 fetch 流式下载） */
+/** 下载 mod.zip 源码包（带登录头，<a> 无法携带自定义头所以用 fetch 流式下载） */
 export async function downloadSession(sessionId: string): Promise<void> {
   const res = await fetch(`/api/download?session_id=${encodeURIComponent(sessionId)}`, {
     headers: authHeaders(),
@@ -138,7 +138,33 @@ export async function downloadSession(sessionId: string): Promise<void> {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `mod-${sessionId}.zip`;
+  a.download = `mod-${sessionId}-src.zip`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/** 下载打包好的 mod jar（带登录头；无 jar 时后端返回 400） */
+export async function downloadJar(sessionId: string): Promise<void> {
+  const res = await fetch(`/api/download/jar?session_id=${encodeURIComponent(sessionId)}`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    let msg = res.statusText || `HTTP ${res.status}`;
+    try {
+      const data = (await res.json()) as { detail?: string };
+      if (data?.detail) msg = data.detail;
+    } catch {
+      /* 非 JSON 响应 */
+    }
+    throw new Error(msg);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `mod-${sessionId}.jar`;
   document.body.appendChild(a);
   a.click();
   a.remove();

@@ -18,6 +18,8 @@ export interface SessionStats {
   elapsed: number | null;
   file_count: number | null;
   total_bytes: number | null;
+  /** 是否已打包出可安装的 jar（mod/dist/*.jar 存在） */
+  has_jar?: boolean;
 }
 
 export type AgentEventType =
@@ -75,4 +77,6 @@ export interface HistoryEntry {
   elapsed: number | null;
   fileCount: number | null;
   date: string;
+  /** 服务端注入：该会话是否已打包 jar */
+  has_jar?: boolean;
 }

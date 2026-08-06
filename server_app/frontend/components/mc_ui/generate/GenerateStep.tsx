@@ -20,7 +20,7 @@ import StatusPanel from "./StatusPanel";
 import McTerminal from "./McTerminal";
 import EnchantOverlay from "./EnchantOverlay";
 import ArtifactExplorer from "../../common_ui/ArtifactExplorer";
-import { downloadSession } from "../../../lib/api";
+import { downloadSession, downloadJar } from "../../../lib/api";
 import type { AgentEvent, SessionStats } from "../../../lib/types";
 
 interface GenerateStepProps {
@@ -154,6 +154,11 @@ export default function GenerateStep({
     downloadSession(sessionId).catch(() => undefined);
   }, [finished, sessionId]);
 
+  const handleDownloadJar = useCallback(() => {
+    primeAudio();
+    downloadJar(sessionId).catch(() => undefined);
+  }, [sessionId]);
+
   const handleRegenerateClick = useCallback(() => {
     primeAudio();
     setEnchantOpen(false);
@@ -232,7 +237,9 @@ export default function GenerateStep({
               elapsedText={elapsedText}
               fileSummary={fileSummary}
               finished={finished}
+              hasJar={status?.has_jar ?? false}
               onDownload={handleDownload}
+              onDownloadJar={handleDownloadJar}
               onRegenerate={handleRegenerateClick}
             />
           </div>

@@ -287,6 +287,16 @@ def _session_stats(sess: Session) -> dict:
         end = sess.finished_at if sess.finished_at else time.time()
         elapsed = int(end - sess.started_at)
 
+    # jar 打包状态：mod/dist/ 下是否存在 jar（agent 收尾构建成功后写入）
+    has_jar = False
+    try:
+        if sess.mod_dir.exists():
+            dist_dir = sess.mod_dir / "dist"
+            if dist_dir.is_dir():
+                has_jar = any(dist_dir.glob("*.jar"))
+    except OSError:
+        pass
+
     return {
         "session_id": sess.id,
         "state": state,
@@ -297,6 +307,7 @@ def _session_stats(sess: Session) -> dict:
         "elapsed": elapsed,
         "file_count": file_count,
         "total_bytes": total_bytes,
+        "has_jar": has_jar,
     }
 
 
@@ -453,16 +464,51 @@ def get_result(session_id: str, authorization: str = Header(default="")):
 
 @app.get("/api/download")
 def download_mod(session_id: str, authorization: str = Header(default="")):
-    """把会话生成的 mod 目录打包成 zip 供用户下载。"""
+    """下载源码 zip：只打包源码工程（源码 + Gradle 配置 + README）。
+
+    排除 build/（Gradle 中间产物）与 dist/（jar 由 /api/download/jar 单独提供），
+    保证源码 zip 不含可安装 jar，源码与产物分离。
+    """
     username = _auth_username(authorization)
     sess = _get_session(session_id)
     _assert_owner(sess, username)
     zip_path = SESSIONS_DIR / session_id / "mod.zip"
-    shutil.make_archive(str(zip_path)[:-4], "zip", root_dir=str(sess.mod_dir))
+
+    def _filter(directory, names):
+        # 跳过构建中间产物与 jar 分发目录
+        return {"build", "dist", ".worktrees", ".team", ".tasks",
+                ".transcripts", "__pycache__", ".git"} & set(names)
+
+    shutil.make_archive(
+        str(zip_path)[:-4], "zip", root_dir=str(sess.mod_dir), ignore=_filter,
+    )
     return FileResponse(
         str(zip_path),
         media_type="application/zip",
-        filename=f"mod-{session_id}.zip",
+        filename=f"mod-{session_id}-src.zip",
+    )
+
+
+@app.get("/api/download/jar")
+def download_jar(session_id: str, authorization: str = Header(default="")):
+    """下载打包好的 mod jar（dist/ 下的 jar）。
+
+    jar 由 agent 收尾调用 build_mod_jar_forge 构建后复制到 mod/dist/。
+    多个 jar 时取第一个；没有 jar 返回 400。
+    """
+    username = _auth_username(authorization)
+    sess = _get_session(session_id)
+    _assert_owner(sess, username)
+    dist_dir = sess.mod_dir / "dist"
+    if not dist_dir.is_dir():
+        raise HTTPException(400, "该会话尚未打包 jar（未构建或构建失败）")
+    jars = sorted(dist_dir.glob("*.jar"))
+    if not jars:
+        raise HTTPException(400, "该会话尚未打包 jar（未构建或构建失败）")
+    return FileResponse(
+        str(jars[0]),
+        media_type="application/java-archive",
+        filename=f"mod-{session_id}.jar",
     )
 
 
@@ -589,11 +635,27 @@ def logout(authorization: str = Header(default="")):
     return {"ok": True}
 
 
+def _history_with_jar(username: str) -> list:
+    """给历史条目注入 has_jar（磁盘检测 dist/*.jar 是否存在）。"""
+    history = auth_store.load_history(username)
+    for h in history:
+        sid = h.get("sessionId")
+        h["has_jar"] = False
+        if sid:
+            dist_dir = SESSIONS_DIR / sid / "mod" / "dist"
+            if dist_dir.is_dir():
+                try:
+                    h["has_jar"] = any(dist_dir.glob("*.jar"))
+                except OSError:
+                    h["has_jar"] = False
+    return history
+
+
 @app.get("/api/history")
 def get_history(authorization: str = Header(default="")):
-    """当前登录用户的历史记录（按用户隔离）。"""
+    """当前登录用户的历史记录（按用户隔离，含 has_jar 打包状态）。"""
     username = _auth_username(authorization)
-    return {"history": auth_store.load_history(username)}
+    return {"history": _history_with_jar(username)}
 
 
 @app.put("/api/history")
@@ -624,7 +686,7 @@ def delete_history(session_id: str = "", authorization: str = Header(default="")
             _purge_session(sess)
         else:
             _purge_session_dir(session_id)
-        return {"history": auth_store.load_history(username)}
+        return {"history": _history_with_jar(username)}
 
     # 全部删除：先删除每个历史会话的磁盘目录，再清历史表
     for h in auth_store.load_history(username):
@@ -651,7 +713,7 @@ def delete_history_batch(req: HistoryBatchDelete, authorization: str = Header(de
             _purge_session(sess)
         else:
             _purge_session_dir(sid)
-    return {"history": auth_store.load_history(username)}
+    return {"history": _history_with_jar(username)}
 
 
 # ---------- 前端静态资源 ----------
