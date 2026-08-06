@@ -1214,6 +1214,100 @@ def _build_source_zip() -> str:
     except Exception as e:
         return f"[build] 源码 zip 预生成失败: {e}"
 
+
+def _forge_build_jar(kw: dict) -> str:
+    """build_mod_jar_forge：构建 Forge mod 项目为可安装 jar（gradlew build）。
+
+    与 run_bash 的 30s 超时不同，这里用同步长超时（900s）等待 Forge Gradle
+    首次构建完成（下载依赖 + 反混淆通常需要数分钟）。构建成功后把
+    build/libs/*.jar 复制到工程根的 dist/ 目录便于识别/下载。
+    """
+    task = kw.get("gradle_task", "build")
+    base = worktree_manager.resolve_dir() if worktree_manager else os.getcwd()
+
+    if os.name == "nt" or sys.platform == "win32":
+        if os.path.exists(os.path.join(base, "gradlew.bat")):
+            cmd = ["cmd", "/c", "gradlew.bat", task]
+        else:
+            cmd = ["cmd", "/c", "gradle", task, "--console=plain"]
+    else:
+        if os.path.exists(os.path.join(base, "gradlew")):
+            cmd = ["./gradlew", task, "--console=plain"]
+        else:
+            cmd = ["gradle", task, "--console=plain"]
+
+    try:
+        proc = subprocess.Popen(
+            cmd, cwd=base,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, encoding="utf-8", errors="replace",
+            env={**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"},
+        )
+    except Exception as e:
+        return f"[build] 无法启动 Gradle: {e}"
+
+    try:
+        out, _ = proc.communicate(timeout=900)
+    except subprocess.TimeoutExpired:
+        try:
+            subprocess.run(f"taskkill /f /t /pid {proc.pid}", shell=True, capture_output=True)
+        except Exception:
+            pass
+        return f"[build] Gradle 构建超时（>900s）。\n日志尾部:\n{(out or '')[-3000:]}"
+
+    ok = proc.returncode == 0
+    tail = (out or "")[-3000:]
+
+    if not ok:
+        hint = ""
+        if "Failed to find JDK for version 8" in (out or "") and "JavaProvisionerException" in (out or ""):
+            hint = (
+                "原因：ForgeGradle 反混淆需要 JDK 8，但服务器缺少 JDK 8"
+                "（且自动下载被 SSL 证书拦截）。\n"
+                "解决：在服务器安装 Temurin JDK 8 并设置 JAVA_HOME，"
+                "或修复系统证书/代理后重新生成。"
+            )
+        elif "SSLHandshakeException" in (out or "") or "PKIX path building failed" in (out or ""):
+            hint = (
+                "原因：Gradle 下载依赖时 SSL 证书校验失败"
+                "（多为代理/公司网络拦截或系统根证书不全）。\n"
+                "解决：修复证书/代理后重新生成。"
+            )
+        else:
+            hint = "原因：构建过程出错（详见日志尾部）。"
+        return (
+            f"[build] Gradle 构建失败 (exit={proc.returncode})。\n"
+            f"{hint}\n日志尾部:\n{tail}"
+        )
+
+    libs_dir = os.path.join(base, "build", "libs")
+    jars = []
+    if os.path.isdir(libs_dir):
+        for fname in sorted(os.listdir(libs_dir)):
+            if fname.endswith(".jar"):
+                jars.append(fname)
+                try:
+                    ddist = os.path.join(base, "dist")
+                    os.makedirs(ddist, exist_ok=True)
+                    import shutil as _sh
+                    _sh.copy2(os.path.join(libs_dir, fname), os.path.join(ddist, fname))
+                except Exception as e:
+                    return f"[build] 构建成功但复制 jar 失败: {e}"
+
+    if not jars:
+        return f"[build] 构建完成但未在 build/libs 找到 jar。\n日志尾部:\n{tail}"
+
+    sizes = []
+    for j in jars:
+        try:
+            sizes.append(f"{j} ({os.path.getsize(os.path.join(base,'dist',j))} B)")
+        except OSError:
+            sizes.append(j)
+    return (
+        f"[build] 构建成功 ✓ 产出 jar：\n  " + "\n  ".join(sizes) +
+        "\n已复制到工程根的 dist/ 目录，可直接放入 .minecraft/mods/。"
+    )
+
 TOOL_HANDLERS = {
     "bash":         lambda **kw: run_bash(kw["command"]),
     "read_file":    lambda **kw: run_read(kw["path"], kw.get("limit")),
@@ -1251,6 +1345,7 @@ TOOL_HANDLERS = {
     "worktree_recover": lambda **kw: json.dumps(worktree_manager.recover(),
                                                 ensure_ascii=False),
     # ── Forge Mod 生成工具（MC 26.x / Forge 65.x）──
+    "build_mod_jar_forge": lambda **kw: _forge_build_jar(kw),
 }
 
 # ---------- 工具定义（DeepSeek / OpenAI 格式）----------
@@ -1746,6 +1841,19 @@ TOOLS = [
         },
     },
     # ── Forge Mod 生成工具（MC 26.x / Forge 65.x）──
+    {
+        "type": "function",
+        "function": {
+            "name": "build_mod_jar_forge",
+            "description": "Build the Forge mod project into an installable jar by running the Gradle wrapper (gradlew build). This takes several minutes on first build (downloads deps + remaps). On success, copies the jar(s) from build/libs/ into the project's dist/ folder so they can be placed directly in .minecraft/mods/. Parameters: gradle_task (default 'build').",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "gradle_task": {"type": "string"},
+                },
+            },
+        },
+    },
 ]
 
 # ---------- 第 12 课接线：WorktreeManager 注入（打破循环依赖） ----------

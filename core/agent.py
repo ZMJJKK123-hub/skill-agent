@@ -123,6 +123,20 @@ def agent_loop(messages: list) -> str:
                 coordinator.reset()  # 第 10 课：清空协议请求与写入登记
                 logger.info("所有任务已完成，已自动清空 .tasks、todo、team config、inbox 和协议状态")
 
+            # ── 收尾：构建 mod jar（成功会复制到 dist/）──
+            # 放在 zip 预生成前，生成结束后自动尝试打包；不依赖模型主动调用工具。
+            try:
+                import os as _os
+                if (_os.path.exists("gradlew.bat") or _os.path.exists("gradlew")) and _os.path.exists("build.gradle"):
+                    print("[run_task] 开始构建 mod jar（首次构建需数分钟）...", flush=True)
+                    from .tools import _forge_build_jar
+                    _jres = _forge_build_jar({})
+                    print(f"[run_task] {_jres[:3000]}", flush=True)
+                else:
+                    logger.info("非 Gradle/Forge 工程，跳过 jar 构建")
+            except Exception as _e:
+                logger.info(f"收尾构建跳过: {_e}")
+
             # ── 收尾：源码 zip 预生成（仅 Gradle/Forge 工程）──
             # 把 mod 工程打包为 <session>/mod.zip，用户第一次点下载即可秒下，
             # 无需在点击请求时现场打包 11MB。
