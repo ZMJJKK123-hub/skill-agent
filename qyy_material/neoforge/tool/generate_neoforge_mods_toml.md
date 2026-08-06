@@ -1,1 +1,0 @@
-# Tool: generate neoforge.mods.toml

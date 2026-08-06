@@ -1186,245 +1186,33 @@ def _worktree_remove(kw: dict) -> str:
 # 纯模板生成：输入参数 → 生成文件内容 → 用 run_write 写入当前 mod 工作目录。
 # 所有 handler 都是工具函数增量，不依赖也不修改 agent 主循环。
 
-def _forge_write_files(files: dict) -> str:
-    """循环写入多个文件，返回汇总文本。"""
-    written = []
-    for path, content in files.items():
-        res = run_write(path, content)
-        written.append(f"  {path}: {res}")
-    return "\n".join(written)
+def _build_source_zip() -> str:
+    """源码 zip 预生成：在 agent 收尾阶段把当前 mod 工程打包为 mod.zip。
 
-def _forge_build_jar(kw: dict) -> str:
-    """build_mod_jar_forge：在会话 mod 工程目录执行 Gradle 构建，产出可安装的 jar。
-
-    与 run_bash 的 30s 超时不同，这里用同步长超时（900s）等待 Forge Gradle
-    首次构建完成（下载依赖 + 反混淆通常需要数分钟）。
-    构建成功后把 build/libs/*.jar 复制到工程根 dist/ 便于识别/下载。
+    与 server 的 download_mod 采用相同规则（跳过 build/dist/.git 等运行时目录），
+    这样用户第一次点击下载时后端直接命中缓存返回，无需现场打包 11MB。
     """
-    task = kw.get("gradle_task", "build")
+    import zipfile
+
     base = worktree_manager.resolve_dir() if worktree_manager else os.getcwd()
-    # 检测 Windows 用 .bat wrapper，否则用可执行脚本
-    if os.name == "nt" or sys.platform == "win32":
-        if os.path.exists(os.path.join(base, "gradlew.bat")):
-            cmd = ["cmd", "/c", "gradlew.bat", task]
-        else:
-            cmd = ["cmd", "/c", "gradle", task, "--console=plain"]
-    else:
-        if os.path.exists(os.path.join(base, "gradlew")):
-            cmd = ["./gradlew", task, "--console=plain"]
-        else:
-            cmd = ["gradle", task, "--console=plain"]
+    zip_path = base.parent / "mod.zip"  # <session>/mod.zip（与 server SESSIONS_DIR 布局一致）
+    skip = {"build", "dist", ".worktrees", ".team", ".tasks",
+            ".transcripts", "__pycache__", ".git"}
     try:
-        proc = subprocess.Popen(
-            cmd, cwd=base,
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            text=True, encoding="utf-8", errors="replace",
-            env={**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"},
-        )
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            if os.path.isdir(base):
+                for p in sorted(Path(base).rglob("*")):
+                    try:
+                        rel = p.relative_to(Path(base))
+                    except ValueError:
+                        continue
+                    if any(part in skip for part in rel.parts):
+                        continue
+                    if p.is_file():
+                        zf.write(p, rel.as_posix())
+        return f"[build] 源码 zip 已预生成: {zip_path}"
     except Exception as e:
-        return f"[build] 无法启动 Gradle: {e}"
-    try:
-        out, _ = proc.communicate(timeout=900)
-    except subprocess.TimeoutExpired:
-        # 超时强杀进程树
-        try:
-            subprocess.run(f"taskkill /f /t /pid {proc.pid}", shell=True, capture_output=True)
-        except Exception:
-            pass
-        return (
-            f"[build] Gradle 构建超时（>900s）。\n日志尾部:\n{(out or '')[-3000:]}"
-        )
-    ok = proc.returncode == 0
-    tail = (out or "")[-3000:]
-
-    if not ok:
-        # 常见环境问题诊断：提炼关键错误，避免把整堆 Gradle 堆栈抛给用户
-        hint = ""
-        if "Failed to find JDK for version 8" in (out or "") and "JavaProvisionerException" in (out or ""):
-            hint = (
-                "原因：ForgeGradle 反混淆需要 JDK 8，但服务器缺少 JDK 8"
-                "（且自动下载被 SSL 证书拦截）。\n"
-                "解决：在服务器安装 Temurin JDK 8 并设置 JAVA_HOME，"
-                "或修复系统证书/代理后重新生成。"
-            )
-        elif "SSLHandshakeException" in (out or "") or "PKIX path building failed" in (out or ""):
-            hint = (
-                "原因：Gradle 下载依赖时 SSL 证书校验失败"
-                "（多为代理/公司网络拦截或系统根证书不全）。\n"
-                "解决：修复证书/代理后重新生成。"
-            )
-        else:
-            hint = "原因：构建过程出错（详见日志尾部）。"
-        return (
-            f"[build] Gradle 构建失败 (exit={proc.returncode})。\n"
-            f"{hint}\n日志尾部:\n{tail}"
-        )
-
-    # 构建成功：收集 build/libs 下的 jar，复制到 dist/
-    libs_dir = os.path.join(base, "build", "libs")
-    jars = []
-    if os.path.isdir(libs_dir):
-        for fname in sorted(os.listdir(libs_dir)):
-            if fname.endswith(".jar"):
-                jars.append(fname)
-                try:
-                    ddist = os.path.join(base, "dist")
-                    os.makedirs(ddist, exist_ok=True)
-                    import shutil as _sh
-                    _sh.copy2(os.path.join(libs_dir, fname), os.path.join(ddist, fname))
-                except Exception as e:
-                    return f"[build] 构建成功但复制 jar 失败: {e}"
-    if not jars:
-        return f"[build] 构建完成但未在 build/libs 找到 jar。\n日志尾部:\n{tail}"
-    sizes = []
-    for j in jars:
-        try:
-            sizes.append(f"{j} ({os.path.getsize(os.path.join(base,'dist',j))} B)")
-        except OSError:
-            sizes.append(j)
-    return (
-        f"[build] 构建成功 ✓ 产出 jar：\n  " + "\n  ".join(sizes) +
-        "\n已复制到工程根的 dist/ 目录，可直接放入 .minecraft/mods/。"
-    )
-
-def _forge_item_registration(kw: dict) -> str:
-    """generate_item_registration_forge：生成 ModItems.java + 物品模型/语言条目。"""
-    mod_id = kw.get("mod_id", "my_mod")
-    pkg = kw.get("package_path", kw.get("mod_group_id", "com.example.my_mod"))
-    pkg_dir = pkg.replace(".", "/")
-    items = kw.get("items", [])
-    lines = [f"package {pkg};", "", "import net.minecraft.world.item.Item;",
-             "import net.minecraft.world.item.CreativeModeTabs;",
-             "import net.minecraftforge.registries.DeferredRegister;",
-             "import net.minecraftforge.registries.ForgeRegistries;",
-             "import net.minecraftforge.registries.RegistryObject;",
-             f"public class ModItems {{",
-             f"    public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, \"{mod_id}\");",
-             "    private static Item.Properties setProps(int stack, boolean fireRes, String rarity) {",
-             "        var p = new Item.Properties().stacksTo(stack);",
-             "        if (fireRes) p.fireResistant();",
-             "        return p;",
-             "    }"]
-    lang_en, lang_zh = {}, {}
-    for it in items:
-        name = it.get("name", "my_item")
-        stack = it.get("stack_size", 64)
-        fire = it.get("fire_resistant", False)
-        rarity = it.get("rarity", "common")
-        tab = it.get("creative_tab", "ingredients")
-        reg_name = f"{name}"
-        lines.append(f"    public static final RegistryObject<Item> {name.upper()} = ITEMS.register(\"{reg_name}\", () -> new Item(setProps({stack}, {str(fire).lower()}, \"{rarity}\")));")
-        label = it.get("label", name.replace("_", " "))
-        lang_en[f"item.{mod_id}.{reg_name}"] = label.title()
-        lang_zh[f"item.{mod_id}.{reg_name}"] = it.get("zh_label", label)
-        # 物品模型
-        _forge_write_files({
-            f"src/main/resources/assets/{mod_id}/models/item/{reg_name}.json":
-                '{"parent": "minecraft:item/generated", "textures": {"layer0": "' + f"{mod_id}:item/{reg_name}" + '"}}',
-        })
-    lines.append("}")
-    files = {
-        f"src/main/java/{pkg_dir}/ModItems.java": "\n".join(lines) + "\n",
-    }
-    import json as _json
-    files[f"src/main/resources/assets/{mod_id}/lang/en_us.json"] = _json.dumps(lang_en, ensure_ascii=False, indent=2)
-    files[f"src/main/resources/assets/{mod_id}/lang/zh_cn.json"] = _json.dumps(lang_zh, ensure_ascii=False, indent=2)
-    return _forge_write_files(files)
-
-def _forge_block_registration(kw: dict) -> str:
-    """generate_block_registration_forge：生成 ModBlocks.java + blockstate/模型 JSON。"""
-    mod_id = kw.get("mod_id", "my_mod")
-    pkg = kw.get("package_path", kw.get("mod_group_id", "com.example.my_mod"))
-    pkg_dir = pkg.replace(".", "/")
-    blocks = kw.get("blocks", [])
-    lines = [f"package {pkg};", "", "import net.minecraft.world.level.block.Block;",
-             "import net.minecraft.world.level.block.state.BlockBehaviour;",
-             "import net.minecraft.world.level.block.SoundType;",
-             "import net.minecraftforge.registries.DeferredRegister;",
-             "import net.minecraftforge.registries.ForgeRegistries;",
-             "import net.minecraftforge.registries.RegistryObject;",
-             f"public class ModBlocks {{",
-             f"    public static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, \"{mod_id}\");",
-             "    private static BlockBehaviour.Properties setProps(float hardness, float resistance, String sound) {",
-             "        BlockBehaviour.Properties p = BlockBehaviour.Properties.of();",
-             "        p.strength(hardness, resistance);",
-             "        if (\"stone\".equals(sound)) p.sound(SoundType.STONE);",
-             "        return p;",
-             "    }"]
-    for b in blocks:
-        name = b.get("name", "my_block")
-        hardness = b.get("hardness", 1.5)
-        resistance = b.get("resistance", 6.0)
-        sound = b.get("sound_type", "stone")
-        reg_name = name
-        lines.append(f"    public static final RegistryObject<Block> {name.upper()} = BLOCKS.register(\"{reg_name}\", () -> new Block(setProps({hardness}f, {resistance}f, \"{sound}\")));")
-        _forge_write_files({
-            f"src/main/resources/assets/{mod_id}/blockstates/{reg_name}.json":
-                '{"variants": {"": {"model": "' + f"{mod_id}:block/{reg_name}" + '"}}}',
-            f"src/main/resources/assets/{mod_id}/models/block/{reg_name}.json":
-                '{"parent": "minecraft:block/cube_all", "textures": {"all": "' + f"{mod_id}:block/{reg_name}" + '"}}',
-            f"src/main/resources/assets/{mod_id}/models/item/{reg_name}.json":
-                '{"parent": "' + f"{mod_id}:block/{reg_name}" + '"}',
-            f"src/main/resources/data/{mod_id}/loot_table/blocks/{reg_name}.json":
-                '{"type": "minecraft:block", "pools": [{"rolls": 1, "entries": [{"type": "minecraft:item", "name": "' + f"{mod_id}:{reg_name}" + '"}], "conditions": [{"condition": "minecraft:survives_explosion"}]}]}',
-        })
-    lines.append("}")
-    return _forge_write_files({f"src/main/java/{pkg_dir}/ModBlocks.java": "\n".join(lines) + "\n"})
-
-def _forge_language_entry(kw: dict) -> str:
-    """generate_language_entry：生成 en_us.json / zh_cn.json 追加片段。"""
-    entries = kw.get("entries", [])
-    en, zh = {}, {}
-    for e in entries:
-        key = e.get("key", "")
-        if not key:
-            continue
-        en[key] = e.get("en", key)
-        zh[key] = e.get("zh", key)
-    out = []
-    if en:
-        import json as _json
-        out.append("en_us.json: " + _json.dumps(en, ensure_ascii=False, indent=2))
-    if zh:
-        import json as _json
-        out.append("zh_cn.json: " + _json.dumps(zh, ensure_ascii=False, indent=2))
-    return "\n".join(out) if out else "(no entries)"
-
-def _forge_describe_item_texture(kw: dict) -> str:
-    """describe_item_texture：输出单物品贴图描述 JSON。"""
-    import json as _json
-    result = {
-        "path": f"assets/<mod>/textures/item/{kw.get('item_name', 'item')}.png",
-        "size": "16x16",
-        "prompt": kw.get("visual_description", ""),
-        "prompt_zh": kw.get("visual_description", ""),
-        "style": kw.get("style", "pixel-art"),
-    }
-    return _json.dumps(result, ensure_ascii=False, indent=2)
-
-def _forge_describe_block_textures(kw: dict) -> str:
-    """describe_block_textures：输出多方块面贴图描述 JSON。"""
-    import json as _json
-    name = kw.get("block_name", "block")
-    faces = []
-    for i in range(max(1, min(int(kw.get("face_count", 1)), 6))):
-        faces.append({
-            "path": f"assets/<mod>/textures/block/{name}_side{i}.png",
-            "size": "16x16",
-            "prompt": kw.get("visual_description", ""),
-            "prompt_zh": kw.get("visual_description", ""),
-        })
-    result = {
-        "element": "cube",
-        "name": name,
-        "model_parent": "minecraft:block/cube_all",
-        "faces": {
-            "top": faces[0],
-            "bottom": faces[0] if len(faces) > 1 else faces[0],
-            "side": faces[1] if len(faces) > 1 else faces[0],
-        },
-    }
-    return _json.dumps(result, ensure_ascii=False, indent=2)
+        return f"[build] 源码 zip 预生成失败: {e}"
 
 TOOL_HANDLERS = {
     "bash":         lambda **kw: run_bash(kw["command"]),
@@ -1463,12 +1251,6 @@ TOOL_HANDLERS = {
     "worktree_recover": lambda **kw: json.dumps(worktree_manager.recover(),
                                                 ensure_ascii=False),
     # ── Forge Mod 生成工具（MC 26.x / Forge 65.x）──
-    "build_mod_jar_forge": lambda **kw: _forge_build_jar(kw),
-    "generate_item_registration_forge": lambda **kw: _forge_item_registration(kw),
-    "generate_block_registration_forge": lambda **kw: _forge_block_registration(kw),
-    "generate_language_entry": lambda **kw: _forge_language_entry(kw),
-    "describe_item_texture": lambda **kw: _forge_describe_item_texture(kw),
-    "describe_block_textures": lambda **kw: _forge_describe_block_textures(kw),
 }
 
 # ---------- 工具定义（DeepSeek / OpenAI 格式）----------
@@ -1964,107 +1746,6 @@ TOOLS = [
         },
     },
     # ── Forge Mod 生成工具（MC 26.x / Forge 65.x）──
-    {
-        "type": "function",
-        "function": {
-            "name": "build_mod_jar_forge",
-            "description": "Build the Forge mod project into an installable jar by running the Gradle wrapper (gradlew build). This takes several minutes on first build (downloads deps + remaps). On success, copies the jar(s) from build/libs/ into the project's dist/ folder so they can be placed directly in .minecraft/mods/. Parameters: gradle_task (default 'build').",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "gradle_task": {"type": "string"},
-                },
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "generate_item_registration_forge",
-            "description": "Generate Forge item registration code (ModItems.java) plus item model JSON and language entries. Parameters: mod_id, package_path, items (array of {name, stack_size, rarity, fire_resistant, creative_tab}).",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "mod_id": {"type": "string"},
-                    "package_path": {"type": "string"},
-                    "items": {
-                        "type": "array",
-                        "items": {"type": "object"},
-                    },
-                },
-                "required": ["mod_id", "items"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "generate_block_registration_forge",
-            "description": "Generate Forge block registration code (ModBlocks.java) plus blockstate/model/loot-table JSON. Parameters: mod_id, package_path, blocks (array of {name, hardness, resistance, sound_type}).",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "mod_id": {"type": "string"},
-                    "package_path": {"type": "string"},
-                    "blocks": {
-                        "type": "array",
-                        "items": {"type": "object"},
-                    },
-                },
-                "required": ["mod_id", "blocks"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "generate_language_entry",
-            "description": "Generate language file entries (en_us.json and zh_cn.json append JSON). Parameters: entries (array of {key, en, zh}).",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "entries": {
-                        "type": "array",
-                        "items": {"type": "object"},
-                    },
-                },
-                "required": ["entries"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "describe_item_texture",
-            "description": "Produce a texture description JSON for an item (path, size, prompt, prompt_zh, style) to guide image generation.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "item_name": {"type": "string"},
-                    "visual_description": {"type": "string"},
-                    "style": {"type": "string"},
-                },
-                "required": ["item_name", "visual_description"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "describe_block_textures",
-            "description": "Produce texture description JSONs for a block's faces (top/bottom/side paths, prompts) to guide image generation.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "block_name": {"type": "string"},
-                    "visual_description": {"type": "string"},
-                    "face_count": {"type": "integer"},
-                    "style": {"type": "string"},
-                },
-                "required": ["block_name", "visual_description"],
-            },
-        },
-    },
 ]
 
 # ---------- 第 12 课接线：WorktreeManager 注入（打破循环依赖） ----------

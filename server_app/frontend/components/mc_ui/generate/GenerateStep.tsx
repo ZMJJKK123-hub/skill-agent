@@ -147,16 +147,18 @@ export default function GenerateStep({
     prevFinished.current = finished;
   }, [finished]);
 
-  // 首次交互预热音频（解锁 AudioContext）
-  const handleDownload = useCallback(() => {
+  // 首次交互预热音频（解锁 AudioContext）。
+  // 注意：必须 async 并 await，否则 StatusPanel 的 busy loading 会瞬间复位
+  // （await onDownload() 拿到的是 undefined → "打包中…"一闪即过 → 看起来没反应）
+  const handleDownload = useCallback(async () => {
     primeAudio();
     if (!finished) return;
-    downloadSession(sessionId).catch(() => undefined);
+    await downloadSession(sessionId);
   }, [finished, sessionId]);
 
-  const handleDownloadJar = useCallback(() => {
+  const handleDownloadJar = useCallback(async () => {
     primeAudio();
-    downloadJar(sessionId).catch(() => undefined);
+    await downloadJar(sessionId);
   }, [sessionId]);
 
   const handleRegenerateClick = useCallback(() => {
