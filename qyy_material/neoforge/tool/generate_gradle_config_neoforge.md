@@ -1,0 +1,1 @@
+# Tool: generate_gradle_config for NeoForge

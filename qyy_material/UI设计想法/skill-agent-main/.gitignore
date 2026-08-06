@@ -1,0 +1,34 @@
+.env
+venv/
+__pycache__/
+*.pyc
+agent.log
+.tasks/
+.transcripts/
+.team/
+.worktrees/
+data/
+cloudflared.exe
+.vscode/
+
+# ---- 运行时日志 ----
+server_out.log
+
+# ---- 根目录 npm 残留（空 lockfile，无实际依赖） ----
+/package-lock.json
+
+# ---- 前端构建产物 ----
+server_app/frontend/.next/
+server_app/frontend/out/
+server_app/frontend/node_modules/
+server_app/frontend/tsconfig.tsbuildinfo
+
+# ---- 静态导出产物（由 scripts/export.mjs 自动生成） ----
+server_app/web/index.html
+server_app/web/404.html
+server_app/web/index.txt
+server_app/web/_next/
+
+# ---- React 重构前遗留产物 ----
+server_app/web/css/
+server_app/web/js/

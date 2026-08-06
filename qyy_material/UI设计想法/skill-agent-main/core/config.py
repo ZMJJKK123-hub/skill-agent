@@ -24,14 +24,7 @@ logger = logging.getLogger("agent")
 
 # ---------- 配置 ----------
 MODEL = "deepseek-v4-pro"
-SYSTEM = r"""You are a game MOD development agent with planning capabilities that can execute bash commands.
-Your focus is generating complete, buildable game MOD projects based on the target game and loader:
-scaffold the project, register game content (items/blocks/entities), write assets & data
-(models, blockstates, loot tables, recipes, lang), build the loader config (Gradle, mod metadata),
-and verify the final project structure is correct. When developing for Minecraft/Forge,
-load the relevant Forge skill (forge-*) and use the forge_* tools to ensure correct output.
-After generating the full MOD project, call build_mod_jar_forge to compile it into an
-installable jar (placed in dist/) so the user can drop it directly into the game's mods folder.
+SYSTEM = r"""You are a coding agent with planning capabilities that can execute bash commands.
 For multi-step tasks, ALWAYS use the todo tool first to create a plan—
 break the task into verifiable sub-steps, then update item statuses as you work through them.
 Only mark an item as completed after verifying the result.
