@@ -75,7 +75,6 @@ def run_bash(command: str) -> str:
     out = (out or "").strip()
     return out[:50000] if out else "(no output)"
 
-
 def run_read(path: str, limit: int = None) -> str:
     try:
         # 第 12 课：基座跟随线程 session（worktree_use 后落在 worktree 内）
@@ -88,7 +87,6 @@ def run_read(path: str, limit: int = None) -> str:
     except Exception as e:
         return f"Error: {e}"
 
-
 def run_write(path: str, content: str) -> str:
     try:
         # 第 12 课：基座跟随线程 session（worktree_use 后落在 worktree 内）
@@ -99,7 +97,6 @@ def run_write(path: str, content: str) -> str:
         return f"Wrote {len(content)} bytes to {path}"
     except Exception as e:
         return f"Error: {e}"
-
 
 def run_edit(path: str, old_text: str, new_text: str) -> str:
     try:
@@ -113,7 +110,6 @@ def run_edit(path: str, old_text: str, new_text: str) -> str:
         return f"Edited {path}"
     except Exception as e:
         return f"Error: {e}"
-
 
 # ---------- TodoManager（叠加的规划系统，不改动 Agent Loop 核心）----------
 class TodoManager:
@@ -146,7 +142,6 @@ class TodoManager:
         return rendered
 
 todo_manager = TodoManager()
-
 
 # ---------- SkillLoader（第 5 课：两层知识注入）----------
 class SkillLoader:
@@ -237,7 +232,6 @@ class SkillLoader:
         )
         return result
 
-
 # 重构：不再传 "skills"——缺省时自动解析为 core/skills（包相对），
 # 保证从任意启动目录都能找到技能，与 cwd 无关。
 skill_loader = SkillLoader()
@@ -248,7 +242,6 @@ config.SYSTEM += (
     "\n\nWhen a task involves a specific domain (testing, git, security, etc.), "
     "use the load_skill tool to load the relevant guidelines before proceeding."
 )
-
 
 # ---------- TaskManager（第 7 课：文件级持久化的任务图 DAG）----------
 class TaskManager:
@@ -534,9 +527,7 @@ class TaskManager:
         logger.info(f"TaskManager.clear | 已清空 {cleared} 个任务文件")
         return {"cleared": cleared, "next_id": self._next_id}
 
-
 task_manager = TaskManager()
-
 
 # ---------- BackgroundManager（第 8 课：异步后台执行 + 通知队列）----------
 @dataclass
@@ -546,7 +537,6 @@ class BackgroundTask:
     command: str
     status: str = "running"
     result: Optional[str] = None
-
 
 class BackgroundManager:
     """后台任务管理器。慢操作丢守护线程，主循环不阻塞。
@@ -652,9 +642,7 @@ class BackgroundManager:
                 break
         return notifications
 
-
 bg_manager = BackgroundManager()
-
 
 def format_background_results(notifications: list[dict]) -> str:
     """把后台通知格式化为 <background-results> 标签包裹的文本。
@@ -670,7 +658,6 @@ def format_background_results(notifications: list[dict]) -> str:
         )
     parts.append("</background-results>")
     return "\n".join(parts)
-
 
 # ---------- MessageBus（第 9 课：JSONL 收件箱，drain-on-read）----------
 class MessageBus:
@@ -760,10 +747,8 @@ class MessageBus:
                         pass
         logger.info(f"MessageBus.clear_all | 已清空 {self.inbox_dir} 下所有收件箱文件")
 
-
 # ---------- 第 11 课：身份重注入（Context Compact 后防止角色丢失）----------
 IDENTITY_THRESHOLD = 3  # 消息列表低于该数时认为刚经历过压缩，需要重注入身份
-
 
 def maybe_reinject_identity(agent_id: str, role_prompt: str,
                             messages: list) -> list:
@@ -794,7 +779,6 @@ def maybe_reinject_identity(agent_id: str, role_prompt: str,
     logger.info(f"maybe_reinject_identity | {agent_id} | 消息数={len(messages)} < {IDENTITY_THRESHOLD}，注入身份块")
     return [identity_block] + messages
 
-
 # ---------- TeammateManager（第 9 课：持久 Agent + 身份管理 + 通信）----------
 @dataclass
 class TeammateConfig:
@@ -802,7 +786,6 @@ class TeammateConfig:
     name: str
     system_prompt: str
     status: str = "idle"
-
 
 class TeammateManager:
     """团队名册管理器。spawn/shutdown 队友，每个队友在独立线程中运行。
@@ -1135,9 +1118,7 @@ class TeammateManager:
         logger.info(f"=== 队友 Agent 结束 | agent={agent_id} | 最终文本={final_text[:200]} ===")
         return final_text
 
-
 teammate_manager = TeammateManager()
-
 
 # ---------- 第 10 课接线：协调器注入消息总线 / 团队名册（打破循环依赖）----------
 # request_shutdown 的"协议协商"路径：coordinator 通过 bus 发 [PROTOCOL] shutdown，
@@ -1148,7 +1129,6 @@ coordinator.wire(
     team=teammate_manager.team,
     force_shutdown_fn=teammate_manager.shutdown,
 )
-
 
 # ---------- 工具调度映射 ----------
 # 注意：task handler 不在此注册，由 agent.py 接线（打破循环依赖）
@@ -1162,7 +1142,6 @@ def _submit_plan(kw: dict) -> str:
         "change_count": kw.get("estimated_changes", 0),
     }
     return coordinator.submit_plan_for_review(agent, plan)
-
 
 def _respond_to_request(kw: dict) -> str:
     """leader 审批/响应协议请求。decision ∈ approve | reject。
@@ -1180,7 +1159,6 @@ def _respond_to_request(kw: dict) -> str:
         logger.info(f"respond_to_request 捕获状态守卫异常 | {e}")
         return f"Error: {e}"
 
-
 def _claim_task(kw: dict) -> str:
     """第 11 课：队友显式认领任务。调用方需提供自己的 agent_id（由调度层注入）。"""
     agent = kw.get("_agent_id", "unknown")
@@ -1188,7 +1166,6 @@ def _claim_task(kw: dict) -> str:
     if ok:
         return f"Claimed task #{kw['task_id']} for {agent}"
     return f"Error: Task {kw['task_id']} could not be claimed (already claimed / not pending / blocked)"
-
 
 def _worktree_remove(kw: dict) -> str:
     """第 12 课：拆除 worktree 的工具封装。
@@ -1205,7 +1182,6 @@ def _worktree_remove(kw: dict) -> str:
     completed = "任务已标记 completed" if kw.get("complete_task", True) else "任务保留原状态"
     return f"Removed worktree for task #{kw['task_id']}{merged} | {completed}"
 
-
 # ========== Forge Mod 生成工具（MC 26.x / Forge 65.x，2026-08） ==========
 # 纯模板生成：输入参数 → 生成文件内容 → 用 run_write 写入当前 mod 工作目录。
 # 所有 handler 都是工具函数增量，不依赖也不修改 agent 主循环。
@@ -1217,7 +1193,6 @@ def _forge_write_files(files: dict) -> str:
         res = run_write(path, content)
         written.append(f"  {path}: {res}")
     return "\n".join(written)
-
 
 def _forge_build_jar(kw: dict) -> str:
     """build_mod_jar_forge：在会话 mod 工程目录执行 Gradle 构建，产出可安装的 jar。
@@ -1292,161 +1267,6 @@ def _forge_build_jar(kw: dict) -> str:
         "\n已复制到工程根的 dist/ 目录，可直接放入 .minecraft/mods/。"
     )
 
-
-def _forge_scaffold_mod(kw: dict) -> str:
-    """scaffold_mod_project_forge：生成完整 Forge 项目骨架。"""
-    mod_id = kw.get("mod_id", "my_mod")
-    mod_name = kw.get("mod_name", "My Mod")
-    mc = kw.get("mc_version", "26.2")
-    forge = kw.get("forge_version", "65.1.0")
-    pkg = kw.get("package_path", "com.example.my_mod")
-    author = kw.get("author", "AI_Agent")
-    pkg_dir = pkg.replace(".", "/")
-    files = {
-        "settings.gradle": (
-            "plugins {\n    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'\n}\n\n"
-            f"rootProject.name = '{mod_id}'\n"
-        ),
-        "gradle.properties": (
-            "org.gradle.caching=true\norg.gradle.parallel=true\n"
-            "org.gradle.configureondemand=true\n\n"
-            "org.gradle.configuration-cache=true\n"
-            "org.gradle.configuration-cache.parallel=true\n"
-            "org.gradle.configuration-cache.problems=warn\n\n"
-            "net.minecraftforge.gradle.merge-source-sets=true\n"
-        ),
-        "build.gradle": (
-            "plugins {\n    id 'java'\n    id 'idea'\n    id 'eclipse'\n"
-            "    id 'net.minecraftforge.gradle' version '[7.0.17,8)'\n}\n\n"
-            f"version = '1.0.0'\ngroup = '{pkg}'\n\n"
-            "// Mojang ships Java 25 to end users in 26.1+, so your mod should target Java 25.\n"
-            "java.toolchain.languageVersion = JavaLanguageVersion.of(25)\n\n"
-            "sourceSets.main.resources { srcDir 'src/generated/resources' }\n\n"
-            "minecraft {\n    runs {\n        configureEach {\n"
-            "            workingDir = layout.projectDirectory.dir('run')\n\n"
-            "            systemProperty 'eventbus.api.strictRuntimeChecks', 'true'\n"
-            "            systemProperty 'forge.enabledGameTestNamespaces', '" + mod_id + "'\n"
-            "        }\n\n        register('client')\n\n"
-            "        register('server') {\n            args '--nogui'\n        }\n\n"
-            "        register('gameTestServer')\n\n"
-            "        register('data') {\n"
-            "            workingDir = layout.projectDirectory.dir('run-data')\n\n"
-            "            args '--mod', '" + mod_id + "', '--all', '--output', layout.projectDirectory.dir('src/generated/resources'), '--existing', layout.projectDirectory.dir('src/main/resources')\n"
-            "        }\n    }\n}\n\n"
-            "repositories {\n    minecraft.mavenizer(it)\n"
-            "    maven fg.forgeMaven\n    maven fg.minecraftLibsMaven\n    mavenCentral()\n}\n\n"
-            "dependencies {\n"
-            f"    implementation minecraft.dependency('net.minecraftforge:forge:{mc}-{forge}')\n"
-            f"    annotationProcessor 'net.minecraftforge:eventbus-validator:7.0.5'\n"
-            "}\n\n"
-            "tasks.withType(JavaCompile).configureEach {\n    options.encoding = 'UTF-8'\n}\n"
-        ),
-        "src/main/resources/META-INF/mods.toml": (
-            'modLoader="javafml"\nloaderVersion="[65,)"\nlicense="MIT"\n\n[[mods]]\n'
-            f'modId="{mod_id}"\nversion="1.0.0"\ndisplayName="{mod_name}"\n'
-            f'authors="{author}"\ndescription="A Forge mod generated by AI agent."\n'
-        ),
-        "src/main/resources/pack.mcmeta": '{"pack":{"description":"Forge resources","pack_format":26}}',
-        f"src/main/java/{pkg_dir}/Main.java": (
-            f"package {pkg};\n\nimport net.minecraftforge.fml.common.Mod;\n\n"
-            f'@Mod("{mod_id}")\npublic class Main {{\n    public Main() {{\n'
-            "        // Forge 主类\n    }\n}\n"
-        ),
-        "README.txt": (
-            f"{mod_name} - Forge Mod ({mc} / Forge {forge})\n"
-            "======================================\n\n"
-            "编译：gradlew build   （或调用 agent 的 build_mod_jar_forge 工具）\n"
-            "产物：build/libs/<mod>-<version>.jar（agent 会同时复制到 dist/）\n"
-            "安装：把 jar 放入 .minecraft/mods/ 后启动游戏即可\n"
-        ),
-    }
-    return _forge_write_files(files)
-
-
-def _forge_gradle_config(kw: dict) -> str:
-    """generate_gradle_config_forge：生成 build.gradle / settings.gradle / gradle.properties。"""
-    mc = kw.get("mc_version", "26.2")
-    forge = kw.get("forge_version", "65.1.0")
-    mod_id = kw.get("mod_id", "my_mod")
-    group = kw.get("mod_group_id", "com.example.my_mod")
-    files = {
-        "settings.gradle": (
-            "plugins {\n    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'\n}\n\n"
-            f"rootProject.name = '{mod_id}'\n"
-        ),
-        "gradle.properties": (
-            "org.gradle.caching=true\norg.gradle.parallel=true\n"
-            "org.gradle.configureondemand=true\n\n"
-            "org.gradle.configuration-cache=true\n"
-            "org.gradle.configuration-cache.parallel=true\n"
-            "org.gradle.configuration-cache.problems=warn\n\n"
-            "net.minecraftforge.gradle.merge-source-sets=true\n"
-        ),
-        "build.gradle": (
-            "plugins {\n    id 'java'\n    id 'idea'\n    id 'eclipse'\n"
-            "    id 'net.minecraftforge.gradle' version '[7.0.17,8)'\n}\n\n"
-            f"version = '1.0.0'\ngroup = '{group}'\n\n"
-            "// Mojang ships Java 25 to end users in 26.1+, so your mod should target Java 25.\n"
-            "java.toolchain.languageVersion = JavaLanguageVersion.of(25)\n\n"
-            "minecraft {\n    runs {\n        configureEach {\n"
-            "            workingDir = layout.projectDirectory.dir('run')\n\n"
-            "            systemProperty 'eventbus.api.strictRuntimeChecks', 'true'\n"
-            "            systemProperty 'forge.enabledGameTestNamespaces', '" + mod_id + "'\n"
-            "        }\n\n        register('client')\n\n"
-            "        register('server') {\n            args '--nogui'\n        }\n\n"
-            "        register('gameTestServer')\n\n"
-            "        register('data') {\n"
-            "            workingDir = layout.projectDirectory.dir('run-data')\n\n"
-            "            args '--mod', '" + mod_id + "', '--all', '--output', layout.projectDirectory.dir('src/generated/resources'), '--existing', layout.projectDirectory.dir('src/main/resources')\n"
-            "        }\n    }\n}\n\n"
-            "repositories {\n    minecraft.mavenizer(it)\n"
-            "    maven fg.forgeMaven\n    maven fg.minecraftLibsMaven\n    mavenCentral()\n}\n\n"
-            "dependencies {\n"
-            f"    implementation minecraft.dependency('net.minecraftforge:forge:{mc}-{forge}')\n"
-            f"    annotationProcessor 'net.minecraftforge:eventbus-validator:7.0.5'\n"
-            "}\n\n"
-            "tasks.withType(JavaCompile).configureEach {\n    options.encoding = 'UTF-8'\n}\n"
-        ),
-    }
-    return _forge_write_files(files)
-
-
-def _forge_mods_toml(kw: dict) -> str:
-    """generate_mods_toml_forge：生成 META-INF/mods.toml。"""
-    mod_id = kw.get("mod_id", "my_mod")
-    mod_name = kw.get("mod_name", "My Mod")
-    mod_version = kw.get("mod_version", "1.0.0")
-    description = kw.get("description", "A Forge mod generated by AI agent.")
-    authors = kw.get("authors", "AI_Agent")
-    license = kw.get("license", "MIT")
-    deps = kw.get("dependencies", [])
-    lines = [
-        'modLoader="javafml"',
-        'loaderVersion="[65,)"',
-        f'license="{license}"',
-        "",
-        "[[mods]]",
-        f'modId="{mod_id}"',
-        f'version="{mod_version}"',
-        f'displayName="{mod_name}"',
-        f'authors="{authors}"',
-        f'description="{description}"',
-    ]
-    for dep in deps:
-        dep_id = dep.get("mod_id", "")
-        mandatory = dep.get("mandatory", "true")
-        vrange = dep.get("version_range", "[1,)")
-        lines += [
-            "",
-            "[[dependencies." + mod_id + "]]",
-            f'    modId="{dep_id}"',
-            f'    mandatory={mandatory}',
-            f'    versionRange="{vrange}"',
-            f'    ordering="NONE"\n    side="BOTH"',
-        ]
-    return _forge_write_files({"src/main/resources/META-INF/mods.toml": "\n".join(lines) + "\n"})
-
-
 def _forge_item_registration(kw: dict) -> str:
     """generate_item_registration_forge：生成 ModItems.java + 物品模型/语言条目。"""
     mod_id = kw.get("mod_id", "my_mod")
@@ -1491,7 +1311,6 @@ def _forge_item_registration(kw: dict) -> str:
     files[f"src/main/resources/assets/{mod_id}/lang/zh_cn.json"] = _json.dumps(lang_zh, ensure_ascii=False, indent=2)
     return _forge_write_files(files)
 
-
 def _forge_block_registration(kw: dict) -> str:
     """generate_block_registration_forge：生成 ModBlocks.java + blockstate/模型 JSON。"""
     mod_id = kw.get("mod_id", "my_mod")
@@ -1532,7 +1351,6 @@ def _forge_block_registration(kw: dict) -> str:
     lines.append("}")
     return _forge_write_files({f"src/main/java/{pkg_dir}/ModBlocks.java": "\n".join(lines) + "\n"})
 
-
 def _forge_language_entry(kw: dict) -> str:
     """generate_language_entry：生成 en_us.json / zh_cn.json 追加片段。"""
     entries = kw.get("entries", [])
@@ -1552,7 +1370,6 @@ def _forge_language_entry(kw: dict) -> str:
         out.append("zh_cn.json: " + _json.dumps(zh, ensure_ascii=False, indent=2))
     return "\n".join(out) if out else "(no entries)"
 
-
 def _forge_describe_item_texture(kw: dict) -> str:
     """describe_item_texture：输出单物品贴图描述 JSON。"""
     import json as _json
@@ -1564,7 +1381,6 @@ def _forge_describe_item_texture(kw: dict) -> str:
         "style": kw.get("style", "pixel-art"),
     }
     return _json.dumps(result, ensure_ascii=False, indent=2)
-
 
 def _forge_describe_block_textures(kw: dict) -> str:
     """describe_block_textures：输出多方块面贴图描述 JSON。"""
@@ -1589,7 +1405,6 @@ def _forge_describe_block_textures(kw: dict) -> str:
         },
     }
     return _json.dumps(result, ensure_ascii=False, indent=2)
-
 
 TOOL_HANDLERS = {
     "bash":         lambda **kw: run_bash(kw["command"]),
@@ -1629,9 +1444,6 @@ TOOL_HANDLERS = {
                                                 ensure_ascii=False),
     # ── Forge Mod 生成工具（MC 26.x / Forge 65.x）──
     "build_mod_jar_forge": lambda **kw: _forge_build_jar(kw),
-    "scaffold_mod_project_forge": lambda **kw: _forge_scaffold_mod(kw),
-    "generate_gradle_config_forge": lambda **kw: _forge_gradle_config(kw),
-    "generate_mods_toml_forge": lambda **kw: _forge_mods_toml(kw),
     "generate_item_registration_forge": lambda **kw: _forge_item_registration(kw),
     "generate_block_registration_forge": lambda **kw: _forge_block_registration(kw),
     "generate_language_entry": lambda **kw: _forge_language_entry(kw),
@@ -2142,66 +1954,6 @@ TOOLS = [
                 "properties": {
                     "gradle_task": {"type": "string"},
                 },
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "scaffold_mod_project_forge",
-            "description": "Generate a complete Forge mod project skeleton (build.gradle, settings.gradle, gradle.properties, mods.toml, pack.mcmeta, @Mod main class) for MC 26.x / Forge 65.x. Parameters: mod_id, mod_name, mc_version, forge_version, package_path, author.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "mod_id": {"type": "string"},
-                    "mod_name": {"type": "string"},
-                    "mc_version": {"type": "string"},
-                    "forge_version": {"type": "string"},
-                    "package_path": {"type": "string"},
-                    "author": {"type": "string"},
-                },
-                "required": ["mod_id", "mc_version", "forge_version"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "generate_gradle_config_forge",
-            "description": "Generate Forge Gradle configuration files (build.gradle, settings.gradle, gradle.properties) for MC 26.x / Forge 65.x. Parameters: mc_version, forge_version, mod_id, mod_group_id, mappings_channel.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "mc_version": {"type": "string"},
-                    "forge_version": {"type": "string"},
-                    "mod_id": {"type": "string"},
-                    "mod_group_id": {"type": "string"},
-                    "mappings_channel": {"type": "string"},
-                },
-                "required": ["mc_version", "forge_version", "mod_id"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "generate_mods_toml_forge",
-            "description": "Generate META-INF/mods.toml for a Forge mod. Parameters: mod_id, mod_name, mod_version, description, authors, license, dependencies (array of {mod_id, mandatory, version_range}).",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "mod_id": {"type": "string"},
-                    "mod_name": {"type": "string"},
-                    "mod_version": {"type": "string"},
-                    "description": {"type": "string"},
-                    "authors": {"type": "string"},
-                    "license": {"type": "string"},
-                    "dependencies": {
-                        "type": "array",
-                        "items": {"type": "object"},
-                    },
-                },
-                "required": ["mod_id"],
             },
         },
     },

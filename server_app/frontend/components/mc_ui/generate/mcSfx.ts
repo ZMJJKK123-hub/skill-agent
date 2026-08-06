@@ -36,10 +36,11 @@ export function primeAudio(): boolean {
   return true;
 }
 
-/** 任务完成音效：播放真实音频文件 /assets/mc_complete.mp3（失败静默降级） */
+/** 任务完成音效：播放真实音频文件 /assets/mc_complete.mp3（音量 25%，失败静默降级） */
 export function playMcCompleteSound(): void {
   try {
     const audio = new Audio("/assets/mc_complete.mp3");
+    audio.volume = 0.25; // 调到原来的 25%
     void audio.play().catch(() => {
       /* 自动播放限制/文件缺失时静默跳过，不影响 UI */
     });
