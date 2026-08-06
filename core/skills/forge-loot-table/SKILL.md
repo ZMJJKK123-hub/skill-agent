@@ -31,7 +31,7 @@ description: Forge 战利品表 JSON 规范（data）
       "rolls": 1,
       "entries": [{ "type": "minecraft:item", "name": "mymod:my_block" }],
       "conditions": [
-        { "condition": "minecraft:match_tool", "predicate": { "enchantments": [{ "enchantment": "minecraft:silk_touch", "levels": { "min": 1 } }] } }
+        { "condition": "minecraft:match_tool", "predicate": { "items": [], "components": { "minecraft:enchantments": { "minecraft:silk_touch": { "min": 1 } } } } }
       ]
     },
     {
@@ -77,6 +77,6 @@ description: Forge 战利品表 JSON 规范（data）
 | `set_count` | 设置数量 `{ "min": N, "max": M }` |
 | `looting_enchant` | 掠夺加成 |
 | `smelt` | 自动熔炼掉落 |
-| `set_nbt` | 设置NBT标签 |
+| `set_components` | 设置物品组件（1.20.5 起取代 set_nbt；如 `"components": { "minecraft:custom_data": {...} }`） |
 | `copy_name` | 复制方块名称 |
 | `explosion_decay` | 爆炸递减 |

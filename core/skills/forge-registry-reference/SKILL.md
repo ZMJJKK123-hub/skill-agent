@@ -178,7 +178,7 @@ public class ModEffects {
 
     public static final DeferredHolder<MobEffect, MyEffect> MY_EFFECT =
         EFFECTS.register("my_effect",
-            () -> new MyEffect(MobEffectCategory.HARMFUL, 0x9900FF));
+            () -> new MyEffect(MobEffectType.HARMFUL, 0x9900FF));
 }
 ```
 

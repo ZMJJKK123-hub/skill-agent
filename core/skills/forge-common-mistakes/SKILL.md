@@ -26,7 +26,7 @@ description: Forge Mod 开发常见错误与规避
 | 错误 | 原因 | 解决 |
 |------|------|------|
 | `Could not find forge` | forge_version格式错误 | MC 26.2用 `65.1.0` |
-| `Unsupported class file major version 65` | JDK版本不对 | MC 26.x需要JDK 21 |
+| `Unsupported class file major version 65` | JDK版本不对 | MC 26.x需要JDK 25 |
 | 插件找不到 | settings.gradle缺少仓库 | 添加 `maven { url 'https://maven.minecraftforge.net/' }` |
 | `Could not resolve: net.minecraftforge:forge` | 依赖格式错误 | 检查 `${mc}-${forge}` 格式如 `26.2-65.1.0` |
 

@@ -36,11 +36,10 @@ rootProject.name = '${mod_id}'
 
 ```groovy
 plugins {
-    id 'java-library'
+    id 'java'
     id 'eclipse'
     id 'idea'
-    id 'maven-publish'
-    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
+    id 'net.minecraftforge.gradle' version '[7.0.17,8)'
 }
 
 version = mod_version
@@ -50,68 +49,42 @@ base {
     archivesName = mod_id
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+// Mojang ships Java 25 to end users in 26.1+, so your mod should target Java 25.
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+
+sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 minecraft {
-    // Mappings选择: official (Mojang) 或 parchment
-    mappings channel: 'official', version: "${minecraft_version}"
-
-    // 如果使用Parchment:
-    // mappings channel: 'parchment', version: "${parchment_version}-${minecraft_version}"
-
-    // 复制IDE资源
-    copyIdeResources = true
-
-    // Access Transformer（如需要）
-    // accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
-
     runs {
-        client {
-            workingDirectory project.file('run')
-            property 'forge.logging.markers', 'REGISTRIES'
-            property 'forge.logging.console.level', 'debug'
-            mods {
-                "${mod_id}" {
-                    source sourceSets.main
-                }
-            }
+        configureEach {
+            workingDir = layout.projectDirectory.dir('run')
+            systemProperty 'eventbus.api.strictRuntimeChecks', 'true'
+            systemProperty 'forge.enabledGameTestNamespaces', mod_id
         }
-        server {
-            workingDirectory project.file('run')
-            property 'forge.logging.markers', 'REGISTRIES'
-            property 'forge.logging.console.level', 'debug'
-            mods {
-                "${mod_id}" {
-                    source sourceSets.main
-                }
-            }
+        register('client')
+        register('server') {
+            args '--nogui'
         }
-        data {
-            workingDirectory project.file('run')
-            property 'forge.logging.markers', 'REGISTRIES'
-            property 'forge.logging.console.level', 'debug'
-            args '--mod', mod_id, '--all',
-                 '--output', file('src/generated/resources/'),
-                 '--existing', file('src/main/resources/'),
-                 '--existing-mod', 'minecraft'
-            mods {
-                "${mod_id}" {
-                    source sourceSets.main
-                }
-            }
+        register('gameTestServer')
+        register('data') {
+            workingDir = layout.projectDirectory.dir('run-data')
+            args '--mod', mod_id, '--all', '--output', layout.projectDirectory.dir('src/generated/resources'), '--existing', layout.projectDirectory.dir('src/main/resources')
         }
     }
 }
 
-sourceSets.main.resources { srcDir 'src/generated/resources' }
-
 repositories {
+    minecraft.mavenizer(it)
+    maven fg.forgeMaven
+    maven fg.minecraftLibsMaven
+    mavenCentral()
     // 添加额外的Maven仓库
     // maven { url = 'https://cursemaven.com' }
 }
 
 dependencies {
-    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+    implementation minecraft.dependency("net.minecraftforge:forge:${minecraft_version}-${forge_version}")
+    annotationProcessor 'net.minecraftforge:eventbus-validator:7.0.5'
 
     // 运行时依赖
     // runtimeOnly fg.deobf("some:mod:1.0")
@@ -191,12 +164,13 @@ org.gradle.daemon=false
 
 ## Forge vs NeoForge Gradle 关键差异速查
 
-| 配置项 | Forge | NeoForge |
+| 配置项 | Forge (FG7) | NeoForge |
 |--------|-------|----------|
-| 插件 | `net.minecraftforge.gradle` | `net.neoforged.gradle.userdev` |
-| 依赖声明 | `minecraft "net.minecraftforge:forge:${mc}-${forge}"` | `implementation "net.neoforged:neoforge:${neo}"` |
-| run配置 | `property 'forge.logging.markers'` | `modSource project.sourceSets.main` |
-| mappings块 | `minecraft { mappings channel: 'official' }` | 内置 |
+| 插件 | `net.minecraftforge.gradle` [7.0.17,8) | `net.neoforged.gradle.userdev` |
+| 依赖声明 | `implementation minecraft.dependency("net.minecraftforge:forge:${mc}-${forge}")` | `implementation "net.neoforged:neoforge:${neo}"` |
+| run配置 | `register('client')` + `configureEach` | `modSource project.sourceSets.main` |
+| mappings块 | Forge 内置（无需显式配置） | 内置 |
+| Java | JavaEffect 25 | 25 |
 | 元数据文件 | `META-INF/mods.toml` | `META-INF/neoforge.mods.toml` |
 
 ---
@@ -206,6 +180,6 @@ org.gradle.daemon=false
 | 错误 | 原因 | 修复 |
 |------|------|------|
 | `Could not find net.minecraftforge:forge` | forge_version格式错误 | 确保格式: `65.1.0` |
-| `Unsupported Java` | JDK版本太低 | MC 26.x需要JDK 21 |
+| `Unsupported Java` | JDK版本太低 | MC 26.x需要JDK 25 |
 | `Plugin [id: 'net.minecraftforge.gradle'] was not found` | 仓库未配置 | 确保settings.gradle中有MinecraftForge仓库 |
 | `Could not resolve all files` | 网络问题 | 检查Maven仓库可访问性 |

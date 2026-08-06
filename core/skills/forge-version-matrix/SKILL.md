@@ -17,7 +17,7 @@ description: Forge 版本兼容性矩阵：Minecraft↔Forge 版本对应与 Gra
 | Minecraft | **26.2** | 2026-06-16 |
 | Forge | **65.1.0** (recommended) | — |
 | Forge (latest) | **65.1.0** | — |
-| JDK | **21** | — |
+| JDK | **25** | — |
 | Gradle | **8.x** | — |
 
 ---
@@ -28,10 +28,10 @@ description: Forge 版本兼容性矩阵：Minecraft↔Forge 版本对应与 Gra
 
 | Minecraft | Forge (recommended) | Forge (latest) | JDK | Gradle |
 |-----------|-------------------|----------------|-----|--------|
-| 26.2 | 65.1.0 | 65.1.0 | 21 | 8.7+ |
-| 26.1.2 | 64.1.0 | 64.1.0 | 21 | 8.7+ |
-| 26.1.1 | — | 63.0.2 | 21 | 8.7+ |
-| 26.1 | — | 62.0.9 | 21 | 8.7+ |
+| 26.2 | 65.1.0 | 65.1.0 | 25 | 8.9+ |
+| 26.1.2 | 64.1.0 | 64.1.0 | 25 | 8.9+ |
+| 26.1.1 | — | 63.0.2 | 25 | 8.9+ |
+| 26.1 | — | 62.0.9 | 25 | 8.9+ |
 
 ### MC 1.21.x 系列（经典版本号）
 
@@ -64,8 +64,8 @@ description: Forge 版本兼容性矩阵：Minecraft↔Forge 版本对应与 Gra
 
 | Forge版本范围 | ForgeGradle 插件版本 | Gradle 最低版本 |
 |-------------|-------------------|----------------|
-| 65.x (MC 26.2) | `net.minecraftforge.gradle` 6.0+ | 8.7 |
-| 62-64.x (MC 26.1.x) | `net.minecraftforge.gradle` 6.0+ | 8.7 |
+| 65.x (MC 26.2) | `net.minecraftforge.gradle` 7.0.17+ | 8.9 |
+| 62-64.x (MC 26.1.x) | `net.minecraftforge.gradle` 7.0.17+ | 8.9 |
 | 52-61.x (MC 1.21.x) | `net.minecraftforge.gradle` 6.0+ | 8.5 |
 | 47-51.x (MC 1.20.x) | `net.minecraftforge.gradle` 5.1+ | 7.5 |
 
@@ -86,18 +86,11 @@ maven {
 
 ## Mappings 选择
 
-| Mappings 类型 | channel | 适用场景 |
-|-------------|---------|---------|
-| **Mojang Official** | `official` | 推荐，使用Mojang官方反混淆名 |
-| Parchment | `parchment` | 带参数名，人类可读（需查询Parchment版本） |
-| MCP | `stable` | 旧版，不推荐 |
-
-Forge 推荐在 `build.gradle` 的 `minecraft` 块中配置:
-```groovy
-minecraft {
-    mappings channel: 'official', version: "${minecraft_version}"
-}
-```
+| Mappings 类型 | 说明 |
+|-------------|---------|
+| **官方（内置）** | ForgeGradle 7 已内置 Mojang Official 反混淆，**无需在 build.gradle 显式配置 mappings 块** |
+| Parchment | 带参数名、人类可读（如需，需额外配置 parchment 仓库） |
+| MCP `stable` | 旧版，不推荐 |
 
 ---
 
@@ -107,8 +100,8 @@ Agent 在生成配置前必须检查：
 1. `minecraft_version` 是否在 Forge 支持列表中
 2. `forge_version` 的前两位数字 = `minecraft_version` 的主版本号 + 39（约等于）
    - 例如 MC 26.2 → Forge 65.x (26 + 39 = 65)
-3. Java toolchain 版本 ≥ 21（MC 26.x）或 ≥ 17（MC 1.20.x-1.21.x）
-4. Gradle 版本 ≥ 8.7（ForgeGradle 6.0+）
+3. Java toolchain 版本 ≥ 25（MC 26.x）或 ≥ 17（MC 1.20.x-1.21.x）
+4. Gradle 版本 ≥ 8.9（ForgeGradle 7.0.17+）
 
 ---
 
