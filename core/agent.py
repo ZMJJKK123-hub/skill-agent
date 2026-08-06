@@ -122,6 +122,21 @@ def agent_loop(messages: list) -> str:
                 teammate_manager.bus.clear_all()  # 第 11 课：清空 .team/inbox/*.jsonl 消息文件
                 coordinator.reset()  # 第 10 课：清空协议请求与写入登记
                 logger.info("所有任务已完成，已自动清空 .tasks、todo、team config、inbox 和协议状态")
+
+            # ── 收尾：生成结束后自动尝试构建 mod jar（仅 Gradle/Forge 工程）──
+            # 放在循环退出点，确保每次生成任务跑完必然尝试构建；不依赖模型主动调用工具。
+            try:
+                import os as _os
+                if (_os.path.exists("gradlew.bat") or _os.path.exists("gradlew")) and _os.path.exists("build.gradle"):
+                    print("[run_task] 生成完成，开始构建 mod jar（首次构建需数分钟）...", flush=True)
+                    from .tools import _forge_build_jar
+                    _result = _forge_build_jar({})
+                    print(f"[run_task] {_result[:3000]}", flush=True)
+                else:
+                    logger.info("非 Gradle/Forge 工程，跳过 jar 构建")
+            except Exception as _e:
+                logger.info(f"收尾构建跳过: {_e}")
+
             return message.content
 
         # 执行工具，收集结果
