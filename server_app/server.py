@@ -27,7 +27,7 @@ import uuid
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -73,6 +73,10 @@ class Session:
 # 会话表：新会话进内存；服务启动时从磁盘恢复历史会话（供下载/预览/事件）
 # 注意：恢复的会话 api_key 为空（key 不落盘），只能查看产物，不能重新跑任务
 sessions: dict[str, Session] = {}
+
+# 下载互斥锁：防止并发请求同时写同一个 mod.zip（zipfile 非原子写，
+# 并发写半个文件会让读取方拿到 Content-Length 不匹配 → 浏览器 Failed to fetch）
+_download_lock = threading.Lock()
 
 
 def _restore_sessions() -> None:
@@ -468,24 +472,39 @@ def download_mod(session_id: str, authorization: str = Header(default="")):
 
     排除 build/（Gradle 中间产物）与 dist/（jar 由 /api/download/jar 单独提供），
     保证源码 zip 不含可安装 jar，源码与产物分离。
+
+    用 zipfile 手动遍历打包（make_archive 的 ignore 参数需 Python 3.14+，
+    3.13 会抛 TypeError）。zipfile 为标准库，Python 3.10+ 均兼容。
     """
+    import zipfile
+
     username = _auth_username(authorization)
     sess = _get_session(session_id)
     _assert_owner(sess, username)
     zip_path = SESSIONS_DIR / session_id / "mod.zip"
+    skip = {"build", "dist", ".worktrees", ".team", ".tasks",
+            ".transcripts", "__pycache__", ".git"}
 
-    def _filter(directory, names):
-        # 跳过构建中间产物与 jar 分发目录
-        return {"build", "dist", ".worktrees", ".team", ".tasks",
-                ".transcripts", "__pycache__", ".git"} & set(names)
-
-    shutil.make_archive(
-        str(zip_path)[:-4], "zip", root_dir=str(sess.mod_dir), ignore=_filter,
-    )
-    return FileResponse(
-        str(zip_path),
+    with _download_lock:
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            if sess.mod_dir.exists():
+                for p in sorted(sess.mod_dir.rglob("*")):
+                    try:
+                        rel = p.relative_to(sess.mod_dir)
+                    except ValueError:
+                        continue
+                    if any(part in skip for part in rel.parts):
+                        continue
+                    if p.is_file():
+                        zf.write(p, rel.as_posix())
+        # 一次性读入内存返回：绕开 FileResponse 流式发送在 h11 下的大文件
+        # Content-Length bug（uvicorn 默认 h11 对超大响应体会抛
+        # "Too little data for declared Content-Length" → 前端 Failed to fetch）
+        data = zip_path.read_bytes()
+    return Response(
+        content=data,
         media_type="application/zip",
-        filename=f"mod-{session_id}-src.zip",
+        headers={"Content-Disposition": f'attachment; filename="mod-{session_id}-src.zip"'},
     )
 
 
@@ -505,10 +524,11 @@ def download_jar(session_id: str, authorization: str = Header(default="")):
     jars = sorted(dist_dir.glob("*.jar"))
     if not jars:
         raise HTTPException(400, "该会话尚未打包 jar（未构建或构建失败）")
-    return FileResponse(
-        str(jars[0]),
+    data = jars[0].read_bytes()
+    return Response(
+        content=data,
         media_type="application/java-archive",
-        filename=f"mod-{session_id}.jar",
+        headers={"Content-Disposition": f'attachment; filename="mod-{session_id}.jar"'},
     )
 
 
@@ -752,4 +772,9 @@ if __name__ == "__main__":
     threading.Thread(target=_orphan_cleanup_loop, daemon=True).start()
 
     print(f"MOD Agent 制作器已启动: http://localhost:8000（恢复 {len(sessions)} 个历史会话）")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    try:
+        # httptools：C 语言 HTTP 解析器，根治 h11 在超大响应体上的 Content-Length bug
+        uvicorn.run(app, host="0.0.0.0", port=8000, http="httptools")
+    except Exception:
+        # 未安装 httptools 时回退默认 h11（内存读方案已绕开大文件流式问题）
+        uvicorn.run(app, host="0.0.0.0", port=8000)
