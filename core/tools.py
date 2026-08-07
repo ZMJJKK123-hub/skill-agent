@@ -240,7 +240,20 @@ skill_loader = SkillLoader()
 config.SYSTEM += (
     "\n\n" + skill_loader.get_descriptions() +
     "\n\nWhen a task involves a specific domain (testing, git, security, etc.), "
-    "use the load_skill tool to load the relevant guidelines before proceeding."
+    "use the load_skill tool to load the relevant guidelines before proceeding.\n"
+    "\n"
+    "MANDATORY for Minecraft MOD development: This session ALWAYS generates Minecraft "
+    "MODs. Before writing ANY code or JSON resources, you MUST call load_skill to "
+    "load the relevant Forge guideline skill. Examples:\n"
+    "- Registering items/blocks/entities -> load forge-concept-registries, forge-blocks, forge-items\n"
+    "- Writing model/blockstate/loot/recipe/tag JSON -> load forge-resources-client, forge-resources-server\n"
+    "- Networking/packets -> load forge-networking\n"
+    "- Data storage/capabilities -> load forge-datastorage-capabilities, forge-datastorage-codecs\n"
+    "- Block entities / renderers -> load forge-blockentities\n"
+    "- Sound/particles -> load forge-gameeffects-sounds, forge-gameeffects-particles\n"
+    "- GUI/menus -> load forge-gui\n"
+    "- General lifecycle/events/sides -> load forge-concept-lifecycle, forge-concept-events, forge-concept-sides\n"
+    "Load the skill FIRST, then follow its rules exactly. Do NOT skip this step."
 )
 
 # ---------- TaskManager（第 7 课：文件级持久化的任务图 DAG）----------
