@@ -1,6 +1,6 @@
 ---
 name: forge-concept-events
-description: Forge Events system and bus registration
+description: Forge 事件系统核心概念：ModEventBus 与 MinecraftForge.EVENT_BUS 两条事件总线的区别、事件注册与监听方式、@SubscribeEvent 用法与事件优先级、常用生命周期事件。当 mod 需要响应游戏内行为（玩家操作、方块交互、实体生成、注册阶段等）时加载此技能。
 ---
 
 Events

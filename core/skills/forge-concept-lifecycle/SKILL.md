@@ -1,6 +1,6 @@
 ---
 name: forge-concept-lifecycle
-description: Mod lifecycle and registration phases
+description: Forge Mod 生命周期指南：Mod 构造器执行时机、mod 事件总线与游戏事件总线的注册阶段、FMLCommonSetupEvent / FMLClientSetupEvent / FMLDedicatedServerSetupEvent 等常用生命周期事件及 ParallelDispatchEvent 与 enqueueWork 用法。当需要理解 mod 加载流程、在正确的初始化阶段注册或执行代码时加载此技能。
 ---
 
 Mod Lifecycle

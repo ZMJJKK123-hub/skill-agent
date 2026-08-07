@@ -1,6 +1,6 @@
 ---
 name: forge-concept-sides
-description: Logical and physical sides and OnlyIn
+description: Forge 物理端与逻辑端概念：物理客户端/服务器与逻辑客户端/服务器（Logical Server/Client）的对应关系、@OnlyIn 注解的用法与限制、level.isClientSide 端侧判断技巧、避免客户端/服务端代码串用导致的崩溃。当 mod 需要区分客户端与服务端行为（渲染、输入、世界逻辑）时加载此技能。
 ---
 
 Sides in Minecraft

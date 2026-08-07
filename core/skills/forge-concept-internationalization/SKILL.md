@@ -1,6 +1,6 @@
 ---
 name: forge-concept-internationalization
-description: i18n lang files and translation keys
+description: Forge 国际化（i18n）指南：语言文件（en_us.json / zh_cn.json）的结构与放置路径、翻译键命名规则（block./item./container 等前缀）、代码中通过 Component.translatable 引用本地化文本。当 mod 需要输出可翻译文本、生成多语言文件时加载此技能。
 ---
 
 Internationalization and Localization

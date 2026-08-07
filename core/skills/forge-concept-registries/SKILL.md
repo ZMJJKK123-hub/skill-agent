@@ -1,6 +1,6 @@
 ---
 name: forge-concept-registries
-description: DeferredRegister and ForgeRegistries
+description: Forge 注册系统指南：DeferredRegister 的创建、注册条目、绑定事件总线的完整流程；ForgeRegistries 各注册表清单（方块、物品、方块实体、实体、附魔、药水、音效、粒子等）；注册命名规范（小写+下划线、ResourceLocation）。当 mod 需要注册任何新内容（方块、物品、实体、附魔、创造性标签页等）时必读。
 ---
 
 Registries

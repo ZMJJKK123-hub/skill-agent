@@ -1,6 +1,6 @@
 ---
 name: forge-concept-resources
-description: Client assets and server data resources
+description: Forge 资源系统指南：客户端 assets 资源包与服务端 data 数据包的目录结构、pack.mcmeta、命名空间与 ResourceLocation 概念、各类资源文件（模型、贴图、语言、配方、战利品、标签、进度）应放置的正确路径。当需要生成、放置或理解 mod 的 JSON 资源文件时加载此技能。
 ---
 
 Resources
