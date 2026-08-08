@@ -2,6 +2,7 @@ import json
 
 from .config import client, MODEL, SUBAGENT_SYSTEM, MAX_SUBAGENT_TURNS, logger
 from .tools import TOOLS, TOOL_HANDLERS
+from .skillcheck import init_per_loop, run_loop_check
 
 
 # ---------- Subagent 执行函数 ----------
@@ -49,6 +50,8 @@ def run_subagent(prompt: str) -> str:
             logger.info(f"subagent reasoning:\n{reasoning}")
 
         sub_messages.append(message.to_dict())
+        if not run_loop_check("subagent", message.content, sub_messages):
+            continue
         logger.info(f"subagent finish_reason={choice.finish_reason}")
 
         # 子 Agent 决定不再调工具 → 任务完成

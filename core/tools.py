@@ -12,6 +12,7 @@ import yaml
 
 from . import config
 from .config import logger, safe_path
+from .skillcheck import init_per_loop, run_loop_check
 from .protocol import (
     coordinator,
     RequestStatus,
@@ -400,7 +401,7 @@ config.SYSTEM += (
     "If no skill applies, explicitly write \"No skill source\" and explain why. "
     "Prefer declaring a missing source over writing anything without a basis.\n"
     "\n"
-    "MC SOURCE LOOKUP (mc_source): When a skill is unclear or incomplete and you must "
+    "MC SOURCE LOOKUP (mc_source): FALLBACK-ONLY. Use mc_source ONLY when the loaded skills are insufficient or proven wrong (e.g. tests keep failing even though you followed the skill). Skills are the primary source. When a skill is unclear or incomplete and you must "
     "verify a specific Minecraft/Forge class API (constructor, method signature, field, "
     "exact usage), use the mc_source tool to read mc_java_sources/ (Minecraft + Forge sources). "
     "CRITICAL anti-context-blowup rules: NEVER read a whole file. Default mode='head' returns only "
@@ -1262,6 +1263,8 @@ class TeammateManager:
                 logger.info(f"teammate reasoning:\n{reasoning}")
 
             sub_messages.append(message.to_dict())
+            if not run_loop_check("teammate", message.content, sub_messages):
+                continue
             logger.info(f"teammate finish_reason={choice.finish_reason}")
 
             # 队友决定不再调工具 → 任务完成
@@ -1802,7 +1805,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "mc_source",
-            "description": "Read-only lookup into the Minecraft/Forge Java source tree (mc_java_sources/). Use when a skill's guidance is unclear/incomplete and you need to verify a specific class's API: its constructors, key methods, fields, or exact signatures. IMPORTANT anti-context-blowup rules: NEVER read a whole file. mode='head' (default) returns ONLY the first ~120 lines (class header + key fields/method signatures). mode='search' returns ONLY lines matching 'keyword' plus ~5 lines of context (max 30 lines). class_name accepts simple names ('BlockEntity') or fully-qualified names ('net.minecraft.world.level.block.entity.BlockEntity').",
+            "description": "FALLBACK-ONLY read-only lookup into the Minecraft/Forge Java source tree (mc_java_sources/). Use ONLY when the loaded skill docs are insufficient or proven wrong (e.g. tests keep failing despite following the skill). Skills are the primary source. Use when a skill's guidance is unclear/incomplete and you need to verify a specific class's API: its constructors, key methods, fields, or exact signatures. IMPORTANT anti-context-blowup rules: NEVER read a whole file. mode='head' (default) returns ONLY the first ~120 lines (class header + key fields/method signatures). mode='search' returns ONLY lines matching 'keyword' plus ~5 lines of context (max 30 lines). class_name accepts simple names ('BlockEntity') or fully-qualified names ('net.minecraft.world.level.block.entity.BlockEntity').",
             "parameters": {
                 "type": "object",
                 "properties": {

@@ -137,18 +137,23 @@ The control plane (.tasks/) schedules; the execution plane (.worktrees/) does th
 When working on a task that has a worktree (parallel/team scenarios), ALWAYS switch to it with
 worktree_use and operate inside it — never touch shared files directly in the main directory.
 
-MOD KNOWLEDGE MANDATE (skill-grounded rules):
-- EVERY action you take regarding a MOD — writing code, writing JSON resources
-  (models/blockstates/loot/recipes/tags/lang), editing Gradle/build config, registering content,
-  generating datagen, handling rendering/data storage/networking/GUI/etc. — MUST be preceded by
-  load_skill to load the relevant skill(s), and MUST strictly follow the skill content.
-  Never write or modify MOD code/files without a skill basis.
+MOD KNOWLEDGE MANDATE (skill-first rules):
+- PRIMARY SOURCE = official skill docs. Before writing ANY mod code/resource, you MUST load the
+  relevant skill(s) via load_skill and base every change strictly on them. Never rely on memory;
+  if you don't know/remember an API, look it up in the skill docs first.
+- mc_source (reading mc_java_sources/) is ONLY a fallback: use it only when the loaded skill's
+  content is insufficient or proven wrong (e.g. you followed the skill but tests/compile keep
+  failing). Skill docs come first.
 - After EVERY change to the MOD project (write_file / edit_file / config file writes, etc.),
-  you MUST list the information source of that change in your reply:
+  you MUST list the information source of that change in your reply. The `source` line MUST quote
+  the REAL text of the loaded skill (copy the actual section/API pattern), not a paraphrase from
+  memory:
     <skill-source>
     - change: <file path> | <change summary>
-    - source: <skill name> -> <specific section/rule/code pattern cited>
+    - source: <skill name> -> <exact text/API pattern copied from the loaded skill>
     </skill-source>
+- In EVERY thinking step where you decide to write/modify code, cite in your reasoning which part
+  of which skill enables that decision (e.g. "based on forge-items: SwordItem(Tier, Properties)").
 - If a change truly has no applicable skill (e.g. plain placeholder scaffold files),
   explicitly write "No skill source" and explain why. Prefer declaring a missing source
   over writing anything without a basis."""
@@ -167,9 +172,10 @@ Guidelines:
 - You are running on Windows cmd. Use Windows command syntax (dir, type, copy, taskkill).
 - Do not start long-running servers directly; use the combined
   "start /b ... & timeout /t 3 ... & curl ... & taskkill" pattern.
-- MOD KNOWLEDGE MANDATE: any MOD-related code/resource change MUST be preceded by load_skill and strictly follow the loaded
-  skill content; after EVERY change you MUST list the source: <skill-source> change: <file path> | <change summary>;
-  source: <skill name> -> <specific section/rule noted> </skill-source>. If no skill applies, write "No skill source" and explain why.
+- MOD KNOWLEDGE MANDATE (skill-first): PRIMARY SOURCE = loaded skill docs; base every change strictly on them, never on memory.
+  mc_source is ONLY a fallback when skills are insufficient/proven wrong. After EVERY change, list
+  <skill-source> source: <skill name> -> <exact text/API pattern copied from the loaded skill> (quote real text, not paraphrase).
+  In your reasoning, cite which part of which skill enables each decision. If no skill applies, write "No skill source" and explain why.
 """
 
 # ---------- Teammate 安全前缀（第 9 课修复：teammate 缺失 Windows 规则）----------
@@ -203,7 +209,8 @@ Autonomous task claiming (Lesson 11):
   scan the board again for the next. You may also receive directly-assigned tasks via your inbox;
   those take priority over board-claiming.
 
-MOD KNOWLEDGE MANDATE (skill-grounded rules):
+MOD KNOWLEDGE MANDATE (skill-first):
+- PRIMARY SOURCE = loaded skill docs; base every change strictly on them, never on memory. mc_source is ONLY a fallback when skills are insufficient/proven wrong.
 - You MUST load_skill before ANY code/resource change related to a MOD, and base every change strictly on the loaded skill content.
   Never write/modify MOD files without a skill basis.
 - After EVERY change to the MOD project (write_file / edit_file / config writes), list the information source of the change:

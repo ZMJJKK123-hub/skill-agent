@@ -15,6 +15,7 @@ from .compact import (
     estimate_tokens,
     TOKEN_THRESHOLD,
 )
+from .skillcheck import init_per_loop, run_loop_check
 
 
 # ---------- 接线：注册 task handler（打破循环依赖）----------
@@ -90,6 +91,8 @@ def agent_loop(messages: list) -> str:
 
         # 记录助手回复（只记录 content/tool_calls，不含 reasoning）
         messages.append(message.to_dict())
+        if not run_loop_check("main", message.content, messages):
+            continue
         logger.info(f"finish_reason={choice.finish_reason}")
 
         # 退出条件：模型不再调工具
