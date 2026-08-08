@@ -1275,10 +1275,12 @@ def _forge_build_jar(kw: dict) -> str:
         hint = ""
         if "Failed to find JDK for version 8" in (out or "") and "JavaProvisionerException" in (out or ""):
             hint = (
-                "原因：ForgeGradle 反混淆需要 JDK 8，但服务器缺少 JDK 8"
-                "（且自动下载被 SSL 证书拦截）。\n"
-                "解决：在服务器安装 Temurin JDK 8 并设置 JAVA_HOME，"
-                "或修复系统证书/代理后重新生成。"
+                "原因：ForgeGradle 的 Mavenizer 在配置阶段需要自动下载其内部使用的 JDK"
+                "（含 Java 8），但服务器 SSL/证书校验失败（PKIX path building failed）"
+                "导致下载被拦截。\n"
+                "注意：不需要手动安装或切换 JAVA_HOME 到 JDK 8——Gradle 本身要求 JVM 17 或更高，"
+                "系统主 JDK 保持 25（或 21）即可。\n"
+                "解决：修复服务器 SSL 证书/网络代理（放行 github.com 与 adoptium 下载）后重新生成。"
             )
         elif "SSLHandshakeException" in (out or "") or "PKIX path building failed" in (out or ""):
             hint = (
