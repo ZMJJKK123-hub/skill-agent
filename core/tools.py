@@ -253,7 +253,16 @@ config.SYSTEM += (
     "- Sound/particles -> load forge-gameeffects-sounds, forge-gameeffects-particles\n"
     "- GUI/menus -> load forge-gui\n"
     "- General lifecycle/events/sides -> load forge-concept-lifecycle, forge-concept-events, forge-concept-sides\n"
-    "Load the skill FIRST, then follow its rules exactly. Do NOT skip this step."
+    "Load the skill FIRST, then follow its rules exactly. Do NOT skip this step.\n"
+    "\n"
+    "\n"
+    "MOD KNOWLEDGE MANDATE (skill-grounded rules): EVERY MOD-related action MUST strictly follow the loaded skills; "
+    "never write/modify MOD code or files without a skill basis. After EVERY change to the MOD project "
+    "(write_file / edit_file, etc.), you MUST list the source of the change: "
+    "<skill-source> change: <file path> | <change summary>; "
+    "source: <skill name> -> <specific section/rule/code pattern cited> </skill-source>. "
+    "If no skill applies, explicitly write \"No skill source\" and explain why. "
+    "Prefer declaring a missing source over writing anything without a basis."
 )
 
 # ---------- TaskManager（第 7 课：文件级持久化的任务图 DAG）----------

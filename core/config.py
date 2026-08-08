@@ -135,7 +135,23 @@ The control plane (.tasks/) schedules; the execution plane (.worktrees/) does th
   complete_task=True marks the task completed; merge=True merges the worktree branch back to main first.
 - worktree_list(): show the worktree registry; worktree_recover(): rebuild state after a crash.
 When working on a task that has a worktree (parallel/team scenarios), ALWAYS switch to it with
-worktree_use and operate inside it — never touch shared files directly in the main directory."""
+worktree_use and operate inside it — never touch shared files directly in the main directory.
+
+MOD KNOWLEDGE MANDATE (skill-grounded rules):
+- EVERY action you take regarding a MOD — writing code, writing JSON resources
+  (models/blockstates/loot/recipes/tags/lang), editing Gradle/build config, registering content,
+  generating datagen, handling rendering/data storage/networking/GUI/etc. — MUST be preceded by
+  load_skill to load the relevant skill(s), and MUST strictly follow the skill content.
+  Never write or modify MOD code/files without a skill basis.
+- After EVERY change to the MOD project (write_file / edit_file / config file writes, etc.),
+  you MUST list the information source of that change in your reply:
+    <skill-source>
+    - change: <file path> | <change summary>
+    - source: <skill name> -> <specific section/rule/code pattern cited>
+    </skill-source>
+- If a change truly has no applicable skill (e.g. plain placeholder scaffold files),
+  explicitly write "No skill source" and explain why. Prefer declaring a missing source
+  over writing anything without a basis."""
 
 # ---------- Subagent 系统（第 4 课：隔离上下文的子任务派发）----------
 MAX_SUBAGENT_TURNS = 10  # 硬上限，防止子 Agent 失控死循环
@@ -151,6 +167,9 @@ Guidelines:
 - You are running on Windows cmd. Use Windows command syntax (dir, type, copy, taskkill).
 - Do not start long-running servers directly; use the combined
   "start /b ... & timeout /t 3 ... & curl ... & taskkill" pattern.
+- MOD KNOWLEDGE MANDATE: any MOD-related code/resource change MUST be preceded by load_skill and strictly follow the loaded
+  skill content; after EVERY change you MUST list the source: <skill-source> change: <file path> | <change summary>;
+  source: <skill name> -> <specific section/rule noted> </skill-source>. If no skill applies, write "No skill source" and explain why.
 """
 
 # ---------- Teammate 安全前缀（第 9 课修复：teammate 缺失 Windows 规则）----------
@@ -183,6 +202,16 @@ Autonomous task claiming (Lesson 11):
 - If a task is claimed by someone else, move on to the next available one. After finishing a task,
   scan the board again for the next. You may also receive directly-assigned tasks via your inbox;
   those take priority over board-claiming.
+
+MOD KNOWLEDGE MANDATE (skill-grounded rules):
+- You MUST load_skill before ANY code/resource change related to a MOD, and base every change strictly on the loaded skill content.
+  Never write/modify MOD files without a skill basis.
+- After EVERY change to the MOD project (write_file / edit_file / config writes), list the information source of the change:
+    <skill-source>
+    - change: <file path> | <change summary>
+    - source: <skill name> -> <specific section/rule/code pattern cited>
+    </skill-source>
+- If a change truly has no applicable skill (e.g. plain placeholder files), explicitly write "No skill source" and explain why.
 """
 
 client = OpenAI(

@@ -9,27 +9,27 @@ license="All Rights Reserved"
 #clientSideOnly=true #optional, default=false
 
 [[mods]]
-modId="examplemod"
+modId="tutorial_mod"
 version="1.0.0"
-displayName="Example Mod"
+displayName="教程模组"
 #updateJSONURL="https://example.com/updates.json" #optional
 #displayURL="https://example.com/" #optional
 #logoFile="examplemod.png" #optional
 #credits="" #optional
-authors="YourNameHere, OtherNameHere" #optional
+authors="Li Yixin" #optional
 #displayTest="MATCH_VERSION" #optional, default=MATCH_VERSION when not clientSideOnly, else IGNORE_ALL_VERSION
 
 description='''Example mod description.
 Newline characters can be used like this, and rendered on the mods screen properly.'''
 
-[[dependencies.examplemod]] #recommended
+[[dependencies.tutorial_mod]] #recommended
     modId="forge"
     mandatory=true
     versionRange="[65,)"
     ordering="NONE"
     side="BOTH"
 
-[[dependencies.examplemod]] #recommended
+[[dependencies.tutorial_mod]] #recommended
     modId="minecraft"
     mandatory=true
     versionRange="[26.2,26.3,)"
