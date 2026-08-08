@@ -1,0 +1,32 @@
+/*
+ * Copyright (c) Forge Development LLC
+ * SPDX-License-Identifier: LGPL-2.1-only
+ */
+package net.minecraftforge.jarjar.metadata.json;
+
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonSerializationContext;
+import com.google.gson.JsonSerializer;
+import org.apache.maven.artifact.versioning.ArtifactVersion;
+import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
+
+import java.lang.reflect.Type;
+
+public class ArtifactVersionSerializer implements JsonSerializer<ArtifactVersion>, JsonDeserializer<ArtifactVersion> {
+    @Override
+    public ArtifactVersion deserialize(final JsonElement json, final Type typeOfT, final JsonDeserializationContext context) throws JsonParseException {
+        if (!json.isJsonPrimitive())
+            throw new JsonParseException("Expected a string, but got: " + json);
+
+        return new DefaultArtifactVersion(json.getAsString());
+    }
+
+    @Override
+    public JsonElement serialize(final ArtifactVersion src, final Type typeOfSrc, final JsonSerializationContext context) {
+        return new JsonPrimitive(src.toString());
+    }
+}
