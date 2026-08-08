@@ -410,12 +410,18 @@ config.SYSTEM += (
     "name ('BlockEntity') or fully-qualified name ('net.minecraft.world.level.block.entity.BlockEntity'). "
     "Cross-reference the source with the loaded skill before writing code.\n"
     "\n"
-    "GAMETEST SELF-DEBUG LOOP (main agent only): After writing your mod code + @GameTest tests, "
-    "call run_game_test_server to compile and run them (gradlew runGameTestServer; first run takes "
-    "minutes). Then call read_game_test_log to read <mod dir>/run/logs/latest.log (tail, default 200 "
-    "lines) and inspect failures. Fix errors according to the loaded skills, then re-run the loop "
-    "until the tests pass. Check build.gradle's forge.enabledGameTestNamespaces matches your "
-    "mods.toml modId, otherwise tests will not run."
+    "GAMETEST SELF-DEBUG LOOP (main agent only, MANDATORY): You MUST NOT declare your mod complete "
+    "until you have verified it via GameTests. This is a hard requirement, same level as the skill "
+    "rules above. After writing your mod code + assets, you MUST:\n"
+    "  1. Write at least ONE @GameTest in the mod project (gradle.build already registers "
+    "gameTestServer; enable the namespace via forge.enabledGameTestNamespaces matching your mods.toml modId).\n"
+    "  2. Call run_game_test_server to compile and run all tests (gradlew runGameTestServer; first run takes minutes).\n"
+    "  3. Call read_game_test_log to read <mod dir>/run/logs/latest.log (tail, default 200 lines) and "
+    "inspect failures/errors (they are at the end of the log).\n"
+    "  4. If any test fails or the build fails: fix the code according to the loaded skills (+ mc_source "
+    "to verify APIs), then re-run the loop from step 2 until ALL tests pass.\n"
+    "Only after the GameTest run succeeds may you consider the mod finished. Never skip the GameTest "
+    "verification just because the task did not explicitly ask for tests."
 )
 
 # ---------- TaskManager（第 7 课：文件级持久化的任务图 DAG）----------
@@ -2255,7 +2261,11 @@ logger.info(
 )
 
 # ── MC/Forge 源码查询根目录注入（使用项目根的 mc_java_sources/）──
-MC_SOURCES_ROOT = str(Path(config.WORKDIR) / "mc_java_sources")
+# 必须用包相对路径定位，而非 config.WORKDIR（= cwd）：
+# 网站运行时 run_task.py 会先把 cwd chdir 到会话 mod 目录再导入 core，
+# 用 cwd 会把根解析成 <会话mod>/mc_java_sources（不存在），导致 mc_source 全废。
+# 与本包 SkillLoader 同思路：基于 __file__（core/../mc_java_sources）独立于 cwd。
+MC_SOURCES_ROOT = str(Path(__file__).resolve().parents[1] / "mc_java_sources")
 if not Path(MC_SOURCES_ROOT).is_dir():
     logger.info(
         f"mc_source 根目录 {MC_SOURCES_ROOT} 不存在——mc_source 工具将返回 Error"
