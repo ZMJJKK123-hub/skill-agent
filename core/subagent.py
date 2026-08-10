@@ -25,7 +25,7 @@ def run_subagent(prompt: str) -> str:
 
     # 子 Agent 可用的工具：排除 task（防递归）+ 主 agent 独占的重工具
     # run_game_test_server / read_game_test_log：GameTest 进程重且会互踩 run 目录
-    excluded = {"task", "run_game_test_server", "read_game_test_log"}
+    excluded = {"task", "run_game_test_server", "read_game_test_log", "run_client", "run_server", "run_data_gen", "run_game_test_server", "run_test_client", "run_test_server", "run_test_data", "run_test_gametest"}
     sub_tools = [t for t in TOOLS if t["function"]["name"] not in excluded]
 
     logger.info(f"=== Subagent 启动 | prompt={prompt[:200]} ===")

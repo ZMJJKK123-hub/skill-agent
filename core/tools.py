@@ -13,6 +13,16 @@ import yaml
 from . import config
 from .config import logger, safe_path
 from .skillcheck import init_per_loop, run_loop_check
+from .gradletools import GRADLE_TOOLS as _GT
+from .worktree import WorktreeManager
+_GT_BASE = None
+def _gt_base():
+    global _GT_BASE
+    if _GT_BASE is None:
+        import core.config as _c
+        _GT_BASE = worktree_manager.resolve_dir() if worktree_manager else str(_c.WORKDIR)
+    return _GT_BASE
+
 from .protocol import (
     coordinator,
     RequestStatus,
@@ -411,7 +421,22 @@ config.SYSTEM += (
     "name ('BlockEntity') or fully-qualified name ('net.minecraft.world.level.block.entity.BlockEntity'). "
     "Cross-reference the source with the loaded skill before writing code.\n"
     "\n"
-    "GAMETEST SELF-DEBUG LOOP (main agent only, MANDATORY): You MUST NOT declare your mod complete "
+    "STRICT PROJECT STRUCTURE & GRADLE TOOLS (8):\n"
+        "- src/main/java: ONLY production code; @GameTest/@GameTestHolder FORBIDDEN here.\n"
+        "- ALL tests MUST be under src/test/java (e.g. src/test/java/com/<pkg>/tests/).\n"
+        "- Automated self-testing MUST use run_test_gametest (gradlew runTestGameTestServer; scans src/test). NEVER use runGameTestServer for Agent verification (it scans src/main only).\n"
+        "Tools (main-agent only):\n"
+        " 1 run_data_gen -> runData: generate assets JSON\n"
+        " 2 run_game_test_server -> runGameTestServer: src/main @GameTest\n"
+        " 3 run_server -> runServer: server side check; success='Done ('\n"
+        " 4 run_client -> runClient: GUI client\n"
+        " 5 run_test_client -> runTestClient: client+test\n"
+        " 6 run_test_server -> runTestServer: server+test\n"
+        " 7 run_test_data -> runTestData: test placeholders\n"
+        " 8 run_test_gametest -> runTestGameTestServer: THE core — src/test tests\n"
+        "Each returns JSON {success,exit_code,summary,error_details,raw_logs_snippet}; fix src/main and re-run.\n"
+        "\n"
+"GAMETEST SELF-DEBUG LOOP (main agent only, MANDATORY): You MUST NOT declare your mod complete "
     "until you have verified it via GameTests. This is a hard requirement, same level as the skill "
     "rules above. After writing your mod code + assets, you MUST:\n"
     "  1. Write at least ONE @GameTest in the mod project (gradle.build already registers "
@@ -1231,7 +1256,7 @@ class TeammateManager:
         # 团队成员/子代理不可用（重工具主 agent 独占）：
         #   run_game_test_server / read_game_test_log —— GameTest 进程重、会互踩 run 目录
         excluded = {"spawn_teammate", "send_to_teammate", "team_status", "task",
-                    "request_shutdown", "run_game_test_server", "read_game_test_log"}
+                    "request_shutdown", "run_game_test_server", "read_game_test_log", "run_client", "run_server", "run_data_gen", "run_game_test_server", "run_test_client", "run_test_server", "run_test_data", "run_test_gametest"}
         teammate_tools = [t for t in TOOLS if t["function"]["name"] not in excluded]
 
         logger.info(f"=== 队友 Agent 启动 | agent={agent_id} | task={task[:200]} ===")
@@ -1635,6 +1660,19 @@ def _read_game_test_log(kw: dict) -> str:
         return f"Error: 读取日志失败: {e}"
 
 
+
+
+def _gt_tool(name, kw):
+    """gradle 工具公共入口：懒定位工作目录，调用 gradletools 并序列化结果。"""
+    import json as _json
+    from .worktree import worktree_manager as _wm2
+    base = _wm2.resolve_dir() if _wm2 else None
+    if not base:
+        import core.config as _c
+        base = str(_c.WORKDIR)
+    fn = _GT[name]
+    r = fn(base)
+    return _json.dumps(r, ensure_ascii=False)
 TOOL_HANDLERS = {
     "bash":         lambda **kw: run_bash(kw["command"]),
     "read_file":    lambda **kw: run_read(kw["path"], kw.get("limit")),
@@ -1677,6 +1715,14 @@ TOOL_HANDLERS = {
     # ── GameTest 自循环调试（仅主 agent 可用）──
     "run_game_test_server": lambda **kw: _run_game_test_server(kw),
     "read_game_test_log": lambda **kw: _read_game_test_log(kw),
+    "run_client": lambda **kw: _gt_tool("run_client", kw),
+    "run_server": lambda **kw: _gt_tool("run_server", kw),
+    "run_data_gen": lambda **kw: _gt_tool("run_data_gen", kw),
+    "run_game_test_server": lambda **kw: _gt_tool("run_game_test_server", kw),
+    "run_test_client": lambda **kw: _gt_tool("run_test_client", kw),
+    "run_test_server": lambda **kw: _gt_tool("run_test_server", kw),
+    "run_test_data": lambda **kw: _gt_tool("run_test_data", kw),
+    "run_test_gametest": lambda **kw: _gt_tool("run_test_gametest", kw),
 }
 
 # ---------- 工具定义（DeepSeek / OpenAI 格式）----------
@@ -2243,6 +2289,120 @@ TOOLS = [
                     "lines": {
                         "type": "integer",
                         "description": "Optional number of lines from the end to read (default 200, max 2000)",
+                    },
+                },
+            },
+        },
+    },
+    # ── Gradle verification tools group 1: src/main PRODUCTION code ONLY ──
+    {
+        "type": "function",
+        "function": {
+            "name": "run_client",
+            "description": "Run 'gradlew runClient' - launches the GUI Minecraft client using ONLY src/main production code. Use for daily in-game verification of items/blocks/UI/rendering. DIFFERENT from run_test_client: run_client does NOT load src/test helpers; if you wrote cheat/helper tools in src/test for manual debugging, use run_test_client instead. On timeout without crash this is considered a pass; any Exception/BUILD FAILED is a failure. Leader/MAIN agent tool only.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "timeout": {
+                        "type": "integer",
+                        "description": "Optional seconds (default 90) to wait before treating as stabilised-pass",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_server",
+            "description": "Run 'gradlew runServer' - launches a headless dedicated server using ONLY src/main code. Use to verify side-isolation/classloading: catches client-only code (e.g. Minecraft.getInstance() misuse) crashing on server. PASS signal: console prints 'Done (' - server booted fine (process then auto-terminated). On failure it reads crash-reports/ latest txt to extract NoClassDefFoundError/ClassCastException etc. DIFFERENT from run_game_test_server: this is a real dedicated server, not a test server. Leader/MAIN agent tool only.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "timeout": {
+                        "type": "integer",
+                        "description": "Optional seconds (default 60)",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_data_gen",
+            "description": "Run 'gradlew runData' - runs Data Generators against src/main to auto-generate model/recipe/loot/lang JSON assets from DataProvider code. Use after writing/updating DataProviders. Detect failure: 'BUILD SUCCESSFUL' absent in log means DataGen error; extract failing class+line. DIFFERENT from run_test_data: run_test_data also loads src/test and generates test-only placeholders without polluting shipped assets. Leader/MAIN agent tool only.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "timeout": {
+                        "type": "integer",
+                        "description": "Optional seconds (default 120)",
+                    },
+                },
+            },
+        },
+    },
+    # ── Gradle verification tools group 2: src/main + src/test (isolated testing) ──
+    {
+        "type": "function",
+        "function": {
+            "name": "run_test_client",
+            "description": "Run 'gradlew runTestClient' - launches GUI client loading BOTH src/main and src/test. Use when you need src/test helper tools (spawn/cheat command mods) for manual in-game debugging. DIFFERENT from run_client: run_client is production-only and never contains test helpers; run_test_client is the isolated-testing variant. Leader/MAIN agent tool only.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "timeout": {
+                        "type": "integer",
+                        "description": "Optional seconds (default 90)",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_test_server",
+            "description": "Run 'gradlew runTestServer' - launches a headless dedicated server loading BOTH src/main and src/test. Use to exercise network sync / multi-player simulations that depend on isolated test code. DIFFERENT from run_server: run_server is production-only dedicated server; run_test_server loads src/test helpers. Leader/MAIN agent tool only.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "timeout": {
+                        "type": "integer",
+                        "description": "Optional seconds (default 90)",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_test_data",
+            "description": "Run 'gradlew runTestData' - Data Generator loading BOTH src/main and src/test. Use when you wrote DataGen scripts inside src/test for test placeholders/temporary recipes; generates them WITHOUT polluting the shipped jar assets. DIFFERENT from run_data_gen: run_data_gen targets production assets only. Leader/MAIN agent tool only.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "timeout": {
+                        "type": "integer",
+                        "description": "Optional seconds (default 120)",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_test_gametest",
+            "description": "RUN THIS FOR AGENT SELF-VERIFICATION: 'gradlew runTestGameTestServer' - GameTest automation server loading BOTH src/main and src/test, runs every @GameTest under src/test/java (isolated; never packaged into the final jar). THE core of the write->run->fix loop: write assertion tests in src/test, run this, parse Passed/Failed, fix src/main logic, re-run until pass. DIFFERENT from run_game_test_server: the latter only scans src/main @GameTest (shipped in jar as egg/getreward tests); for Agent validation you MUST use run_test_gametest. Leader/MAIN agent tool only.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "timeout": {
+                        "type": "integer",
+                        "description": "Optional seconds (default 180)",
                     },
                 },
             },

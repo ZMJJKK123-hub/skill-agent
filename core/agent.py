@@ -120,7 +120,7 @@ def agent_loop(messages: list) -> str:
             try:
                 from pathlib import Path as _P
                 _base = _P.cwd()
-                # 1) 是否创建了 @GameTest 测试类
+                # 1) 是否在 src/test/java 创建了 @GameTest 测试类
                 _has_test = False
                 for _fp in _base.rglob("*.java"):
                     try:
@@ -133,7 +133,7 @@ def agent_loop(messages: list) -> str:
                 _ran_gt = any(
                     (m.get("role") == "tool" and str(m.get("content", "")).lstrip().startswith("[gametest]"))
                     or (m.get("role") == "assistant" and any(
-                        tc.get("function", {}).get("name") == "run_game_test_server"
+                        tc.get("function", {}).get("name") in ("run_test_gametest", "run_game_test_server")
                         for tc in (m.get("tool_calls") or [])))
                     for m in messages
                 )
