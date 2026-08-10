@@ -1263,8 +1263,9 @@ class TeammateManager:
                 logger.info(f"teammate reasoning:\n{reasoning}")
 
             sub_messages.append(message.to_dict())
-            if not run_loop_check("teammate", message.content, sub_messages):
-                continue
+            if choice.finish_reason != "tool_calls":
+                if not run_loop_check("teammate", message.content, sub_messages):
+                    continue
             logger.info(f"teammate finish_reason={choice.finish_reason}")
 
             # 队友决定不再调工具 → 任务完成
