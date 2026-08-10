@@ -159,7 +159,7 @@ MOD KNOWLEDGE MANDATE (skill-first rules):
   over writing anything without a basis."""
 
 # ---------- Subagent 系统（第 4 课：隔离上下文的子任务派发）----------
-MAX_SUBAGENT_TURNS = 10  # 硬上限，防止子 Agent 失控死循环
+MAX_SUBAGENT_TURNS = 30  # 硬上限，防止子 Agent 失控死循环
 
 SUBAGENT_SYSTEM = """You are a focused research and analysis agent.
 Your job is to complete the specific task given to you, then provide
