@@ -115,6 +115,39 @@ def agent_loop(messages: list) -> str:
                 continue
 
             logger.info(f"循环结束，最终回复:\n{message.content}")
+            # ── GameTest 强制核查（C 组合：未跑通 GameTest 自循环则禁止完成）──
+            _gametest_ok = True
+            try:
+                from pathlib import Path as _P
+                _base = _P.cwd()
+                # 1) 是否创建了 @GameTest 测试类
+                _has_test = False
+                for _fp in _base.rglob("*.java"):
+                    try:
+                        if "@GameTest" in _fp.read_text(encoding="utf-8", errors="replace"):
+                            _has_test = True
+                            break
+                    except OSError:
+                        continue
+                # 2) 是否调用过 run_game_test_server（工具返回以 [gametest] 开头 / 或出现过该 tool_call）
+                _ran_gt = any(
+                    (m.get("role") == "tool" and str(m.get("content", "")).lstrip().startswith("[gametest]"))
+                    or (m.get("role") == "assistant" and any(
+                        tc.get("function", {}).get("name") == "run_game_test_server"
+                        for tc in (m.get("tool_calls") or [])))
+                    for m in messages
+                )
+                if not (_has_test and _ran_gt):
+                    _gametest_ok = False
+                    messages.append({"role": "user", "content":
+                        "<gametest-check> FAILED: 你尚未完成 GameTest 自循环验证（需要：①编写至少一个 @GameTest 测试类；"
+                        "②调用 run_game_test_server 运行测试；③可用 read_game_test_log 查看日志）。"
+                        "按 skill-first 纪律，未跑通 GameTest 不得宣布 MOD 完成。请先补测试并运行，通过后再结束。"})
+                    logger.info("gametest-check FAILED: 缺少 @GameTest 或未运行 run_game_test_server")
+            except Exception as _e:
+                logger.info(f"gametest-check 跳过: {_e}")
+            if not _gametest_ok:
+                continue
             # ★ 任务全部完成时，自动清空 .tasks、todo 和 team config
             # 每次运行干净开始：不跨 session 持久化（队友无持久记忆，保留名册无意义）
             if task_manager.all_completed():
@@ -127,7 +160,9 @@ def agent_loop(messages: list) -> str:
                 coordinator.reset()  # 第 10 课：清空协议请求与写入登记
                 logger.info("所有任务已完成，已自动清空 .tasks、todo、team config、inbox 和协议状态")
 
-            # ── 收尾：构建 mod jar（成功会复制到 dist/）──
+            # ── 收尾：构建 mod jar（成功会复制到 dist/）。C 组合：仅 GameTest 已通过后自动构建 ──
+            # 未跑通 GameTest（_gametest_ok=False）不会走到这里（已在上面 continue 强制补测）。
+
             # 放在 zip 预生成前，生成结束后自动尝试打包；不依赖模型主动调用工具。
             try:
                 import os as _os
