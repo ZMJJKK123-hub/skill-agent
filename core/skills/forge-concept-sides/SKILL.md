@@ -1,6 +1,21 @@
 ---
 name: forge-concept-sides
-description: Forge 物理端与逻辑端概念：物理客户端/服务器与逻辑客户端/服务器（Logical Server/Client）的对应关系、@OnlyIn 注解的用法与限制、level.isClientSide 端侧判断技巧、避免客户端/服务端代码串用导致的崩溃。当 mod 需要区分客户端与服务端行为（渲染、输入、世界逻辑）时加载此技能。
+description: |
+  Forge 逻辑端（Sides）概念指南。
+  
+  【涵盖内容】
+  - 服务端与客户端、逻辑服务端（Logical Server）与逻辑客户端（Logical Client）的区别
+  - 物理端（物理服务器/物理整合包）与逻辑端的对应关系
+  - 单人与联机时逻辑端行为差异（单人：逻辑服务端+逻辑客户端同进程；联机：分开）
+  - @OnlyIn(Dist.CLIENT) / @OnlyIn(Dist.DEDICATED_SERVER) 注解用法与适用场景（仅客户端/服务端类与方法）
+  - level.isClientSide 判断当前逻辑端，在物理上两端都会执行的代码中分支
+  - 客户端/服务端代码混用导致的崩溃（如 ShutdownInProgressException, NoClassDefFoundError）
+  
+  【关键 API】
+  Dist, @OnlyIn, LogicalServer, LogicalClient, level.isClientSide, Minecraft.getInstance()
+  
+  【适用场景】mod 需要区分客户端/服务端行为（渲染代码、输入处理、服务端逻辑）时
+  【不涵盖】网络同步（forge-networking）、事件总线（forge-concept-events）
 ---
 
 Sides in Minecraft

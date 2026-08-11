@@ -1,6 +1,21 @@
 ---
 name: forge-rendering-modelloaders
-description: 'Forge custom model loaders: baked model, item overrides and transform for advanced block/item rendering.'
+description: |
+  Forge 自定义模型加载器（Model Loaders）指南。
+  
+  【涵盖内容】
+  - BakedModel：自定义烘焙模型（IBakedModel 与 ModelState）
+  - loadModel / ModelLoader：注册自定义模型加载器（ModelLoaderRegistry）
+  - ItemOverrides：物品模型覆写（按 NBT / 物品状态返回不同模型）、ItemOverrides 自定义
+  - BakedOverride：覆写条件与结果（BakedOverride 列表）
+  - 变换：模型 transform（ModelState / Transformation）与 ItemTransform
+  - 与 BlockState / ItemStack 关联的模型选择逻辑
+  
+  【关键 API】
+  BakedModel, IBakedModel, ModelLoader, ModelLoaderRegistry, ItemOverrides, BakedOverride, ModelState, Transformation, IModelGeometry, ItemTransform
+  
+  【适用场景】需要自定义模型加载/烘焙逻辑（程序化生成模型、按数据选择模型）时
+  【不涵盖】模型扩展（forge-rendering-modelextensions）、基础模型 JSON（forge-resources-client）
 ---
 
 `BakedModel`

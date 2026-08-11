@@ -1,6 +1,21 @@
 ---
 name: forge-concept-internationalization
-description: Forge 国际化（i18n）指南：语言文件（en_us.json / zh_cn.json）的结构与放置路径、翻译键命名规则（block./item./container 等前缀）、代码中通过 Component.translatable 引用本地化文本。当 mod 需要输出可翻译文本、生成多语言文件时加载此技能。
+description: |
+  Forge 国际化（i18n）与本地化指南。
+  
+  【涵盖内容】
+  - 语言文件格式：JSON（键:值），en_us.json / zh_cn.json 等
+  - 语言文件放置路径：assets/<modid>/lang/<locale>.json
+  - 翻译键命名规则：block.<modid>.<name> / item.<modid>.<name> / container.<modid>.<name> 等前缀
+  - 代码中使用 Component.translatable("key") 引用本地化文本
+  - Item/Block 的默认翻译键（getDescriptionId / getDescriptionId + ".desc"）
+  - 占位符与参数（Component.translatable("key", arg1, arg2)）
+  
+  【关键 API】
+  Component.translatable, en_us.json, zh_cn.json, getDescriptionId, MutableComponent, Component.literal
+  
+  【适用场景】mod 需要输出可翻译文本、或需要生成多语言文件（en/zh）时
+  【不涵盖】语言文件自动生成（forge-datagen-client）、文本组件高级用法
 ---
 
 Internationalization and Localization

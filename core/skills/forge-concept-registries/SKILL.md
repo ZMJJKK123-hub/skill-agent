@@ -1,6 +1,21 @@
 ---
 name: forge-concept-registries
-description: Forge 注册系统指南：DeferredRegister 的创建、注册条目、绑定事件总线的完整流程；ForgeRegistries 各注册表清单（方块、物品、方块实体、实体、附魔、药水、音效、粒子等）；注册命名规范（小写+下划线、ResourceLocation）。当 mod 需要注册任何新内容（方块、物品、实体、附魔、创造性标签页等）时必读。
+description: |
+  Forge 注册系统（Registries）指南。
+  
+  【涵盖内容】
+  - DeferredRegister 创建与注册到事件总线：DeferredRegister.create(Registry, modid)
+  - 通过 REGISTRAR.register("name", supplier) 注册条目并获取 RegistryObject
+  - 注册事件（RegisterEvent）与 ForgeRegistries：ForgeRegistries.BLOCKS / ITEMS / ENTITIES / BLOCK_ENTITY_TYPES / MENU_TYPES / SOUND_EVENTS / PARTICLES 等
+  - 注册规范：小写 + 下划线（snake_case）、必须使用 ResourceLocation（modid:name）
+  - 注册物品、方块、实体、附魔、药水效果、创造标签页等各类条目
+  - FeatureFlag / 条件注册（可选）
+  
+  【关键 API】
+  DeferredRegister, RegistryObject, ForgeRegistries, RegisterEvent, ResourceLocation, Registry, Supplier
+  
+  【适用场景】mod 需要注册任何游戏内容（方块、物品、实体、附魔、创造标签页等）时必读
+  【不涵盖】事件总线详情（forge-concept-events）、方块/物品的具体创建（forge-blocks / forge-items）
 ---
 
 Registries

@@ -1,6 +1,21 @@
 ---
 name: forge-datagen-client
-description: 'Forge client data generation: model providers, blockstate JSON, item model providers, language providers and sound definitions providers.'
+description: |
+  Forge 客户端资源 Data Generation：模型/语言/声音提供器。
+  
+  【涵盖内容】
+  - 模型 Provider（ModelProvider / BlockStateProvider）：基于 Block 自动生成 blockstates + block/item 模型 JSON
+  - BlockStateProvider：simpleBlock、horizontalBlock、多种模型的组合（cube_all、slab、stairs、door、trapdoor 等）
+  - Item Model Provider（ItemModelProvider）：basicItem、withExistingParent、自定义模型
+  - Language Provider（LanguageProvider）：add("key", "value") 生成 en_us.json（以及中文映射）
+  - Sound Definition Provider（SoundDefinitionsProvider）：生成 sounds.json（声音事件定义）
+  - 各 Provider 的 addProvider 注册方式与非覆盖（ExistingFileHelper）
+  
+  【关键 API】
+  ModelProvider, BlockStateProvider, ItemModelProvider, LanguageProvider, SoundDefinitionsProvider, ExistingFileHelper, BlockModelBuilder, ModelFile
+  
+  【适用场景】需要自动生成客户端资源（模型、blockstates、语言、声音）时
+  【不涵盖】数据生成器基础（forge-datagen）、服务端资源生成（forge-datagen-server）
 ---
 
 Language Generation

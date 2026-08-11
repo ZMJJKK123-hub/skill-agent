@@ -1,6 +1,24 @@
 ---
 name: forge-blockentities
-description: Forge BlockEntity 完整指南：BlockEntityType 注册、创建/附加到方块、数据存储与保存、tick 逻辑、三种客户端同步方式，以及 BlockEntityRenderer（BER）自定义渲染。
+description: |
+  Forge BlockEntity（方块实体）完整指南。
+  
+  【涵盖内容】
+  - BlockEntity 与 BlockEntityType 的注册（DeferredRegister<BlockEntityType<?>>）
+  - 创建 BlockEntity 子类：构造器、BlockEntityType 关联、方块使用 BlockEntityProvider 或 Block 子类 + BlockEntity 挂载
+  - 数据存储与保存：saveAdditional / loadAdditional（CompoundTag）自定义 NBT 数据
+  - Tick 逻辑：BlockEntity#tick 静态方法模式、在 getTicker 中调用
+  - 客户端同步三种方式：
+    1) LevelChunk Load（chunk 加载时自动同步）
+    2) Block Update（标记脏数据 + 发送更新包）
+    3) 自定义网络消息同步（使用 CustomPacketPayload）
+  - BlockEntityRenderer（BER）自定义渲染：ClientBlockEntityRendererProvider、render 方法注册
+  
+  【关键 API】
+  BlockEntity, BlockEntityType, DeferredRegister, BlockEntityType.Builder, saveAdditional, loadAdditional, CompoundTag, getUpdateTag, handleUpdateTag, BlockEntityRenderer, BlockEntityRendererProvider, ClientBlockEntityRendererProvider
+  
+  【适用场景】需要为方块附加持久化数据、自定义 tick 行为或自定义方块渲染时
+  【不涵盖】物品渲染（forge-items BEWLR）、方块注册基础（forge-blocks）、网络包发送（forge-networking）
 ---
 
 # BlockEntities

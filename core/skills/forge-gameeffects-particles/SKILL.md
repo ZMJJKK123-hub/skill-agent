@@ -1,6 +1,22 @@
 ---
 name: forge-gameeffects-particles
-description: 'Forge particle system: registering particle types, particle providers, JSON definitions and spawning particles.'
+description: |
+  Forge 粒子系统指南。
+  
+  【涵盖内容】
+  - 粒子类型注册：DeferredRegister< ParticleType<?>> / ParticleType 创建（SimpleParticleType）
+  - 粒子 Provider：ParticleProvider（在客户端注册）与 ParticleEngine
+  - JSON 定义：assets/<modid>/particles/<name>.json（粒子纹理列表）
+  - 粒子纹理：贴图（textures/particle）与 TextureAtlas 注册
+  - 生成粒子：level.addParticle(...) / ServerLevel.sendParticles（服务端派发到客户端）
+  - 客户端粒子行为：Particle#tick、render 渲染、物理行为
+  - 常用内置粒子（如 NoteParticleOptions、ItemParticleOptions 等）
+  
+  【关键 API】
+  DeferredRegister<ParticleType<?>>, SimpleParticleType, ParticleProvider, ParticleEngine, Particle, ParticleOptions, level.addParticle, ServerLevel.sendParticles, TextureAtlas
+  
+  【适用场景】需要添加自定义粒子或生成粒子效果时
+  【不涵盖】声音系统（forge-gameeffects-sounds）、渲染管线（forge-rendering-*）
 ---
 
 Particles

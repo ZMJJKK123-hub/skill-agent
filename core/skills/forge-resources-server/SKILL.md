@@ -1,6 +1,22 @@
 ---
 name: forge-resources-server
-description: 'Forge server-side data: data pack structure, recipes (custom/ingredients/in-code), loot tables, tags, global loot modifiers, advancements, conditional data and tags list.'
+description: |
+  Forge 服务端数据（data 数据包）指南。
+  
+  【涵盖内容】
+  - 数据包结构：data/<modid>/ 下各目录（recipes、loot_tables、tags、advancements、loot_modifiers 等）
+  - 配方：JSON 配方（shaped / shapeless / smelting / smithing / stonecutting 等）、Ingredient 条件（ItemPredicate、count、tag）、非数据包配方（代码内 Recipe 实现）
+  - 战利品表：loot_tables/blocks/<block>.json 或 entities/<entity>.json、LootPool 条件（randomChance、ExplosionCondition、survives_explosion）、战利品函数（set_count、looting_enchant）
+  - 标签（Tags）：tags/blocks/*.json、tags/items/*.json、TagKey 引用、Forge 提供的标签（forge: 命名空间）
+  - 全局战利品修改器（Global Loot Modifiers）：loot_modifiers.json 声明 + 代码实现（LootModifier）
+  - 进度：advancements/*.json（条件、奖励、父进度）
+  - 条件数据与数据包内容校验（advancement 条件 component）
+  
+  【关键 API】
+  data, recipes JSON, Ingredient, ItemPredicate, LootTable, LootPool, LootContext, TagKey, GlobalLootModifiers, GlobalLootModifierProvider, Advancement, ItemTags, BlockTags
+  
+  【适用场景】需要编写/理解服务端数据 JSON（配方、战利品、标签、进度、全局战利品修改器）时
+  【不涵盖】客户端资源（forge-resources-client）、数据生成器（forge-datagen-server）
 ---
 
 Advancements

@@ -1,6 +1,20 @@
 ---
 name: forge-datagen
-description: 'Forge Data Generation: data generator overview, run modes, ExistingFileHelper, and DataProvider registration.'
+description: |
+  Forge Data Generation（数据生成器）入门指南。
+  
+  【涵盖内容】
+  - 数据生成器概述：用 Java 代码生成 JSON 资源（模型、配方、语言、战利品）代替手写
+  - 运行模式：runData（Gradle 任务）、独立 main、Gradle 配置
+  - ExistingFileHelper：校验生成的资源引用的现有文件是否存在
+  - DataProvider 注册：GatherDataEvent 中 event.getGenerator().addProvider(...)
+  - provider 的生成流程（run 方法输出到 generated 目录）
+  
+  【关键 API】
+  DataProvider, GatherDataEvent, DataGenerator, ExistingFileHelper, PackOutput, addProvider
+  
+  【适用场景】需要自动生成模型/配方/语言/战利品 JSON 时
+  【不涵盖】客户端 DataProvider 细节（forge-datagen-client）、服务端 DataProvider 细节（forge-datagen-server）
 ---
 
 Data Generators

@@ -1,6 +1,22 @@
 ---
 name: forge-datastorage-codecs
-description: 'Forge Codec system: encoding/decoding with Codec, DataResult, composing codecs, and using codecs in registries and networking.'
+description: |
+  Forge Codec 序列化系统指南。
+  
+  【涵盖内容】
+  - Codec 概念与用法：Minecraft Codec 编解码（Codec<YourType>）
+  - 使用 Codec：Codec.STRING / Codec.INT / RecordCodecBuilder.mapCodec 组合
+  - DataResult：解码结果处理（result() / error()）、返回码与错误传播
+  - 组合 Codec：RecordCodecBuilder、Codec.list / Codec.mapPair、optional/defaulted/fieldOf
+  - 在注册表中使用 Codec（registry 序列化）
+  - 在网络中传输实现 Encodable / 可序列化数据（如网络包自定义 payload）
+  - 保存数据（存进 NBT / JSON）
+  
+  【关键 API】
+  Codec, DataResult, RecordCodecBuilder, Codec.mapCodec, Codec.STRING, Codec.list, fieldOf, optionalFieldOf, Encodable, RegistryOps
+  
+  【适用场景】需要编码/解码复杂数据（配方、附魔、网络 payload、世界数据）时
+  【不涵盖】Capability 系统（forge-datastorage-capabilities）、SavedData（forge-datastorage-saveddata）
 ---
 
 # Codecs

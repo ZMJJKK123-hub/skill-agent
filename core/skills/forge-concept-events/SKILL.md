@@ -1,6 +1,23 @@
 ---
 name: forge-concept-events
-description: Forge 事件系统核心概念：ModEventBus 与 MinecraftForge.EVENT_BUS 两条事件总线的区别、事件注册与监听方式、@SubscribeEvent 用法与事件优先级、常用生命周期事件。当 mod 需要响应游戏内行为（玩家操作、方块交互、实体生成、注册阶段等）时加载此技能。
+description: |
+  Forge 事件系统核心概念。
+  
+  【涵盖内容】
+  - 两条事件总线：ModEventBus（MOD 生命周期/注册事件）vs MinecraftForge.EVENT_BUS（游戏内事件）
+  - 事件注册与监听：@SubscribeEvent + 事件总线 register 注册监听器类或对象（MinecraftForge.EVENT_BUS.register(this)）
+  - ModEventBus 上的事件直接注册（mod 构造器执行阶段，仅需 @SubscribeEvent）
+  - 事件优先级（@SubscribeEvent(priority = EventPriority.HIGH/HIGHEST/NORMAL/LOW/LOWEST)）
+  - 取消事件（可取消事件调用 setCanceled(true)，如 PlayerEvent / LivingEvent）
+  - 常用生命周期事件：RegisterEvent, FMLCommonSetupEvent, FMLClientSetupEvent, FMLDedicatedServerSetupEvent
+  - 常用游戏内事件：玩家操作（PlayerEvent）、方块交互（BlockEvent）、实体生成（EntityEvent）、攻击（AttackEntityEvent）等
+  - 事件的触发时机与哪些事件在哪个总线派发
+  
+  【关键 API】
+  MinecraftForge, ModEventBus, @SubscribeEvent, Event, EventPriority, RegisterEvent, FMLCommonSetupEvent, FMLClientSetupEvent, FMLDedicatedServerSetupEvent, PlayerEvent, BlockEvent, EntityEvent, setCanceled
+  
+  【适用场景】mod 需要响应游戏内行为（玩家操作、方块交互、实体生成、注册阶段等）
+  【不涵盖】Mod 生命周期阶段细节（forge-concept-lifecycle）、注册系统（forge-concept-registries）
 ---
 
 Events

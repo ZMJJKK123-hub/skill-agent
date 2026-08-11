@@ -1,6 +1,22 @@
 ---
 name: forge-datastorage-saveddata
-description: 'Forge SavedData: persisting custom data in worlds, attaching SavedData to dimensions, saving/loading and ticking.'
+description: |
+  Forge SavedData（世界持久数据）指南。
+  
+  【涵盖内容】
+  - SavedData 概念：在世界上持久化自定义数据（跨存档保存）
+  - 创建 SavedData 子类：save(CompoundTag) 保存、load(CompoundTag) 读取、工厂构造器
+  - 注册 SavedData 工厂到维度：DimensionSpecialEffects / SavedData.Factory、Level 的 getDataStorage().computeIfAbsent(Factory)
+  - 附加到维度（LevelChunk 数据存储 / 主世界）
+  - 保存时机与标记脏数据（setDirty(true)）
+  - 服务端/客户端共享与 tick 时更新
+  - 与调色板、网络同步的关系
+  
+  【关键 API】
+  SavedData, SavedData.Factory, CompoundTag, Level#getDataStorage, computeIfAbsent, setDirty, DimensionSpecialEffects, ServerLevel#getDataStorage
+  
+  【适用场景】需要把自定义数据持久化到世界存档（如地图数据、全局进度）时
+  【不涵盖】Capability 系统（forge-datastorage-capabilities）、Codec 序列化（forge-datastorage-codecs）
 ---
 
 Saved Data

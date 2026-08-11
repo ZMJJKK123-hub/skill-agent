@@ -1,6 +1,20 @@
 ---
 name: forge-misc
-description: 'Forge miscellaneous features: configuration (ForgeConfigSpec), key mappings, game tests, update checker and debug profiler.'
+description: |
+  Forge 杂项功能指南（配置 / 按键绑定 / 游戏测试 / 更新检查 / 调试）。
+  
+  【涵盖内容】
+  - 配置系统：ForgeConfigSpec（Builder 构建配置项）、注册到 ModLoadingContext（CommonConfig / ClientConfig / ServerConfig）、配置文件（config/<modid>-common.toml 等）
+  - 按键绑定：KeyMapping 创建与注册、KeyMappingHelper / ClientRegistry、按键事件（KeyInputEvent）监听
+  - 游戏测试（GameTest）：@GameTest 注解、GameTestHelper、测试结构（run/gameteststructures）
+  - Forge 更新检查器：版本检查与更新提示
+  - 调试分析器：性能/调试信息收集（TickingProfiler / DebugProfiler）
+  
+  【关键 API】
+  ForgeConfigSpec, ForgeConfigSpec.Builder, ModLoadingContext, KeyMapping, KeyMappingHelper, ClientRegistry, @GameTest, GameTestHelper, DebugProfiler, VersionChecker
+  
+  【适用场景】需要配置文件、按键绑定、或集成游戏测试/调试功能时
+  【不涵盖】GUI 系统（forge-gui）、数据生成（forge-datagen-*）
 ---
 
 Configuration

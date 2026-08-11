@@ -1,6 +1,20 @@
 ---
 name: forge-rendering-modelextensions
-description: 'Forge model extensions: transforms, render types, part visibility and face data customization for block/item models.'
+description: |
+  Forge 模型扩展（Model Extensions）指南。
+  
+  【涵盖内容】
+  - 模型变换（Transforms）：模型在特定显示上下文（ItemDisplayContext：第三人称、第一人称、GUI、地面等）中的旋转/平移/缩放
+  - 渲染类型（Render Types）：为模型不同部分指定不同渲染管线（solid / cutout / translucent / translucent_no_crumbling）
+  - 部件可见性（Part Visibility）：按 ItemDisplayContext 条件控制模型子部件是否可见（ItemPartVisibility）
+  - Face Data 自定义：修改模型面的渲染数据（面朝向、纹理 UV、着色）
+  - 根变换（Root Transforms）与模型根节点变换
+  
+  【关键 API】
+  IItemRenderProperties, ItemDisplayContext, RenderTypes, ModelPartVisibility, FaceData, Transformation, ModelState
+  
+  【适用场景】需要高级模型外观定制（不同视角不同显示、部分隐藏、半透明、面数据修改）时
+  【不涵盖】模型加载器（forge-rendering-modelloaders）、基础模型 JSON（forge-resources-client）
 ---
 
 Face Data

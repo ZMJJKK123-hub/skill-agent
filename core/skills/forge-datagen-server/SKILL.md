@@ -1,6 +1,22 @@
 ---
 name: forge-datagen-server
-description: 'Forge server data generation: recipe providers, loot table providers, advancement providers, tag providers, global loot modifier providers and datapack registry providers.'
+description: |
+  Forge 服务端数据 Data Generation：配方/战利品/进度/标签/全局战利品修改器。
+  
+  【涵盖内容】
+  - 配方 Provider（RecipeProvider / RecipeBuilder）：shaped 与 shapeless 配方、多配方 builder（RecipeCategory）、自定义输入输出
+  - 战利品表 Provider（LootTableProvider）：方块/实体战利品表、LootTable.loot() 构建、条件（ExplosionCondition、randomChance）
+  - 进度 Provider（AdvancementProvider / Advancement.Builder）：进度构建、条件、奖励、父子进度
+  - 标签 Provider（TagsProvider）：方块/物品/实体标签、TagBuilder、TagKey
+  - 全局战利品修改器 Provider（GlobalLootModifierProvider）：修改战利品表
+  - 数据包注册 Provider（DatapackRegistryProvider）
+  - 各 Provider 注册到 GatherDataEvent
+  
+  【关键 API】
+  RecipeProvider, ShapedRecipeBuilder, ShapelessRecipeBuilder, LootTableProvider, LootTable, LootPool, AdvancementProvider, Advancement, TagsProvider, TagKey, GlobalLootModifierProvider, DatapackRegistryProvider
+  
+  【适用场景】需要自动生成服务端玩法数据（配方、战利品、进度、标签、全局战利品修改器）时
+  【不涵盖】数据生成器基础（forge-datagen）、客户端资源生成（forge-datagen-client）
 ---
 
 Advancement Generation
