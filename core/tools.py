@@ -1299,7 +1299,13 @@ class TeammateManager:
 
             # 执行工具，收集结果
             for tc in message.tool_calls:
-                args = json.loads(tc.function.arguments)
+                try:
+                    args = json.loads(tc.function.arguments)
+                except Exception as e:
+                    logger.warning(f"teammate 工具参数解析失败 | {tc.function.name} | {e}")
+                    sub_messages.append({"role": "tool", "tool_call_id": tc.id,
+                        "content": f"Error: Invalid tool arguments JSON for {tc.function.name}: {e}. Please retry with valid JSON."})
+                    continue
                 # 第 10 课：submit_plan 需要记录发起方（队友身份）
                 if tc.function.name == "submit_plan":
                     args["_agent_id"] = agent_id

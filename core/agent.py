@@ -192,7 +192,19 @@ def agent_loop(messages: list) -> str:
         used_todo = False
         compact_pending = False
         for tc in message.tool_calls:
-            args = json.loads(tc.function.arguments)
+            # flash 适配：工具参数 JSON 可能不完整/非法，解析失败不炸主循环，
+            # 而是返回温和错误文本作为该工具的结果，让模型修正后重试。
+            try:
+                args = json.loads(tc.function.arguments)
+            except Exception as e:
+                logger.warning(f"工具参数解析失败 | {tc.function.name} | {e} | raw={tc.function.arguments[:300]}")
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.id,
+                    "content": f"Error: Invalid tool arguments JSON for {tc.function.name}: {e}. "
+                               f"Please call the tool again with valid JSON arguments.",
+                })
+                continue
 
             # compact 特殊处理：先跳过，等其他工具执行完再压缩
             if tc.function.name == "compact":

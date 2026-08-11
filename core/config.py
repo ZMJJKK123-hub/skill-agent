@@ -23,7 +23,7 @@ logging.basicConfig(
 logger = logging.getLogger("agent")
 
 # ---------- 配置 ----------
-MODEL = "deepseek-v4-pro"
+MODEL = "deepseek-v4-flash"
 SYSTEM = r"""You are a game MOD development agent with planning capabilities that can execute bash commands.
 Your focus is generating complete, buildable game MOD projects based on the target game and loader:
 scaffold the project, register game content (items/blocks/entities), write assets & data

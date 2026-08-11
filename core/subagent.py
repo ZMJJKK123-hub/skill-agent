@@ -61,7 +61,13 @@ def run_subagent(prompt: str) -> str:
 
         # 执行工具，收集结果
         for tc in message.tool_calls:
-            args = json.loads(tc.function.arguments)
+            try:
+                args = json.loads(tc.function.arguments)
+            except Exception as e:
+                logger.warning(f"subagent 工具参数解析失败 | {tc.function.name} | {e}")
+                sub_messages.append({"role": "tool", "tool_call_id": tc.id,
+                    "content": f"Error: Invalid tool arguments JSON for {tc.function.name}: {e}. Please retry with valid JSON."})
+                continue
             handler = TOOL_HANDLERS.get(tc.function.name)
             output = handler(**args) if handler else f"Unknown tool: {tc.function.name}"
             logger.info(f"subagent 工具调用: {tc.function.name}")
