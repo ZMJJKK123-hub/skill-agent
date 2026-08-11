@@ -12,7 +12,7 @@ import yaml
 
 from . import config
 from .config import logger, safe_path
-from .skillcheck import init_per_loop, run_loop_check
+from .skillcheck import init_per_loop, run_loop_check, any_loaded, record_load
 from .gradletools import GRADLE_TOOLS as _GT
 from .worktree import WorktreeManager
 _GT_BASE = None
@@ -98,7 +98,20 @@ def run_read(path: str, limit: int = None) -> str:
     except Exception as e:
         return f"Error: {e}"
 
+def _is_mod_file(path: str) -> bool:
+    """判断路径是否属 MOD 工程文件（需先 load_skill 才能写）。
+    覆盖 src/main、src/test、Gradle 构建脚本、mods.toml 元数据等。"""
+    p = path.replace("\\", "/").strip("/")
+    frags = ("src/main", "src/test", "src/api/java",
+             "build.gradle", "settings.gradle", "gradle.properties",
+             "mods.toml", "neoforge.mods.toml", "META-INF/mods.toml")
+    return any(f in p for f in frags)
+
+
 def run_write(path: str, content: str) -> str:
+    if _is_mod_file(path) and not any_loaded():
+        return ("Error: MOD 文件禁止无技能依据写入。请先调用 load_skill 加载相关技能"
+                "（如 forge-items / forge-blocks / forge-resources-* / forge-networking），再重试。")
     try:
         # 第 12 课：基座跟随线程 session（worktree_use 后落在 worktree 内）
         base = worktree_manager.resolve_dir() if worktree_manager else None
@@ -110,6 +123,9 @@ def run_write(path: str, content: str) -> str:
         return f"Error: {e}"
 
 def run_edit(path: str, old_text: str, new_text: str) -> str:
+    if _is_mod_file(path) and not any_loaded():
+        return ("Error: MOD 文件禁止无技能依据修改。请先调用 load_skill 加载相关技能"
+                "（如 forge-items / forge-blocks / forge-resources-* / forge-networking），再重试。")
     try:
         # 第 12 课：基座跟随线程 session（worktree_use 后落在 worktree 内）
         base = worktree_manager.resolve_dir() if worktree_manager else None
@@ -1668,6 +1684,14 @@ def _read_game_test_log(kw: dict) -> str:
 
 
 
+def _load_skill_and_record(kw: dict) -> str:
+    name = kw.get("skill_name", "")
+    out = skill_loader.get_content(name)
+    if not out.startswith("Error:"):
+        record_load(name)
+    return out
+
+
 def _gt_tool(name, kw):
     """gradle 工具公共入口：懒定位工作目录，调用 gradletools 并序列化结果。"""
     import json as _json
@@ -1686,7 +1710,7 @@ TOOL_HANDLERS = {
     "edit_file":    lambda **kw: run_edit(kw["path"], kw["old_text"],
                                           kw["new_text"]),
     "todo":         lambda **kw: todo_manager.update(kw["items"]),
-    "load_skill":   lambda **kw: skill_loader.get_content(kw["skill_name"]),
+    "load_skill":   lambda **kw: _load_skill_and_record(kw),
     "mc_source":    lambda **kw: _mc_source(kw),
     "task_create":  lambda **kw: json.dumps(task_manager.create(**kw), ensure_ascii=False),
     "task_update":  lambda **kw: json.dumps(task_manager.update(**kw), ensure_ascii=False),

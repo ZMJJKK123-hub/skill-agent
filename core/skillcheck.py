@@ -4,14 +4,43 @@
 三重校验：1) 必须存在 <skill-source> 块；2) source 行技能名已加载；
 3) '->' 后关键词真实出现在技能原文。返回 (ok, reason)。
 主 agent / subagent / teammate 三循环共用，各自以自己消息列表为准。
+
+另：threading.local 在线注册"当前线程已加载的技能"（record_load/any_loaded），
+供 run_write/run_edit 前置强制"MOD 文件必须先 load_skill 才能写"（A 方案，
+从源头掐断模型凭记忆乱写 MOD 文件的烧钱路径）。
 """
 import re
+import threading
 
 _SKILL_BLOCK_RE = re.compile(r"<skill\s+name=[\"']?([^\"'\s>]+)[\"']?>(.*?)</skill>", re.S)
 _SKILL_SOURCE_RE = re.compile(r"<skill-source>(.*?)</skill-source>", re.S)
 _SOURCE_LINE_RE = re.compile(r"^\s*[-*]?\s*source\s*:\s*([\w\-\.]+?)\s*(?:->|=>)\s*(.+?)\s*$", re.I | re.M)
 
 FAIL_STREAK_LIMIT = 5
+
+# ---------- 线程级已加载技能注册中心（A 方案：写 MOD 文件前的强skill前置） ----------
+# main / subagent / teammate 各自在独立线程跑 Agent Loop，
+# threading.local 保证三者的"已加载技能"互不污染。
+# record_load 由 load_skill handler 在成功加载后调用；
+# any_loaded 由 run_write/run_edit 判断当前线程是否已 load 过技能。
+_local = threading.local()
+
+
+def record_load(skill_name: str) -> None:
+    """登记当前线程已成功加载的技能名（load_skill 成功后调用）。"""
+    if not hasattr(_local, "loaded"):
+        _local.loaded = set()
+    _local.loaded.add(skill_name)
+
+
+def reset_loaded() -> None:
+    """清空当前线程的已加载记录（循环开始/结束时可选调用）。"""
+    _local.loaded = set()
+
+
+def any_loaded() -> list:
+    """返回当前线程已加载的技能名列表（空 = 尚未 load 任何技能）。"""
+    return sorted(getattr(_local, "loaded", set()) or set())
 
 
 def extract_loaded_skills(messages: list) -> dict:
