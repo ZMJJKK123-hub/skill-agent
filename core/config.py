@@ -11,7 +11,7 @@ from openai import OpenAI
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
-load_dotenv()
+load_dotenv(override=True)  # override=True：确保 .env 里的 key 覆盖系统环境变量中的旧值
 
 # ---------- 日志系统 ----------
 logging.basicConfig(
@@ -23,7 +23,7 @@ logging.basicConfig(
 logger = logging.getLogger("agent")
 
 # ---------- 配置 ----------
-MODEL = "deepseek-v4-flash"
+MODEL = "DeepSeek-V4-Flash-0731"
 SYSTEM = r"""You are a game MOD development agent with planning capabilities that can execute bash commands.
 Your focus is generating complete, buildable game MOD projects based on the target game and loader:
 scaffold the project, register game content (items/blocks/entities), write assets & data
@@ -223,7 +223,7 @@ MOD KNOWLEDGE MANDATE (skill-first):
 
 client = OpenAI(
     api_key=os.environ.get("DEEPSEEK_API_KEY", ""),
-    base_url="https://api.deepseek.com",
+    base_url="https://llmapi.paratera.com/v1",
 )
 
 # ---------- 路径安全沙箱 ----------
