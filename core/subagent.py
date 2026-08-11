@@ -2,7 +2,7 @@ import json
 
 from .config import client, MODEL, SUBAGENT_SYSTEM, MAX_SUBAGENT_TURNS, logger
 from .tools import TOOLS, TOOL_HANDLERS
-from .skillcheck import init_per_loop, run_loop_check
+from .skillcheck import init_per_loop, run_loop_check, move_skills_to_end
 
 
 # ---------- Subagent 执行函数 ----------
@@ -32,6 +32,7 @@ def run_subagent(prompt: str) -> str:
 
     response = None
     for turn in range(MAX_SUBAGENT_TURNS):
+        move_skills_to_end(sub_messages)
         logger.info(f"--- Subagent 第 {turn + 1} 轮 ---")
         response = client.chat.completions.create(
             model=MODEL,

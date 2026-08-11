@@ -12,7 +12,7 @@ import yaml
 
 from . import config
 from .config import logger, safe_path
-from .skillcheck import init_per_loop, run_loop_check, any_loaded, record_load
+from .skillcheck import init_per_loop, run_loop_check, any_loaded, record_load, move_skills_to_end
 from .gradletools import GRADLE_TOOLS as _GT
 from .worktree import WorktreeManager
 _GT_BASE = None
@@ -1286,6 +1286,7 @@ class TeammateManager:
             # ── 第 10 课：每轮开始注入协议请求（计划审批结果 / 关机请求）──
             inject_pending_requests(sub_messages, agent_id)
 
+            move_skills_to_end(sub_messages)
             logger.info(f"--- 队友 Agent 第 {turn + 1} 轮 ---")
             response = client.chat.completions.create(
                 model=MODEL,

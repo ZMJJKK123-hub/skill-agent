@@ -15,7 +15,7 @@ from .compact import (
     estimate_tokens,
     TOKEN_THRESHOLD,
 )
-from .skillcheck import init_per_loop, run_loop_check
+from .skillcheck import init_per_loop, run_loop_check, move_skills_to_end
 
 
 # ---------- 接线：注册 task handler（打破循环依赖）----------
@@ -72,6 +72,7 @@ def agent_loop(messages: list) -> str:
             messages = auto_compact(messages)
 
         # 发给模型
+        move_skills_to_end(messages)
         logger.info(f"=== 新一轮 | messages 长度={len(messages)} ===")
         response = client.chat.completions.create(
             model=MODEL,

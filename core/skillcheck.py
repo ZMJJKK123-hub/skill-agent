@@ -43,11 +43,58 @@ def any_loaded() -> list:
     return sorted(getattr(_local, "loaded", set()) or set())
 
 
-def extract_loaded_skills(messages: list) -> dict:
-    """从消息历史提取本循环所有 load_skill 加载过的技能原文 {name: 全文}。"""
-    loaded = {}
+def move_skills_to_end(messages: list) -> None:
+    """把已加载技能全文滚动到消息末尾，旧副本转为占位符（每轮调用前执行）。
+
+    设计目标：技能内容全程只保留一份、且总在模型最近可见位置，
+    随轮数滚动而不是累积，token 不随轮数增长。
+
+    OpenAI 协议约束：assistant(tool_calls) 后必须紧跟匹配的 role=tool
+    消息，因此旧技能 tool 消息不能删除——保留 role/tool_call_id 骨架、
+    仅把内容替换为占位符；技能全文以 role=user 形式追加到末尾（序列合法）。
+    同名技能取最后一次 load 的内容（后出现的覆盖旧版）。
+    """
+    skills = {}
     for msg in messages:
         if msg.get("role") != "tool":
+            continue
+        c = msg.get("content")
+        if not isinstance(c, str):
+            continue
+        blocks = list(_SKILL_BLOCK_RE.findall(c))
+        if not blocks:
+            continue
+        for name, body in blocks:
+            name = name.strip()
+            if name:
+                skills[name] = body.strip()
+        msg["content"] = "<skill-content-rolled-to-latest/>"
+    if not skills:
+        return
+    active = "".join(
+        f'<skill name="{name}">\n{body}\n</skill>' for name, body in skills.items()
+    )
+    messages.append(
+        {
+            "role": "user",
+            "content": (
+                f"<active-skills>\n{active}\n</active-skills>\n"
+                "以上为当前已加载的技能全文（最新，唯一有效副本）。"
+                "后续所有 MOD 代码/资源必须严格依据这些原文编写，禁止凭记忆创作。"
+            ),
+        }
+    )
+
+
+def extract_loaded_skills(messages: list) -> dict:
+    """从消息历史提取本循环所有 load_skill 加载过的技能原文 {name: 全文}。
+
+    同时扫描 role=tool 的 load_skill 输出与 role=user 的 <active-skills>
+    （move_skills_to_end 会把技能全文滚动到末尾的 user 消息里）。
+    """
+    loaded = {}
+    for msg in messages:
+        if msg.get("role") not in ("tool", "user"):
             continue
         c = msg.get("content", "")
         if not isinstance(c, str):
