@@ -1,20 +1,25 @@
 ---
 name: forge-misc
 description: |
-  Forge 杂项功能指南（配置 / 按键绑定 / 游戏测试 / 更新检查 / 调试）。
+  Forge 杂项功能指南（配置 / 按键绑定 / 游戏测试 / 更新检查 / 调试）（Minecraft Wiki 中文版全量正文）。
+  
+  【概述】Configuration
   
   【涵盖内容】
-  - 配置系统：ForgeConfigSpec（Builder 构建配置项）、注册到 ModLoadingContext（CommonConfig / ClientConfig / ServerConfig）、配置文件（config/<modid>-common.toml 等）
-  - 按键绑定：KeyMapping 创建与注册、KeyMappingHelper / ClientRegistry、按键事件（KeyInputEvent）监听
-  - 游戏测试（GameTest）：@GameTest 注解、GameTestHelper、测试结构（run/gameteststructures）
-  - Forge 更新检查器：版本检查与更新提示
-  - 调试分析器：性能/调试信息收集（TickingProfiler / DebugProfiler）
+  - ConfigValue
+  - Using the Debug Profiler
+  - Reading a Profiling result
+  - Profiling your own code
+  - The Test Method
+  - Generated Test Methods
+  - Batching
+  - GameTestHolder
+  - RegisterGameTestsEvent
+  - Enabling Other Namespaces
+  - Game Test Server Run Configuration
+  - Enabling Game Tests in Other Run Configurations
   
-  【关键 API】
-  ForgeConfigSpec, ForgeConfigSpec.Builder, ModLoadingContext, KeyMapping, KeyMappingHelper, ClientRegistry, @GameTest, GameTestHelper, DebugProfiler, VersionChecker
-  
-  【适用场景】需要配置文件、按键绑定、或集成游戏测试/调试功能时
-  【不涵盖】GUI 系统（forge-gui）、数据生成（forge-datagen-*）
+  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge 杂项功能指南（配置 / 按键绑定 / 游戏测试 / 更新检查 / 调试） 的完整规范时
 ---
 
 Configuration

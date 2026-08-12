@@ -1,20 +1,15 @@
 ---
 name: forge-datagen
 description: |
-  Forge Data Generation（数据生成器）入门指南。
+  Forge Data Generation（数据生成器）入门指南（Minecraft Wiki 中文版全量正文）。
+  
+  【概述】Data Generators
   
   【涵盖内容】
-  - 数据生成器概述：用 Java 代码生成 JSON 资源（模型、配方、语言、战利品）代替手写
-  - 运行模式：runData（Gradle 任务）、独立 main、Gradle 配置
-  - ExistingFileHelper：校验生成的资源引用的现有文件是否存在
-  - DataProvider 注册：GatherDataEvent 中 event.getGenerator().addProvider(...)
-  - provider 的生成流程（run 方法输出到 generated 目录）
+  - Client Assets
+  - Server Data
   
-  【关键 API】
-  DataProvider, GatherDataEvent, DataGenerator, ExistingFileHelper, PackOutput, addProvider
-  
-  【适用场景】需要自动生成模型/配方/语言/战利品 JSON 时
-  【不涵盖】客户端 DataProvider 细节（forge-datagen-client）、服务端 DataProvider 细节（forge-datagen-server）
+  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge Data Generation（数据生成器）入门指南 的完整规范时
 ---
 
 Data Generators

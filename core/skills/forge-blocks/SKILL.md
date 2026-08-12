@@ -1,26 +1,15 @@
 ---
 name: forge-blocks
 description: |
-  Forge 方块（Block）完整指南。
+  Forge 方块（Block）完整指南（Minecraft Wiki 中文版全量正文）。
+  
+  【概述】Blocks are, obviously, essential to the Minecraft world. They make up all of the terrain, structures, and machines. Chan…
   
   【涵盖内容】
-  - Block 创建：Block 直接实例化 vs 继承 Block 子类
-  - BlockBehaviour.Properties 属性：mapColor, strength(硬度), sound, noOcclusion, noCollission, instabreak, lightLevel, requiresCorrectToolForDrops 等
-  - Block 注册（DeferredRegister<Block>）与 BlockItem 注册（DeferredRegister<Item>），Block 与 BlockItem 的关联（默认 `new BlockItem(block, new Item.Properties())`）
-  - 方块物品的属性（稀有度、堆叠上限）
-  - BlockState 属性系统：
-    - Property 类型（BooleanProperty / IntegerProperty / EnumProperty / DirectionProperty）
-    - createBlockStateDefinition 声明状态属性
-    - 默认状态 provider（getStateDefinition().getDefault() 与 makeDefaultState）
-    - 放置时设置状态（getStateForPlacement 或 updater）
-    - 使用 BlockState 的 getValue / setValue
-  - 方块被放置/破坏时更新相邻方块（updateNeighbours）
+  - Basic Blocks
+  - Advanced Blocks
   
-  【关键 API】
-  Block, BlockBehaviour, BlockBehaviour.Properties, BlockItem, DeferredRegister, RegistryObject, BlockState, Property, BooleanProperty, IntegerProperty, EnumProperty, DirectionProperty, createBlockStateDefinition, getStateForPlacement, ResourceLocation
-  
-  【适用场景】需要添加自定义方块（基础方块、拥有状态的方块、可交互方块）时
-  【不涵盖】方块实体数据（forge-blockentities）、物品系统（forge-items）、方块模型 JSON（forge-resources-client）
+  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge 方块（Block）完整指南 的完整规范时
 ---
 
 Blocks

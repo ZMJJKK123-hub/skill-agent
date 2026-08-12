@@ -1,21 +1,18 @@
 ---
 name: forge-gameeffects-sounds
 description: |
-  Forge 声音系统指南。
+  Forge 声音系统指南（Minecraft Wiki 中文版全量正文）。
+  
+  【概述】Terminology
   
   【涵盖内容】
-  - 声音事件注册：DeferredRegister<SoundEvent> + SoundEvent.createVariableRangeEvent(ResourceLocation)
-  - 引用声音：SoundEvent 对象（播放时使用）与 ResourceLocation
-  - sounds.json 定义：assets/<modid>/sounds.json（声音文件列表、类型、子标题）
-  - 声音文件放置：assets/<modid>/sounds/<name>.ogg
-  - 播放声音：level.playSound / playLocalSound / ServerLevel（服务端播给客户端）
-  - 播放参数：玩家位置、音高（pitch）、音量（volume）、声音来源（SoundSource）
+  - `Level`
+  - `ClientLevel`
+  - `Entity`
+  - `Player`
+  - `LocalPlayer`
   
-  【关键 API】
-  SoundEvent, DeferredRegister<SoundEvent>, SoundEvent.createVariableRangeEvent, sounds.json, SoundSource, level.playSound, playLocalSound, ResourceLocation
-  
-  【适用场景】需要添加自定义声音事件或从 mod 播放声音时
-  【不涵盖】粒子系统（forge-gameeffects-particles）、资源文件结构（forge-concept-resources）
+  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge 声音系统指南 的完整规范时
 ---
 
 Sounds

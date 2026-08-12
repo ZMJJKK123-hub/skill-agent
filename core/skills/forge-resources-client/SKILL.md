@@ -1,23 +1,17 @@
 ---
 name: forge-resources-client
 description: |
-  Forge 客户端资源（assets）指南。
+  Forge 客户端资源（assets）指南（Minecraft Wiki 中文版全量正文）。
+  
+  【概述】Resource Packs
   
   【涵盖内容】
-  - 资源包结构：assets/<modid>/ 下各目录（models、textures、blockstates、lang、sounds 等）
-  - pack.mcmeta（客户端资源包）与 pack_format
-  - Block 模型：blockstates/<block>.json 选择模型（variants / multipart）、models/block/*.json（cube_all、parent 继承、自定义）
-  - Item 模型：models/item/*.json（parent: item/generated + texture 层级）
-  - 贴图：textures/block、textures/item、textures/particle、贴图拼图（TextureAtlas）
-  - 贴图着色（Tint）：模型 tintindex 与方块/物品着色（BlockColors / ItemColors 注册）
-  - Item Model Properties：基于 ItemStack 数据（如 damage、damage_ratio）选择物品模型（item model predicates）
-  - 模型 JSON 结构详解（elements、textures、parent、ambientocclusion）
+  - Creating a Resource Pack
+  - Textures
+  - `BlockColor`/`ItemColor`
+  - Creating Color Handlers
   
-  【关键 API】
-  assets, pack.mcmeta, blockstates, textures, models/block, models/item, BlockColors, ItemColors, TextureAtlas, model predicates, tintindex, ResourceLocation
-  
-  【适用场景】需要编写/理解客户端资源 JSON（模型、blockstates、贴图、标签）时
-  【不涵盖】服务端数据包（forge-resources-server）、数据生成器（forge-datagen-client）
+  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge 客户端资源（assets）指南 的完整规范时
 ---
 
 Resource Packs

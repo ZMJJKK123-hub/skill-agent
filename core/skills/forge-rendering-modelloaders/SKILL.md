@@ -1,21 +1,24 @@
 ---
 name: forge-rendering-modelloaders
 description: |
-  Forge 自定义模型加载器（Model Loaders）指南。
+  Forge 自定义模型加载器（Model Loaders）指南（Minecraft Wiki 中文版全量正文）。
+  
+  【概述】`BakedModel`
   
   【涵盖内容】
-  - BakedModel：自定义烘焙模型（IBakedModel 与 ModelState）
-  - loadModel / ModelLoader：注册自定义模型加载器（ModelLoaderRegistry）
-  - ItemOverrides：物品模型覆写（按 NBT / 物品状态返回不同模型）、ItemOverrides 自定义
-  - BakedOverride：覆写条件与结果（BakedOverride 列表）
-  - 变换：模型 transform（ModelState / Transformation）与 ItemTransform
-  - 与 BlockState / ItemStack 关联的模型选择逻辑
+  - `getOverrides`
+  - `useAmbientOcclusion`
+  - `isGui3d`
+  - `isCustomRenderer`
+  - `getParticleIcon`
+  - <s>`getTransforms`</s>
+  - `applyTransform`
+  - `getQuads`
+  - `ItemOverrides()`
+  - `resolve`
+  - `BakedOverride`
   
-  【关键 API】
-  BakedModel, IBakedModel, ModelLoader, ModelLoaderRegistry, ItemOverrides, BakedOverride, ModelState, Transformation, IModelGeometry, ItemTransform
-  
-  【适用场景】需要自定义模型加载/烘焙逻辑（程序化生成模型、按数据选择模型）时
-  【不涵盖】模型扩展（forge-rendering-modelextensions）、基础模型 JSON（forge-resources-client）
+  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge 自定义模型加载器（Model Loaders）指南 的完整规范时
 ---
 
 `BakedModel`

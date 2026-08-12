@@ -1,21 +1,17 @@
 ---
 name: forge-networking
 description: |
-  Forge 网络（Networking）指南。
+  Forge 网络（Networking）指南（Minecraft Wiki 中文版全量正文）。
+  
+  【概述】In addition to regular network messages, there are various other systems provided to handle synchronizing entity data.
   
   【涵盖内容】
-  - SimpleChannel 创建：NetworkRegistry.newSimpleChannel、协议版本校验（NetworkRegistry.acceptMissingOr(String)）
-  - 数据包（Packet）注册：channel.messageBuilder(MSG.class, id, direction)、encoder/decoder/handler 注册
-  - 发送数据包：channel.sendToServer(msg)（客户端→服务端）、channel.send(PacketDistributor.TargetPoint/TrackingEntity/AllPlayers, msg)（服务端→客户端）
-  - 客户端-服务端通信：逻辑端判断（level.isClientSide）与 handler 中上下文（NetworkEvent.Context）
-  - 实体同步：entity spawn / tracking 数据同步
-  - 自定义数据包 payload（与 Codec 结合的自定义序列化）
+  - IEntityAdditionalSpawnData
+  - Data Parameters
+  - Sending to the Server
+  - Sending to Clients
   
-  【关键 API】
-  SimpleChannel, NetworkRegistry.newSimpleChannel, IndexedMessageCodec, NetworkEvent.Context, PacketDistributor, FriendlyByteBuf, CustomPacketPayload, StreamCodec, channel.sendToServer, channel.send
-  
-  【适用场景】需要客户端与服务端之间同步数据、自定义网络包时
-  【不涵盖】逻辑端概念（forge-concept-sides）、Codec 序列化（forge-datastorage-codecs）
+  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge 网络（Networking）指南 的完整规范时
 ---
 
 Entities

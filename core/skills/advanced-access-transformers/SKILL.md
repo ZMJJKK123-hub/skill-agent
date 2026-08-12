@@ -1,22 +1,16 @@
 ---
 name: advanced-access-transformers
 description: |
-  Forge Access Transformers（ATs）完整指南。
+  Forge Access Transformers（ATs）完整指南（Minecraft Wiki 中文版全量正文）。
+  
+  【概述】Access Transformers
   
   【涵盖内容】
-  - AT 文件格式与基本语法（每行一条指令）
-  - 访问修饰符修改：public / protected / default（package-private）/ private
-  - final / non-final 标志修改（移除 final 使类/方法/字段可继承或覆写）
-  - 目标与指令语法：类 `net.minecraft.class`、字段 `net.minecraft.class.field`、方法 `net.minecraft.class.method()`
-  - 注释语法（# 行注释）与示例（at.cfg 文件）
-  - 在 build.gradle 中配置 AT 文件（minecraft { accessTransformer = file(...) }）
-  - 修改 Minecraft 类的字段/方法/构造器访问权限，以便访问原版受保护 API
+  - Classes
+  - Fields
+  - Methods
   
-  【关键 API】
-  AccessTransformer 文件、build.gradle accessTransformer 配置、minecraft_at.cfg
-  
-  【适用场景】需要访问/覆写 Minecraft 原版类中原本 private/protected/final 的字段或方法时
-  【不涵盖】注册系统（forge-concept-registries）、事件监听（forge-concept-events）
+  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge Access Transformers（ATs）完整指南 的完整规范时
 ---
 
 Access Transformers

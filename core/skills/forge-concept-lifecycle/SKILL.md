@@ -1,21 +1,14 @@
 ---
 name: forge-concept-lifecycle
 description: |
-  Forge Mod 生命周期与初始化指南。
+  Forge Mod 生命周期与初始化指南（Minecraft Wiki 中文版全量正文）。
+  
+  【概述】Mod Lifecycle
   
   【涵盖内容】
-  - Mod 构造器执行时机与 mod 事件总线上的注册阶段事件
-  - 生命周期事件：FMLCommonSetupEvent / FMLClientSetupEvent / FMLDedicatedServerSetupEvent
-  - 客户端专用初始化（FMLClientSetupEvent 中放客户端代码）与服务端专用初始化
-  - ParallelDispatchEvent 与 enqueueWork：跨线程安全执行逻辑（网络注册等需要在主线程执行的操作）
-  - 注册阶段事件的顺序：mod 构造器 → RegisterEvent → FMLCommonSetupEvent →（客户端/服务端各自）FMLClientSetupEvent / FMLDedicatedServerSetupEvent
-  - 何时何地注册东西：DeferredRegister 在 mod 构造器注册，事件监听器也在构造器注册
+  - （自动提取章节）
   
-  【关键 API】
-  FMLCommonSetupEvent, FMLClientSetupEvent, FMLDedicatedServerSetupEvent, ParallelDispatchEvent, enqueueWork, ModLoadingContext, modEventBus
-  
-  【适用场景】需要理解 mod 的加载顺序、在正确的初始化阶段注册和执行代码时
-  【不涵盖】事件总线选择（forge-concept-events）、注册系统（forge-concept-registries）
+  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge Mod 生命周期与初始化指南 的完整规范时
 ---
 
 Mod Lifecycle

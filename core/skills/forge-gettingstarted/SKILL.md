@@ -1,22 +1,25 @@
 ---
 name: forge-gettingstarted
 description: |
-  Forge Mod 项目搭建入门指南。
+  Forge Mod 项目搭建入门指南（Minecraft Wiki 中文版全量正文）。
+  
+  【概述】Getting Started with Forge
   
   【涵盖内容】
-  - MDK（Mod Development Kit）结构：src/main/java（代码）、src/main/resources（资源）、build.gradle、gradle.properties、settings.gradle
-  - mods.toml 元数据文件：modId、version、displayName、description、loaderVersion、license、authors 等字段
-  - pack.mcmeta 文件：pack_format、description
-  - 项目结构规范：包名组织、主类定位、@Mod 注解
-  - 版本管理：mod 版本、Minecraft 版本与 Forge 版本对应关系、gradle.properties 中的版本变量
-  - 资源目录与代码目录的组织方式
-  - 常见 Gradle 任务（runClient / runServer / build / runData）与配置
+  - Recommended `build.gradle` Customizations
+  - Additional Configurations
+  - Non-Mod-Specific Properties
+  - Mod-Specific Properties
+  - Dependency Configurations
+  - `javafml` and `@Mod`
+  - `lowcodefml`
+  - Sub-package Organization
+  - Work In Progress
+  - Multiple Minecraft Versions
+  - Final Release
+  - Pre-releases
   
-  【关键 API】
-  mods.toml, pack.mcmeta, @Mod, build.gradle, gradle.properties, META-INF/mods.toml, loaderVersion
-  
-  【适用场景】新 mod 项目初始化、理解 MDK 结构、配置 mods.toml 元数据时
-  【不涵盖】注册系统（forge-concept-registries）、构建部署（gradletools）
+  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge Mod 项目搭建入门指南 的完整规范时
 ---
 
 Getting Started with Forge

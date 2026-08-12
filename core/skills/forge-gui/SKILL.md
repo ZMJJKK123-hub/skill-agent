@@ -1,25 +1,25 @@
 ---
 name: forge-gui
 description: |
-  Forge GUI 系统指南（屏幕 / 菜单容器 / HUD）。
+  Forge GUI 系统指南（屏幕 / 菜单容器 / HUD）（Minecraft Wiki 中文版全量正文）。
+  
+  【概述】Menus are one type of backend for Graphical User Interfaces, or GUIs; they handle the logic involved in interacting with…
   
   【涵盖内容】
-  - MenuType 创建与注册：IMenuTypeExtension / MenuConstructor
-  - AbstractContainerMenu：容器菜单（槽位布局、数据同步、getSlots、broadcastChanges）
-  - 打开菜单：MenuProvider（ServerPlayer game.openMenu）、实体/方块提供菜单
-  - 相对坐标与容器大小：AbstractContainerScreen 的 imageWidth/imageHeight、gui 绘制坐标
-  - Screen（屏幕）创建：Screen 子类、render / init / mouseClicked / keyPressed 覆写
-  - Gui Graphics：GuiGraphics 绘制（blit 贴图绘制、drawString、fill、renderItem）
-  - Renderable / GuiEventListener / NarratableEntry 接口
-  - AbstractContainerScreen：容器屏幕基类、工具栏/物品栏渲染、槽位渲染（renderSlot）
-  - 注册 AbstractContainerScreen：MenuScreens.register（仅客户端）/ DeferredRegister + Dist 条件
-  - HUD 覆盖：HUD 覆写（RenderGuiOverlayEvent）绘制自定义 HUD 元素
+  - `MenuType`
+  - `MenuSupplier`
+  - `IContainerFactory`
+  - `AbstractContainerMenu`
+  - `#stillValid` and `ContainerLevelAccess`
+  - Data Synchronization
+  - Opening a Menu
+  - Common Implementations
+  - Vanilla Draw Order
+  - A Note About Layer Order
+  - Adding To ForgeLayeredDraws
+  - Cancelling Layers
   
-  【关键 API】
-  MenuType, IMenuTypeExtension, AbstractContainerMenu, Container, MenuProvider, Screen, AbstractContainerScreen, GuiGraphics, MenuScreens.register, Renderable, GuiEventListener, NarratableEntry, Slot, ItemStackHandler, RenderGuiOverlayEvent
-  
-  【适用场景】需要创建自定义 GUI（合成界面、容器界面、HUD、屏幕）时
-  【不涵盖】菜单网络同步（forge-networking）、渲染管线（forge-rendering-*）
+  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge GUI 系统指南（屏幕 / 菜单容器 / HUD） 的完整规范时
 ---
 
 # Menus

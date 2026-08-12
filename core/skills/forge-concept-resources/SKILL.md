@@ -1,21 +1,14 @@
 ---
 name: forge-concept-resources
 description: |
-  Forge 资源系统（assets / data）指南。
+  Forge 资源系统（assets / data）指南（Minecraft Wiki 中文版全量正文）。
+  
+  【概述】A resource is extra data used by the game, and is stored in a data file, instead of being in the code.
   
   【涵盖内容】
-  - 两种资源系统：assets（逻辑客户端 / 视觉：模型、贴图、语言、着色器） vs data（逻辑服务端 / 玩法：配方、战利品、标签、进度）
-  - 目录结构：src/main/resources/assets/<modid>/ 与 src/main/resources/data/<modid>/
-  - pack.mcmeta 与资源包/数据包工作机理、多包叠加合并覆盖规则
-  - ResourceLocation 概念：namespace:path、默认 namespace 为 minecraft、modid 通常等于命名空间
-  - 资源命名规范：snake_case（小写+下划线）
-  - 常见资源文件放置路径：模型（models/block, models/item）、贴图（textures/block, textures/item）、语言（lang）、配方（recipes）、战利品（loot_tables）、标签（tags）、进度（advancements）
+  - （自动提取章节）
   
-  【关键 API】
-  ResourceLocation, pack.mcmeta, assets, data, src/main/resources
-  
-  【适用场景】需要生成、放置或理解 mod 的 JSON 资源文件时
-  【不涵盖】模型 JSON 细节（forge-resources-client）、数据包玩法 JSON 细节（forge-resources-server）
+  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge 资源系统（assets / data）指南 的完整规范时
 ---
 
 Resources

@@ -1,25 +1,17 @@
 ---
 name: forge-items
 description: |
-  Forge 物品（Item）完整指南。
+  Forge 物品（Item）完整指南（Minecraft Wiki 中文版全量正文）。
+  
+  【概述】BlockEntityWithoutLevelRenderer
   
   【涵盖内容】
-  - 物品创建：Item 直接实例化（简单物品）vs 继承 Item 子类（复杂物品）
-  - Item$Properties（Item.Properties）：durability（耐久）、stacksTo（堆叠上限）、setNoRepair（不可修复）、craftRemainder（容器物品，如桶）、requiredFeatures（FeatureFlag）
-  - 物品注册：DeferredRegister<Item> + RegistryObject<Item>
-  - CreativeModeTab：BuildCreativeModeTabContentsEvent 添加到已有标签页（event.getTabKey() == CreativeModeTabs.X，event.accept(item)）
-  - 自定义 CreativeModeTab：CreativeModeTab.builder()、title()（Component.translatable）、icon()（ItemStack）、displayItems()
-  - BlockEntityWithoutLevelRenderer（BEWLR）自定义物品渲染：
-    - 条件：模型 isCustomRenderer 返回 true
-    - 实现：Item#initializeClient 中匿名 IClientItemExtensions，getCustomRenderer 返回 BEWLR 实例
-    - BEWLR.renderByItem(itemStack, ctx, poseStack, bufferSource, combinedLight, combinedOverlay)
-    - 每个 mod 只有一个 BEWLR 实例（静态单例）
+  - Basic Items
+  - Advanced Items
+  - Creative Tabs
+  - Custom Creative Tabs
   
-  【关键 API】
-  Item, Item$Properties, DeferredRegister<Item>, RegistryObject, CreativeModeTab, CreativeModeTabs, BuildCreativeModeTabContentsEvent, CreativeModeTab.Builder, BlockEntityWithoutLevelRenderer, IClientItemExtensions, Item#initializeClient, renderByItem, ItemStack
-  
-  【适用场景】需要添加自定义物品、自定义物品渲染（BEWLR）、创造模式标签页时
-  【不涵盖】方块注册（forge-blocks）、物品模型 JSON（forge-resources-client）、物品 NBT 存储（forge-blockentities）
+  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge 物品（Item）完整指南 的完整规范时
 ---
 
 BlockEntityWithoutLevelRenderer

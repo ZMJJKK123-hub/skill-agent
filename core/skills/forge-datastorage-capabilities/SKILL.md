@@ -1,22 +1,15 @@
 ---
 name: forge-datastorage-capabilities
 description: |
-  Forge Capability 系统指南。
+  Forge Capability 系统指南（Minecraft Wiki 中文版全量正文）。
+  
+  【概述】The Capability System
   
   【涵盖内容】
-  - Capability 概念：为实体/方块/物品附加附加数据与行为的系统
-  - 定义 Capability：CapabilityManager / Capability 创建、ICapabilityProvider
-  - 附加 Capability 到实体：AttachCapabilitiesEvent<Entity>（AttachCapabilitiesEvent<T>）、ICapabilityProvider
-  - 附加到方块（BlockEntity 挂载 capability）与物品（ItemStack capability）
-  - 暴露与注册：getCapability / CapabilityToken、getCapability(cap, side)
-  - 同步 capability 数据到客户端（网络同步 + 保存/加载 NBT）
-  - 常用内置 Capability：IItemHandler（物品库存）
+  - RegisterCapabilitiesEvent
+  - @AutoRegisterCapability
   
-  【关键 API】
-  Capability, CapabilityManager, ICapabilityProvider, AttachCapabilitiesEvent, CapabilityToken, IItemHandler, LazyOptional, ItemStack, Direction
-  
-  【适用场景】需要给实体/方块/物品附加可持久化数据与外部访问能力（如容器、能量）时
-  【不涵盖】Codec 序列化（forge-datastorage-codecs）、NBT 直接存储（forge-blockentities）
+  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge Capability 系统指南 的完整规范时
 ---
 
 The Capability System
