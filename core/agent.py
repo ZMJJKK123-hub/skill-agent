@@ -16,6 +16,7 @@ from .compact import (
     TOKEN_THRESHOLD,
 )
 from .skillcheck import init_per_loop, run_loop_check, move_skills_to_end
+from .supervisor import supervisor_manager
 
 
 # ---------- 接线：注册 task handler（打破循环依赖）----------
@@ -31,6 +32,9 @@ LEADER_TOOLS = [t for t in TOOLS if t["function"]["name"] != "submit_plan"]
 
 def agent_loop(messages: list) -> str:
     rounds_since_todo = 0
+    # ── 第 13 课：代码强制派发监管 Agent（不依赖主 agent 主动调 task）──
+    # 每次任务开始必然启动后台监管线程；幂等（已在跑则不重复启动）。
+    supervisor_manager.start()
     # 绕圈修复：每个任务首轮强制注入 KNOWN_ISSUES.md 读取步骤。
     # 之前仅靠 SYSTEM prompt 软性要求（"BEFORE starting any work, run_read
     # KNOWN_ISSUES.md"），模型实际从未读过——而该文件第 25-28 行明确写着
@@ -38,6 +42,19 @@ def agent_loop(messages: list) -> str:
     # 现在改为硬性第一步：未读取前不允许进入正常规划/写码。
     _known_issues_injected = False
     while True:
+        # ── Layer 0s: 排空监管信箱（第 13 课）──
+        # 后台监管线程发现异常会写信箱；这里读后即删，按严重度
+        # 以 <supervisor-advice>（温和）或 <supervisor-alert>（警告）注入。
+        # 放在最前面：让监管信息先于后台通知/队友汇报进入上下文。
+        supervisor_msgs = supervisor_manager.drain_advice()
+        if supervisor_msgs:
+            for sv in supervisor_msgs:
+                tag = "supervisor-alert" if sv["type"] == "alert" else "supervisor-advice"
+                block = f"<{tag}>\n{sv['content']}\n</{tag}>"
+                messages.append({"role": "user", "content": block})
+                logger.info(f"注入监管信息 type={sv['type']}:\n{block}")
+        supervisor_manager.notify_round()  # 计数 + 每 5 轮触发一次监管分析
+
         # ── Layer 0: 排空后台通知（第 8 课）──
         # 在 micro_compact 之前注入，让通知作为新数据参与后续 compact 估算
         notifications = bg_manager.drain_notifications()
@@ -205,6 +222,9 @@ def agent_loop(messages: list) -> str:
                 print(f"[run_task] {_build_source_zip()}", flush=True)
             except Exception as _e:
                 logger.info(f"源码 zip 预生成跳过: {_e}")
+
+            # ── 收尾：停止监管线程（防泄漏；daemon 兜底不会挂进程）──
+            supervisor_manager.stop()
 
             return message.content
 
