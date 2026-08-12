@@ -164,6 +164,14 @@ def _copy_template(game: str, dest: Path, loader: str = "", version: str = "") -
     dest.mkdir(parents=True, exist_ok=True)
     if src.exists():
         shutil.copytree(src, dest, dirs_exist_ok=True)
+
+    # 把 <game>/ 根目录的 KNOWN_ISSUES.md 无条件复制进会话 mod 目录：
+    # 它是"经验沉淀"的单一事实来源（agent 只读遵守，不修改；收尾阶段由
+    # finalize_known_issues() 自动更新模板里的这份文件）。
+    issues_src = TEMPLATES_DIR / game / "KNOWN_ISSUES.md"
+    if issues_src.exists():
+        shutil.copy2(issues_src, dest / "KNOWN_ISSUES.md")
+
     # 模板不存在也不报错：给 agent 一个空目录自由发挥
     return dest
 

@@ -486,7 +486,19 @@ config.SYSTEM += (
     "  4. If any test fails or the build fails: fix the code according to the loaded skills (+ mc_source "
     "to verify APIs), then re-run the loop from step 2 until ALL tests pass.\n"
     "Only after the GameTest run succeeds may you consider the mod finished. Never skip the GameTest "
-    "verification just because the task did not explicitly ask for tests."
+    "verification just because the task did not explicitly ask for tests.\n"
+    "\n"
+    "KNOWN ISSUES LOGBOOK (KNOWN_ISSUES.md, READ-ONLY): The mod project root contains a KNOWN_ISSUES.md "
+    "file — a logbook of verified pitfalls and their fixes from previous sessions. Rules:\n"
+    "  1. BEFORE starting any work, run_read KNOWN_ISSUES.md and follow every applicable entry. It is "
+    "the highest-priority factual source for this environment: if it conflicts with a skill, the logbook wins.\n"
+    "  2. This file is READ-ONLY for you. Do NOT modify, append to, or delete it. New pitfalls are "
+    "collected automatically at the end of the session by the system (finalize_known_issues), which "
+    "summarizes this run's log and appends deduplicated entries back to the template. Your job is only "
+    "to CONSUME the logbook and comply with it.\n"
+    "  3. If you discover that an existing entry is wrong or incomplete, do NOT edit it. Instead, mention "
+    "the correction in your final summary so the finalize step can record it accurately.\n"
+    "  4. Never delete KNOWN_ISSUES.md. It is part of the mod template and must always exist."
 )
 
 # ---------- TaskManager（第 7 课：文件级持久化的任务图 DAG）----------
