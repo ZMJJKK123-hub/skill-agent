@@ -156,7 +156,24 @@ MOD KNOWLEDGE MANDATE (skill-first rules):
   of which skill enables that decision (e.g. "based on forge-items: SwordItem(Tier, Properties)").
 - If a change truly has no applicable skill (e.g. plain placeholder scaffold files),
   explicitly write "No skill source" and explain why. Prefer declaring a missing source
-  over writing anything without a basis."""
+  over writing anything without a basis.
+
+【本项目 Forge 环境硬性事实 - 禁止违背】
+本项目使用新版 Forge 版本命名，以下事实适用于所有 MOD 构建任务：
+- 版本格式为 `26.2-65.1.x`：`26.2` 是 Minecraft 版本号，`65.1.x` 是 Forge 构建号。
+  这是有效的现代版本号，不是"旧格式"、不是"拼写错误"；即使看起来像旧版格式，
+  也禁止判定为"版本不存在"或"版本号错误"。
+- 旧版 Forge 版本映射知识（如 1.20.1=47.x、1.21=52.x）不适用于本项目，禁止据此"修正" build.gradle。
+- 本地 Gradle 缓存已存在以下版本（优先使用本地缓存，禁止在线查询 maven.minecraftforge.net）：
+  C:\Users\59639\.gradle\caches\minecraftforge\forgegradle\mavenizer\caches\forge\net\minecraftforge\forge\
+  - 26.2-65.1.0
+  - 26.2-65.1.1
+  - 1.21.8-58.0.3
+构建失败处理规则：
+1. 禁止修改 build.gradle 中 `minecraft.dependency('net.minecraftforge:forge:...')` 的版本号；
+2. Minecraft 类找不到时，优先检查编译 classpath 是否包含本地 recompiled.jar，而不是改版本号；
+3. 出现 Could not resolve 时，先检查本地缓存是否有该版本；有则直接使用，无则回到 build.gradle 已配置的版本；
+4. 不要因为单个构建错误就反复重写 build.gradle / settings.gradle；先排查依赖解析与 classpath 问题。"""
 
 # ---------- Subagent 系统（第 4 课：隔离上下文的子任务派发）----------
 MAX_SUBAGENT_TURNS = 30  # 硬上限，防止子 Agent 失控死循环
@@ -176,6 +193,8 @@ Guidelines:
   mc_source is ONLY a fallback when skills are insufficient/proven wrong. After EVERY change, list
   <skill-source> source: <skill name> -> <exact text/API pattern copied from the loaded skill> (quote real text, not paraphrase).
   In your reasoning, cite which part of which skill enables each decision. If no skill applies, write "No skill source" and explain why.
+
+【本项目 Forge 环境硬性事实 - 禁止违背】版本格式 `26.2-65.1.x`（26.2=Minecraft，65.1.x=Forge 构建号）是有效现代版本号，禁止判为不存在；禁止修改 build.gradle 中 forge 依赖版本号；优先使用本地缓存版本（26.2-65.1.0 / 26.2-65.1.1 / 1.21.8-58.0.3），禁止在线查询 maven.minecraftforge.net；类找不到先查 recompiled.jar classpath。
 """
 
 # ---------- Teammate 安全前缀（第 9 课修复：teammate 缺失 Windows 规则）----------
@@ -219,6 +238,8 @@ MOD KNOWLEDGE MANDATE (skill-first):
     - source: <skill name> -> <specific section/rule/code pattern cited>
     </skill-source>
 - If a change truly has no applicable skill (e.g. plain placeholder files), explicitly write "No skill source" and explain why.
+
+【本项目 Forge 环境硬性事实 - 禁止违背】版本格式 `26.2-65.1.x`（26.2=Minecraft，65.1.x=Forge 构建号）是有效现代版本号，禁止判为不存在；禁止修改 build.gradle 中 forge 依赖版本号；优先使用本地缓存版本（26.2-65.1.0 / 26.2-65.1.1 / 1.21.8-58.0.3），禁止在线查询 maven.minecraftforge.net；类找不到先查 recompiled.jar classpath。
 """
 
 client = OpenAI(
