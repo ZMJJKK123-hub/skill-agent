@@ -350,9 +350,9 @@ class SkillLoader:
                 "content": body.strip(),
                 "path": skill_path,
             }
-            logger.info(
+            logger.debug(
                 f"SkillLoader 扫描技能: {entry} | name={name} | "
-                f"desc={description} | content_len={len(body.strip())}"
+                f"content_len={len(body.strip())}"
             )
 
     @staticmethod
@@ -367,15 +367,38 @@ class SkillLoader:
         body = parts[2]
         return meta, body
 
+    @staticmethod
+    def _shorten_description(desc: str, max_len: int = 100) -> str:
+        """压缩技能描述用于 system prompt 目录：只保留首行标题。
+
+        desc 原始格式为「标题 + 【概述】 + 【涵盖内容】长列表 + 【适用场景】」，
+        完整版可达数百字符。system prompt 只需让模型识别技能主题，
+        首行标题已足够（如 'Forge BlockEntity（方块实体）完整指南'）。
+        完整 desc 仍保留在 self.skills 中，load_skill 加载全文能力不受影响。
+        """
+        if not desc:
+            return ""
+        first = next((l.strip() for l in desc.splitlines() if l.strip()), "")
+        if len(first) > max_len:
+            first = first[:max_len].rstrip() + "…"
+        return first
+
     def get_descriptions(self) -> str:
-        """生成 system prompt 中的技能目录（第一层注入）。"""
+        """生成 system prompt 中的技能目录（第一层注入，压缩版）。
+
+        每技能只保留首行标题，避免数十 KB 的完整 desc 每轮全量发送。
+        """
         if not self.skills:
             return ""
         lines = ["Available skills (use load_skill to access):"]
         for name, info in self.skills.items():
-            lines.append(f"  - {name}: {info['description']}")
+            lines.append(
+                f"  - {name}: {self._shorten_description(info['description'])}"
+            )
         result = "\n".join(lines)
-        logger.info(f"SkillLoader.get_descriptions 生成技能目录:\n{result}")
+        logger.info(
+            f"SkillLoader.get_descriptions 生成技能目录 | {len(result)} 字符"
+        )
         return result
 
     def get_content(self, skill_name: str) -> str:
