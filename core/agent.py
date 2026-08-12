@@ -31,6 +31,12 @@ LEADER_TOOLS = [t for t in TOOLS if t["function"]["name"] != "submit_plan"]
 
 def agent_loop(messages: list) -> str:
     rounds_since_todo = 0
+    # 绕圈修复：每个任务首轮强制注入 KNOWN_ISSUES.md 读取步骤。
+    # 之前仅靠 SYSTEM prompt 软性要求（"BEFORE starting any work, run_read
+    # KNOWN_ISSUES.md"），模型实际从未读过——而该文件第 25-28 行明确写着
+    # "GameTest 自检必须用 run_test_gametest"，本可一击解决绕圈。
+    # 现在改为硬性第一步：未读取前不允许进入正常规划/写码。
+    _known_issues_injected = False
     while True:
         # ── Layer 0: 排空后台通知（第 8 课）──
         # 在 micro_compact 之前注入，让通知作为新数据参与后续 compact 估算
@@ -53,6 +59,19 @@ def agent_loop(messages: list) -> str:
             teammate_report = "\n".join(parts)
             messages.append({"role": "user", "content": teammate_report})
             logger.info(f"注入队友汇报:\n{teammate_report}")
+
+        # ── Layer 0b2: 强制 KNOWN_ISSUES 首轮注入（绕圈修复）──
+        # 每个任务只注入一次：要求模型第一件事就是 run_read KNOWN_ISSUES.md，
+        # 该文件是环境事实来源（优先级最高），尤其规定了 GameTest 自检套路。
+        # 放在 inject_pending_requests 之前，让模型在系统事件里最先看到它。
+        if not _known_issues_injected:
+            _known_issues_injected = True
+            messages.append({"role": "user", "content": (
+                "<mandatory-first-step> 开工前必须先 run_read KNOWN_ISSUES.md "
+                "（mod 工程根目录的事实来源，优先级高于技能描述）。读完按其中适用条目执行，"
+                "尤其注意：GameTest 自检必须用 run_test_gametest（扫描 src/test/java），"
+                "禁止用 run_game_test_server 做自检。未读取前不要写任何代码/资源。</mandatory-first-step>"
+            )})
 
         # ── Layer 0c: 注入协议请求（第 10 课）──
         # leader 每轮看到：待审批的 plan 请求（队友提交的计划）+ 已决议的
@@ -141,10 +160,11 @@ def agent_loop(messages: list) -> str:
                 if not (_has_test and _ran_gt):
                     _gametest_ok = False
                     messages.append({"role": "user", "content":
-                        "<gametest-check> FAILED: 你尚未完成 GameTest 自循环验证（需要：①编写至少一个 @GameTest 测试类；"
-                        "②调用 run_game_test_server 运行测试；③可用 read_game_test_log 查看日志）。"
+                        "<gametest-check> FAILED: 你尚未完成 GameTest 自循环验证（需要：①在 src/test/java 编写至少一个 @GameTest 测试类；"
+                        "②调用 run_test_gametest 运行测试（扫描 src/test；禁止用 run_game_test_server 自检——它只扫 src/main）；"
+                        "③可用 read_game_test_log 查看日志）。"
                         "按 skill-first 纪律，未跑通 GameTest 不得宣布 MOD 完成。请先补测试并运行，通过后再结束。"})
-                    logger.info("gametest-check FAILED: 缺少 @GameTest 或未运行 run_game_test_server")
+                    logger.info("gametest-check FAILED: 缺少 @GameTest 或未运行 run_test_gametest")
             except Exception as _e:
                 logger.info(f"gametest-check 跳过: {_e}")
             if not _gametest_ok:
