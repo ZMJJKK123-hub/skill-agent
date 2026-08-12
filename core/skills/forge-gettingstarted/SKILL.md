@@ -20,6 +20,32 @@ description: |
   - Pre-releases
   
   【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge Mod 项目搭建入门指南 的完整规范时
+  【环境提示】包含本项目 Forge 环境硬性事实：版本号格式 26.2-65.1.x、本地缓存版本列表、构建失败处理规则（禁止改版本号/禁止在线查 Maven）
+---
+
+## ⚠️ 本项目环境硬性事实（禁止违背）
+
+以下为本机已部署的 Forge 构建环境事实。**构建失败时优先依据本节判断，不得用旧版 Forge 知识推断版本号"不存在"。**
+
+### 版本号格式说明（新版方案）
+- 本项目的 Forge 依赖版本格式为 `26.2-65.1.x`：**`26.2` 是 Minecraft 版本号（新版命名），`65.1.x` 是 Forge 构建号**。
+- 这是**有效的现代版本号**，不是"旧格式"、不是"拼写错误"。即使看起来像 `1.12` 时代的格式，也**禁止**判定为"版本不存在"。
+- 旧版知识（如 `1.20.1`=47.x、`1.21`=52.x）**不适用**于本项目，禁止据此"修正" build.gradle。
+
+### 本地已缓存版本（禁止在线下载）
+本地 Gradle 缓存目录下已有以下 Forge 版本（`C:\Users\59639\.gradle\caches\minecraftforge\forgegradle\mavenizer\caches\forge\net\minecraftforge\forge\`）：
+- `26.2-65.1.0`（基础预置版本）
+- `26.2-65.1.1`（任务期间生成版本）
+- `1.21.8-58.0.3`
+
+使用任一版本时**优先使用本地缓存**，**禁止**在线查询 `maven.minecraftforge.net` 或尝试下载新版本。
+
+### 构建失败处理规则
+1. **禁止修改** `build.gradle` 中的 `minecraft.dependency('net.minecraftforge:forge:...')` 版本号。
+2. Minecraft 类找不到（如 `ResourceLocation`、`SwordItem`）时，优先确认编译 classpath 是否包含本地 `recompiled.jar`（见 build.gradle 中的 `compileOnly files(...)`），**而不是改版本号**。
+3. 出现 `Could not resolve` 时，先检查本地缓存里是否有该版本；有则直接使用，无则回到 build.gradle 已配置的版本。
+4. 不要因为一个构建错误就反复重写 build.gradle / settings.gradle；先排查依赖解析与 classpath 问题。
+
 ---
 
 Getting Started with Forge
