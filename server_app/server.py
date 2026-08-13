@@ -157,20 +157,26 @@ def _copy_template(game: str, dest: Path, loader: str = "", version: str = "") -
     子目录不存在或未传 loader/version 时回退到 <game>/ 根目录。
     """
     src = TEMPLATES_DIR / game
+    src_is_sub = False
     if loader and version:
         sub = TEMPLATES_DIR / game / f"{loader}-{version}"
         if sub.exists():
             src = sub
+            src_is_sub = True
     dest.mkdir(parents=True, exist_ok=True)
     if src.exists():
         shutil.copytree(src, dest, dirs_exist_ok=True)
 
-    # 把 <game>/ 根目录的 KNOWN_ISSUES.md 无条件复制进会话 mod 目录：
-    # 它是"经验沉淀"的单一事实来源（agent 只读遵守，不修改；收尾阶段由
-    # finalize_known_issues() 自动更新模板里的这份文件）。
-    issues_src = TEMPLATES_DIR / game / "KNOWN_ISSUES.md"
-    if issues_src.exists():
-        shutil.copy2(issues_src, dest / "KNOWN_ISSUES.md")
+    # KNOWN_ISSUES.md：各版本独立。
+    # - 若实际使用的是 <loader>-<version>/ 子目录：该子目录自带的 KNOWN_ISSUES.md
+    #   已随 copytree 复制进会话（优先保留，不覆盖）——各版本各自积累经验。
+    # - 若回退到 <game>/ 根目录（未传 loader/version，或子目录不存在）：才无条件
+    #   复制根级 KNOWN_ISSUES.md（作为默认占位；收尾阶段 finalize_known_issues()
+    #   更新模板里的这份文件）。
+    if not src_is_sub:
+        issues_src = TEMPLATES_DIR / game / "KNOWN_ISSUES.md"
+        if issues_src.exists():
+            shutil.copy2(issues_src, dest / "KNOWN_ISSUES.md")
 
     # 把完整 MC+Forge 源码树复制进会话 mod 目录：agent 可任意用
     # read_file / bash findstr 查阅（不依赖任何受限工具）。源码只对

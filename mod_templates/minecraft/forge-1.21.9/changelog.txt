@@ -1,0 +1,57 @@
+1.21.11 Changelog
+61.2
+====
+ - 61.2.0 1.21.11 RB 2
+
+61.1
+====
+ - 61.1.16 Fix IForgeBlockStateModel.getModelData not being called correct for `#getParticleIcon` (#10818)
+ - 61.1.15 Fix reading ping data for legacy Forge versions. Closes #10778
+ - 61.1.14 Fix ModList screen selection getting out of sync. Closes #10855
+ - 61.1.13 Bump Dependencies, Notably ASM for Java 27 support
+ - 61.1.12 Split hotbar rendering into components, allow replacing renderers (#10868)
+ - 61.1.11 Add DeltaTracker (partialTick) context to PassDefinitions (#10849)
+ - 61.1.10 Update equality check for RegistryObject to include RegistryObject#key. (#10858)
+ - 61.1.9  Toml parsing errors are now visible in the latest log. (#10837)
+ - 61.1.8  Bump MDK gradle and fix missing and wrong dependency in installer
+ - 61.1.7  Fix versioning
+ - 61.1.6  ForgeDev 7 (#10747)
+           Major re-write of the build tools for creating Forge.
+           This is equivalent to the ForgeGradle 7 migration for the user side.
+           Co-authored-by: Jonathing <me@jonathing.me>
+           Co-authored-by: Paint_Ninja <PaintNinja@users.noreply.github.com>
+ - 61.1.5  Fix server data packs from mods using incorrect version. Closes #10794
+ - 61.1.4  Fix wrong color argument for FogColor event
+           Fix incorrect patch for carving pumpinks
+ - 61.1.3  Fix swapped variables being passes to ItemStackedOnOtherEvent Closes #10781
+ - 61.1.2  Remove --validate from forge data tasks, no longer needed
+ - 61.1.1  Skip runtime annotation scanning for MC itself, blacklist common inconsequential annotations (#10773)
+           The results of scan data for MC itself aren't useful nor needed in practice. Skipping this speeds up the scanner and saves a bunch of memory. Also blacklisted common inconsequential annotations and cached common super types for further memory usage savings.
+ - 61.1.0  1.20.11 RB 1
+
+61.0
+====
+ - 61.0.14 Deprecate RuntimeDistCleaner (#10771)
+           - Logs warnings when `@OnlyIn` is used by mod devs in their own code
+           - In a future release, only applies to MC classes during server runs
+           - Future FG7 and installer versions may shift RuntimeDistCleaner's server effects to compile/setup/install time to completely remove the need for runtime stripping
+ - 61.0.13 Bump ASM to 9.9.1
+           Bump EventBus to 7.0.1
+           Bump MixinExtras to 0.5.3
+ - 61.0.12 Fix bookshelves having too much enchanting power. Fixes #10770
+ - 61.0.11 Migrate the MDK to ForgeGradle 7
+ - 61.0.10 Add support for multiple access transformer configs. Closes #10758
+ - 61.0.9  Update discord links in issue templates
+ - 61.0.8  Remove JavaScript CoreMods and Nashorn (#10746)
+           The ASMAPI helper methods have been split off into a separate dep which is included with Forge for Java transformers to use.
+ - 61.0.7  Update SecureModules to address ZipPath bug with brackets. Closes #10755
+ - 61.0.6  Optimize memory allocation for checking entity fluid collisions. Closes #10745
+ - 61.0.5  Allow accessing Registry context from TagValueOutput
+ - 61.0.4  Don't save capabilities if level is null as we don't have enough context
+ - 61.0.3  Fix not being able to sleep. Steve is very tired. (#10736)
+ - 61.0.2  Fix AT lines which didn't work on some old dev environments. Closes #10735
+ - 61.0.1  Bump S2S, fixes patches in UserDev. Closes #1011
+ - 61.0.0  1.21.11 Mounts of Mayhem Release
+           Lots of rendering related changes, specifically for BackedQuad and IQuadTransformers.
+           Removed our deprecated model generators, modders should have been using vanilla's for a while.
+
