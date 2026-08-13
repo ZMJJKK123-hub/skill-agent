@@ -23,7 +23,7 @@ logging.basicConfig(
 logger = logging.getLogger("agent")
 
 # ---------- 配置 ----------
-MODEL = "DeepSeek-V4-Flash-0731"
+MODEL = "deepseek-v4-flash"
 SYSTEM = r"""You are a game MOD development agent with planning capabilities that can execute bash commands.
 Your focus is generating complete, buildable game MOD projects based on the target game and loader:
 scaffold the project, register game content (items/blocks/entities), write assets & data
@@ -295,7 +295,7 @@ MOD KNOWLEDGE MANDATE (skill-first):
 
 client = OpenAI(
     api_key=os.environ.get("DEEPSEEK_API_KEY", ""),
-    base_url="https://llmapi.paratera.com/v1",
+    base_url="https://api.deepseek.com/v1",
 )
 
 # ---------- 路径安全沙箱 ----------

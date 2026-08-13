@@ -41,3 +41,37 @@
 - 症状: 类 API 不明确时直接读整个 mc_java_sources 文件，上下文爆炸。
 - 根因: mc_source 是 FALLBACK-ONLY 工具，默认 head=120 行 / search=命中+5 行窗口，永不返回完整文件。
 - 规避: 技能优先；技能不足/证伪时才用 mc_source（mode=head 或 mode=search+keyword），需要更多行时显式传 max_lines(1-500)。
+
+## [2026-08] 数据驱动 GameTest 注册卡死（MC 26.2 / Forge 65.1.1）
+- 症状: GameTest 自检反复绕圈——一直调 run_game_test_server 却跑不出自己的测试；写了 test_instance JSON 后测试函数仍找不到，报测试 0/0 通过或 "Unknown/No test"；日志长时间在 TEST_INSTANCE / TEST_FUNCTION / gatherTests / always_pass 之间打转。
+- 根因: MC 26.2 / Forge 65.1.1 起 GameTest 已迁移为数据驱动注册表：测试实例从 `data/<modid>/test_instance/*.json` 加载（`"type":"function"` 引用 TEST_FUNCTION 注册表）；且 `BuiltInRegistries.TEST_FUNCTION` 在 mod 加载前已被冻结，Forge 不再自动扫描 `@GameTestNamespace`。必须手动把 @GameTest 方法写入 TEST_FUNCTION registry。
+- 规避（完整正确模板，已验证 4/4 通过）:
+  1) 测试类放 **src/test/java**：
+     ```java
+     @GameTestNamespace(MOD_ID)
+     public class CrystalGameTests {
+         @GameTest(structure = "minecraft:empty")
+         public static void crystalItemRegistered(GameTestHelper helper) {
+             helper.assertTrue(条件, "描述");
+             helper.succeed();
+         }
+     }
+     ```
+  2) 在 TutorialMod 构造器调用注册工具（仅 GameTestServer 生效）:
+     ```java
+     if (!ForgeGameTestHooks.isGametestEnabled()) return;
+     Map<Identifier, ForgeGameTestHooks.TestReference> tests =
+         ForgeGameTestHooks.gatherTests(CrystalGameTests.class, null);
+     MappedRegistry<Consumer<GameTestHelper>> reg = (MappedRegistry<Consumer<GameTestHelper>>)
+         (MappedRegistry<?>) BuiltInRegistries.TEST_FUNCTION;
+     reg.unfreeze(); // 注册表冻结前临时解冻
+     for (Map.Entry<Identifier, ForgeGameTestHooks.TestReference> e : tests.entrySet())
+         Registry.register(reg, ResourceKey.create(Registries.TEST_FUNCTION, e.getKey()),
+             e.getValue().consumer());
+     ```
+  3) 每个测试写 `data/<modid>/test_instance/*.json`。`"function"` 键 = 类名全小写 **直接拼接** 方法名 snake_case 全小写（中间无分隔符）。例：类 `CrystalGameTests` + 方法 `crystalItemRegistered` → `tutorial_mod:crystalgametestscrystal_item_registered`。
+     ```json
+     { "type": "function", "function": "tutorial_mod:crystalgametestscrystal_item_registered",
+       "environment": "minecraft:default", "structure": "minecraft:empty", "max_ticks": 100 }
+     ```
+  4) 自检只跑 `run_test_gametest`（同时加载 src/main + src/test）；run_game_test_server 只扫 src/main，永远跑不出 src/test 的测试（见上文两条）。
