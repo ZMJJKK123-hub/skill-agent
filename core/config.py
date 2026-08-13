@@ -145,8 +145,7 @@ ACTION-DRIVEN WORKFLOW (mandatory; 防止分析死循环):
 - 严重禁止「纯分析绕圈」：同一个问题（如某个 API 报错、某条 WARN）反复用多种理论猜测而没有任何
   落地动作（改文件 / 跑编译 / 跑测试 / 读实际日志）超过 3 轮。每轮思考必须导向一个可执行的下一步；
   拿不准时优先做最小验证动作（读实际日志 latest.log / 跑一条命令）而不是继续脑内推演。
-- 一个已验证模板（数据驱动 GameTest 注册，见 KNOWN_ISSUES 最后两条）可以直接套用；遇到注解在
-  class 上但运行时读不到的情况，禁止反复 javap——直接 `gradlew clean compile... --rerun-tasks`
+- 遇到注解在 class 上但运行时读不到的情况，禁止反复 javap——直接 `gradlew clean compile... --rerun-tasks`
   全量重编重跑，用实际日志判断。
 
 MOD KNOWLEDGE MANDATE (skill-first rules):
@@ -171,20 +170,18 @@ MOD KNOWLEDGE MANDATE (skill-first rules):
   over writing anything without a basis.
 
 【本项目 Forge 环境硬性事实 - 禁止违背】
-本项目使用新版 Forge 版本命名，以下事实适用于所有 MOD 构建任务：
-- 版本格式为 `26.2-65.1.x`：`26.2` 是 Minecraft 版本号，`65.1.x` 是 Forge 构建号。
-  这是有效的现代版本号，不是"旧格式"、不是"拼写错误"；即使看起来像旧版格式，
-  也禁止判定为"版本不存在"或"版本号错误"。
-- 旧版 Forge 版本映射知识（如 1.20.1=47.x、1.21=52.x）不适用于本项目，禁止据此"修正" build.gradle。
-- 本地 Gradle 缓存已存在以下版本（优先使用本地缓存，禁止在线查询 maven.minecraftforge.net）：
-  C:\Users\59639\.gradle\caches\minecraftforge\forgegradle\mavenizer\caches\forge\net\minecraftforge\forge\
-  - 26.2-65.1.0
-  - 26.2-65.1.1
-  - 1.21.8-58.0.3
+本项目使用标准 Forge 版本命名，以下事实适用于所有 MOD 构建任务：
+- 目标版本：MC `1.21.11`，Forge 构建 `1.21.11-61.2.0`。
+- 版本格式 `1.21.11-61.2.0`（MC 版本-Forge 构建号）是有效版本号，禁止判定为"版本不存在"或"版本号错误"。
+- 依赖版本已写死在 build.gradle 的 `net.minecraftforge:forge:1.21.11-61.2.0` 中，禁止修改；
+  旧版 Forge 版本映射知识（如 1.20.1=47.x、1.21=52.x）不适用于本项目，禁止据此"修正" build.gradle。
+- ForgeGradle 首次构建会自动从 maven.minecraftforge.net 下载缺失依赖并缓存到本地（~/.gradle/），
+  这是正常行为；禁止 agent 用 curl 等在线翻查/改写版本号，依赖解析问题交由 Gradle 自动处理。
 构建失败处理规则：
 1. 禁止修改 build.gradle 中 `minecraft.dependency('net.minecraftforge:forge:...')` 的版本号；
 2. Minecraft 类找不到时，优先检查编译 classpath 是否包含本地 recompiled.jar，而不是改版本号；
-3. 出现 Could not resolve 时，先检查本地缓存是否有该版本；有则直接使用，无则回到 build.gradle 已配置的版本；
+3. 出现 Could not resolve 时，先检查本地缓存（或让 Gradle 重新联网下载）是否有该版本；
+   有则直接使用，无则回到 build.gradle 已配置的版本，不要擅自改版本号；
 4. 不要因为单个构建错误就反复重写 build.gradle / settings.gradle；先排查依赖解析与 classpath 问题。"""
 
 # ---------- Subagent 系统（第 4 课：隔离上下文的子任务派发）----------
@@ -206,7 +203,7 @@ Guidelines:
   <skill-source> source: <skill name> -> <exact text/API pattern copied from the loaded skill> (quote real text, not paraphrase).
   In your reasoning, cite which part of which skill enables each decision. If no skill applies, write "No skill source" and explain why.
 
-【本项目 Forge 环境硬性事实 - 禁止违背】版本格式 `26.2-65.1.x`（26.2=Minecraft，65.1.x=Forge 构建号）是有效现代版本号，禁止判为不存在；禁止修改 build.gradle 中 forge 依赖版本号；优先使用本地缓存版本（26.2-65.1.0 / 26.2-65.1.1 / 1.21.8-58.0.3），禁止在线查询 maven.minecraftforge.net；类找不到先查 recompiled.jar classpath。
+【本项目 Forge 环境硬性事实 - 禁止违背】目标版本：MC `1.21.11`、Forge 构建 `1.21.11-61.2.0`（build.gradle 已写死，禁止修改）；首次构建由 ForgeGradle 自动从 maven.minecraftforge.net 下载缺失依赖并缓存，这是正常行为，禁止用 curl 在线翻查/改写版本号；类找不到先查 recompiled.jar classpath。
 """
 
 # ---------- 监管 Agent（代码强制派发的最高权限观察者）----------
@@ -302,7 +299,7 @@ MOD KNOWLEDGE MANDATE (skill-first):
     </skill-source>
 - If a change truly has no applicable skill (e.g. plain placeholder files), explicitly write "No skill source" and explain why.
 
-【本项目 Forge 环境硬性事实 - 禁止违背】版本格式 `26.2-65.1.x`（26.2=Minecraft，65.1.x=Forge 构建号）是有效现代版本号，禁止判为不存在；禁止修改 build.gradle 中 forge 依赖版本号；优先使用本地缓存版本（26.2-65.1.0 / 26.2-65.1.1 / 1.21.8-58.0.3），禁止在线查询 maven.minecraftforge.net；类找不到先查 recompiled.jar classpath。
+【本项目 Forge 环境硬性事实 - 禁止违背】目标版本：MC `1.21.11`、Forge 构建 `1.21.11-61.2.0`（build.gradle 已写死，禁止修改）；首次构建由 ForgeGradle 自动从 maven.minecraftforge.net 下载缺失依赖并缓存，这是正常行为，禁止用 curl 在线翻查/改写版本号；类找不到先查 recompiled.jar classpath。
 """
 
 client = OpenAI(

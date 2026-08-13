@@ -1,0 +1,37 @@
+# See https://docs.minecraftforge.net/en/1.21.x/gettingstarted/modfiles/#modstoml
+# There are lots of things you can do with the mods.toml, and not all fields are included with this MDK
+# References: https://github.com/MinecraftForge/MDKExamples
+
+modLoader="javafml"
+loaderVersion="[61,)"
+license="All Rights Reserved"
+#issueTrackerURL="https://github.com/MyOrganization/MyMod/" #optional
+#clientSideOnly=true #optional, default=false
+
+[[mods]]
+modId="examplemod"
+version="1.0.0"
+displayName="Example Mod"
+#updateJSONURL="https://example.com/updates.json" #optional
+#displayURL="https://example.com/" #optional
+#logoFile="examplemod.png" #optional
+#credits="" #optional
+authors="YourNameHere, OtherNameHere" #optional
+#displayTest="MATCH_VERSION" #optional, default=MATCH_VERSION when not clientSideOnly, else IGNORE_ALL_VERSION
+
+description='''Example mod description.
+Newline characters can be used like this, and rendered on the mods screen properly.'''
+
+[[dependencies.examplemod]] #recommended
+    modId="forge"
+    mandatory=true
+    versionRange="[61,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.examplemod]] #recommended
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.21.11,1.22,)"
+    ordering="NONE"
+    side="BOTH"

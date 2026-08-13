@@ -25,9 +25,9 @@ const LOADERS = [
   { id: "fabric", label: "Fabric", disabled: true },
 ];
 
-/** 可选的游戏版本：MC 26.x 最新系列（从最新往下），老版本不锁仅给非阻塞警告 */
-const VERSIONS = ["26.2", "26.1.2", "26.1.1", "26.1"];
-const LATEST_VERSION = "26.2";
+/** 可选的游戏版本：MC 1.21.x 最新系列（从最新往下），老版本不锁仅给非阻塞警告 */
+const VERSIONS = ["1.21.11", "1.21.10", "1.21.9"];
+const LATEST_VERSION = "1.21.11";
 
 export default function ConfigureStep({
   games,
