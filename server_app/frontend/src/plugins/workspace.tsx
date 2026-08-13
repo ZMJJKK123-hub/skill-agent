@@ -1,0 +1,109 @@
+import { useRef, useState } from 'react'
+import { PluginManifest, SLOTS } from '../shell/registry'
+import { useUi } from '../lib/store'
+import { useT } from '../lib/i18n'
+import { importWorkspace } from '../lib/session'
+import type { ImportFile } from '../lib/api'
+
+const SKIP_DIRS = new Set([
+  '.gradle', 'build', 'run', 'out', 'dist', '.git', '.idea', '.vscode',
+  'node_modules', '.worktrees', '.team', '.tasks', '.transcripts', '__pycache__',
+])
+
+async function collectFromHandle(dir: any, base = ''): Promise<ImportFile[]> {
+  const out: ImportFile[] = []
+  for await (const [name, handle] of dir.entries()) {
+    if (handle.kind === 'file') {
+      const file = await handle.getFile()
+      out.push({ path: base ? base + '/' + name : name, data: new Uint8Array(await file.arrayBuffer()) })
+    } else if (handle.kind === 'directory') {
+      if (SKIP_DIRS.has(name)) continue
+      out.push(...(await collectFromHandle(handle, base ? base + '/' + name : name)))
+    }
+  }
+  return out
+}
+
+function ImportButton({ collapsed }: { collapsed?: boolean }) {
+  const { user, apiKey, game, loader, version } = useUi()
+  const t = useT()
+  const [busy, setBusy] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const doImport = async () => {
+    if (!user) {
+      alert(t('auth.loginFirst'))
+      return
+    }
+    const picker = (window as any).showDirectoryPicker
+    if (typeof picker === 'function') {
+      try {
+        const dir = await picker()
+        setBusy(true)
+        const files = await collectFromHandle(dir)
+        if (files.length === 0) {
+          alert(t('models.empty'))
+          return
+        }
+        await importWorkspace(files, { apiKey, game, loader, version })
+      } catch (e) {
+        if ((e as any)?.name !== 'AbortError') alert('导入失败: ' + (e instanceof Error ? e.message : String(e)))
+      } finally {
+        setBusy(false)
+      }
+    } else {
+      // 降级：非 Chromium 用 <input webkitdirectory>（Safari/部分场景）
+      inputRef.current?.click()
+    }
+  }
+
+  const onFallback = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const list = e.target.files
+    if (!list || list.length === 0) return
+    setBusy(true)
+    try {
+      const files: ImportFile[] = []
+      for (const f of Array.from(list)) {
+        const rel = (f as any).webkitRelativePath || f.name
+        files.push({ path: rel, data: new Uint8Array(await f.arrayBuffer()) })
+      }
+      await importWorkspace(files, { apiKey, game, loader, version })
+    } catch (err) {
+      alert('导入失败: ' + (err instanceof Error ? err.message : String(err)))
+    } finally {
+      setBusy(false)
+      e.target.value = ''
+    }
+  }
+
+  return (
+    <>
+      <button
+        onClick={doImport}
+        disabled={busy}
+        title={t('nav.import')}
+        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hoverable disabled:opacity-50"
+      >
+        <span>📂</span>
+        {!collapsed && <span>{busy ? t('auth.submitting') : t('nav.import')}</span>}
+      </button>
+      {/* 非 Chromium 降级入口 */}
+      <input
+        ref={inputRef}
+        type="file"
+        multiple
+        {...({ webkitdirectory: '' } as any)}
+        onChange={onFallback}
+        className="hidden"
+      />
+    </>
+  )
+}
+
+export const workspacePlugin: PluginManifest = {
+  id: 'modforge-workspace',
+  name: '工作区',
+  apply(ctx) {
+    ctx.slots.inject(SLOTS.sidebarFooter, 'import', (props: any) => <ImportButton collapsed={props?.collapsed} />, 5)
+  },
+}

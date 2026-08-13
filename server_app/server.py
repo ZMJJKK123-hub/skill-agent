@@ -27,7 +27,7 @@ import uuid
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, Header, HTTPException, Response
+from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -354,6 +354,68 @@ def create_session(req: SessionRequest, authorization: str = Header(default=""))
         pass
     sessions[session_id] = Session(session_id, mod_dir, req.api_key, owner=username,
                                   game=req.game, loader=req.loader, version=req.version)
+    return {"session_id": session_id, "mod_dir": str(mod_dir)}
+
+
+@app.post("/api/import")
+async def import_session(
+    request: Request,
+    authorization: str = Header(default=""),
+    api_key: str = Header(default="", alias="X-API-Key"),
+    game: str = "minecraft",
+    loader: str = "forge",
+    version: str = "1.21.11",
+):
+    """导入已有 mod 文件夹：前端选目录打成 zip 上传，解压成新会话工作区。
+
+    请求体 = 原始 zip 字节（Content-Type: application/zip）；
+    api_key 走 X-API-Key 头，game/loader/version 走 query 参数。
+    不依赖 python-multipart，后端零新增依赖。
+    """
+    import io
+    import zipfile
+
+    username = _auth_username(authorization)
+    session_id = uuid.uuid4().hex[:12]
+    mod_dir = SESSIONS_DIR / session_id / "mod"
+    mod_dir.mkdir(parents=True, exist_ok=True)
+
+    data = await request.body()
+    if not data:
+        raise HTTPException(400, "上传文件为空")
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            for member in zf.infolist():
+                # 防 zip-slip：拒绝绝对路径与越界（..）路径
+                member_path = Path(member.filename)
+                if member_path.is_absolute() or ".." in member_path.parts:
+                    raise HTTPException(400, f"zip 内含非法路径: {member.filename}")
+                target = (mod_dir / member_path).resolve()
+                if not target.is_relative_to(mod_dir.resolve()):
+                    raise HTTPException(400, f"zip 内含非法路径: {member.filename}")
+                if member.is_dir():
+                    target.mkdir(parents=True, exist_ok=True)
+                else:
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    with zf.open(member) as src, open(target, "wb") as dst:
+                        shutil.copyfileobj(src, dst)
+    except zipfile.BadZipFile:
+        raise HTTPException(400, "无效的 zip 文件")
+
+    # 供 agent 查阅 MC+Forge 源码（与 _copy_template 一致）
+    mc_sources = PROJECT_ROOT / "mc_java_sources"
+    if mc_sources.is_dir():
+        try:
+            shutil.copytree(mc_sources, mod_dir / "mc_java_sources", dirs_exist_ok=True)
+        except OSError as e:
+            print(f"[server] 复制 mc_java_sources 失败: {e}")
+
+    try:
+        (mod_dir.parent / "owner.txt").write_text(username, encoding="utf-8")
+    except OSError:
+        pass
+    sessions[session_id] = Session(session_id, mod_dir, api_key, owner=username,
+                                  game=game, loader=loader, version=version)
     return {"session_id": session_id, "mod_dir": str(mod_dir)}
 
 
@@ -715,6 +777,43 @@ def get_history(authorization: str = Header(default="")):
     """当前登录用户的历史记录（按用户隔离，含 has_jar 打包状态）。"""
     username = _auth_username(authorization)
     return {"history": _history_with_jar(username)}
+
+
+@app.get("/api/sessions")
+def list_sessions(authorization: str = Header(default="")):
+    """按 owner 派生当前用户的会话列表（扫描 data/sessions/*/owner.txt）。
+
+    不再依赖单独的 history 存储：会话目录 + owner.txt 是唯一事实来源，
+    历史与会话双向一致（删除会话即从列表消失）。
+    """
+    import datetime
+
+    username = _auth_username(authorization)
+    out = []
+    if SESSIONS_DIR.exists():
+        for child in sorted(SESSIONS_DIR.iterdir()):
+            if not child.is_dir():
+                continue
+            owner_txt = child / "owner.txt"
+            if not owner_txt.exists():
+                continue
+            try:
+                owner = owner_txt.read_text(encoding="utf-8").strip()
+            except OSError:
+                continue
+            if owner != username:
+                continue
+            has_jar = False
+            dist_dir = child / "mod" / "dist"
+            if dist_dir.is_dir():
+                has_jar = any(dist_dir.glob("*.jar"))
+            date = ""
+            try:
+                date = datetime.datetime.fromtimestamp(child.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
+            except OSError:
+                pass
+            out.append({"sessionId": child.name, "owner": owner, "has_jar": has_jar, "date": date})
+    return {"sessions": out}
 
 
 @app.put("/api/history")

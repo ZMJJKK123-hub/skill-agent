@@ -12,6 +12,7 @@ cloudflared.exe
 .vscode/
 mod_material/
 Documentation/
+deepseek-harness/
 
 # ---- 运行时日志 ----
 server_out.log
@@ -23,6 +24,8 @@ server_out.log
 server_app/frontend/.next/
 server_app/frontend/out/
 server_app/frontend/node_modules/
+server_app\frontend\node_modules
+server_app/frontend-nextjs.bak/
 server_app/frontend/tsconfig.tsbuildinfo
 
 # ---- 静态导出产物（由 scripts/export.mjs 自动生成） ----

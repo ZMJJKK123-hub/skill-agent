@@ -1,0 +1,328 @@
+import { useEffect, useState } from 'react'
+import { PluginManifest, SLOTS } from '../shell/registry'
+import { setUi, useUi, type Provider, type ThemePref } from '../lib/store'
+import { useT } from '../lib/i18n'
+import { composition } from '../composition'
+
+type SectionKey = 'general' | 'models' | 'plugins' | 'language' | 'appearance' | 'agent'
+
+const VERSIONS = ['1.21.11', '1.21.10', '1.21.9']
+const LOADERS = ['forge', 'neoforge', 'fabric']
+
+function SettingsPanel() {
+  const { settingsOpen } = useUi()
+  const t = useT()
+  const [section, setSection] = useState<SectionKey>('general')
+
+  // 通用配置草稿：应用前不落库
+  const { apiKey, loader, version } = useUi()
+  const [draft, setDraft] = useState({ apiKey, loader, version })
+  useEffect(() => {
+    if (settingsOpen) setDraft({ apiKey, loader, version })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsOpen])
+
+  if (!settingsOpen) return null
+
+  const apply = () => {
+    setUi({ apiKey: draft.apiKey.trim(), loader: draft.loader, version: draft.version, settingsOpen: false })
+  }
+  const cancel = () => setUi({ settingsOpen: false })
+
+  const SECTIONS: { key: SectionKey; label: string }[] = [
+    { key: 'general', label: t('settings.general') },
+    { key: 'models', label: t('settings.models') },
+    { key: 'plugins', label: t('settings.plugins') },
+    { key: 'agent', label: t('settings.agent') },
+    { key: 'language', label: t('settings.language') },
+    { key: 'appearance', label: t('settings.appearance') },
+  ]
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={cancel}>
+      <div
+        className="flex h-[80vh] w-[760px] max-w-[92vw] flex-col overflow-hidden rounded-xl border border-strong bg-panel"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex min-h-0 flex-1">
+          <nav className="w-44 shrink-0 border-r border-line p-2">
+            {SECTIONS.map((s) => (
+              <button
+                key={s.key}
+                onClick={() => setSection(s.key)}
+                className={`block w-full rounded-md px-3 py-2 text-left text-sm ${
+                  section === s.key ? 'bg-subtle text-main' : 'text-muted hoverable'
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </nav>
+          <div className="flex-1 overflow-y-auto p-5">
+            <SectionContent section={section} draft={draft} setDraft={setDraft} />
+          </div>
+        </div>
+        {/* 底部：取消 / 应用 */}
+        <div className="flex justify-end gap-2 border-t border-line p-3">
+          <button onClick={cancel} className="hoverable rounded-md border border-strong px-4 py-1.5 text-sm">
+            {t('settings.cancel')}
+          </button>
+          <button onClick={apply} className="rounded-md bg-forge-500 px-4 py-1.5 text-sm font-medium text-ink-950 hover:bg-forge-400">
+            {t('settings.apply')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function GeneralSection({ draft, setDraft }: { draft: { apiKey: string; loader: string; version: string }; setDraft: (d: typeof draft) => void }) {
+  const t = useT()
+  return (
+    <div>
+      <h2 className="mb-3 text-lg font-semibold">{t('settings.general')}</h2>
+      <Field label={t('general.game')}>
+        <input value="Minecraft" disabled className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm opacity-60" />
+      </Field>
+      <Field label={t('general.loader')}>
+        <select
+          value={draft.loader}
+          onChange={(e) => setDraft({ ...draft, loader: e.target.value })}
+          className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500"
+        >
+          {LOADERS.map((l) => (
+            <option key={l} value={l}>
+              {l === 'forge' ? 'Forge' : l === 'neoforge' ? 'NeoForge' : 'Fabric'}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label={t('general.version')}>
+        <select
+          value={draft.version}
+          onChange={(e) => setDraft({ ...draft, version: e.target.value })}
+          className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500"
+        >
+          {VERSIONS.map((v) => (
+            <option key={v} value={v}>
+              {v}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label={t('general.apiKey')}>
+        <input
+          type="password"
+          value={draft.apiKey}
+          onChange={(e) => setDraft({ ...draft, apiKey: e.target.value })}
+          placeholder={t('general.apiKeyHint')}
+          className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500"
+        />
+      </Field>
+      <p className="text-xs text-faint">{t('general.fallbackHint')}</p>
+    </div>
+  )
+}
+
+function ModelsSection() {
+  const t = useT()
+  const { providers } = useUi()
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState({ name: '', baseUrl: '', apiKey: '', model: '' })
+
+  const save = () => {
+    if (!form.name.trim() || !form.model.trim()) return
+    const p: Provider = {
+      id: 'p' + Date.now().toString(36),
+      name: form.name.trim(),
+      baseUrl: form.baseUrl.trim(),
+      apiKey: form.apiKey.trim(),
+      model: form.model.trim(),
+    }
+    setUi({ providers: [...providers, p] })
+    setForm({ name: '', baseUrl: '', apiKey: '', model: '' })
+    setShowForm(false)
+  }
+  const remove = (id: string) => setUi({ providers: providers.filter((p) => p.id !== id) })
+
+  return (
+    <div>
+      <h2 className="mb-3 text-lg font-semibold">{t('models.title')}</h2>
+      <div className="mb-2 rounded-md border border-forge-500/40 bg-forge-500/10 px-3 py-2 text-sm">
+        <div className="font-medium text-forge-300">DeepSeek</div>
+        <div className="text-xs text-faint">deepseek-v4-flash · deepseek-v4-pro · 官方</div>
+      </div>
+      {providers.length === 0 && <div className="mb-2 px-1 text-xs text-faint">{t('models.empty')}</div>}
+      {providers.map((p) => (
+        <div key={p.id} className="mb-2 flex items-center justify-between rounded-md border border-line px-3 py-2 text-sm">
+          <div>
+            <div className="font-medium">{p.name}</div>
+            <div className="text-xs text-faint">{p.model}</div>
+          </div>
+          <button onClick={() => remove(p.id)} className="hoverable rounded px-2 py-1 text-xs text-muted">
+            {t('models.remove')}
+          </button>
+        </div>
+      ))}
+
+      {showForm ? (
+        <div className="mt-2 space-y-2 rounded-md border border-line p-3">
+          <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={t('models.name')} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none" />
+          <input value={form.baseUrl} onChange={(e) => setForm({ ...form, baseUrl: e.target.value })} placeholder={t('models.baseUrl')} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none" />
+          <input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder={t('models.model')} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none" />
+          <input value={form.apiKey} onChange={(e) => setForm({ ...form, apiKey: e.target.value })} type="password" placeholder={t('models.apiKey')} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none" />
+          <div className="flex gap-2">
+            <button onClick={save} className="rounded-md bg-forge-500 px-3 py-1.5 text-sm font-medium text-ink-950 hover:bg-forge-400">
+              {t('models.save')}
+            </button>
+            <button onClick={() => setShowForm(false)} className="hoverable rounded-md border border-line px-3 py-1.5 text-sm">
+              {t('settings.cancel')}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setShowForm(true)} className="mt-2 rounded-md border border-forge-500/40 px-3 py-1.5 text-sm text-forge-400 hover:bg-forge-500/10">
+          ＋ {t('models.add')}
+        </button>
+      )}
+    </div>
+  )
+}
+
+function PluginsSection() {
+  const t = useT()
+  const { disabledPlugins } = useUi()
+  const toggle = (id: string) => {
+    setUi({
+      disabledPlugins: disabledPlugins.includes(id)
+        ? disabledPlugins.filter((p) => p !== id)
+        : [...disabledPlugins, id],
+    })
+  }
+  return (
+    <div>
+      <h2 className="mb-3 text-lg font-semibold">{t('plugins.title')}</h2>
+      {composition.map((p) => {
+        const disabled = disabledPlugins.includes(p.id)
+        const locked = p.id === 'modforge-settings'
+        return (
+          <div key={p.id} className="mb-2 flex items-center justify-between rounded-md border border-line px-3 py-2 text-sm">
+            <span>
+              {p.name} <span className="text-faint">({p.id})</span>
+            </span>
+            <button
+              onClick={() => !locked && toggle(p.id)}
+              disabled={locked}
+              title={locked ? '设置插件不可关闭' : ''}
+              className={`relative h-5 w-9 rounded-full transition ${disabled ? 'bg-slate-600' : 'bg-forge-500'} ${locked ? 'opacity-50' : ''}`}
+            >
+              <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition ${disabled ? 'left-0.5' : 'left-[18px]'}`} />
+            </button>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function AgentSection() {
+  const t = useT()
+  return (
+    <div>
+      <h2 className="mb-3 text-lg font-semibold">{t('agent.title')}</h2>
+      <div className="rounded-md border border-forge-500/40 bg-forge-500/10 px-3 py-2 text-sm">
+        <div className="font-medium text-forge-300">{t('agent.standard')}</div>
+        <div className="text-xs text-faint">{t('agent.standardDesc')}</div>
+      </div>
+    </div>
+  )
+}
+
+function LanguageSection() {
+  const t = useT()
+  const { locale } = useUi()
+  return (
+    <div>
+      <h2 className="mb-3 text-lg font-semibold">{t('language.title')}</h2>
+      <div className="space-y-2">
+        {(['zh', 'en'] as const).map((id) => (
+          <button
+            key={id}
+            onClick={() => setUi({ locale: id })}
+            className={`block w-full rounded-md border px-3 py-2 text-left text-sm ${locale === id ? 'border-forge-500/40 bg-forge-500/10 text-forge-300' : 'border-line text-muted hoverable'}`}
+          >
+            {id === 'zh' ? t('language.zh') : t('language.en')}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function AppearanceSection() {
+  const t = useT()
+  const { theme } = useUi()
+  const options: { id: ThemePref; label: string }[] = [
+    { id: 'light', label: t('appearance.light') },
+    { id: 'dark', label: t('appearance.dark') },
+    { id: 'system', label: t('appearance.system') },
+  ]
+  return (
+    <div>
+      <h2 className="mb-3 text-lg font-semibold">{t('appearance.title')}</h2>
+      <div className="flex gap-2">
+        {options.map((o) => (
+          <button
+            key={o.id}
+            onClick={() => setUi({ theme: o.id })}
+            className={`flex-1 rounded-md border px-3 py-2 text-sm ${theme === o.id ? 'border-forge-500/40 bg-forge-500/10 text-forge-300' : 'border-line text-muted hoverable'}`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function SectionContent({
+  section,
+  draft,
+  setDraft,
+}: {
+  section: SectionKey
+  draft: { apiKey: string; loader: string; version: string }
+  setDraft: (d: typeof draft) => void
+}) {
+  switch (section) {
+    case 'general':
+      return <GeneralSection draft={draft} setDraft={setDraft} />
+    case 'models':
+      return <ModelsSection />
+    case 'plugins':
+      return <PluginsSection />
+    case 'agent':
+      return <AgentSection />
+    case 'language':
+      return <LanguageSection />
+    case 'appearance':
+      return <AppearanceSection />
+  }
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="mb-3">
+      <div className="mb-1 text-sm text-muted">{label}</div>
+      {children}
+    </div>
+  )
+}
+
+export const settingsPlugin: PluginManifest = {
+  id: 'modforge-settings',
+  name: '设置',
+  apply(ctx) {
+    ctx.slots.inject(SLOTS.overlay, 'settings', () => <SettingsPanel />)
+  },
+}
