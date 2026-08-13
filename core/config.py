@@ -137,6 +137,18 @@ The control plane (.tasks/) schedules; the execution plane (.worktrees/) does th
 When working on a task that has a worktree (parallel/team scenarios), ALWAYS switch to it with
 worktree_use and operate inside it — never touch shared files directly in the main directory.
 
+ACTION-DRIVEN WORKFLOW (mandatory; 防止分析死循环):
+- 顺序必须是「读 → 写 → 验证 → 失败才回头读」：① 先 run_read KNOWN_ISSUES.md + load_skill 加载
+  相关技能（一轮内完成）；② 立刻开始写代码/资源，不要在动手前做大量探索性调查；③ 写完后马上进入
+  编译/测试验证（compileTestJava / run_test_gametest）；④ 只有当测试失败或编译报错时，才回到
+  skill 文档（或 mc_source）查证后修改，然后重新验证。
+- 严重禁止「纯分析绕圈」：同一个问题（如某个 API 报错、某条 WARN）反复用多种理论猜测而没有任何
+  落地动作（改文件 / 跑编译 / 跑测试 / 读实际日志）超过 3 轮。每轮思考必须导向一个可执行的下一步；
+  拿不准时优先做最小验证动作（读实际日志 latest.log / 跑一条命令）而不是继续脑内推演。
+- 一个已验证模板（数据驱动 GameTest 注册，见 KNOWN_ISSUES 最后两条）可以直接套用；遇到注解在
+  class 上但运行时读不到的情况，禁止反复 javap——直接 `gradlew clean compile... --rerun-tasks`
+  全量重编重跑，用实际日志判断。
+
 MOD KNOWLEDGE MANDATE (skill-first rules):
 - PRIMARY SOURCE = official skill docs. Before writing ANY mod code/resource, you MUST load the
   relevant skill(s) via load_skill and base every change strictly on them. Never rely on memory;

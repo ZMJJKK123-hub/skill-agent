@@ -29,6 +29,17 @@ SUPERVISOR_EVERY_N_ROUNDS = 5      # 每 N 轮主循环触发一次监管分析
 SUPERVISOR_LOG_TAIL_CHARS = 6000   # run.log 尾部取多少字符
 SUPERVISOR_TRANSCRIPT_TAIL = 30    # 最新 transcript 取尾部多少行
 
+# ── 项目根（抗 chdir）────────────────────────────
+# Bug 修复：run_task.py 会把 cwd chdir 到 <session>/mod，导致
+# Path("data/sessions") / Path(".transcripts") 相对 cwd 解析全部失效，
+# supervisor 永远读到 "(no run.log)" + "(task board empty)" 而失明，
+# 错过"同一问题绕圈"等 ALERT 触发条件。
+# 与 SkillLoader / MC_SOURCES_ROOT 同思路：基于本模块的 __file__
+# 定位项目根（core/.. ），与 cwd 无关。
+def _project_root() -> Path:
+    return Path(__file__).resolve().parents[1]
+
+
 # 监管 agent 的只读工具集（无写入/构建/GameTest 工具 -> 只有建议权）
 READONLY_NAMES = {"load_skill", "read_file", "mc_source"}
 READONLY_TOOLS = [t for t in TOOLS if t["function"]["name"] in READONLY_NAMES]
@@ -43,7 +54,8 @@ class SupervisorManager:
         self._trigger = threading.Event()
         self._round_count = 0
         self._last_key: str | None = None   # 去重：同一建议不重复写信箱
-        self._inbox = Path(".supervisor/inbox")
+        # 信箱目录也抗 chdir：固定落在项目根下的 .supervisor/inbox
+        self._inbox = _project_root() / ".supervisor" / "inbox"
         self._lock = threading.Lock()
 
     # ── 生命周期：agent_loop 开头 start，返回前 stop ──
@@ -204,12 +216,18 @@ class SupervisorManager:
 
     # ── 证据采集 ──
     def _resolve_run_log(self) -> Path | None:
-        base = Path("data/sessions")
+        """定位最新会话的 run.log（基于项目根，抗 cwd chdir）。
+
+        run_task.py 会把 cwd chdir 到 <session>/mod，因此不能用相对路径。
+        优先取 <项目根>/data/sessions/*/run.log 里最新修改的那个；
+        回退到 <项目根>/run.log。
+        """
+        base = _project_root() / "data" / "sessions"
         if base.exists():
             cands = sorted(base.glob("*/run.log"), key=lambda p: p.stat().st_mtime, reverse=True)
             if cands:
                 return cands[0]
-        root = Path("run.log")
+        root = _project_root() / "run.log"
         return root if root.exists() else None
 
     def _tail(self, path: Path, chars: int) -> str:
@@ -231,7 +249,7 @@ class SupervisorManager:
             return "(task board unavailable)"
 
     def _transcript_tail(self) -> str | None:
-        base = Path(".transcripts")
+        base = _project_root() / ".transcripts"
         if not base.exists():
             return None
         files = sorted(base.glob("*"), key=lambda p: p.stat().st_mtime, reverse=True)

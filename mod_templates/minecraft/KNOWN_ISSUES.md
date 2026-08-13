@@ -74,4 +74,21 @@
      { "type": "function", "function": "tutorial_mod:crystalgametestscrystal_item_registered",
        "environment": "minecraft:default", "structure": "minecraft:empty", "max_ticks": 100 }
      ```
-  4) 自检只跑 `run_test_gametest`（同时加载 src/main + src/test）；run_game_test_server 只扫 src/main，永远跑不出 src/test 的测试（见上文两条）。
+   4) 自检只跑 `run_test_gametest`（同时加载 src/main + src/test）；run_game_test_server 只扫 src/main，永远跑不出 src/test 的测试（见上文两条）。
+
+## [2026-08] GameTest 报 "Could not find modid"，但目标类确实有 @GameTestNamespace（reg.unfreeze 时机/加载目录变体）
+- 症状: 按上一条模板写好后，运行时日志仍报 `Magic fruit game tests could not be registered: ... Could not find modid for com.<pkg>.tests.XxxGameTests`；但你用 javap 检查编译产物却发现 `@GameTestNamespace(value="modid")` 明明在 class 上。同一运行里可能出现 "1 tests are now running" 且 "All 1 required tests passed"——但那是默认/无关测试，你自己的测试函数实际没注册成功。
+- 根因: `BuiltInRegistries.TEST_FUNCTION` 在 mod 加载早期已被冻结，`reg.unfreeze()` 必须在注册前调用；且运行时实际加载的 test class 目录可能与 javap 检查的目录不一致（forgegradle test module 输出 vs build/classes/java/test vs 旧 jar）。注解存在 ≠ 运行时加载的是这份 class。
+- 规避:
+  1) 确认 TutorialMod 里 `reg.unfreeze()` 在 `Registry.register(...)` 之前（见上一条模板第 2 步的顺序）。
+  2) 不要反复 javap 静态目录猜测——直接**落地动作验证**：`gradlew clean compileJava compileTestJava --rerun-tasks` 强制全量重编，再用 `run_test_gametest` 重跑；如果 0 个自己的测试函数被注册，用 `read_game_test_log` 看 run/logs/latest.log 确认注册 WARN 是否消失。
+  3) 若 clean 后仍报找不到 modid，把注册代码从「构造器 + Class.forName 反射」改为在 `RegisterGameTestsEvent`（mod 总线事件）中用 `event.register(Class)` 注册测试类——事件时机比构造器晚，注册表已正确初始化。
+  4) 排查是否残留旧 class/jar：`dir /s /b build | findstr /i XxxGameTests` 确认只有一处 class；删除 build/ 下所有旧产物。
+</｜｜DSML｜｜>
+<task_progress>
+- [x] 终止卡住的 agent 进程并确认无残留
+- [x] 诊断卡住根因（分析死循环 + 双进程冲突 + supervisor 失明）
+- [x] 修复 supervisor 路径 Bug（run.log / transcript / 信箱全改包相对定位）
+- [x] 追加 KNOWN_ISSUES 新条目（Could not find modid 变体）
+- [ ] 修改 SYSTEM 提示词：先 load_skill → 以写为主 → 测试不通过再读 skill
+</task_progress>
