@@ -201,9 +201,11 @@ def build_file_tree(root: Path, rel: str = "") -> dict:
     except OSError:
         return node
     for p in entries:
-        # 跳过运行时产物
+        # 跳过运行时产物（mc_java_sources = MC+Forge 源码树，只对 agent 可见，
+        # 不展示给前端，避免文件树渲染 8000+ 节点）
         if p.name in (".worktrees", ".team", ".tasks", ".transcripts",
-                      "__pycache__", "agent.log", "run.log", ".git"):
+                      "__pycache__", "agent.log", "run.log", ".git",
+                      "mc_java_sources"):
             continue
         child_rel = f"{rel}/{p.name}" if rel else p.name
         if p.is_dir():

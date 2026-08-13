@@ -141,7 +141,7 @@ ACTION-DRIVEN WORKFLOW (mandatory; 防止分析死循环):
 - 顺序必须是「读 → 写 → 验证 → 失败才回头读」：① 先 run_read KNOWN_ISSUES.md + load_skill 加载
   相关技能（一轮内完成）；② 立刻开始写代码/资源，不要在动手前做大量探索性调查；③ 写完后马上进入
   编译/测试验证（compileTestJava / run_test_gametest）；④ 只有当测试失败或编译报错时，才回到
-  skill 文档（或 mc_source）查证后修改，然后重新验证。
+  skill 文档（或 mc_java_sources/ 源码）查证后修改，然后重新验证。
 - 严重禁止「纯分析绕圈」：同一个问题（如某个 API 报错、某条 WARN）反复用多种理论猜测而没有任何
   落地动作（改文件 / 跑编译 / 跑测试 / 读实际日志）超过 3 轮。每轮思考必须导向一个可执行的下一步；
   拿不准时优先做最小验证动作（读实际日志 latest.log / 跑一条命令）而不是继续脑内推演。
@@ -153,9 +153,9 @@ MOD KNOWLEDGE MANDATE (skill-first rules):
 - PRIMARY SOURCE = official skill docs. Before writing ANY mod code/resource, you MUST load the
   relevant skill(s) via load_skill and base every change strictly on them. Never rely on memory;
   if you don't know/remember an API, look it up in the skill docs first.
-- mc_source (reading mc_java_sources/) is ONLY a fallback: use it only when the loaded skill's
-  content is insufficient or proven wrong (e.g. you followed the skill but tests/compile keep
-  failing). Skill docs come first.
+- mc_java_sources/（当前工作目录下的完整 MC+Forge 源码，已随会话复制）可随时用 read_file /
+  bash findstr 自由查阅，无任何行数/模式限制——当你需要核对某个类的精确 API（构造器、
+  方法签名、字段）时直接查源码，不必等 skill 出错才回头。
 - After EVERY change to the MOD project (write_file / edit_file / config file writes, etc.),
   you MUST list the information source of that change in your reply. The `source` line MUST quote
   the REAL text of the loaded skill (copy the actual section/API pattern), not a paraphrase from
@@ -202,7 +202,7 @@ Guidelines:
 - Do not start long-running servers directly; use the combined
   "start /b ... & timeout /t 3 ... & curl ... & taskkill" pattern.
 - MOD KNOWLEDGE MANDATE (skill-first): PRIMARY SOURCE = loaded skill docs; base every change strictly on them, never on memory.
-  mc_source is ONLY a fallback when skills are insufficient/proven wrong. After EVERY change, list
+  mc_java_sources/（完整 MC+Forge 源码，已复制到当前工作目录）可随时用 read_file / bash findstr 自由查阅。After EVERY change, list
   <skill-source> source: <skill name> -> <exact text/API pattern copied from the loaded skill> (quote real text, not paraphrase).
   In your reasoning, cite which part of which skill enables each decision. If no skill applies, write "No skill source" and explain why.
 
@@ -257,7 +257,7 @@ ADVICE triggers (everything else): efficiency tips, context hygiene, todo discip
 If there is NO issue, output exactly: NO_ISSUE
 Do not invent problems — only report what the log/task/skill evidence supports.
 
-You run on Windows cmd. You have load_skill / read_file / mc_source ONLY (read-only).
+You run on Windows cmd. You have load_skill / read_file ONLY (read-only).
 You have NO write tool — you advise, you never execute."""
  
 # ---------- Teammate 安全前缀（第 9 课修复：teammate 缺失 Windows 规则）----------
@@ -292,7 +292,7 @@ Autonomous task claiming (Lesson 11):
   those take priority over board-claiming.
 
 MOD KNOWLEDGE MANDATE (skill-first):
-- PRIMARY SOURCE = loaded skill docs; base every change strictly on them, never on memory. mc_source is ONLY a fallback when skills are insufficient/proven wrong.
+- PRIMARY SOURCE = loaded skill docs; base every change strictly on them, never on memory. mc_java_sources/（完整 MC+Forge 源码）已复制到当前工作目录，可随时用 read_file / bash findstr 自由查阅。
 - You MUST load_skill before ANY code/resource change related to a MOD, and base every change strictly on the loaded skill content.
   Never write/modify MOD files without a skill basis.
 - After EVERY change to the MOD project (write_file / edit_file / config writes), list the information source of the change:

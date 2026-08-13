@@ -172,6 +172,17 @@ def _copy_template(game: str, dest: Path, loader: str = "", version: str = "") -
     if issues_src.exists():
         shutil.copy2(issues_src, dest / "KNOWN_ISSUES.md")
 
+    # 把完整 MC+Forge 源码树复制进会话 mod 目录：agent 可任意用
+    # read_file / bash findstr 查阅（不依赖任何受限工具）。源码只对
+    # agent 可见，用户下载 zip / 文件树 / 统计都会被排除（见 download_mod /
+    # build_file_tree / _session_stats）。
+    mc_sources = PROJECT_ROOT / "mc_java_sources"
+    if mc_sources.is_dir():
+        try:
+            shutil.copytree(mc_sources, dest / "mc_java_sources", dirs_exist_ok=True)
+        except OSError as e:
+            print(f"[server] 复制 mc_java_sources 失败: {e}")
+
     # 模板不存在也不报错：给 agent 一个空目录自由发挥
     return dest
 
@@ -279,7 +290,7 @@ def _session_stats(sess: Session) -> dict:
         for p in sess.mod_dir.rglob("*"):
             if p.is_file() and not any(
                 part in (".worktrees", ".team", ".tasks", ".transcripts",
-                         "__pycache__", ".git")
+                         "__pycache__", ".git", "mc_java_sources")
                 for part in p.relative_to(sess.mod_dir).parts
             ):
                 file_count += 1
@@ -491,7 +502,7 @@ def download_mod(session_id: str, authorization: str = Header(default="")):
     _assert_owner(sess, username)
     zip_path = SESSIONS_DIR / session_id / "mod.zip"
     skip = {"build", "dist", ".worktrees", ".team", ".tasks",
-            ".transcripts", "__pycache__", ".git"}
+            ".transcripts", "__pycache__", ".git", "mc_java_sources"}
 
     with _download_lock:
         # 缓存逻辑：若已存在 mod.zip 且比所有源码文件都新，则直接复用，
@@ -500,7 +511,9 @@ def download_mod(session_id: str, authorization: str = Header(default="")):
         if zip_path.exists() and sess.mod_dir.exists():
             zip_mtime = zip_path.stat().st_mtime
             newest_src = max(
-                (p.stat().st_mtime for p in sess.mod_dir.rglob("*") if p.is_file()),
+                (p.stat().st_mtime
+                 for p in sess.mod_dir.rglob("*")
+                 if p.is_file() and "mc_java_sources" not in p.parts),
                 default=0,
             )
             if zip_mtime >= newest_src:

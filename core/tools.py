@@ -138,142 +138,6 @@ def run_edit(path: str, old_text: str, new_text: str) -> str:
     except Exception as e:
         return f"Error: {e}"
 
-# ---------- MC/Forge 源码只读查询（技能不足时的参考源） ----------
-# mc_java_sources/ 位于项目根，包含 Minecraft + Forge 的 Java 源码。
-# 只读、路径沙箱强制落在该目录内；防上下文爆炸：默认只返回文件头部
-# （类签名 + 关键字段/方法签名），search 模式只返回匹配行 + 前后小窗口，
-# 任何模式都不返回完整文件。
-MC_SOURCES_ROOT = None  # 在模块底部 wire（依赖 config.WORKDIR）
-
-MC_SOURCE_HEAD_LINES = 120     # head 模式：返回前 N 行（类头 + 签名）
-MC_SOURCE_SEARCH_CTX = 5       # search 模式：每个命中行前后各 N 行
-MC_SOURCE_MAX_SEARCH_HITS = 30 # search 模式：最多返回的命中行数
-MC_SOURCE_MAX_CHARS = 20_000   # 任何模式：输出硬上限
-
-
-def _locate_source_file(class_name: str) -> Path:
-    """按类名定位源码文件。
-
-    支持两种写法：
-      - 简单类名    "BlockEntity"
-      - 完全限定名  "net.minecraft.world.level.block.entity.BlockEntity"
-    用 glob 精确匹配 <root>/**/<最后一段>.java，匹配唯一时直接返回；
-    多个候选（如同名内部类文件）时按路径深度最短者优先。
-    """
-    name = class_name.strip().replace("/", os.sep)
-    if not name:
-        raise ValueError("class_name is empty")
-    leaf = name.replace(".", os.sep).split(os.sep)[-1]
-    if not leaf.endswith(".java"):
-        leaf += ".java"
-    candidates = sorted(Path(MC_SOURCES_ROOT).rglob(leaf))
-    if not candidates:
-        raise FileNotFoundError(f"No source file for class '{class_name}' under {MC_SOURCES_ROOT}")
-    # 完全限定名：路径结尾整段匹配优先
-    if "." in class_name:
-        suffix = os.path.join(*class_name.replace("/", os.sep).split(".")) + ".java"
-        exact = [c for c in candidates if c.as_posix().endswith(suffix)]
-        if exact:
-            return exact[0]
-    # 简单类名多候选：取路径层级最短者（最接近根包）
-    return min(candidates, key=lambda c: len(c.parts))
-
-
-def _read_source_head(path: Path, tail_lines: int = None) -> str:
-    """head 模式：读取文件前 tail_lines 行（缺省取 MC_SOURCE_HEAD_LINES）的源码。"""
-    n = tail_lines or MC_SOURCE_HEAD_LINES
-    try:
-        with open(path, "r", encoding="utf-8", errors="replace") as f:
-            head = [next(f) for _ in range(n)]
-    except StopIteration:
-        with open(path, "r", encoding="utf-8", errors="replace") as f:
-            head = f.readlines()
-    return "".join(head)
-
-
-def _source_inner_search(path: Path, keyword: str, ctx: int, max_hits: int = None) -> str:
-    """search 模式：找出包含 keyword 的行，附前后各 ctx 行上下文。
-
-    max_hits 限制返回行数上限（缺省取 MC_SOURCE_MAX_SEARCH_HITS）。
-    """
-    with open(path, "r", encoding="utf-8", errors="replace") as f:
-        lines = f.readlines()
-    hits = []
-    for i, line in enumerate(lines):
-        if keyword in line:
-            hits.append(i)
-    if not hits:
-        return f"No matches for '{keyword}' in {path}"
-    # 合并重叠窗口，避免同一段被重复输出
-    merged = []
-    for i in hits:
-        if merged and i - ctx <= merged[-1][1]:
-            merged[-1][1] = i + ctx  # 前一个窗口直接延伸覆盖本次命中
-        else:
-            merged.append([i - ctx, i + ctx])
-    limit = max_hits or MC_SOURCE_MAX_SEARCH_HITS
-    out = []
-    total_chars = 0
-    for lo, hi in merged:
-        for n in range(max(0, lo), min(hi, len(lines))):
-            out.append(f"{n + 1}: {lines[n].rstrip()}")
-            total_chars += len(lines[n]) + 8
-            if total_chars > MC_SOURCE_MAX_CHARS:
-                out.append(f"... (truncated)")
-                return "\n".join(out)
-    # 命中太多时只保留前 limit 行，并给剩余计数
-    shown = len(out)
-    if shown > limit:
-        out = out[:limit]
-        out.append(f"... ({shown - limit} more matching lines, keyword='{keyword}')")
-    if not out:
-        return f"No matches for '{keyword}' in {path}"
-    return "\n".join(out)
-
-
-def _mc_source(kw: dict) -> str:
-    """mc_source 工具：只读查看 MC/Forge 源码中的特定类（技能不足时查证用）。
-
-    mode=head（默认）：只返回文件前 120 行（类头/继承/关键字段/方法签名）。
-    mode=search：keyword 必填，只返回命中行前后各 5 行，最多 30 行。
-    max_lines 可选：模型可自主指定返回行数（1-500），缺省 head=120 / search=30。
-    永不返回完整文件；只读 mc_java_sources/ 目录。
-    """
-    try:
-        class_name = kw.get("class_name", "").strip()
-        if not class_name:
-            return "Error: mc_source requires a 'class_name' argument"
-        mode = kw.get("mode", "head")
-        if mode not in ("head", "search"):
-            return f"Error: mc_source mode must be 'head' or 'search', got '{mode}'"
-        # max_lines 解析 + 护栏：1-500，非法则温和报错（不炸主循环）
-        max_lines = None
-        if "max_lines" in kw and kw["max_lines"] is not None:
-            try:
-                max_lines = int(kw["max_lines"])
-            except (TypeError, ValueError):
-                return f"Error: mc_source max_lines must be an integer, got '{kw['max_lines']}'"
-            if not (1 <= max_lines <= 500):
-                return "Error: mc_source max_lines must be between 1 and 500"
-        # 路径沙箱：只允许读 mc_java_sources 内的文件
-        path = _locate_source_file(class_name)
-        # 用绝对路径 resolve 并再次确认落在根内（双保险）
-        resolved = path.resolve()
-        root_resolved = Path(MC_SOURCES_ROOT).resolve()
-        if not resolved.is_relative_to(root_resolved):
-            return f"Error: source path escapes mc_java_sources: {path}"
-        if mode == "search":
-            keyword = kw.get("keyword", "").strip()
-            if not keyword:
-                return "Error: mc_source mode='search' requires 'keyword'"
-            return _source_inner_search(resolved, keyword, MC_SOURCE_SEARCH_CTX, max_lines)
-        text = _read_source_head(resolved, max_lines)
-        return text[:MC_SOURCE_MAX_CHARS]
-    except FileNotFoundError as e:
-        return f"Error: {e}"
-    except Exception as e:
-        return f"Error: mc_source failed: {e}"
-
 # ---------- TodoManager（叠加的规划系统，不改动 Agent Loop 核心）----------
 class TodoManager:
     def __init__(self):
@@ -450,15 +314,12 @@ config.SYSTEM += (
     "If no skill applies, explicitly write \"No skill source\" and explain why. "
     "Prefer declaring a missing source over writing anything without a basis.\n"
     "\n"
-    "MC SOURCE LOOKUP (mc_source): FALLBACK-ONLY. Use mc_source ONLY when the loaded skills are insufficient or proven wrong (e.g. tests keep failing even though you followed the skill). Skills are the primary source. When a skill is unclear or incomplete and you must "
-    "verify a specific Minecraft/Forge class API (constructor, method signature, field, "
-    "exact usage), use the mc_source tool to read mc_java_sources/ (Minecraft + Forge sources). "
-    "CRITICAL anti-context-blowup rules: NEVER read a whole file. Default mode='head' returns only "
-    "the first ~120 lines (class header + key methods/fields). Use mode='search' with a keyword to "
-    "inspect only the lines you need (max 30 lines with context). If you truly need more or fewer "
-    "lines, you may pass max_lines (1-500) to set the line count yourself. Look up classes by simple "
-    "name ('BlockEntity') or fully-qualified name ('net.minecraft.world.level.block.entity.BlockEntity'). "
-    "Cross-reference the source with the loaded skill before writing code.\n"
+    "MC/FORGE SOURCE TREE (mc_java_sources/, ALWAYS AVAILABLE): The complete Minecraft + Forge Java sources are copied "
+    "into your current working directory under mc_java_sources/. You may read ANY file freely with the read_file tool "
+    "or search it with bash (e.g. `findstr /s /n /i \"keyword\" mc_java_sources\\*.java`). There is NO restriction on "
+    "how much you may read — you are the authority on verifying exact class APIs (constructors, method signatures, "
+    "fields, exact usage) directly from source. When a skill is unclear or incomplete, verify the real API in "
+    "mc_java_sources/ before writing code. Cross-reference the source with the loaded skill before writing code.\n"
     "\n"
     "STRICT PROJECT STRUCTURE & GRADLE TOOLS (8):\n"
         "- src/main/java: ONLY production code; @GameTest/@GameTestHolder FORBIDDEN here.\n"
@@ -484,8 +345,8 @@ config.SYSTEM += (
     "first run takes minutes). NEVER use run_game_test_server for self-verification — it scans src/main only.\n"
     "  3. Call read_game_test_log to read <mod dir>/run/logs/latest.log (tail, default 200 lines) and "
     "inspect failures/errors (they are at the end of the log).\n"
-    "  4. If any test fails or the build fails: fix the code according to the loaded skills (+ mc_source "
-    "to verify APIs), then re-run the loop from step 2 until ALL tests pass.\n"
+    "  4. If any test fails or the build fails: fix the code according to the loaded skills (verify any "
+    "uncertain API directly in mc_java_sources/ with read_file or findstr), then re-run the loop from step 2 until ALL tests pass.\n"
     "Only after the GameTest run succeeds may you consider the mod finished. Never skip the GameTest "
     "verification just because the task did not explicitly ask for tests.\n"
     "\n"
@@ -1468,7 +1329,7 @@ def _build_source_zip() -> str:
     base = worktree_manager.resolve_dir() if worktree_manager else os.getcwd()
     zip_path = base.parent / "mod.zip"  # <session>/mod.zip（与 server SESSIONS_DIR 布局一致）
     skip = {"build", "dist", ".worktrees", ".team", ".tasks",
-            ".transcripts", "__pycache__", ".git"}
+            ".transcripts", "__pycache__", ".git", "mc_java_sources"}
     try:
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
             if os.path.isdir(base):
@@ -1748,7 +1609,6 @@ TOOL_HANDLERS = {
                                           kw["new_text"]),
     "todo":         lambda **kw: todo_manager.update(kw["items"]),
     "load_skill":   lambda **kw: _load_skill_and_record(kw),
-    "mc_source":    lambda **kw: _mc_source(kw),
     "task_create":  lambda **kw: json.dumps(task_manager.create(**kw), ensure_ascii=False),
     "task_update":  lambda **kw: json.dumps(task_manager.update(**kw), ensure_ascii=False),
     "task_list":    lambda **kw: json.dumps(task_manager.list_tasks(**kw), ensure_ascii=False),
@@ -1912,36 +1772,6 @@ TOOLS = [
                     }
                 },
                 "required": ["skill_name"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "mc_source",
-            "description": "FALLBACK-ONLY read-only lookup into the Minecraft/Forge Java source tree (mc_java_sources/). Use ONLY when the loaded skill docs are insufficient or proven wrong (e.g. tests keep failing despite following the skill). Skills are the primary source. Use when a skill's guidance is unclear/incomplete and you need to verify a specific class's API: its constructors, key methods, fields, or exact signatures. IMPORTANT anti-context-blowup rules: NEVER read a whole file. mode='head' (default) returns ONLY the first ~120 lines (class header + key fields/method signatures). mode='search' returns ONLY lines matching 'keyword' plus ~5 lines of context (max 30 lines). class_name accepts simple names ('BlockEntity') or fully-qualified names ('net.minecraft.world.level.block.entity.BlockEntity').",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "class_name": {
-                        "type": "string",
-                        "description": "Class to look up, e.g. 'BlockEntity' or 'net.minecraftforge.registries.DeferredRegister'",
-                    },
-                    "mode": {
-                        "type": "string",
-                        "enum": ["head", "search"],
-                        "description": "'head' = first 120 lines (default); 'search' = lines matching keyword + context",
-                    },
-                    "keyword": {
-                        "type": "string",
-                        "description": "Required when mode='search': substring to find in the file (e.g. method name 'register')",
-                    },
-                    "max_lines": {
-                        "type": "integer",
-                        "description": "Optional. Number of source lines to return (1-500). Default: 120 for mode='head', 30 for mode='search'. Use to request more or fewer lines. Still NEVER returns the whole file.",
-                    },
-                },
-                "required": ["class_name"],
             },
         },
     },
@@ -2491,17 +2321,6 @@ logger.info(
     f"root={config.WORKDIR} | 现有 worktree 注册数={len(worktree_manager._load_index())}"
 )
 
-# ── MC/Forge 源码查询根目录注入（使用项目根的 mc_java_sources/）──
-# 必须用包相对路径定位，而非 config.WORKDIR（= cwd）：
-# 网站运行时 run_task.py 会先把 cwd chdir 到会话 mod 目录再导入 core，
-# 用 cwd 会把根解析成 <会话mod>/mc_java_sources（不存在），导致 mc_source 全废。
-# 与本包 SkillLoader 同思路：基于 __file__（core/../mc_java_sources）独立于 cwd。
-MC_SOURCES_ROOT = str(Path(__file__).resolve().parents[1] / "mc_java_sources")
-if not Path(MC_SOURCES_ROOT).is_dir():
-    logger.info(
-        f"mc_source 根目录 {MC_SOURCES_ROOT} 不存在——mc_source 工具将返回 Error"
-    )
-else:
-    logger.info(
-        f"mc_source 已注入 | root={MC_SOURCES_ROOT}"
-    )
+# ── 注：mc_java_sources/（MC+Forge 完整源码）现已由 server.py 的 _copy_template
+# 在创建会话时整体复制进 <session>/mod/mc_java_sources/，agent 可直接用
+# read_file / bash findstr 任意查看，无需受限的源码查询工具。──

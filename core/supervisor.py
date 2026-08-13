@@ -6,7 +6,7 @@
 - 后台守护线程持续追踪 run.log / 任务板 / transcript，发现问题写信箱。
 - 主 agent 每轮循环开头 drain 信箱：有文件就读取 -> 读完即删 -> 以
   <supervisor-advice>（温和）或 <supervisor-alert>（警告）闭合标签注入。
-- 监管 agent 只能使用只读工具（load_skill / run_read / mc_source），无执行权；
+- 监管 agent 只能使用只读工具（load_skill / read_file），无执行权；
   SUPERVISOR_SYSTEM 强制"先读 skill 再发言"，防错误观点。
 - 有两种注入方式（用户决策 D 备选）：温和提醒 advice、严重警告 alert。
 """
@@ -34,14 +34,14 @@ SUPERVISOR_TRANSCRIPT_TAIL = 30    # 最新 transcript 取尾部多少行
 # Path("data/sessions") / Path(".transcripts") 相对 cwd 解析全部失效，
 # supervisor 永远读到 "(no run.log)" + "(task board empty)" 而失明，
 # 错过"同一问题绕圈"等 ALERT 触发条件。
-# 与 SkillLoader / MC_SOURCES_ROOT 同思路：基于本模块的 __file__
+# 与 SkillLoader 同思路：基于本模块的 __file__
 # 定位项目根（core/.. ），与 cwd 无关。
 def _project_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
 # 监管 agent 的只读工具集（无写入/构建/GameTest 工具 -> 只有建议权）
-READONLY_NAMES = {"load_skill", "read_file", "mc_source"}
+READONLY_NAMES = {"load_skill", "read_file"}
 READONLY_TOOLS = [t for t in TOOLS if t["function"]["name"] in READONLY_NAMES]
 
 
