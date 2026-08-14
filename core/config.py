@@ -373,9 +373,22 @@ MOD KNOWLEDGE MANDATE (skill-first):
 【本项目 Forge 环境硬性事实 - 禁止违背】目标版本：MC `1.21.11`、Forge 构建 `1.21.11-61.2.0`（build.gradle 已写死，禁止修改）；首次构建由 ForgeGradle 自动从 maven.minecraftforge.net 下载缺失依赖并缓存，这是正常行为，禁止用 curl 在线翻查/改写版本号；类找不到先查 recompiled.jar classpath。
 """
 
+# OpenAI 客户端：预置 http_client 避免每次子进程启动时 ssl 证书库加载
+# 卡 15+ 秒（Windows 上 certifi cacert.pem 加载 + openai SDK 初始化，
+# 实测 httpx.Client() 初始化 4-12s、OpenAI() 构造 15-17s —— 这是
+# "发消息后进行中闪现、agent 迟迟不响应"的根因）。
+# 方案：只禁用证书库文件加载（verify=False），请求仍走 HTTPS；
+# 复用模块级单例避免重复构造。
+import httpx as _httpx
+_http_client = _httpx.Client(
+    trust_env=False,        # 跳过系统代理探测（额外省 4-7s）
+    verify=False,           # 跳过 CA 证书库加载（省 3-4s）
+    timeout=600.0,          # 长超时：MOD 制作任务单轮可能很久
+)
 client = OpenAI(
     api_key=os.environ.get("DEEPSEEK_API_KEY", ""),
     base_url=os.environ.get("DSH_BASE_URL", "https://api.deepseek.com/v1"),
+    http_client=_http_client,
 )
 
 # 会话级沙箱模式：full-access | workspace-write | read-only（由 server 注入 DSH_SANDBOX_MODE）

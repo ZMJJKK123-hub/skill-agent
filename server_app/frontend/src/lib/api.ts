@@ -18,6 +18,8 @@ export interface SessionStats {
 
 export interface StatusResponse extends SessionStats {
   log_tail: string
+  paused?: boolean
+  pending?: number
 }
 
 export interface EventItem {
@@ -41,6 +43,7 @@ export interface HistoryEntry {
   owner: string
   has_jar: boolean
   date: string
+  title?: string
 }
 
 export interface GameInfo {
@@ -138,10 +141,17 @@ export function deleteSession(sessionId: string) {
   return api(`/api/session?session_id=${sessionId}`, { method: 'DELETE' })
 }
 
-export function startTask(sessionId: string, prompt: string, mode = 'chat') {
-  return api<{ session_id: string; status: string; mode: string }>('/api/task', {
+export function startTask(sessionId: string, prompt: string, mode = 'chat', resume = false) {
+  return api<{ session_id: string; status: string; mode: string; resume?: boolean }>('/api/task', {
     method: 'POST',
-    body: JSON.stringify({ session_id: sessionId, prompt, mode }),
+    body: JSON.stringify({ session_id: sessionId, prompt, mode, resume }),
+  })
+}
+
+// 暂停当前运行的 agent（kill 子进程，断点保留在 .chat/working.jsonl）
+export function pauseTask(sessionId: string) {
+  return api<{ session_id: string; status: string }>('/api/task/pause?session_id=' + encodeURIComponent(sessionId), {
+    method: 'POST',
   })
 }
 
@@ -152,9 +162,9 @@ export function prepareModWorkspace(sessionId: string) {
   })
 }
 
-// 会话对话历史（多轮聊天的 user/assistant 消息对）
+// 会话对话历史（多轮聊天的 user/assistant 消息对）+ 模式推断
 export function getConversation(sessionId: string) {
-  return api<{ session_id: string; messages: { role: string; content: string }[] }>(
+  return api<{ session_id: string; messages: { role: string; content: string }[]; mode: 'chat' | 'mod' | null }>(
     `/api/conversation?session_id=${encodeURIComponent(sessionId)}`,
   )
 }

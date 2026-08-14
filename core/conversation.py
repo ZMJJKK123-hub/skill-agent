@@ -25,6 +25,8 @@ logger = logging.getLogger("agent")
 
 CHAT_DIR_NAME = ".chat"
 CONVERSATION_FILE = "conversation.jsonl"
+WORKING_FILE = "working.jsonl"    # 当前轮完整断点（含工具中间状态，暂停/继续用）
+PENDING_FILE = "pending.jsonl"    # 运行中用户插入的消息队列（排队等当前轮跑完）
 
 # 恢复时最多回放多少轮历史（防止无限膨胀：旧轮次被压缩为摘要）
 MAX_HISTORY_ROUNDS = 20
@@ -119,3 +121,118 @@ def reset(session_root: str | os.PathLike) -> None:
         logger.info(f"conversation.reset | 已清空 {path}")
     except OSError as e:
         logger.warning(f"conversation.reset 失败: {e}")
+
+
+# ---------- 断点存储（暂停/继续：完整上下文含工具中间状态） ----------
+
+def working_path(session_root: str | os.PathLike) -> Path:
+    return chat_dir(session_root) / WORKING_FILE
+
+
+def save_working(session_root: str | os.PathLike, messages: list) -> None:
+    """把当前轮的完整 messages 持久化为断点（每轮循环开头调用）。
+
+    暂停（杀子进程）后，断点文件仍在磁盘；继续时新子进程
+    原样加载此文件恢复上下文，像没停过一样继续跑。
+    """
+    path = working_path(session_root)
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            for m in messages:
+                f.write(json.dumps(m, ensure_ascii=False) + "\n")
+        logger.info(f"conversation.save_working | 已保存断点 {len(messages)} 条消息")
+    except OSError as e:
+        logger.error(f"conversation.save_working 写入失败: {e}")
+
+
+def load_working(session_root: str | os.PathLike) -> list:
+    """加载断点 messages（恢复模式用）；文件不存在返回 None 表示无断点。"""
+    path = working_path(session_root)
+    if not path.exists():
+        return None
+    messages = []
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    messages.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+    except OSError as e:
+        logger.warning(f"conversation.load_working 读取失败: {e}")
+        return None
+    return messages if messages else None
+
+
+def clear_working(session_root: str | os.PathLike) -> None:
+    """清空断点（正常完成一轮后调用）。"""
+    path = working_path(session_root)
+    try:
+        if path.exists():
+            path.unlink()
+    except OSError:
+        pass
+
+
+# ---------- 运行中插话排队（queue：等当前轮跑完后自动处理） ----------
+
+def pending_path(session_root: str | os.PathLike) -> Path:
+    return chat_dir(session_root) / PENDING_FILE
+
+
+def enqueue_pending(session_root: str | os.PathLike, content: str) -> None:
+    """把运行中用户发来的消息排入队列（当前轮跑完后由前端自动续跑处理）。"""
+    path = pending_path(session_root)
+    try:
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(json.dumps({"role": "user", "content": content}, ensure_ascii=False) + "\n")
+        logger.info(f"conversation.enqueue_pending | 已排队用户消息")
+    except OSError as e:
+        logger.error(f"conversation.enqueue_pending 写入失败: {e}")
+
+
+def drain_pending(session_root: str | os.PathLike) -> list:
+    """读取并清空 pending 队列（agent 每轮开头调用，注入为 user 消息）。"""
+    path = pending_path(session_root)
+    if not path.exists():
+        return []
+    msgs = []
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    m = json.loads(line)
+                    if isinstance(m, dict) and m.get("role") == "user":
+                        msgs.append(m)
+                except json.JSONDecodeError:
+                    continue
+        # 读完即清
+        with open(path, "w", encoding="utf-8") as f:
+            pass
+    except OSError as e:
+        logger.warning(f"conversation.drain_pending 失败: {e}")
+    if msgs:
+        logger.info(f"conversation.drain_pending | 取出 {len(msgs)} 条排队消息")
+    return msgs
+
+
+def pending_count(session_root: str | os.PathLike) -> int:
+    """返回 pending 队列剩余条数（前端轮询判断是否自动续跑）。"""
+    path = pending_path(session_root)
+    if not path.exists():
+        return 0
+    count = 0
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    count += 1
+    except OSError:
+        return 0
+    return count

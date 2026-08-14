@@ -15,7 +15,7 @@ export interface GenSettings {
 
 export interface SessionState {
   sessionId: string | null
-  phase: 'idle' | 'creating' | 'running' | 'finished' | 'error'
+  phase: 'idle' | 'creating' | 'running' | 'paused' | 'finished' | 'error'
   error: string | null
   title: string | null
   question: { question: string; options: string[] } | null
@@ -29,6 +29,9 @@ export interface SessionState {
   // 多轮对话支持：
   mode: 'chat' | 'mod' | null        // 当前会话运行模式（null=未开始）
   chatMessages: { role: string; content: string }[]  // 聊天气泡历史（chat 模式）
+  paused: boolean            // 已暂停（可继续）
+  pending: number            // 运行中排队消息数（>0 时当前轮结束后自动续跑）
+  stoppedNotice: boolean     // 是否显示"您已终止该对话"横线
 }
 
 let state: SessionState = {
@@ -46,6 +49,9 @@ let state: SessionState = {
   history: [],
   mode: null,
   chatMessages: [],
+  paused: false,
+  pending: 0,
+  stoppedNotice: false,
 }
 
 const listeners = new Set<() => void>()
@@ -82,7 +88,22 @@ export async function loadHistory() {
 // 发起对话 → 建新工作区文件夹 → 启动生成 → 开始轮询
 // mode: 'chat'（通用对话，不复制模板）| 'mod'（MOD 制作，需先 prepareModWorkspace）
 export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'chat' | 'mod' = 'chat') {
-  if (state.phase === 'creating' || state.phase === 'running') return
+  // 运行中（creating/running）：消息排队（后端 pending），当前轮结束后自动续跑
+  if (state.phase === 'creating' || state.phase === 'running') {
+    if (state.sessionId) {
+      try {
+        await api.startTask(state.sessionId, prompt, mode)
+        // 本地乐观显示排队消息（chat 模式）
+        setState({
+          chatMessages: [...state.chatMessages, { role: 'user', content: prompt }],
+          pending: state.pending + 1,
+        })
+      } catch (e) {
+        setState({ error: String((e as Error)?.message || e) })
+      }
+    }
+    return
+  }
   setState({
     phase: 'creating',
     error: null,
@@ -92,6 +113,8 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
     elapsed: null,
     logTail: '',
     mode,
+    paused: false,
+    stoppedNotice: false,
   })
   try {
     // 若已有会话（如导入文件夹后），复用；否则建新会话（从零生成）
@@ -129,6 +152,33 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
   }
 }
 
+// 暂停当前运行的 agent（类似 sleep）：kill 子进程，断点已在磁盘
+export async function pauseTask() {
+  const sid = state.sessionId
+  if (!sid) return
+  try {
+    await api.pauseTask(sid)
+    setState({ phase: 'paused', paused: true, stoppedNotice: true })
+    stopPolling()
+  } catch (e) {
+    setState({ error: String((e as Error)?.message || e) })
+  }
+}
+
+// 继续：从断点恢复 agent 运行（新子进程加载 working.jsonl）
+export async function resumeTask() {
+  const sid = state.sessionId
+  if (!sid) return
+  setState({ phase: 'running', paused: false, stoppedNotice: false })
+  try {
+    await api.startTask(sid, '', state.mode ?? 'chat', true)
+    void poll()
+    startPolling(2000)
+  } catch (e) {
+    setState({ phase: 'paused', error: String((e as Error)?.message || e) })
+  }
+}
+
 export async function poll() {
   const sid = state.sessionId
   if (!sid) return
@@ -142,7 +192,9 @@ export async function poll() {
       elapsed: st.elapsed,
       hasJar: st.has_jar,
       logTail: st.log_tail,
-      phase: st.finished ? 'finished' : 'running',
+      paused: st.paused,
+      pending: st.pending ?? 0,
+      phase: st.finished ? 'finished' : st.paused ? 'paused' : 'running',
     })
     // chat 模式：任务结束且还没记录 assistant 回复 → 从 logTail 提取最终回复
     if (st.finished && state.mode === 'chat') {
@@ -153,6 +205,13 @@ export async function poll() {
           setState({ chatMessages: [...state.chatMessages, { role: 'assistant', content: reply }] })
         }
       }
+    }
+    // 当前轮正常跑完 + 有排队消息 → 自动续跑处理排队消息
+    if (st.finished && !st.paused && (st.pending ?? 0) > 0) {
+      const prompts = [...state.prompts, `（自动续跑：处理 ${st.pending} 条排队消息）`]
+      setState({ prompts, phase: 'running', pending: 0 })
+      await api.startTask(sid, '', state.mode ?? 'chat', true)
+      void loadHistory()
     }
     const q = await api.getQuestion(sid)
     if (q.status === 'pending' && q.question) {
@@ -185,11 +244,11 @@ function extractFinalReply(logTail: string): string | null {
   return null
 }
 
-// 打开历史会话时：加载该会话的对话历史（.chat/conversation.jsonl）
+// 打开历史会话时：加载该会话的对话历史（.chat/conversation.jsonl）+ 恢复模式
 export async function loadConversation(sessionId: string) {
   try {
-    const { messages } = await api.getConversation(sessionId)
-    setState({ chatMessages: messages })
+    const { messages, mode } = await api.getConversation(sessionId)
+    setState({ chatMessages: messages, mode: mode ?? state.mode })
   } catch {
     /* 未登录/无历史时忽略 */
   }
@@ -235,14 +294,21 @@ export async function newConversation() {
     logTail: '',
     mode: null,
     chatMessages: [],
+    paused: false,
+    pending: 0,
+    stoppedNotice: false,
   })
   void loadHistory()
 }
 
 // 从历史打开一个会话（查看产物/下载/继续对话，不重新生成）
-export function openHistorySession(id: string) {
-  setState({ sessionId: id, phase: 'finished', events: [], cursor: null, prompts: [], title: null, error: null, mode: null, chatMessages: [] })
-  void loadConversation(id)
+// 关键：先停掉旧轮询，再恢复历史与模式——否则旧进程的 running 状态
+// 会覆盖新会话的显示（实测：记录消失/屏幕空白/状态打架）。
+export async function openHistorySession(id: string) {
+  stopPolling()
+  setState({ sessionId: id, phase: 'idle', events: [], cursor: null, prompts: [], title: null, error: null, mode: null, chatMessages: [], paused: false, pending: 0, stoppedNotice: false })
+  await loadConversation(id)
+  // 单次探测状态：若该会话仍在运行则恢复轮询显示进行中
   void poll()
 }
 
@@ -252,7 +318,7 @@ export async function regenerate() {
   if (!sid) return
   try {
     await api.resetSession(sid)
-    setState({ phase: 'idle', events: [], cursor: null, prompts: [], error: null, hasJar: false, elapsed: null, logTail: '', mode: null, chatMessages: [] })
+    setState({ phase: 'idle', events: [], cursor: null, prompts: [], error: null, hasJar: false, elapsed: null, logTail: '', mode: null, chatMessages: [], paused: false, pending: 0, stoppedNotice: false })
   } catch (e) {
     setState({ error: String((e as Error)?.message || e) })
   }

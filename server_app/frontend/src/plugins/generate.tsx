@@ -1,16 +1,11 @@
 import { PluginManifest, SLOTS } from '../shell/registry'
 import { useT } from '../lib/i18n'
-import { useSession, regenerate } from '../lib/session'
-import { downloadJar, downloadSourceZip } from '../lib/api'
-
-function errMsg(e: unknown): string {
-  return e instanceof Error ? e.message : String(e)
-}
+import { useSession } from '../lib/session'
 
 function GeneratePanel() {
   const t = useT()
   const sess = useSession()
-  const { phase, elapsed, hasJar, sessionId } = sess
+  const { phase, elapsed, sessionId, mode } = sess
 
   return (
     <div className="p-4">
@@ -27,30 +22,15 @@ function GeneratePanel() {
           <span className="text-faint">{elapsed ? `${elapsed}s` : '—'}</span>
         </div>
         <div className="flex justify-between">
+          <span>模式</span>
+          <span className="text-faint">{mode === 'mod' ? 'MOD 制作' : mode === 'chat' ? '普通对话' : '—'}</span>
+        </div>
+        <div className="flex justify-between">
           <span>ID</span>
           <span className="text-faint">{sessionId ? sessionId.slice(0, 8) + '…' : '—'}</span>
         </div>
       </div>
-
-      {phase === 'finished' && sessionId && (
-        <div className="mt-4 space-y-2">
-          <button
-            onClick={() => downloadJar(sessionId).catch((e) => alert(errMsg(e)))}
-            disabled={!hasJar}
-            title={hasJar ? '' : t('conv.noJar')}
-            className="w-full rounded-md bg-forge-500 py-2 text-sm font-medium text-ink-950 hover:bg-forge-400 disabled:opacity-40"
-          >
-            ⬇ {t('conv.downloadJar')}
-          </button>
-          <button onClick={() => downloadSourceZip(sessionId).catch((e) => alert(errMsg(e)))} className="hoverable w-full rounded-md border border-line py-2 text-sm">
-            {t('conv.downloadZip')}
-          </button>
-          <button onClick={() => regenerate()} className="hoverable w-full rounded-md border border-line py-2 text-sm">
-            🔄 {t('conv.regenerate')}
-          </button>
-        </div>
-      )}
-      <p className="mt-2 text-xs text-faint">jar 由后端构建后写入 mod/dist/。</p>
+      <p className="mt-2 text-xs text-faint">jar 由后端构建后写入 mod/dist/；下载按钮在对话底部（mod 模式）。</p>
     </div>
   )
 }

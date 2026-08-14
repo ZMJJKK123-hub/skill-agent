@@ -142,7 +142,8 @@ class SessionRequest(BaseModel):
 class TaskRequest(BaseModel):
     session_id: str
     prompt: str
-    mode: str = "chat"  # chat（通用对话，默认）| mod（MOD 制作）
+    mode: str = "chat"   # chat（通用对话，默认）| mod（MOD 制作）
+    resume: bool = False  # True=从断点恢复继续（暂停后点继续按钮）
 
 
 class AuthRequest(BaseModel):
@@ -538,27 +539,46 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
 
     mode=chat：cwd=会话根目录，通用对话（不要求 mod 模板）；
     mode=mod：cwd=<session>/mod/，MOD 制作（要求 mod 模板已复制）。
+
+    运行中重入（sess.proc 活着）：
+      - resume=True：忽略（调用方应先 pause 再 resume）
+      - resume=False：不抛 409，而是把消息排入 pending 队列，
+        当前轮跑完后由前端自动续跑处理（运行中插话支持）。
     """
     username = _auth_username(authorization)
     sess = _get_session(req.session_id)
     _assert_owner(sess, username)
     if not (sess.api_key and sess.api_key.strip()):
         raise HTTPException(400, "API Key 为空，无法启动任务（用户需填写自己的 DeepSeek API Key）")
-    if not req.prompt.strip():
+    if not req.prompt.strip() and not req.resume:
         raise HTTPException(400, "提示词为空，请填写内容")
-    if sess.proc is not None and sess.proc.poll() is None:
-        raise HTTPException(409, "Task already running for this session")
 
     mode = req.mode if req.mode in ("chat", "mod") else "chat"
     # mod 模式要求 mod/ 已复制模板（/api/session/mod 调用过）
     if mode == "mod" and not (sess.mod_dir.exists() and any(sess.mod_dir.iterdir())):
         raise HTTPException(400, "MOD 工作区尚未准备：请先通过 /mod 触发模板复制")
 
+    # ── 运行中重入：排队（不 409）──
+    if sess.proc is not None and sess.proc.poll() is None:
+        if req.resume:
+            raise HTTPException(409, "Task already running；请先暂停再继续")
+        try:
+            from core.conversation import enqueue_pending
+            enqueue_pending(sess.mod_dir.parent, req.prompt)
+        except Exception:
+            raise HTTPException(500, "排队消息写入失败")
+        return {"session_id": sess.id, "status": "queued", "mode": mode}
+
+    # ── 恢复模式：从断点继续（暂停后点继续按钮）──
+    if req.resume:
+        # 校验断点存在（没有断点则回退普通启动，由 run_task 决定）
+        pass
+
     # 工作目录：chat 模式 = 会话根目录；mod 模式 = mod/ 子目录
     work_dir = sess.mod_dir if mode == "mod" else sess.mod_dir.parent
 
     # 提示词里补充上下文（agent 在哪、产出物要求）——仅 mod 模式加 mod 制作上下文
-    if mode == "mod":
+    if mode == "mod" and not req.resume:
         prompt = (
             f"你是一个 MOD 制作器。请在当前工作目录（{sess.mod_dir}）下"
             f"为游戏生成一个满足以下需求的 MOD。\n"
@@ -568,27 +588,76 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
     else:
         prompt = req.prompt
 
+    # prompt 写入 UTF-8 临时文件（绕开 Windows 子进程 argv 的 GBK 编码损坏中文）
+    prompt_file = None
+    env_extra = {}
+    if prompt:
+        import tempfile as _tempfile
+        try:
+            fd, prompt_file = _tempfile.mkstemp(suffix=".prompt.txt", prefix="dsh_")
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(prompt)
+            env_extra["DSH_PROMPT_FILE"] = prompt_file
+        except OSError as e:
+            raise HTTPException(500, f"提示词临时文件写入失败: {e}")
+
     # 启动隔离子进程：cwd 切到工作目录（run_task.py 内部 os.chdir）。
     # PYTHONUNBUFFERED=1：强制子进程 stdout 无缓冲，否则 print 会积压到
     # ~8KB 才写盘（前端要等 20 秒才能看到思考过程）。这是实时日志的关键。
-    proc = subprocess.Popen(
-        [sys.executable, str(RUN_TASK),
-         str(work_dir), sess.api_key, prompt],
-        cwd=str(BASE_DIR),
-        stdout=open(sess.log_path, "w", encoding="utf-8"),
-        stderr=subprocess.STDOUT,
-        env={**os.environ, "PYTHONUNBUFFERED": "1",
-             "DSH_MODEL": sess.model, "DSH_BASE_URL": sess.base_url,
-             "DSH_SANDBOX_MODE": sess.sandbox,
-             "DSH_MODE": mode,
-             "DSH_SESSION_ROOT": str(sess.mod_dir.parent)},
-    )
+    try:
+        proc = subprocess.Popen(
+            [sys.executable, str(RUN_TASK),
+             str(work_dir), sess.api_key],
+            cwd=str(BASE_DIR),
+            stdout=open(sess.log_path, "w", encoding="utf-8"),
+            stderr=subprocess.STDOUT,
+            env={**os.environ, "PYTHONUNBUFFERED": "1",
+                 "DSH_MODEL": sess.model, "DSH_BASE_URL": sess.base_url,
+                 "DSH_SANDBOX_MODE": sess.sandbox,
+                 "DSH_MODE": mode,
+                 "DSH_SESSION_ROOT": str(sess.mod_dir.parent),
+                 "DSH_RESUME": "1" if req.resume else "0",
+                 **env_extra},
+        )
+    except Exception:
+        if prompt_file:
+            try:
+                os.unlink(prompt_file)
+            except OSError:
+                pass
+        raise
     sess.proc = proc
     sess.started_at = time.time()
     sess.finished_at = None
     sess.result = None
     sess.event_cursor = None
-    return {"session_id": sess.id, "status": "started", "mode": mode}
+    # 注意：prompt 临时文件由 run_task.py 读取后自行删除。
+    # 这里绝不能提前 unlink——Windows 上子进程启动有延迟，
+    # 立即删除会导致 run_task 读取失败（实测：agent 直接退出，
+    # 前端表现为"进行中"闪现后消失、输入无反应）。
+    return {"session_id": sess.id, "status": "started", "mode": mode, "resume": req.resume}
+
+
+@app.post("/api/task/pause")
+def pause_task(session_id: str, authorization: str = Header(default="")):
+    """暂停当前运行的 agent（类似 sleep，不是杀掉整个 agent）。
+
+    子进程被 kill，但断点已由 agent 每轮写入 .chat/working.jsonl；
+    用户点"继续"时 start_task(resume=True) 从断点原样恢复继续跑。
+    """
+    username = _auth_username(authorization)
+    sess = _get_session(session_id)
+    _assert_owner(sess, username)
+    if sess.proc is None or sess.proc.poll() is not None:
+        return {"session_id": session_id, "status": "not-running"}
+    try:
+        sess.proc.kill()
+        sess.proc.wait(timeout=5)
+    except Exception:
+        pass
+    sess.proc = None
+    # finished_at 保持 None：暂停 ≠ 完成，前端据此显示"已终止/继续"状态
+    return {"session_id": session_id, "status": "paused"}
 
 
 @app.get("/api/session")
@@ -616,10 +685,21 @@ def get_status(session_id: str, authorization: str = Header(default="")):
             sess.result = log_tail  # 简单起见：日志尾部即结果（可优化）
             sess.finished_at = time.time()
     stats = _session_stats(sess)
+    # 暂停状态：进程被 pause 杀掉但断点仍在 → 前端显示"已终止，可继续"
+    paused = sess.proc is None and (sess.mod_dir.parent / ".chat" / "working.jsonl").exists()
+    # 排队消息数：运行中用户插入、待当前轮跑完后自动续跑处理
+    pending = 0
+    try:
+        from core.conversation import pending_count
+        pending = pending_count(sess.mod_dir.parent)
+    except Exception:
+        pass
     return {
         "session_id": session_id,
         "running": running,
         "finished": finished,
+        "paused": paused,
+        "pending": pending,
         "started_at": sess.started_at,
         "finished_at": sess.finished_at,
         "log_tail": log_tail,
@@ -771,10 +851,12 @@ def get_events(session_id: str, cursor: str = "", authorization: str = Header(de
 
 @app.get("/api/conversation")
 def get_conversation(session_id: str, authorization: str = Header(default="")):
-    """返回会话的对话历史（多轮聊天的 user/assistant 消息对）。
+    """返回会话的对话历史（多轮聊天的 user/assistant 消息对）+ 模式推断。
 
     历史存于 <session_root>/.chat/conversation.jsonl，由 core/conversation.py
-    维护（chat 模式每一轮追加 user + assistant）。mod 模式无历史时返回空列表。
+    维护（chat 模式每一轮追加 user + assistant）。
+    mode 推断：mod/ 已复制模板 → 'mod'；有 .chat 历史 → 'chat'；否则 None。
+    前端打开历史会话时据此恢复正确的展示模式。
     """
     username = _auth_username(authorization)
     sess = _get_session(session_id)
@@ -797,7 +879,16 @@ def get_conversation(session_id: str, authorization: str = Header(default="")):
                         messages.append(msg)
         except OSError:
             pass
-    return {"session_id": session_id, "messages": messages}
+    # 模式推断：mod 模板已复制 → mod；有对话历史 → chat
+    mode = None
+    try:
+        if sess.mod_dir.exists() and any(sess.mod_dir.iterdir()):
+            mode = "mod"
+    except OSError:
+        pass
+    if mode is None and messages:
+        mode = "chat"
+    return {"session_id": session_id, "messages": messages, "mode": mode}
 
 
 @app.get("/api/files")
@@ -927,8 +1018,34 @@ def list_sessions(authorization: str = Header(default="")):
                 date = datetime.datetime.fromtimestamp(child.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
             except OSError:
                 pass
-            out.append({"sessionId": child.name, "owner": owner, "has_jar": has_jar, "date": date})
+            # 标题：优先 .chat/conversation.jsonl 的首条 user 消息（截断 24 字），
+            # 无对话记录时回退为会话 ID 前 8 位（保持可识别）。
+            title = _session_title(child)
+            out.append({"sessionId": child.name, "owner": owner, "has_jar": has_jar, "date": date, "title": title})
     return {"sessions": out}
+
+
+def _session_title(child: Path) -> str:
+    """从会话目录推导展示标题：首条 user 消息截断，无则用 ID 前缀。"""
+    conv_path = child / ".chat" / "conversation.jsonl"
+    if conv_path.exists():
+        try:
+            with open(conv_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        msg = json.loads(line)
+                    except Exception:
+                        continue
+                    if isinstance(msg, dict) and msg.get("role") == "user":
+                        text = str(msg.get("content", "")).strip()
+                        if text:
+                            return text if len(text) <= 24 else text[:24] + "…"
+        except OSError:
+            pass
+    return child.name[:8]
 
 
 @app.get("/api/question")

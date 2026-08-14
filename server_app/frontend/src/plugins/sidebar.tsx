@@ -21,9 +21,9 @@ export const sidebarPlugin: PluginManifest = {
 
     ctx.slots.inject(SLOTS.sidebarWorkspaces, 'workspaces', (props: any) => {
       const { activeWorkspace } = useUi()
-      const { title } = useSession()
       const t = useT()
-      const label = title ?? t('nav.newChat')
+      // 固定显示"新对话"（不跟随当前会话 title）
+      const label = t('nav.newChat')
       return (
         <div className="px-2 py-3">
           <div className="mb-2 px-1 text-xs text-faint">
@@ -60,6 +60,9 @@ export const sidebarPlugin: PluginManifest = {
       if (props?.collapsed) return <div className="px-2 py-3" />
 
       const remove = async (id: string) => {
+        // 删除不可恢复，先弹确认
+        const ok = window.confirm('确定删除该会话吗？删除后无法恢复。')
+        if (!ok) return
         try {
           await deleteSession(id)
           await loadHistory()
@@ -86,7 +89,7 @@ export const sidebarPlugin: PluginManifest = {
                     }}
                     className="flex-1 overflow-hidden rounded px-2 py-1.5 text-left text-sm text-muted hoverable"
                   >
-                    <div className="truncate">{h.sessionId}</div>
+                    <div className="truncate">{h.title || h.sessionId.slice(0, 8)}</div>
                     <div className="flex items-center gap-1 text-[10px] text-faint">
                       <span>{h.date}</span>
                       {h.has_jar && <span className="text-forge-400">· jar ✓</span>}

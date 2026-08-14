@@ -159,14 +159,29 @@ def main() -> int:
         except (AttributeError, ValueError, OSError):
             pass
 
-    # 参数：会话目录（工作区）、用户自己的 API Key、任务提示词
-    if len(sys.argv) < 4:
-        print("Usage: python run_task.py <session_dir> <api_key> <task_prompt>")
+    # 参数：会话目录（工作区）、用户自己的 API Key
+    # 任务提示词：优先从 DSH_PROMPT_FILE（UTF-8 临时文件，server 写入）读取——
+    # 避免 Windows 子进程 argv 的 GBK 编码损坏中文；无该环境变量时回退 argv[3]。
+    if len(sys.argv) < 3:
+        print("Usage: python run_task.py <session_dir> <api_key> [task_prompt]")
         return 1
 
     session_dir = Path(sys.argv[1]).resolve()
     api_key = sys.argv[2]
-    task_prompt = sys.argv[3]
+    prompt_file = os.environ.get("DSH_PROMPT_FILE", "")
+    if prompt_file:
+        try:
+            task_prompt = Path(prompt_file).read_text(encoding="utf-8")
+            # 读完后删除临时文件（server 不再管它）
+            try:
+                Path(prompt_file).unlink()
+            except OSError:
+                pass
+        except OSError as e:
+            print(f"[run_task] 读取提示词文件失败: {e}", flush=True)
+            return 1
+    else:
+        task_prompt = sys.argv[3] if len(sys.argv) >= 4 else ""
 
     # 模式：chat（默认，通用对话）| mod（MOD 制作，由 server 注入 DSH_MODE）
     mode = os.environ.get("DSH_MODE", "chat")
@@ -183,6 +198,18 @@ def main() -> int:
     # 2. 注入用户自己的 API Key（只在用户自己机器/会话里生效，不落盘）
     os.environ["DEEPSEEK_API_KEY"] = api_key
 
+    # 2.5 立即把用户消息写入对话历史（必须在 import agent 之前！）
+    #     agent import 要 7-8 秒（openai SDK），若等 import 完再写，
+    #     用户发消息后立刻点开历史会话会读到空记录（实测 bug）。
+    #     conversation 模块很轻，不触发 openai，可安全提前导入。
+    #     chat 和 mod 模式都写：历史会话打开时能显示用户 prompt 气泡。
+    if mode in ("chat", "mod"):
+        try:
+            from core.conversation import append_user as _early_append_user
+            _early_append_user(session_root_path, task_prompt or "")
+        except Exception as e:
+            print(f"[run_task] 提前写入历史失败: {e}", flush=True)
+
     # 3. 延迟导入核心 agent（此时 cwd 已切好，config.WORKDIR 才会正确）
     #    重构后从 core 包导入
     try:
@@ -191,30 +218,52 @@ def main() -> int:
         print(f"[run_task] 导入 agent 失败: {e}", flush=True)
         return 1
 
-    # 4. 组装 messages：chat 模式加载历史对话 + 当前 prompt；mod 模式直接当前 prompt
+    # 4. 组装 messages
+    #    - 恢复模式（DSH_RESUME=1）：从 .chat/working.jsonl 原样加载断点（暂停/继续）
+    #    - chat 模式：加载历史对话 + 当前 prompt
+    #    - mod 模式：直接当前 prompt
+    #    - 若运行中排队的消息尚未被 agent 消费（例如恢复时队列里有消息），
+    #      会由 agent_loop 每轮开头的 _drain_interjections 自动注入
     messages = []
-    if mode == "chat":
+    resume = os.environ.get("DSH_RESUME", "") == "1"
+    if resume:
         try:
-            from core.conversation import load_recent_history, append_user, append_assistant
-            messages = load_recent_history(session_root_path)
+            from core.conversation import load_working
+            loaded = load_working(session_root_path)
+            if loaded:
+                messages = loaded
+                print(f"[run_task] 恢复模式 | 已从断点加载 {len(messages)} 条消息", flush=True)
+            else:
+                print(f"[run_task] 恢复模式但无断点，回退到普通启动", flush=True)
         except Exception as e:
-            print(f"[run_task] 加载对话历史失败（继续，仅当前 prompt）: {e}", flush=True)
-            messages = []
-        # 把当前 prompt 作为本轮 user 消息
-        messages.append({"role": "user", "content": task_prompt})
-        try:
-            append_user(session_root_path, task_prompt)
-        except Exception as e:
-            print(f"[run_task] 追加历史失败: {e}", flush=True)
-    else:
-        messages = [{"role": "user", "content": task_prompt}]
+            print(f"[run_task] 断点加载失败（回退普通启动）: {e}", flush=True)
+    if not messages:
+        if mode == "chat":
+            try:
+                from core.conversation import load_recent_history
+                messages = load_recent_history(session_root_path)
+            except Exception as e:
+                print(f"[run_task] 加载对话历史失败（继续，仅当前 prompt）: {e}", flush=True)
+                messages = []
+            # 把当前 prompt 作为本轮 user 消息（历史已在步骤 2.5 提前写入，
+            # 这里只组装进模型上下文，不重复 append）
+            messages.append({"role": "user", "content": task_prompt})
+        else:
+            messages = [{"role": "user", "content": task_prompt}]
 
     # 5. 跑完整 agent 循环
     final = agent_loop(messages)
     print(f"[run_task] 完成，最终回复:\n{final}", flush=True)
 
-    # 6. chat 模式：把最终回复追加进对话历史（供下一轮继续）
-    if mode == "chat":
+    # 5.5 正常完成：清掉断点文件（一轮真正结束，不再需要断点恢复）
+    try:
+        from core.conversation import clear_working
+        clear_working(session_root_path)
+    except Exception as e:
+        print(f"[run_task] 清断点失败: {e}", flush=True)
+
+    # 6. 把最终回复追加进对话历史（chat 和 mod 模式都写，供历史会话展示）
+    if mode in ("chat", "mod"):
         try:
             from core.conversation import append_assistant as _append_assistant
             _append_assistant(session_root_path, final or "")

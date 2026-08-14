@@ -34,6 +34,37 @@ LEADER_TOOLS = [t for t in TOOLS if t["function"]["name"] != "submit_plan"]
 # 收尾 jar 构建与 zip 预生成——这些只在 mod 制作模式有意义。
 IS_MOD_MODE = MODE == "mod"
 
+# 会话根目录（.chat/ 断点与队列所在处）：由 server 通过 DSH_SESSION_ROOT 注入。
+# agent 的 cwd 可能在会话根（chat）或 mod/（mod 模式），断点永远落在会话根，
+# 因此这里显式读取环境变量而不是依赖 Path.cwd()。
+SESSION_ROOT = os.environ.get("DSH_SESSION_ROOT", "")
+
+
+def _save_checkpoint(messages: list) -> None:
+    """把当前轮 messages 存为断点（每轮循环开头）。"""
+    if not SESSION_ROOT:
+        return
+    try:
+        from .conversation import save_working
+        save_working(SESSION_ROOT, messages)
+    except Exception as e:
+        logger.warning(f"断点保存失败: {e}")
+
+
+def _drain_interjections(messages: list) -> None:
+    """读取运行中用户插入的排队消息并注入上下文（每轮循环开头）。"""
+    if not SESSION_ROOT:
+        return
+    try:
+        from .conversation import drain_pending
+        pending = drain_pending(SESSION_ROOT)
+        if pending:
+            for m in pending:
+                messages.append(m)
+            logger.info(f"注入 {len(pending)} 条运行中用户插入消息")
+    except Exception as e:
+        logger.warning(f"排队消息注入失败: {e}")
+
 
 def agent_loop(messages: list) -> str:
     rounds_since_todo = 0
@@ -62,6 +93,12 @@ def agent_loop(messages: list) -> str:
                     messages.append({"role": "user", "content": block})
                     logger.info(f"注入监管信息 type={sv['type']}:\n{block}")
             supervisor_manager.notify_round()  # 计数 + 每 5 轮触发一次监管分析
+
+        # ── Layer 0c2: 断点保存 + 运行中插话注入（暂停/继续 与 queue 支持）──
+        # 每轮开头把完整 messages 落盘（断点）；继续时新进程原样恢复。
+        # 同时把运行中用户插入的排队消息读入上下文。
+        _save_checkpoint(messages)
+        _drain_interjections(messages)
 
         # ── Layer 0: 排空后台通知（第 8 课）──
         # 在 micro_compact 之前注入，让通知作为新数据参与后续 compact 估算
