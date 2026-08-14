@@ -1,8 +1,10 @@
 import json
 
-from .config import client, MODEL, SUBAGENT_SYSTEM, MAX_SUBAGENT_TURNS, logger
+from .config import client, MODEL, SUBAGENT_SYSTEM, MAX_SUBAGENT_TURNS, logger, MODE
 from .tools import TOOLS, TOOL_HANDLERS
 from .skillcheck import init_per_loop, run_loop_check, move_skills_to_end
+
+IS_MOD_MODE = MODE == "mod"
 
 
 # ---------- Subagent 执行函数 ----------
@@ -51,7 +53,8 @@ def run_subagent(prompt: str) -> str:
             logger.info(f"subagent reasoning:\n{reasoning}")
 
         sub_messages.append(message.to_dict())
-        if choice.finish_reason != "tool_calls":
+        # skill-source 引用校验仅 mod 模式生效（chat 模式普通子任务无需引用块）
+        if choice.finish_reason != "tool_calls" and IS_MOD_MODE:
             if not run_loop_check("subagent", message.content, sub_messages):
                 continue
         logger.info(f"subagent finish_reason={choice.finish_reason}")

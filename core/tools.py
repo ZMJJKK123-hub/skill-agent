@@ -145,7 +145,8 @@ def _is_mod_file(path: str) -> bool:
 def run_write(path: str, content: str) -> str:
     if _sandbox_mode() == "read-only":
         return "Error: read-only 模式禁止写入文件"
-    if _is_mod_file(path) and not any_loaded():
+    # MOD 文件 skill 前置检查仅 mod 模式生效；chat 模式写普通文件不受限
+    if config.MODE == "mod" and _is_mod_file(path) and not any_loaded():
         return ("Error: MOD 文件禁止无技能依据写入。请先调用 load_skill 加载相关技能"
                 "（如 forge-items / forge-blocks / forge-resources-* / forge-networking），再重试。")
     try:
@@ -161,7 +162,8 @@ def run_write(path: str, content: str) -> str:
 def run_edit(path: str, old_text: str, new_text: str) -> str:
     if _sandbox_mode() == "read-only":
         return "Error: read-only 模式禁止修改文件"
-    if _is_mod_file(path) and not any_loaded():
+    # MOD 文件 skill 前置检查仅 mod 模式生效；chat 模式改普通文件不受限
+    if config.MODE == "mod" and _is_mod_file(path) and not any_loaded():
         return ("Error: MOD 文件禁止无技能依据修改。请先调用 load_skill 加载相关技能"
                 "（如 forge-items / forge-blocks / forge-resources-* / forge-networking），再重试。")
     try:
@@ -1423,7 +1425,8 @@ class TeammateManager:
                 logger.info(f"teammate reasoning:\n{reasoning}")
 
             sub_messages.append(message.to_dict())
-            if choice.finish_reason != "tool_calls":
+            # skill-source 引用校验仅 mod 模式生效（chat 模式队友任务无需引用块）
+            if choice.finish_reason != "tool_calls" and config.MODE == "mod":
                 if not run_loop_check("teammate", message.content, sub_messages):
                     continue
             logger.info(f"teammate finish_reason={choice.finish_reason}")

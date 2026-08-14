@@ -1,7 +1,7 @@
 import json
 import os
 
-from .config import client, MODEL, SYSTEM, logger
+from .config import client, MODEL, SYSTEM, logger, MODE
 from .tools import (
     TOOLS, TOOL_HANDLERS, task_manager, todo_manager, bg_manager,
     format_background_results, teammate_manager,
@@ -29,12 +29,19 @@ TOOL_HANDLERS["task"] = lambda **kw: run_subagent(kw["prompt"])
 # 否则 _agent_id 缺省 "unknown"，审批回执会发到不存在的收件箱。
 LEADER_TOOLS = [t for t in TOOLS if t["function"]["name"] != "submit_plan"]
 
+# chat 模式（通用对话）跳过所有 MOD 专属逻辑：
+# 监管线程 / KNOWN_ISSUES 强制注入 / skill-source 引用校验 / GameTest 核查 /
+# 收尾 jar 构建与 zip 预生成——这些只在 mod 制作模式有意义。
+IS_MOD_MODE = MODE == "mod"
+
 
 def agent_loop(messages: list) -> str:
     rounds_since_todo = 0
     # ── 第 13 课：代码强制派发监管 Agent（不依赖主 agent 主动调 task）──
     # 每次任务开始必然启动后台监管线程；幂等（已在跑则不重复启动）。
-    supervisor_manager.start()
+    # 仅 mod 模式：监管线程的规则全部围绕 run.log / GameTest / 技能纪律。
+    if IS_MOD_MODE:
+        supervisor_manager.start()
     # 绕圈修复：每个任务首轮强制注入 KNOWN_ISSUES.md 读取步骤。
     # 之前仅靠 SYSTEM prompt 软性要求（"BEFORE starting any work, run_read
     # KNOWN_ISSUES.md"），模型实际从未读过——而该文件第 25-28 行明确写着
@@ -46,14 +53,15 @@ def agent_loop(messages: list) -> str:
         # 后台监管线程发现异常会写信箱；这里读后即删，按严重度
         # 以 <supervisor-advice>（温和）或 <supervisor-alert>（警告）注入。
         # 放在最前面：让监管信息先于后台通知/队友汇报进入上下文。
-        supervisor_msgs = supervisor_manager.drain_advice()
-        if supervisor_msgs:
-            for sv in supervisor_msgs:
-                tag = "supervisor-alert" if sv["type"] == "alert" else "supervisor-advice"
-                block = f"<{tag}>\n{sv['content']}\n</{tag}>"
-                messages.append({"role": "user", "content": block})
-                logger.info(f"注入监管信息 type={sv['type']}:\n{block}")
-        supervisor_manager.notify_round()  # 计数 + 每 5 轮触发一次监管分析
+        if IS_MOD_MODE:
+            supervisor_msgs = supervisor_manager.drain_advice()
+            if supervisor_msgs:
+                for sv in supervisor_msgs:
+                    tag = "supervisor-alert" if sv["type"] == "alert" else "supervisor-advice"
+                    block = f"<{tag}>\n{sv['content']}\n</{tag}>"
+                    messages.append({"role": "user", "content": block})
+                    logger.info(f"注入监管信息 type={sv['type']}:\n{block}")
+            supervisor_manager.notify_round()  # 计数 + 每 5 轮触发一次监管分析
 
         # ── Layer 0: 排空后台通知（第 8 课）──
         # 在 micro_compact 之前注入，让通知作为新数据参与后续 compact 估算
@@ -78,10 +86,9 @@ def agent_loop(messages: list) -> str:
             logger.info(f"注入队友汇报:\n{teammate_report}")
 
         # ── Layer 0b2: 强制 KNOWN_ISSUES 首轮注入（绕圈修复）──
-        # 每个任务只注入一次：要求模型第一件事就是 run_read KNOWN_ISSUES.md，
-        # 该文件是环境事实来源（优先级最高），尤其规定了 GameTest 自检套路。
-        # 放在 inject_pending_requests 之前，让模型在系统事件里最先看到它。
-        if not _known_issues_injected:
+        # 仅 mod 模式：chat 模式没有模板 KNOWN_ISSUES.md，注入只会让模型
+        # 陷入"找不到文件"的绕圈（实测：chat 模式发 hi 卡在找 KNOWN_ISSUES）。
+        if IS_MOD_MODE and not _known_issues_injected:
             _known_issues_injected = True
             messages.append({"role": "user", "content": (
                 "<mandatory-first-step> 开工前必须先 run_read KNOWN_ISSUES.md "
@@ -128,7 +135,9 @@ def agent_loop(messages: list) -> str:
 
         # 记录助手回复（只记录 content/tool_calls，不含 reasoning）
         messages.append(message.to_dict())
-        if choice.finish_reason != "tool_calls":
+        # ── skill-source 引用校验（仅 mod 模式）──
+        # chat 模式：普通对话无需 <skill-source> 引用块，跳过校验直接通过。
+        if choice.finish_reason != "tool_calls" and IS_MOD_MODE:
             if not run_loop_check("main", message.content, messages):
                 continue
         logger.info(f"finish_reason={choice.finish_reason}")
@@ -152,6 +161,11 @@ def agent_loop(messages: list) -> str:
                 continue
 
             logger.info(f"循环结束，最终回复:\n{message.content}")
+
+            # ── chat 模式：普通对话直接返回（不核查 GameTest、不构建 jar/zip）──
+            if not IS_MOD_MODE:
+                return message.content
+
             # ── GameTest 强制核查（C 组合：未跑通 GameTest 自循环则禁止完成）──
             _gametest_ok = True
             try:
@@ -224,7 +238,8 @@ def agent_loop(messages: list) -> str:
                 logger.info(f"源码 zip 预生成跳过: {_e}")
 
             # ── 收尾：停止监管线程（防泄漏；daemon 兜底不会挂进程）──
-            supervisor_manager.stop()
+            if IS_MOD_MODE:
+                supervisor_manager.stop()
 
             return message.content
 
