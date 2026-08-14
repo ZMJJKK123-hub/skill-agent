@@ -138,11 +138,25 @@ export function deleteSession(sessionId: string) {
   return api(`/api/session?session_id=${sessionId}`, { method: 'DELETE' })
 }
 
-export function startTask(sessionId: string, prompt: string) {
-  return api<{ session_id: string; status: string }>('/api/task', {
+export function startTask(sessionId: string, prompt: string, mode = 'chat') {
+  return api<{ session_id: string; status: string; mode: string }>('/api/task', {
     method: 'POST',
-    body: JSON.stringify({ session_id: sessionId, prompt }),
+    body: JSON.stringify({ session_id: sessionId, prompt, mode }),
   })
+}
+
+// 准备 mod 工作区：复制模板+MC 源码到 <session>/mod/（/mod 触发，幂等）
+export function prepareModWorkspace(sessionId: string) {
+  return api<{ session_id: string; mod_ready: boolean; already: boolean }>('/api/session/mod?session_id=' + encodeURIComponent(sessionId), {
+    method: 'POST',
+  })
+}
+
+// 会话对话历史（多轮聊天的 user/assistant 消息对）
+export function getConversation(sessionId: string) {
+  return api<{ session_id: string; messages: { role: string; content: string }[] }>(
+    `/api/conversation?session_id=${encodeURIComponent(sessionId)}`,
+  )
 }
 
 // ── 状态 / 事件 ──

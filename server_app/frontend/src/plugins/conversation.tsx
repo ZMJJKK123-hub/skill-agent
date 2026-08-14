@@ -37,7 +37,7 @@ function Messages() {
   const { user, apiKey } = useUi()
   const t = useT()
   const sess = useSession()
-  const { phase, prompts, events, elapsed, hasJar, error } = sess
+  const { phase, prompts, events, elapsed, hasJar, error, mode, chatMessages } = sess
 
   useEffect(() => {
     if (phase === 'running') {
@@ -52,6 +52,39 @@ function Messages() {
     return <EmptyState loggedIn={!!user} configured={!!apiKey} />
   }
 
+  // chat 模式：聊天气泡展示（用户消息 + agent 回复）
+  if (mode === 'chat') {
+    return (
+      <div className="mx-auto max-w-3xl space-y-4 p-4">
+        <div className="space-y-3">
+          {chatMessages.map((m, i) => (
+            <div key={i} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
+              <div
+                className={
+                  m.role === 'user'
+                    ? 'max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-forge-500 px-4 py-2 text-sm text-ink-950'
+                    : 'max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm border border-line bg-panel px-4 py-2 text-sm'
+                }
+              >
+                {m.content}
+              </div>
+            </div>
+          ))}
+          {phase === 'running' && (
+            <div className="flex justify-start">
+              <div className="rounded-2xl rounded-bl-sm border border-line bg-panel px-4 py-2 text-sm text-faint">
+                {t('conv.running')}
+                {elapsed ? ` · ${elapsed}s` : ''}…
+              </div>
+            </div>
+          )}
+          {error && <div className="text-sm text-red-400">{errMsg(error)}</div>}
+        </div>
+      </div>
+    )
+  }
+
+  // mod 模式：原有事件流面板
   return (
     <div className="mx-auto max-w-3xl space-y-4 p-4">
       {prompts.map((p, i) => (
@@ -192,7 +225,24 @@ function Composer() {
     const prompt = text.trim()
     if (!prompt || busy) return
     const r = resolveModelConfig({ apiKey, model, providers })
-    sendPrompt(prompt, { apiKey: r.apiKey, baseUrl: r.baseUrl, model: r.model, game: 'minecraft', loader: 'forge', version, sandbox })
+    const settings = { apiKey: r.apiKey, baseUrl: r.baseUrl, model: r.model, game: 'minecraft', loader: 'forge', version, sandbox }
+
+    // /mod 拦截：固定格式触发 mod 制作模式
+    if (prompt.startsWith('/mod')) {
+      const modPrompt = prompt.slice(4).trim()
+      if (!modPrompt) {
+        alert('用法：/mod <你的 MOD 需求描述>，例如：/mod 做一把钻石剑')
+        return
+      }
+      const ok = window.confirm(`即将复制 MOD 模板与 MC 源码，开始制作 MOD：\n\n“${modPrompt.slice(0, 80)}${modPrompt.length > 80 ? '…' : ''}”\n\n确认开始吗？`)
+      if (!ok) return
+      void sendPrompt(modPrompt, settings, 'mod')
+      setText('')
+      return
+    }
+
+    // 普通消息：chat 模式（通用对话，不复制模板）
+    sendPrompt(prompt, settings, 'chat')
     setText('')
   }
 

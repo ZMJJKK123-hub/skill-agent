@@ -34,7 +34,7 @@ export const sidebarPlugin: PluginManifest = {
               <button
                 onClick={() => {
                   newConversation()
-                  setUi({ activeWorkspace: null })
+                  setUi({ activeWorkspace: null, toast: t('toast.newChat') })
                 }}
                 title={t('nav.newChat')}
                 className={`block w-full truncate rounded px-2 py-1.5 text-left text-sm ${

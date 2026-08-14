@@ -45,6 +45,7 @@ export interface UiState {
   sandbox: SandboxMode
   providers: Provider[]
   disabledPlugins: string[]
+  toast: string | null
 }
 
 const STORAGE_KEY = 'modforge_ui'
@@ -65,6 +66,7 @@ function loadState(): UiState {
     sandbox: 'full-access',
     providers: [],
     disabledPlugins: [],
+    toast: null,
   }
   try {
     const raw = localStorage.getItem(STORAGE_KEY)

@@ -91,18 +91,18 @@ def _restore_sessions() -> None:
     这样服务重启后，之前的 mod.zip / 产物树 / 事件日志依然可访问（下载、
     文件预览、事件回放），解决“历史记录点下载提示会话不存在”的问题。
     api_key 不落盘 → 恢复的会话置空，下载/回放不受影响。
+
+    兼容普通会话（纯聊天，无 mod/ 子目录）：不再要求 mod 目录存在。
     """
     if not SESSIONS_DIR.exists():
         return
     for child in sorted(SESSIONS_DIR.iterdir()):
         if not child.is_dir():
             continue
-        mod_dir = child / "mod"
-        if not mod_dir.exists():
-            continue
         session_id = child.name
         if session_id in sessions:
             continue
+        mod_dir = child / "mod"
         # 恢复的历史会话：owner 从 owner.txt 读（重启后仍归原用户）
         owner_txt = child / "owner.txt"
         owner = owner_txt.read_text(encoding="utf-8").strip() if owner_txt.exists() else ""
@@ -123,7 +123,7 @@ def _restore_sessions() -> None:
             sess.started_at = run_log.stat().st_mtime - 60
             sess.finished_at = run_log.stat().st_mtime
             sess.result = "（历史会话，未生成 zip）"
-        # 无日志：纯骨架会话，保持 pending
+        # 无日志：纯骨架/纯聊天会话，保持 pending
 
 app = FastAPI(title="MOD Agent 制作器", version="0.1.0")
 
@@ -142,6 +142,7 @@ class SessionRequest(BaseModel):
 class TaskRequest(BaseModel):
     session_id: str
     prompt: str
+    mode: str = "chat"  # chat（通用对话，默认）| mod（MOD 制作）
 
 
 class AuthRequest(BaseModel):
@@ -360,11 +361,14 @@ def _session_stats(sess: Session) -> dict:
 
 @app.post("/api/session")
 def create_session(req: SessionRequest, authorization: str = Header(default="")):
-    """创建会话：复制游戏骨架 → 生成独立 mod 工作区，并绑定当前登录用户。"""
+    """创建会话：轻量创建（不复制模板/源码），仅建目录并绑定当前登录用户。
+
+    mod 模板与 MC 源码在用户输入 /mod 触发时由 POST /api/session/mod 复制。
+    """
     username = _auth_username(authorization)
     session_id = uuid.uuid4().hex[:12]
     mod_dir = SESSIONS_DIR / session_id / "mod"
-    _copy_template(req.game, mod_dir, req.loader, req.version)
+    mod_dir.mkdir(parents=True, exist_ok=True)
     # 持久化归属：重启后恢复会话仍能返回原用户（owner.txt）
     try:
         (mod_dir.parent / "owner.txt").write_text(username, encoding="utf-8")
@@ -374,6 +378,39 @@ def create_session(req: SessionRequest, authorization: str = Header(default=""))
                                   game=req.game, loader=req.loader, version=req.version,
                                   model=req.model, base_url=req.base_url, sandbox=req.sandbox)
     return {"session_id": session_id, "mod_dir": str(mod_dir)}
+
+
+@app.post("/api/session/mod")
+def prepare_mod_session(
+    session_id: str,
+    authorization: str = Header(default=""),
+    api_key: str = Header(default="", alias="X-API-Key"),
+    game: str = "minecraft",
+    loader: str = "forge",
+    version: str = "1.21.11",
+    model: str = "deepseek-v4-flash",
+    base_url: str = "https://api.deepseek.com/v1",
+    sandbox: str = "full-access",
+):
+    """为会话准备 mod 工作区：把模板 + MC 源码复制到 <session>/mod/（幂等）。
+
+    由前端在用户输入 /mod 并确认后调用；复制过（mod/ 有内容）则跳过。
+    api_key/game/loader/version 走 query/header，与会话已存参数一致。
+    """
+    username = _auth_username(authorization)
+    sess = _get_session(session_id)
+    _assert_owner(sess, username)
+
+    # 幂等：mod/ 已存在模板内容则跳过（防止重复 /mod 重复复制）
+    already = False
+    try:
+        if sess.mod_dir.exists() and any(sess.mod_dir.iterdir()):
+            already = True
+    except OSError:
+        pass
+    if not already:
+        _copy_template(sess.game, sess.mod_dir, sess.loader, sess.version)
+    return {"session_id": sess.id, "mod_ready": True, "already": already}
 
 
 @app.post("/api/import")
@@ -497,43 +534,61 @@ def reset_session(session_id: str, authorization: str = Header(default="")):
 
 @app.post("/api/task")
 def start_task(req: TaskRequest, authorization: str = Header(default="")):
-    """为会话启动 agent 子进程（每会话一进程，天然隔离）。"""
+    """为会话启动 agent 子进程（每会话一进程，天然隔离）。
+
+    mode=chat：cwd=会话根目录，通用对话（不要求 mod 模板）；
+    mode=mod：cwd=<session>/mod/，MOD 制作（要求 mod 模板已复制）。
+    """
     username = _auth_username(authorization)
     sess = _get_session(req.session_id)
     _assert_owner(sess, username)
     if not (sess.api_key and sess.api_key.strip()):
         raise HTTPException(400, "API Key 为空，无法启动任务（用户需填写自己的 DeepSeek API Key）")
     if not req.prompt.strip():
-        raise HTTPException(400, "提示词为空，请填写 MOD 需求")
+        raise HTTPException(400, "提示词为空，请填写内容")
     if sess.proc is not None and sess.proc.poll() is None:
         raise HTTPException(409, "Task already running for this session")
 
-    # 提示词里补充 mod 制作上下文（agent 在哪、产出物要求）
-    prompt = (
-        f"你是一个 MOD 制作器。请在当前工作目录（{sess.mod_dir}）下"
-        f"为游戏生成一个满足以下需求的 MOD。\n"
-        f"要求：\n{req.prompt}\n\n"
-        f"请直接创建/修改需要的所有文件，完成后汇总你创建了哪些文件。"
-    )
-    # 启动隔离子进程：cwd 切到该会话的 mod 目录（run_task.py 内部 os.chdir）。
+    mode = req.mode if req.mode in ("chat", "mod") else "chat"
+    # mod 模式要求 mod/ 已复制模板（/api/session/mod 调用过）
+    if mode == "mod" and not (sess.mod_dir.exists() and any(sess.mod_dir.iterdir())):
+        raise HTTPException(400, "MOD 工作区尚未准备：请先通过 /mod 触发模板复制")
+
+    # 工作目录：chat 模式 = 会话根目录；mod 模式 = mod/ 子目录
+    work_dir = sess.mod_dir if mode == "mod" else sess.mod_dir.parent
+
+    # 提示词里补充上下文（agent 在哪、产出物要求）——仅 mod 模式加 mod 制作上下文
+    if mode == "mod":
+        prompt = (
+            f"你是一个 MOD 制作器。请在当前工作目录（{sess.mod_dir}）下"
+            f"为游戏生成一个满足以下需求的 MOD。\n"
+            f"要求：\n{req.prompt}\n\n"
+            f"请直接创建/修改需要的所有文件，完成后汇总你创建了哪些文件。"
+        )
+    else:
+        prompt = req.prompt
+
+    # 启动隔离子进程：cwd 切到工作目录（run_task.py 内部 os.chdir）。
     # PYTHONUNBUFFERED=1：强制子进程 stdout 无缓冲，否则 print 会积压到
     # ~8KB 才写盘（前端要等 20 秒才能看到思考过程）。这是实时日志的关键。
     proc = subprocess.Popen(
         [sys.executable, str(RUN_TASK),
-         str(sess.mod_dir), sess.api_key, prompt],
+         str(work_dir), sess.api_key, prompt],
         cwd=str(BASE_DIR),
         stdout=open(sess.log_path, "w", encoding="utf-8"),
         stderr=subprocess.STDOUT,
         env={**os.environ, "PYTHONUNBUFFERED": "1",
              "DSH_MODEL": sess.model, "DSH_BASE_URL": sess.base_url,
-             "DSH_SANDBOX_MODE": sess.sandbox},
+             "DSH_SANDBOX_MODE": sess.sandbox,
+             "DSH_MODE": mode,
+             "DSH_SESSION_ROOT": str(sess.mod_dir.parent)},
     )
     sess.proc = proc
     sess.started_at = time.time()
     sess.finished_at = None
     sess.result = None
     sess.event_cursor = None
-    return {"session_id": sess.id, "status": "started"}
+    return {"session_id": sess.id, "status": "started", "mode": mode}
 
 
 @app.get("/api/session")
@@ -712,6 +767,37 @@ def get_events(session_id: str, cursor: str = "", authorization: str = Header(de
         "events": result["events"],
         "cursor": result["cursor"],
     }
+
+
+@app.get("/api/conversation")
+def get_conversation(session_id: str, authorization: str = Header(default="")):
+    """返回会话的对话历史（多轮聊天的 user/assistant 消息对）。
+
+    历史存于 <session_root>/.chat/conversation.jsonl，由 core/conversation.py
+    维护（chat 模式每一轮追加 user + assistant）。mod 模式无历史时返回空列表。
+    """
+    username = _auth_username(authorization)
+    sess = _get_session(session_id)
+    _assert_owner(sess, username)
+    history_path = sess.mod_dir.parent / ".chat" / "conversation.jsonl"
+    messages = []
+    if history_path.exists():
+        import json as _json
+        try:
+            with open(history_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        msg = _json.loads(line)
+                    except _json.JSONDecodeError:
+                        continue
+                    if isinstance(msg, dict) and msg.get("role") in ("user", "assistant"):
+                        messages.append(msg)
+        except OSError:
+            pass
+    return {"session_id": session_id, "messages": messages}
 
 
 @app.get("/api/files")

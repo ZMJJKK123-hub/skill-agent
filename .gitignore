@@ -13,9 +13,12 @@ cloudflared.exe
 mod_material/
 Documentation/
 deepseek-harness/
+.supervisor/inbox
 
 # ---- 运行时日志 ----
 server_out.log
+server_out2.log
+server_err2.log
 
 # ---- 根目录 npm 残留（空 lockfile，无实际依赖） ----
 /package-lock.json

@@ -1,6 +1,22 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { SLOTS, SlotView } from './registry'
-import { useUi } from '../lib/store'
+import { setUi, useUi } from '../lib/store'
+
+// 轻量 toast：全局顶部提示，2 秒自动消失（跨插件反馈用）
+function Toast() {
+  const { toast } = useUi()
+  useEffect(() => {
+    if (!toast) return
+    const timer = window.setTimeout(() => setUi({ toast: null }), 2000)
+    return () => window.clearTimeout(timer)
+  }, [toast])
+  if (!toast) return null
+  return (
+    <div className="pointer-events-none fixed left-1/2 top-16 z-[60] -translate-x-1/2 rounded-lg border border-strong bg-panel px-4 py-2 text-sm shadow-xl">
+      {toast}
+    </div>
+  )
+}
 
 // 三栏壳层：侧栏 / 对话 / 详情 都是可关组件。
 // 关闭某个组件时，那一整栏（连同分界线）消失，相邻栏自动拉伸填满。
@@ -84,6 +100,7 @@ export function AppShell() {
 
       {/* 全局浮层（设置面板 / 弹窗） */}
       <SlotView name={SLOTS.overlay} />
+      <Toast />
     </div>
   )
 }

@@ -1,9 +1,15 @@
-"""会话入口：为每个用户的 MOD 生成任务启动一个独立子进程。
+"""会话入口：为每个用户的生成任务启动一个独立子进程。
 
 原理：
   服务器(server.py)收到用户的生成请求后，为这个会话单独启动一个
-  Python 子进程，cwd 切到该用户的独立 mod 目录，然后调用核心的
-  agent_loop() 跑完整的 12 课 agent。
+  Python 子进程，cwd 切到该用户的工作目录，然后调用核心的
+  agent_loop() 运行 agent。
+
+  支持两种模式（由环境变量 DSH_MODE 注入）：
+    - chat（默认）：通用对话。工作目录 = 会话根目录（不复制 mod 模板/源码）。
+      多轮对话：启动前从 <session_root>/.chat/conversation.jsonl 读历史，
+      跑完后把最终回复追加回历史，下一轮继续。
+    - mod：MOD 制作。工作目录 = 会话的 mod/ 子目录（server 已复制模板+源码）。
 
   为什么用子进程而不是线程？
   - 现有 agent 的 task_manager / teammate_manager / worktree_manager
@@ -153,7 +159,7 @@ def main() -> int:
         except (AttributeError, ValueError, OSError):
             pass
 
-    # 参数：会话目录（独立 mod 工作区）、用户自己的 API Key、任务提示词
+    # 参数：会话目录（工作区）、用户自己的 API Key、任务提示词
     if len(sys.argv) < 4:
         print("Usage: python run_task.py <session_dir> <api_key> <task_prompt>")
         return 1
@@ -162,11 +168,17 @@ def main() -> int:
     api_key = sys.argv[2]
     task_prompt = sys.argv[3]
 
+    # 模式：chat（默认，通用对话）| mod（MOD 制作，由 server 注入 DSH_MODE）
+    mode = os.environ.get("DSH_MODE", "chat")
+    # 会话根目录（.chat/ 对话历史所在处）：由 server 注入；未注入时取 session_dir 的父目录
+    session_root = os.environ.get("DSH_SESSION_ROOT", str(session_dir.parent))
+    session_root_path = Path(session_root).resolve()
+
     # 1. 确保会话目录存在并切换进去
-    #    cwd 决定了 config.WORKDIR = Path.cwd()，也就是该用户 mod 生成的位置
+    #    cwd 决定了 config.WORKDIR = Path.cwd()，也就是 agent 操作的位置
     session_dir.mkdir(parents=True, exist_ok=True)
     os.chdir(str(session_dir))
-    print(f"[run_task] 工作目录 => {session_dir}", flush=True)
+    print(f"[run_task] 模式={mode} | 工作目录 => {session_dir}", flush=True)
 
     # 2. 注入用户自己的 API Key（只在用户自己机器/会话里生效，不落盘）
     os.environ["DEEPSEEK_API_KEY"] = api_key
@@ -179,13 +191,39 @@ def main() -> int:
         print(f"[run_task] 导入 agent 失败: {e}", flush=True)
         return 1
 
-    # 4. 跑完整 agent 循环
-    messages = [{"role": "user", "content": task_prompt}]
+    # 4. 组装 messages：chat 模式加载历史对话 + 当前 prompt；mod 模式直接当前 prompt
+    messages = []
+    if mode == "chat":
+        try:
+            from core.conversation import load_recent_history, append_user, append_assistant
+            messages = load_recent_history(session_root_path)
+        except Exception as e:
+            print(f"[run_task] 加载对话历史失败（继续，仅当前 prompt）: {e}", flush=True)
+            messages = []
+        # 把当前 prompt 作为本轮 user 消息
+        messages.append({"role": "user", "content": task_prompt})
+        try:
+            append_user(session_root_path, task_prompt)
+        except Exception as e:
+            print(f"[run_task] 追加历史失败: {e}", flush=True)
+    else:
+        messages = [{"role": "user", "content": task_prompt}]
+
+    # 5. 跑完整 agent 循环
     final = agent_loop(messages)
     print(f"[run_task] 完成，最终回复:\n{final}", flush=True)
 
-    # 5. 收尾：收集本次运行错误信号 → 去重追加 mod/KNOWN_ISSUES.md
+    # 6. chat 模式：把最终回复追加进对话历史（供下一轮继续）
+    if mode == "chat":
+        try:
+            from core.conversation import append_assistant as _append_assistant
+            _append_assistant(session_root_path, final or "")
+        except Exception as e:
+            print(f"[run_task] 保存回复到历史失败: {e}", flush=True)
+
+    # 7. 收尾：收集本次运行错误信号 → 去重追加 mod/KNOWN_ISSUES.md
     #    （agent 对 KNOWN_ISSUES.md 只读，新坑统一在这里落账，旧条目永不清除）
+    #    仅 mod 模式（chat 模式没有模板 KNOWN_ISSUES.md，函数内部会跳过）
     try:
         finalize_known_issues(session_dir)
     except Exception as e:

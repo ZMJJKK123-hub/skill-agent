@@ -26,6 +26,9 @@ export interface SessionState {
   elapsed: number | null
   hasJar: boolean
   history: HistoryEntry[]
+  // 多轮对话支持：
+  mode: 'chat' | 'mod' | null        // 当前会话运行模式（null=未开始）
+  chatMessages: { role: string; content: string }[]  // 聊天气泡历史（chat 模式）
 }
 
 let state: SessionState = {
@@ -41,6 +44,8 @@ let state: SessionState = {
   elapsed: null,
   hasJar: false,
   history: [],
+  mode: null,
+  chatMessages: [],
 }
 
 const listeners = new Set<() => void>()
@@ -75,7 +80,8 @@ export async function loadHistory() {
 }
 
 // 发起对话 → 建新工作区文件夹 → 启动生成 → 开始轮询
-export async function sendPrompt(prompt: string, settings: GenSettings) {
+// mode: 'chat'（通用对话，不复制模板）| 'mod'（MOD 制作，需先 prepareModWorkspace）
+export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'chat' | 'mod' = 'chat') {
   if (state.phase === 'creating' || state.phase === 'running') return
   setState({
     phase: 'creating',
@@ -85,6 +91,7 @@ export async function sendPrompt(prompt: string, settings: GenSettings) {
     hasJar: false,
     elapsed: null,
     logTail: '',
+    mode,
   })
   try {
     // 若已有会话（如导入文件夹后），复用；否则建新会话（从零生成）
@@ -102,11 +109,19 @@ export async function sendPrompt(prompt: string, settings: GenSettings) {
       sid = session_id
       setState({ sessionId: session_id })
     }
+    // mod 模式：先准备 mod 工作区（复制模板+源码，幂等）
+    if (mode === 'mod') {
+      await api.prepareModWorkspace(sid)
+    }
     const prompts = [...state.prompts, prompt]
     // 标题：已有（文件夹名）优先，否则用首条输入截断
     const title = state.title ?? (prompt.length > 24 ? prompt.slice(0, 24) + '…' : prompt)
-    setState({ prompts, phase: 'running', title })
-    await api.startTask(sid, prompt)
+    // chat 模式：把用户消息加入聊天气泡
+    const chatMessages = mode === 'chat'
+      ? [...state.chatMessages, { role: 'user' as const, content: prompt }]
+      : state.chatMessages
+    setState({ prompts, phase: 'running', title, chatMessages })
+    await api.startTask(sid, prompt, mode)
     void poll()
     void loadHistory()
   } catch (e) {
@@ -129,6 +144,16 @@ export async function poll() {
       logTail: st.log_tail,
       phase: st.finished ? 'finished' : 'running',
     })
+    // chat 模式：任务结束且还没记录 assistant 回复 → 从 logTail 提取最终回复
+    if (st.finished && state.mode === 'chat') {
+      const last = state.chatMessages[state.chatMessages.length - 1]
+      if (last?.role !== 'assistant') {
+        const reply = extractFinalReply(st.log_tail)
+        if (reply) {
+          setState({ chatMessages: [...state.chatMessages, { role: 'assistant', content: reply }] })
+        }
+      }
+    }
     const q = await api.getQuestion(sid)
     if (q.status === 'pending' && q.question) {
       setState({ question: { question: q.question, options: q.options ?? [] } })
@@ -137,6 +162,36 @@ export async function poll() {
     }
   } catch {
     /* 轮询瞬时失败忽略，下一轮重试 */
+  }
+}
+
+// 从 run.log 尾部提取最终回复：取 "最终回复:" 之后的内容；没有则取末尾非噪音行
+function extractFinalReply(logTail: string): string | null {
+  if (!logTail) return null
+  const marker = '最终回复:'
+  const idx = logTail.lastIndexOf(marker)
+  if (idx >= 0) {
+    const after = logTail.slice(idx + marker.length).trim()
+    if (after) return after
+  }
+  // 兜底：取最后一行（跳过 [run_task]/[思考] 前缀行）
+  const lines = logTail.split(/\r?\n/).filter((l) => l.trim())
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i].trim()
+    if (line && !line.startsWith('[run_task]') && !line.startsWith('[思考]') && !line.startsWith('[todo]')) {
+      return line
+    }
+  }
+  return null
+}
+
+// 打开历史会话时：加载该会话的对话历史（.chat/conversation.jsonl）
+export async function loadConversation(sessionId: string) {
+  try {
+    const { messages } = await api.getConversation(sessionId)
+    setState({ chatMessages: messages })
+  } catch {
+    /* 未登录/无历史时忽略 */
   }
 }
 
@@ -178,13 +233,16 @@ export async function newConversation() {
     hasJar: false,
     elapsed: null,
     logTail: '',
+    mode: null,
+    chatMessages: [],
   })
   void loadHistory()
 }
 
-// 从历史打开一个会话（查看产物/下载，不重新生成）
+// 从历史打开一个会话（查看产物/下载/继续对话，不重新生成）
 export function openHistorySession(id: string) {
-  setState({ sessionId: id, phase: 'finished', events: [], cursor: null, prompts: [], title: null, error: null })
+  setState({ sessionId: id, phase: 'finished', events: [], cursor: null, prompts: [], title: null, error: null, mode: null, chatMessages: [] })
+  void loadConversation(id)
   void poll()
 }
 
@@ -194,7 +252,7 @@ export async function regenerate() {
   if (!sid) return
   try {
     await api.resetSession(sid)
-    setState({ phase: 'idle', events: [], cursor: null, prompts: [], error: null, hasJar: false, elapsed: null, logTail: '' })
+    setState({ phase: 'idle', events: [], cursor: null, prompts: [], error: null, hasJar: false, elapsed: null, logTail: '', mode: null, chatMessages: [] })
   } catch (e) {
     setState({ error: String((e as Error)?.message || e) })
   }
