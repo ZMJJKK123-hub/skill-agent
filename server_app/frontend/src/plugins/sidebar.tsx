@@ -21,21 +21,13 @@ export const sidebarPlugin: PluginManifest = {
 
     ctx.slots.inject(SLOTS.sidebarWorkspaces, 'workspaces', (props: any) => {
       const { activeWorkspace } = useUi()
+      const { title } = useSession()
       const t = useT()
+      const label = title ?? t('nav.newChat')
       return (
         <div className="px-2 py-3">
-          <div className="mb-2 flex items-center justify-between px-1 text-xs text-faint">
+          <div className="mb-2 px-1 text-xs text-faint">
             {!props?.collapsed && <span>{t('nav.workspace')}</span>}
-            <button
-              className="hoverable rounded px-1"
-              title={t('nav.newWorkspace')}
-              onClick={() => {
-                newConversation()
-                setUi({ activeWorkspace: null })
-              }}
-            >
-              ＋
-            </button>
           </div>
           {!props?.collapsed && (
             <div className="space-y-1">
@@ -44,11 +36,12 @@ export const sidebarPlugin: PluginManifest = {
                   newConversation()
                   setUi({ activeWorkspace: null })
                 }}
-                className={`block w-full rounded px-2 py-1.5 text-left text-sm ${
+                title={t('nav.newChat')}
+                className={`block w-full truncate rounded px-2 py-1.5 text-left text-sm ${
                   activeWorkspace === null ? 'bg-subtle text-main' : 'text-muted hoverable'
                 }`}
               >
-                🧱 {t('nav.fromZero')}
+                💬 {label}
               </button>
             </div>
           )}
@@ -111,21 +104,6 @@ export const sidebarPlugin: PluginManifest = {
             </div>
           )}
         </div>
-      )
-    })
-
-    // 侧栏底部：设置入口
-    ctx.slots.inject(SLOTS.sidebarFooter, 'settings-entry', (props: any) => {
-      const t = useT()
-      return (
-        <button
-          onClick={() => setUi({ settingsOpen: true })}
-          className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hoverable"
-          title={t('nav.settings')}
-        >
-          <span>⚙️</span>
-          {!props?.collapsed && <span>{t('nav.settings')}</span>}
-        </button>
       )
     })
   },

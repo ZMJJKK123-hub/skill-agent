@@ -1,30 +1,83 @@
 """
-三层递进上下文压缩系统（第 6 课）。
+三层递进上下文压缩（移植 dsh compaction-basic 的思路到 DeepSeek/OpenAI 消息格式）。
 
-Layer 1: micro_compact  — 每轮自动，静默裁剪旧 tool_result
-Layer 2: auto_compact   — token 超阈值，整段对话压缩为摘要
-Layer 3: compact 工具    — 模型主动调用，复用 Layer 2 摘要流程
+Layer 1: micro_compact  — 每轮自动，静默裁剪旧 tool_result（模型无关裁剪，对应 tool-result-pruner）
+Layer 2: auto_compact   — token 超阈值，保留最近尾部，只摘要压缩更早的区间
+Layer 3: compact 工具    — 模型主动触发，复用 Layer 2 流程
 
-适配 DeepSeek/OpenAI 消息格式（role: tool 独立消息，非 Claude content list）。
+关键移植点（来自 dsh compaction-basic / summarizer.ts）：
+- 结构化摘要 prompt：Primary Request / Key Concepts / Files / Errors / Pending /
+  Current / Next Step / Critical Context（每节固定，空写 "(none)"）
+- 摘要落成 checkpoint 消息：带 <compacted-summary> 标签 + preamble（说明是已建立的上下文）
+- 保留最近 retainTokens 尾部原样，只压缩更早区间，且边界不拆开 assistant(tool_calls)
+  与 tool 结果对（对应 dsh 的 toolPairingBalancedBefore）
+- 摘要必须比被压缩内容更小，否则拒绝（对应 dsh 的 summary-is-smaller 校验）
 """
 
 import json
+import os
 import time
 from pathlib import Path
 
 from .config import client, MODEL, logger
 
-TOKEN_THRESHOLD = 100_000  # Layer 2 触发阈值
+# ── 压缩预算（对应 dsh config：thresholdRatio=0.8 / retainRatio=0.16）──
+CONTEXT_WINDOW = int(os.environ.get("DSH_CONTEXT_WINDOW", "100000"))
+THRESHOLD_RATIO = 0.8
+RETAIN_RATIO = 0.16
+TOKEN_THRESHOLD = int(CONTEXT_WINDOW * THRESHOLD_RATIO)  # 触发阈值
+RETAIN_TOKENS = int(CONTEXT_WINDOW * RETAIN_RATIO)        # 保留尾部预算
+MAX_SUMMARY_TOKENS = 4000
+
+
+# ── 结构化摘要指令（照搬 dsh summarizer.ts，已被验证）────────────
+COMPACTION_INSTRUCTION = (
+    "You are now acting as a compaction engine for this AI coding assistant. "
+    "Condense the conversation ABOVE into a structured checkpoint that lets another model "
+    "resume the work with no loss of essential context.\n\n"
+    "Output EXACTLY the Markdown structure below: keep every section, in order. "
+    'Use terse bullets, not prose paragraphs. Write "(none)" for an empty section — never drop a section.\n\n'
+    "## Primary Request and Intent\n"
+    "- [the user's original and evolving goals; quote verbatim where the exact wording matters]\n\n"
+    "## Key Technical Concepts\n"
+    "- [technologies, frameworks, patterns, and conventions in play]\n\n"
+    "## Files and Code\n"
+    "- [exact path: why it matters, key changes or snippets]\n\n"
+    "## Errors and Fixes\n"
+    "- [error: how it was resolved, plus any related user feedback]\n\n"
+    "## Pending Jobs\n"
+    "- [explicitly requested work not yet completed]\n\n"
+    "## Current Work\n"
+    "- [precisely what was in progress at this checkpoint]\n\n"
+    "## Next Step\n"
+    '- [the single next action, directly in line with the most recent request, or "(none)"]\n\n'
+    "## Critical Context\n"
+    "- [decisions and their rationale, constraints, user preferences, open questions, data needed to continue]\n\n"
+    "Rules:\n"
+    "- Write concise English engineering prose. Preserve exact file paths, commands, error strings, "
+    "identifiers, numeric values, function signatures, and syntax fragments.\n"
+    "- Capture user feedback and explicit instructions faithfully, especially corrections.\n"
+    "- Do NOT mention this summarization request or that the context was compacted.\n"
+    "- Output only the checkpoint text: do not call any tool or take any other action.\n"
+    "- If the conversation already contains a <compacted-summary> block, it is a PRIOR checkpoint. "
+    "Do not copy it forward verbatim: preserve still-true facts, drop stale ones, and merge newer "
+    "information into a single consolidated summary under the same structure."
+)
+
+CHECKPOINT_PREAMBLE = (
+    "This is an automatically generated checkpoint condensing an earlier span of the conversation "
+    "to free up context. Treat the captured context as established background and build on it "
+    "without restating it. Continue the task directly from the messages that follow, without "
+    "acknowledging this checkpoint."
+)
 
 
 # ── Token 估算 ───────────────────────────────────────────
 def estimate_tokens(messages: list) -> int:
-    """粗估 token 数：chars / 3（兼顾中英文，中文 1 字 ≈ 1-2 token）。"""
+    """粗估 token 数：chars / 3（兼顾中英文）。"""
     total_chars = 0
     for msg in messages:
-        # role
         total_chars += len(msg.get("role", ""))
-        # content
         content = msg.get("content", "")
         if isinstance(content, str):
             total_chars += len(content)
@@ -34,17 +87,45 @@ def estimate_tokens(messages: list) -> int:
                     total_chars += len(json.dumps(block, ensure_ascii=False))
                 else:
                     total_chars += len(str(block))
-        # tool_calls
         for tc in msg.get("tool_calls", []) or []:
             total_chars += len(json.dumps(tc, ensure_ascii=False))
-    estimated = total_chars // 3
-    logger.info(f"estimate_tokens | messages={len(messages)} | chars={total_chars} | ≈{estimated} tokens")
-    return estimated
+    return total_chars // 3
 
 
-# ── 辅助：根据 tool_call_id 反查工具名 ─────────────────
+def _msg_tokens(msg: dict) -> int:
+    return estimate_tokens([msg])
+
+
+# ── 边界选择（对应 dsh selectCompactableRange）────────────
+def select_cutoff(messages: list) -> int:
+    """返回 keep_from 索引：该索引及其后的消息保留，之前的部分被压缩。
+
+    从末尾向前累计 token 到 RETAIN_TOKENS，得到最近的保留尾部；
+    再回退到「平衡边界」——不拆开 assistant(tool_calls) 与紧跟的 tool 结果对。
+    """
+    if not messages:
+        return 0
+    accumulated = 0
+    keep_from = len(messages)
+    for i in range(len(messages) - 1, -1, -1):
+        accumulated += _msg_tokens(messages[i])
+        keep_from = i
+        if accumulated >= RETAIN_TOKENS:
+            break
+    if keep_from == 0:
+        return 0
+    while keep_from > 0:
+        cur = messages[keep_from]
+        prev = messages[keep_from - 1]
+        if cur.get("role") == "tool" or prev.get("tool_calls"):
+            keep_from -= 1
+        else:
+            break
+    return keep_from
+
+
+# ── Layer 1: micro_compact（模型无关裁剪，对应 tool-result-pruner）──
 def _find_tool_name(messages: list, tool_call_id: str) -> str:
-    """在 assistant 消息的 tool_calls 里按 ID 反查工具名。"""
     for msg in messages:
         if msg.get("role") != "assistant":
             continue
@@ -54,46 +135,27 @@ def _find_tool_name(messages: list, tool_call_id: str) -> str:
     return "unknown"
 
 
-# ── Layer 1: micro_compact ──────────────────────────────
 def micro_compact(messages: list, keep_recent: int = 3) -> None:
-    """保留最近 keep_recent 轮完整内容，更早的 tool_result 替换为占位符。
-
-    DeepSeek 格式：tool result 是独立的 role=tool 消息（含 tool_call_id + content）。
-    我们把 keep_recent 轮之前的 role=tool 消息的 content 替换为占位符。
-    """
-    # 找出所有 assistant 消息的索引（每轮的标志）
+    """保留最近 keep_recent 轮完整内容，更早的 tool_result 替换为占位符。"""
     assistant_indices = [
-        i for i, m in enumerate(messages)
-        if m.get("role") == "assistant"
+        i for i, m in enumerate(messages) if m.get("role") == "assistant"
     ]
     if len(assistant_indices) <= keep_recent:
-        logger.info(f"micro_compact | assistant 轮数={len(assistant_indices)} <= {keep_recent}，跳过")
         return
-
     cutoff_index = assistant_indices[-keep_recent]
-    replaced_count = 0
-    saved_chars = 0
-
     for i, msg in enumerate(messages):
         if i >= cutoff_index:
             break
         if msg.get("role") != "tool":
             continue
-        original_content = msg.get("content", "")
-        if not isinstance(original_content, str):
+        content = msg.get("content", "")
+        if not isinstance(content, str):
             continue
         tool_name = _find_tool_name(messages, msg.get("tool_call_id", ""))
-        saved_chars += len(original_content)
         msg["content"] = f"[Previous: used {tool_name}]"
-        replaced_count += 1
-
-    logger.info(
-        f"micro_compact | 替换 {replaced_count} 个旧 tool_result | "
-        f"省 ≈{saved_chars // 3} tokens | cutoff_index={cutoff_index}"
-    )
 
 
-# ── Layer 2: auto_compact ───────────────────────────────
+# ── Layer 2/3: 结构化摘要压缩 ─────────────────────────────
 def save_transcript(messages: list) -> Path:
     """保存完整对话到 .transcripts/，压缩前的快照。"""
     transcript_dir = Path(".transcripts")
@@ -106,87 +168,56 @@ def save_transcript(messages: list) -> Path:
     return filepath
 
 
-def format_messages_for_summary(messages: list) -> str:
-    """把 DeepSeek 消息列表转为可读文本，供 LLM 摘要。"""
-    lines = []
-    for msg in messages:
-        role = msg.get("role", "?")
-        content = msg.get("content", "")
-        if isinstance(content, list):
-            content = json.dumps(content, ensure_ascii=False)
-        lines.append(f"[{role}] {content}")
-        # 附带 tool_calls 信息
-        for tc in msg.get("tool_calls", []) or []:
-            name = tc.get("function", {}).get("name", "?")
-            args = tc.get("function", {}).get("arguments", "{}")
-            lines.append(f"  -> tool_call: {name}({args})")
-    return "\n".join(lines)
-
-
-def summarize_conversation(messages: list) -> str:
-    """让 DeepSeek 把完整对话压缩为结构化摘要。"""
-    formatted = format_messages_for_summary(messages)
-    pre_tokens = len(formatted) // 3
-
+def summarize_region(region: list) -> str:
+    """对要压缩的区间做一次结构化摘要（回放区间 + 追加压缩指令，对应 dsh summarizeWithLlm）。"""
+    msgs = list(region) + [{"role": "user", "content": COMPACTION_INSTRUCTION}]
     response = client.chat.completions.create(
         model=MODEL,
-        max_tokens=4000,
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "把对话压缩为结构化摘要。保留：1) 用户原始目标 "
-                    "2) 已完成步骤 3) 关键发现和决策 4) 当前待办。"
-                    "丢弃：具体文件内容、命令输出、中间调试过程。"
-                ),
-            },
-            {
-                "role": "user",
-                "content": formatted,
-            },
-        ],
+        messages=msgs,
+        max_tokens=MAX_SUMMARY_TOKENS,
     )
-    summary = response.choices[0].message.content
-    post_tokens = len(summary) // 3
-    logger.info(
-        f"summarize_conversation | 压缩前 ≈{pre_tokens} tokens → "
-        f"压缩后 ≈{post_tokens} tokens | 压缩比 {pre_tokens / max(post_tokens, 1):.1f}:1"
-    )
-    return summary
+    summary = response.choices[0].message.content or ""
+    return f"{CHECKPOINT_PREAMBLE}\n\n<compacted-summary>\n{summary}\n</compacted-summary>"
 
 
 def auto_compact(messages: list) -> list:
-    """Layer 2：保存 transcript + 生成摘要 + 替换消息列表。"""
-    pre_len = len(messages)
+    """Layer 2：保存 transcript → 选压缩区间 → 结构化摘要 → 替换旧区间，保留最近尾部。"""
     pre_tokens = estimate_tokens(messages)
-
     filepath = save_transcript(messages)
-    summary = summarize_conversation(messages)
+
+    keep_from = select_cutoff(messages)
+    region = messages[:keep_from]
+    keep = messages[keep_from:]
+
+    summary = summarize_region(region)
+
+    # 摘要必须更小，否则保留原样（对应 dsh 的 summary-is-smaller 校验）
+    region_tokens = estimate_tokens(region)
+    summary_tokens = len(summary) // 3
+    if summary_tokens >= region_tokens:
+        logger.warning(
+            f"auto_compact | 摘要未更小（{summary_tokens} >= {region_tokens}），放弃压缩"
+        )
+        return messages
 
     new_messages = [{
         "role": "user",
         "content": (
-            f"[Context compacted. Full transcript: {filepath}]\n\n"
-            f"## Conversation Summary\n\n{summary}\n\n"
+            f"[Context compacted. Full transcript: {filepath}]\n\n{summary}\n\n"
             "Continue from where we left off."
         ),
-    }]
+    }] + keep
 
     post_tokens = estimate_tokens(new_messages)
     logger.info(
-        f"auto_compact | messages {pre_len} → {len(new_messages)} | "
-        f"tokens ≈{pre_tokens} → ≈{post_tokens}"
+        f"auto_compact | messages {len(messages)}→{len(new_messages)} | "
+        f"tokens ≈{pre_tokens}→≈{post_tokens} | cutoff={keep_from}"
     )
     return new_messages
 
 
-# ── Layer 3: compact 工具 ───────────────────────────────
 def handle_compact(messages: list) -> tuple:
-    """模型主动触发，复用 auto_compact 的摘要流程。
-
-    返回 (new_messages, output_string)。
-    output_string 作为 tool_result 返回给模型（但实际 messages 已被替换）。
-    """
+    """Layer 3：模型主动调用 compact，复用 auto_compact。返回 (new_messages, output)。"""
     logger.info("handle_compact | 模型主动调用 compact 工具")
     new_messages = auto_compact(messages)
     return new_messages, "Context compacted successfully."

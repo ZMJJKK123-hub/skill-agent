@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { PluginManifest, SLOTS } from '../shell/registry'
-import { useUi } from '../lib/store'
+import { useUi, resolveModelConfig } from '../lib/store'
 import { useT } from '../lib/i18n'
 import { importWorkspace } from '../lib/session'
 import type { ImportFile } from '../lib/api'
@@ -25,10 +25,15 @@ async function collectFromHandle(dir: any, base = ''): Promise<ImportFile[]> {
 }
 
 function ImportButton({ collapsed }: { collapsed?: boolean }) {
-  const { user, apiKey, game, loader, version } = useUi()
+  const { user, apiKey, game, loader, version, model, providers, sandbox } = useUi()
   const t = useT()
   const [busy, setBusy] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const cfg = () => {
+    const r = resolveModelConfig({ apiKey, model, providers })
+    return { apiKey: r.apiKey, baseUrl: r.baseUrl, model: r.model, game, loader, version, sandbox }
+  }
 
   const doImport = async () => {
     if (!user) {
@@ -45,7 +50,7 @@ function ImportButton({ collapsed }: { collapsed?: boolean }) {
           alert(t('models.empty'))
           return
         }
-        await importWorkspace(files, { apiKey, game, loader, version })
+        await importWorkspace(files, cfg(), dir.name)
       } catch (e) {
         if ((e as any)?.name !== 'AbortError') alert('导入失败: ' + (e instanceof Error ? e.message : String(e)))
       } finally {
@@ -62,12 +67,14 @@ function ImportButton({ collapsed }: { collapsed?: boolean }) {
     if (!list || list.length === 0) return
     setBusy(true)
     try {
+      let folder = '导入的文件夹'
       const files: ImportFile[] = []
       for (const f of Array.from(list)) {
         const rel = (f as any).webkitRelativePath || f.name
+        if (folder === '导入的文件夹' && rel.includes('/')) folder = rel.split('/')[0]
         files.push({ path: rel, data: new Uint8Array(await f.arrayBuffer()) })
       }
-      await importWorkspace(files, { apiKey, game, loader, version })
+      await importWorkspace(files, cfg(), folder)
     } catch (err) {
       alert('导入失败: ' + (err instanceof Error ? err.message : String(err)))
     } finally {

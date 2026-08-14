@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { PluginManifest, SLOTS } from '../shell/registry'
-import { useUi, setUi } from '../lib/store'
+import { useUi, setUi, resolveModelConfig } from '../lib/store'
 import { useT } from '../lib/i18n'
-import { useSession, sendPrompt, startPolling, stopPolling, regenerate } from '../lib/session'
+import { useSession, sendPrompt, startPolling, stopPolling, regenerate, answerQuestion } from '../lib/session'
 import { downloadJar, downloadSourceZip } from '../lib/api'
 import type { EventItem } from '../lib/api'
 
@@ -76,6 +76,9 @@ function Messages() {
         </div>
 
         <div className="max-h-80 space-y-0.5 overflow-y-auto p-3">
+          {phase === 'creating' && (
+            <div className="text-sm text-faint">正在创建工作区（复制模板与 MC 源码）…</div>
+          )}
           {shownEvents.length === 0 && phase === 'running' && (
             <div className="text-sm text-faint">{t('conv.starting')}</div>
           )}
@@ -130,8 +133,54 @@ function EmptyState({ loggedIn, configured }: { loggedIn: boolean; configured: b
   )
 }
 
+function QuestionCard() {
+  const sess = useSession()
+  const [text, setText] = useState('')
+  const q = sess.question
+  if (!q) return null
+  const submit = (v: string) => {
+    answerQuestion(v)
+    setText('')
+  }
+  return (
+    <div className="mb-2 rounded-xl border border-forge-500/40 bg-forge-500/10 p-3">
+      <div className="mb-2 text-sm font-medium text-forge-300">💬 {q.question}</div>
+      {q.options.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-2">
+          {q.options.map((o) => (
+            <button
+              key={o}
+              onClick={() => submit(o)}
+              className="rounded-md border border-forge-500/40 px-3 py-1 text-sm text-forge-400 hover:bg-forge-500/10"
+            >
+              {o}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-2">
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && text.trim()) submit(text.trim())
+          }}
+          placeholder="输入回答…"
+          className="flex-1 rounded-md border border-line bg-field px-3 py-1.5 text-sm outline-none"
+        />
+        <button
+          onClick={() => text.trim() && submit(text.trim())}
+          className="rounded-md bg-forge-500 px-3 py-1.5 text-sm text-ink-950"
+        >
+          回答
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function Composer() {
-  const { user, apiKey, model, providers, version } = useUi()
+  const { user, apiKey, model, providers, version, sandbox } = useUi()
   const t = useT()
   const sess = useSession()
   const [text, setText] = useState('')
@@ -142,15 +191,17 @@ function Composer() {
   const send = () => {
     const prompt = text.trim()
     if (!prompt || busy) return
-    sendPrompt(prompt, { apiKey, game: 'minecraft', loader: 'forge', version })
+    const r = resolveModelConfig({ apiKey, model, providers })
+    sendPrompt(prompt, { apiKey: r.apiKey, baseUrl: r.baseUrl, model: r.model, game: 'minecraft', loader: 'forge', version, sandbox })
     setText('')
   }
 
   return (
     <div className="mx-auto max-w-3xl">
+      <QuestionCard />
       {!user ? (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-400">{t('auth.loginFirst')}</div>
-      ) : !apiKey ? (
+      ) : !apiKey && providers.length === 0 ? (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-400">{t('auth.needApiKey')}</div>
       ) : (
         <div className="rounded-xl border border-line bg-panel p-3">
@@ -167,10 +218,16 @@ function Composer() {
               onChange={(e) => setUi({ model: e.target.value })}
               className="rounded-md border border-line bg-field px-2 py-1 text-xs text-muted outline-none"
             >
-              {models.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
+              <optgroup label="DeepSeek">
+                <option value="deepseek-v4-flash">deepseek-v4-flash</option>
+                <option value="deepseek-v4-pro">deepseek-v4-pro</option>
+              </optgroup>
+              {providers.map((p) => (
+                <optgroup key={p.id} label={p.name}>
+                  {p.model.split(',').map((m) => m.trim()).filter(Boolean).map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </optgroup>
               ))}
             </select>
             <div className="flex-1" />

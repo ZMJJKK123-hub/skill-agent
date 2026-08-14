@@ -23,7 +23,8 @@ logging.basicConfig(
 logger = logging.getLogger("agent")
 
 # ---------- 配置 ----------
-MODEL = "deepseek-v4-flash"
+# 模型与 API 地址由会话注入（DSH_MODEL / DSH_BASE_URL），未注入时回退 DeepSeek 官方默认。
+MODEL = os.environ.get("DSH_MODEL", "deepseek-v4-flash")
 SYSTEM = r"""You are a game MOD development agent with planning capabilities that can execute bash commands.
 Your focus is generating complete, buildable game MOD projects based on the target game and loader:
 scaffold the project, register game content (items/blocks/entities), write assets & data
@@ -304,8 +305,11 @@ MOD KNOWLEDGE MANDATE (skill-first):
 
 client = OpenAI(
     api_key=os.environ.get("DEEPSEEK_API_KEY", ""),
-    base_url="https://api.deepseek.com/v1",
+    base_url=os.environ.get("DSH_BASE_URL", "https://api.deepseek.com/v1"),
 )
+
+# 会话级沙箱模式：full-access | workspace-write | read-only（由 server 注入 DSH_SANDBOX_MODE）
+SANDBOX_MODE = os.environ.get("DSH_SANDBOX_MODE", "full-access")
 
 # ---------- 路径安全沙箱 ----------
 WORKDIR = Path.cwd()

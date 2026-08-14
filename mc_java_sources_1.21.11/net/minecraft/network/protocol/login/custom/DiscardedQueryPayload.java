@@ -1,0 +1,27 @@
+package net.minecraft.network.protocol.login.custom;
+
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.Identifier;
+
+public record DiscardedQueryPayload(Identifier id,
+    @org.jetbrains.annotations.Nullable FriendlyByteBuf data,
+    java.util.function.Consumer<net.minecraft.network.FriendlyByteBuf> encoder
+) implements CustomQueryPayload {
+    public DiscardedQueryPayload(Identifier id) {
+        this(id, null, buf -> {});
+    }
+
+    @Override
+    public void write(FriendlyByteBuf p_299949_) {
+        if (this.data != null) {
+            p_299949_.writeBytes(this.data.slice());
+        } else {
+            encoder.accept(p_299949_);
+        }
+    }
+
+    @Override
+    public Identifier id() {
+        return this.id;
+    }
+}

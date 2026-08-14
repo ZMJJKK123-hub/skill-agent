@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { PluginManifest, SLOTS } from '../shell/registry'
-import { setUi, useUi, type Provider, type ThemePref } from '../lib/store'
+import { setUi, useUi, type Provider, type ThemePref, type SandboxMode } from '../lib/store'
 import { useT } from '../lib/i18n'
 import { composition } from '../composition'
 
 type SectionKey = 'general' | 'models' | 'plugins' | 'language' | 'appearance' | 'agent'
+
+type Draft = { apiKey: string; loader: string; version: string; sandbox: SandboxMode }
 
 const VERSIONS = ['1.21.11', '1.21.10', '1.21.9']
 const LOADERS = ['forge', 'neoforge', 'fabric']
@@ -15,17 +17,17 @@ function SettingsPanel() {
   const [section, setSection] = useState<SectionKey>('general')
 
   // 通用配置草稿：应用前不落库
-  const { apiKey, loader, version } = useUi()
-  const [draft, setDraft] = useState({ apiKey, loader, version })
+  const { apiKey, loader, version, sandbox } = useUi()
+  const [draft, setDraft] = useState({ apiKey, loader, version, sandbox })
   useEffect(() => {
-    if (settingsOpen) setDraft({ apiKey, loader, version })
+    if (settingsOpen) setDraft({ apiKey, loader, version, sandbox })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settingsOpen])
 
   if (!settingsOpen) return null
 
   const apply = () => {
-    setUi({ apiKey: draft.apiKey.trim(), loader: draft.loader, version: draft.version, settingsOpen: false })
+    setUi({ apiKey: draft.apiKey.trim(), loader: draft.loader, version: draft.version, sandbox: draft.sandbox, settingsOpen: false })
   }
   const cancel = () => setUi({ settingsOpen: false })
 
@@ -76,7 +78,7 @@ function SettingsPanel() {
   )
 }
 
-function GeneralSection({ draft, setDraft }: { draft: { apiKey: string; loader: string; version: string }; setDraft: (d: typeof draft) => void }) {
+function GeneralSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft) => void }) {
   const t = useT()
   return (
     <div>
@@ -119,6 +121,17 @@ function GeneralSection({ draft, setDraft }: { draft: { apiKey: string; loader: 
           className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500"
         />
       </Field>
+      <Field label={t('general.sandbox')}>
+        <select
+          value={draft.sandbox}
+          onChange={(e) => setDraft({ ...draft, sandbox: e.target.value as SandboxMode })}
+          className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500"
+        >
+          <option value="full-access">{t('general.sandbox.full')}</option>
+          <option value="workspace-write">{t('general.sandbox.workspace')}</option>
+          <option value="read-only">{t('general.sandbox.readonly')}</option>
+        </select>
+      </Field>
       <p className="text-xs text-faint">{t('general.fallbackHint')}</p>
     </div>
   )
@@ -128,7 +141,7 @@ function ModelsSection() {
   const t = useT()
   const { providers } = useUi()
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ name: '', baseUrl: '', apiKey: '', model: '' })
+  const [form, setForm] = useState({ name: '', baseUrl: '', apiKey: '', model: '', protocol: 'openai' })
 
   const save = () => {
     if (!form.name.trim() || !form.model.trim()) return
@@ -138,9 +151,10 @@ function ModelsSection() {
       baseUrl: form.baseUrl.trim(),
       apiKey: form.apiKey.trim(),
       model: form.model.trim(),
+      protocol: form.protocol,
     }
     setUi({ providers: [...providers, p] })
-    setForm({ name: '', baseUrl: '', apiKey: '', model: '' })
+    setForm({ name: '', baseUrl: '', apiKey: '', model: '', protocol: 'openai' })
     setShowForm(false)
   }
   const remove = (id: string) => setUi({ providers: providers.filter((p) => p.id !== id) })
@@ -167,9 +181,15 @@ function ModelsSection() {
 
       {showForm ? (
         <div className="mt-2 space-y-2 rounded-md border border-line p-3">
+          <div>
+            <div className="mb-1 text-xs text-faint">{t('models.protocol')}</div>
+            <select value={form.protocol} onChange={(e) => setForm({ ...form, protocol: e.target.value })} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none">
+              <option value="openai">OpenAI 兼容（含 DeepSeek）</option>
+            </select>
+          </div>
           <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={t('models.name')} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none" />
           <input value={form.baseUrl} onChange={(e) => setForm({ ...form, baseUrl: e.target.value })} placeholder={t('models.baseUrl')} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none" />
-          <input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder={t('models.model')} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none" />
+          <input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder={t('models.model') + '（可逗号分隔多个）'} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none" />
           <input value={form.apiKey} onChange={(e) => setForm({ ...form, apiKey: e.target.value })} type="password" placeholder={t('models.apiKey')} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none" />
           <div className="flex gap-2">
             <button onClick={save} className="rounded-md bg-forge-500 px-3 py-1.5 text-sm font-medium text-ink-950 hover:bg-forge-400">
@@ -210,14 +230,16 @@ function PluginsSection() {
             <span>
               {p.name} <span className="text-faint">({p.id})</span>
             </span>
-            <button
-              onClick={() => !locked && toggle(p.id)}
-              disabled={locked}
-              title={locked ? '设置插件不可关闭' : ''}
-              className={`relative h-5 w-9 rounded-full transition ${disabled ? 'bg-slate-600' : 'bg-forge-500'} ${locked ? 'opacity-50' : ''}`}
-            >
-              <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition ${disabled ? 'left-0.5' : 'left-[18px]'}`} />
-            </button>
+            {locked ? (
+              <span className="text-xs text-faint">始终启用</span>
+            ) : (
+              <button
+                onClick={() => toggle(p.id)}
+                className={`relative h-5 w-9 rounded-full transition ${disabled ? 'bg-slate-600' : 'bg-forge-500'}`}
+              >
+                <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition ${disabled ? 'left-0.5' : 'left-[18px]'}`} />
+              </button>
+            )}
           </div>
         )
       })}
@@ -291,8 +313,8 @@ function SectionContent({
   setDraft,
 }: {
   section: SectionKey
-  draft: { apiKey: string; loader: string; version: string }
-  setDraft: (d: typeof draft) => void
+  draft: Draft
+  setDraft: (d: Draft) => void
 }) {
   switch (section) {
     case 'general':
@@ -319,10 +341,25 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
+function SettingsEntry({ collapsed }: { collapsed?: boolean }) {
+  const t = useT()
+  return (
+    <button
+      onClick={() => setUi({ settingsOpen: true })}
+      className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hoverable"
+      title={t('nav.settings')}
+    >
+      <span>⚙️</span>
+      {!collapsed && <span>{t('nav.settings')}</span>}
+    </button>
+  )
+}
+
 export const settingsPlugin: PluginManifest = {
   id: 'modforge-settings',
   name: '设置',
   apply(ctx) {
     ctx.slots.inject(SLOTS.overlay, 'settings', () => <SettingsPanel />)
+    ctx.slots.inject(SLOTS.sidebarFooter, 'settings-entry', (props: any) => <SettingsEntry collapsed={props?.collapsed} />, 10)
   },
 }

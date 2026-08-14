@@ -6,15 +6,35 @@ export interface Provider {
   baseUrl: string
   apiKey: string
   model: string
+  protocol: string
+}
+
+// 把「选中的模型」解析成后端实际要用的 (apiKey, baseUrl, model)：
+// 官方模型走 DeepSeek；自定义模型匹配到对应 provider 的 key/地址。
+export function resolveModelConfig(state: Pick<UiState, 'apiKey' | 'model' | 'providers'>): {
+  apiKey: string
+  baseUrl: string
+  model: string
+} {
+  const { apiKey, model, providers } = state
+  if (model === 'deepseek-v4-flash' || model === 'deepseek-v4-pro') {
+    return { apiKey, baseUrl: 'https://api.deepseek.com/v1', model }
+  }
+  const p = providers.find((p) => p.model.split(',').map((s) => s.trim()).includes(model))
+  if (p) return { apiKey: p.apiKey, baseUrl: p.baseUrl, model }
+  return { apiKey, baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-v4-flash' }
 }
 
 export type Locale = 'zh' | 'en'
 export type ThemePref = 'system' | 'light' | 'dark'
+export type ViewMode = 'chat' | 'trajectory'
+export type SandboxMode = 'full-access' | 'workspace-write' | 'read-only'
 
 export interface UiState {
   settingsOpen: boolean
   user: { username: string } | null
   activeWorkspace: string | null
+  viewMode: ViewMode
   apiKey: string
   game: string
   loader: string
@@ -22,6 +42,7 @@ export interface UiState {
   locale: Locale
   theme: ThemePref
   model: string
+  sandbox: SandboxMode
   providers: Provider[]
   disabledPlugins: string[]
 }
@@ -33,6 +54,7 @@ function loadState(): UiState {
     settingsOpen: false,
     user: null,
     activeWorkspace: null,
+    viewMode: 'chat',
     apiKey: '',
     game: 'minecraft',
     loader: 'forge',
@@ -40,12 +62,18 @@ function loadState(): UiState {
     locale: 'zh',
     theme: 'dark',
     model: 'deepseek-v4-flash',
+    sandbox: 'full-access',
     providers: [],
     disabledPlugins: [],
   }
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return { ...base, ...(JSON.parse(raw) as Partial<UiState>) }
+    if (raw) {
+      const loaded = { ...base, ...(JSON.parse(raw) as Partial<UiState>) }
+      // 设置插件永远启用：清掉历史上可能被误关的持久化状态
+      loaded.disabledPlugins = (loaded.disabledPlugins || []).filter((p) => p !== 'modforge-settings')
+      return loaded
+    }
   } catch {
     /* 损坏的本地存储回退默认值 */
   }
@@ -66,6 +94,7 @@ function persist() {
         locale: state.locale,
         theme: state.theme,
         model: state.model,
+        sandbox: state.sandbox,
         providers: state.providers,
         disabledPlugins: state.disabledPlugins,
       }),

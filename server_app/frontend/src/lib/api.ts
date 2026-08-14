@@ -112,10 +112,18 @@ export function logout() {
 }
 
 // ── 会话 / 任务 ──
-export function createSession(apiKey: string, game: string, loader: string, version: string) {
+export function createSession(
+  apiKey: string,
+  game: string,
+  loader: string,
+  version: string,
+  model = 'deepseek-v4-flash',
+  baseUrl = 'https://api.deepseek.com/v1',
+  sandbox = 'full-access',
+) {
   return api<{ session_id: string; mod_dir: string }>('/api/session', {
     method: 'POST',
-    body: JSON.stringify({ api_key: apiKey, game, loader, version }),
+    body: JSON.stringify({ api_key: apiKey, game, loader, version, model, base_url: baseUrl, sandbox }),
   })
 }
 
@@ -159,6 +167,23 @@ export function getHistory() {
 // 按 owner 派生的会话列表（data/sessions/*/owner.txt），历史与会话双向一致
 export function getSessions() {
   return api<{ sessions: HistoryEntry[] }>('/api/sessions')
+}
+
+export interface Question {
+  status: string
+  question?: string
+  options?: string[]
+}
+
+export function getQuestion(sessionId: string) {
+  return api<Question>(`/api/question?session_id=${sessionId}`)
+}
+
+export function answerQuestion(sessionId: string, answer: string) {
+  return api(`/api/answer`, {
+    method: 'POST',
+    body: JSON.stringify({ session_id: sessionId, answer }),
+  })
 }
 
 // ── 游戏模板 ──
@@ -205,13 +230,13 @@ export interface ImportFile {
 
 export async function importSession(
   files: ImportFile[],
-  settings: { apiKey: string; game: string; loader: string; version: string },
+  settings: { apiKey: string; game: string; loader: string; version: string; model: string; baseUrl: string; sandbox: string },
 ) {
   const zip = new JSZip()
   for (const f of files) zip.file(f.path, f.data)
   const blob = await zip.generateAsync({ type: 'blob' })
 
-  const qs = `game=${encodeURIComponent(settings.game)}&loader=${encodeURIComponent(settings.loader)}&version=${encodeURIComponent(settings.version)}`
+  const qs = `game=${encodeURIComponent(settings.game)}&loader=${encodeURIComponent(settings.loader)}&version=${encodeURIComponent(settings.version)}&model=${encodeURIComponent(settings.model)}&base_url=${encodeURIComponent(settings.baseUrl)}&sandbox=${encodeURIComponent(settings.sandbox)}`
   const token = getToken()
   const res = await fetch(`/api/import?${qs}`, {
     method: 'POST',

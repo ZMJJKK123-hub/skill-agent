@@ -17,6 +17,10 @@ const zh: Record<string, string> = {
   'general.apiKey': 'DeepSeek API Key',
   'general.apiKeyHint': 'sk-…（仅存当前会话，不落盘）',
   'general.fallbackHint': 'NeoForge / Fabric 模板暂未提供，选它们会回退到空目录。',
+  'general.sandbox': '权限',
+  'general.sandbox.full': '完全访问（full-access）',
+  'general.sandbox.workspace': '仅工作区写（workspace-write）',
+  'general.sandbox.readonly': '只读（read-only）',
 
   'models.title': '模型提供方',
   'models.add': '添加自定义提供方',
@@ -24,6 +28,7 @@ const zh: Record<string, string> = {
   'models.baseUrl': 'Base URL',
   'models.model': '模型名',
   'models.apiKey': 'API Key',
+  'models.protocol': '协议格式',
   'models.save': '保存',
   'models.remove': '移除',
   'models.empty': '暂无自定义提供方',
@@ -50,6 +55,7 @@ const zh: Record<string, string> = {
   'nav.settings': '设置',
   'nav.import': '导入文件夹',
   'nav.fromZero': '从零生成',
+  'nav.newChat': '新对话',
   'nav.newWorkspace': '新建工作区（从零生成）',
   'nav.noSessions': '还没有会话',
   'nav.loginToSee': '登录后显示历史',
@@ -82,6 +88,9 @@ const zh: Record<string, string> = {
   'conv.quickSword': '做一个攻击力很高的剑',
   'conv.quickFood': '做一个回血很多的食物',
   'conv.quickBlock': '做一个特殊的方块',
+  'view.chat': '对话',
+  'view.trajectory': '轨迹',
+  'view.noEvents': '暂无轨迹',
 }
 
 const en: Record<string, string> = {
@@ -100,6 +109,10 @@ const en: Record<string, string> = {
   'general.apiKey': 'DeepSeek API Key',
   'general.apiKeyHint': 'sk-… (session-only, never persisted)',
   'general.fallbackHint': 'NeoForge / Fabric templates are not available yet; selecting them falls back to an empty folder.',
+  'general.sandbox': 'Permission',
+  'general.sandbox.full': 'Full access',
+  'general.sandbox.workspace': 'Workspace write',
+  'general.sandbox.readonly': 'Read-only',
 
   'models.title': 'Model Providers',
   'models.add': 'Add custom provider',
@@ -107,6 +120,7 @@ const en: Record<string, string> = {
   'models.baseUrl': 'Base URL',
   'models.model': 'Model',
   'models.apiKey': 'API Key',
+  'models.protocol': 'Protocol',
   'models.save': 'Save',
   'models.remove': 'Remove',
   'models.empty': 'No custom providers yet',
@@ -133,6 +147,7 @@ const en: Record<string, string> = {
   'nav.settings': 'Settings',
   'nav.import': 'Import folder',
   'nav.fromZero': 'From scratch',
+  'nav.newChat': 'New chat',
   'nav.newWorkspace': 'New workspace (from scratch)',
   'nav.noSessions': 'No sessions yet',
   'nav.loginToSee': 'Login to see history',
@@ -165,6 +180,9 @@ const en: Record<string, string> = {
   'conv.quickSword': 'Make a powerful sword',
   'conv.quickFood': 'Make a food that heals a lot',
   'conv.quickBlock': 'Make a special block',
+  'view.chat': 'Chat',
+  'view.trajectory': 'Trajectory',
+  'view.noEvents': 'No trajectory yet',
 }
 
 export type TKey = keyof typeof zh

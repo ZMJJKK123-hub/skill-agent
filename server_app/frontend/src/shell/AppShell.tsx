@@ -1,80 +1,88 @@
 import { useState } from 'react'
 import { SLOTS, SlotView } from './registry'
-import { setUi } from '../lib/store'
+import { useUi } from '../lib/store'
 
-// 三栏可伸缩壳层（仿 dsh 布局）：
-//   左：可伸缩快捷栏（256px ↔ 56px rail）· 中：对话 · 右：详情面板（可开关）
+// 三栏壳层：侧栏 / 对话 / 详情 都是可关组件。
+// 关闭某个组件时，那一整栏（连同分界线）消失，相邻栏自动拉伸填满。
 export function AppShell() {
   const [sidebarWide, setSidebarWide] = useState(true)
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const { disabledPlugins } = useUi()
+
+  const off = new Set(disabledPlugins)
+  const sidebarOn = !off.has('modforge-sidebar')
+  const conversationOn = !off.has('modforge-conversation')
+  const detailsAvailable = !off.has('modforge-generate')
 
   const collapsed = !sidebarWide
 
   return (
     <div className="flex h-full bg-app text-main">
-      {/* 左侧可伸缩栏 */}
-      <aside
-        className={`${
-          sidebarWide ? 'w-64' : 'w-14'
-        } flex shrink-0 flex-col border-r border-line transition-all duration-200`}
-      >
-        <div className="flex h-12 items-center gap-2 border-b border-line px-2">
-          <SlotView name={SLOTS.sidebarLogo} props={{ collapsed }} />
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          <SlotView name={SLOTS.sidebarWorkspaces} props={{ collapsed }} />
-          <SlotView name={SLOTS.sidebarSessions} props={{ collapsed }} />
-        </div>
-        <div className="border-t border-line p-1.5">
-          <SlotView name={SLOTS.sidebarFooter} props={{ collapsed }} />
-        </div>
-      </aside>
+      {/* 左侧可伸缩栏（侧栏插件开启才渲染） */}
+      {sidebarOn && (
+        <aside
+          className={`${
+            sidebarWide ? 'w-64' : 'w-14'
+          } flex shrink-0 flex-col border-r border-line transition-all duration-200`}
+        >
+          <div className="flex h-12 items-center gap-2 border-b border-line px-2">
+            <SlotView name={SLOTS.sidebarLogo} props={{ collapsed }} />
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <SlotView name={SLOTS.sidebarWorkspaces} props={{ collapsed }} />
+            <SlotView name={SLOTS.sidebarSessions} props={{ collapsed }} />
+          </div>
+          <div className="border-t border-line p-1.5">
+            <SlotView name={SLOTS.sidebarFooter} props={{ collapsed }} />
+          </div>
+        </aside>
+      )}
 
       {/* 中间对话区 */}
       <main className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-12 items-center gap-1 border-b border-line px-2">
-          <button
-            onClick={() => setSidebarWide((v) => !v)}
-            title="折叠/展开侧栏"
-            className="hoverable rounded-md px-2 py-1 text-muted"
-          >
-            ☰
-          </button>
-          <button
-            onClick={() => setDetailsOpen((v) => !v)}
-            title="详情面板"
-            className="hoverable rounded-md px-2 py-1 text-muted"
-          >
-            {detailsOpen ? '»' : '«'}
-          </button>
+          {sidebarOn && (
+            <button
+              onClick={() => setSidebarWide((v) => !v)}
+              title="折叠/展开侧栏"
+              className="hoverable rounded-md px-2 py-1 text-muted"
+            >
+              ☰
+            </button>
+          )}
+          {detailsAvailable && (
+            <button
+              onClick={() => setDetailsOpen((v) => !v)}
+              title="详情面板"
+              className="hoverable rounded-md px-2 py-1 text-muted"
+            >
+              {detailsOpen ? '»' : '«'}
+            </button>
+          )}
           <div className="flex-1" />
           <SlotView name={SLOTS.headerActions} />
-          <button
-            onClick={() => setUi({ settingsOpen: true })}
-            title="设置"
-            className="hoverable ml-1 rounded-md px-2 py-1 text-muted"
-          >
-            ⚙️
-          </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto">
-          <SlotView name={SLOTS.conversationMessages} />
-        </div>
-
-        <div className="border-t border-line p-3">
-          <SlotView name={SLOTS.conversationComposer} />
-        </div>
+        {conversationOn && (
+          <>
+            <div className="flex-1 overflow-y-auto">
+              <SlotView name={SLOTS.conversationMessages} />
+            </div>
+            <div className="border-t border-line p-3">
+              <SlotView name={SLOTS.conversationComposer} />
+            </div>
+          </>
+        )}
       </main>
 
-      {/* 右侧详情面板 */}
-      {detailsOpen && (
+      {/* 右侧详情面板（详情插件开启 + 手动展开才渲染） */}
+      {detailsOpen && detailsAvailable && (
         <aside className="w-80 shrink-0 overflow-y-auto border-l border-line">
           <SlotView name={SLOTS.details} />
         </aside>
       )}
 
-      {/* 全局浮层（设置面板 / 弹窗 / 导入对话框） */}
+      {/* 全局浮层（设置面板 / 弹窗） */}
       <SlotView name={SLOTS.overlay} />
     </div>
   )

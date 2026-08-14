@@ -8,12 +8,17 @@ export interface GenSettings {
   game: string
   loader: string
   version: string
+  model: string
+  baseUrl: string
+  sandbox: string
 }
 
 export interface SessionState {
   sessionId: string | null
   phase: 'idle' | 'creating' | 'running' | 'finished' | 'error'
   error: string | null
+  title: string | null
+  question: { question: string; options: string[] } | null
   prompts: string[]
   events: EventItem[]
   cursor: { run: number; agent: number } | null
@@ -27,6 +32,8 @@ let state: SessionState = {
   sessionId: null,
   phase: 'idle',
   error: null,
+  title: null,
+  question: null,
   prompts: [],
   events: [],
   cursor: null,
@@ -76,22 +83,32 @@ export async function sendPrompt(prompt: string, settings: GenSettings) {
     events: [],
     cursor: null,
     hasJar: false,
-    prompts: [],
     elapsed: null,
     logTail: '',
   })
   try {
-    const { session_id } = await api.createSession(
-      settings.apiKey,
-      settings.game,
-      settings.loader,
-      settings.version,
-    )
-    setState({ sessionId: session_id })
+    // 若已有会话（如导入文件夹后），复用；否则建新会话（从零生成）
+    let sid = state.sessionId
+    if (!sid) {
+      const { session_id } = await api.createSession(
+        settings.apiKey,
+        settings.game,
+        settings.loader,
+        settings.version,
+        settings.model,
+        settings.baseUrl,
+        settings.sandbox,
+      )
+      sid = session_id
+      setState({ sessionId: session_id })
+    }
     const prompts = [...state.prompts, prompt]
-    setState({ prompts, phase: 'running' })
-    await api.startTask(session_id, prompt)
+    // 标题：已有（文件夹名）优先，否则用首条输入截断
+    const title = state.title ?? (prompt.length > 24 ? prompt.slice(0, 24) + '…' : prompt)
+    setState({ prompts, phase: 'running', title })
+    await api.startTask(sid, prompt)
     void poll()
+    void loadHistory()
   } catch (e) {
     setState({ phase: 'error', error: String((e as Error)?.message || e) })
   }
@@ -112,9 +129,26 @@ export async function poll() {
       logTail: st.log_tail,
       phase: st.finished ? 'finished' : 'running',
     })
+    const q = await api.getQuestion(sid)
+    if (q.status === 'pending' && q.question) {
+      setState({ question: { question: q.question, options: q.options ?? [] } })
+    } else if (state.question) {
+      setState({ question: null })
+    }
   } catch {
     /* 轮询瞬时失败忽略，下一轮重试 */
   }
+}
+
+export async function answerQuestion(answer: string) {
+  const sid = state.sessionId
+  if (!sid) return
+  try {
+    await api.answerQuestion(sid, answer)
+  } catch {
+    /* 提交失败也本地清掉，避免卡死界面 */
+  }
+  setState({ question: null })
 }
 
 let pollTimer: number | null = null
@@ -130,7 +164,7 @@ export function stopPolling() {
 }
 
 // 新建对话：回到从零生成的空态（不删历史，只清当前状态）
-export function newConversation() {
+export async function newConversation() {
   stopPolling()
   setState({
     sessionId: null,
@@ -138,16 +172,19 @@ export function newConversation() {
     events: [],
     cursor: null,
     prompts: [],
+    title: null,
+    question: null,
     error: null,
     hasJar: false,
     elapsed: null,
     logTail: '',
   })
+  void loadHistory()
 }
 
 // 从历史打开一个会话（查看产物/下载，不重新生成）
 export function openHistorySession(id: string) {
-  setState({ sessionId: id, phase: 'finished', events: [], cursor: null, prompts: [], error: null })
+  setState({ sessionId: id, phase: 'finished', events: [], cursor: null, prompts: [], title: null, error: null })
   void poll()
 }
 
@@ -164,11 +201,12 @@ export async function regenerate() {
 }
 
 // 导入已有 mod 文件夹：上传 zip → 后端解压成新会话工作区 → 回到可对话态
-export async function importWorkspace(files: ImportFile[], settings: GenSettings) {
-  setState({ phase: 'creating', error: null, events: [], cursor: null, prompts: [], hasJar: false, elapsed: null, logTail: '' })
+export async function importWorkspace(files: ImportFile[], settings: GenSettings, title?: string) {
+  setState({ phase: 'creating', error: null, events: [], cursor: null, prompts: [], hasJar: false, elapsed: null, logTail: '', title: title ?? null })
   try {
     const { session_id } = await api.importSession(files, settings)
-    setState({ sessionId: session_id, phase: 'idle' })
+    setState({ sessionId: session_id, phase: 'idle', title: title ?? null })
+    void loadHistory()
   } catch (e) {
     setState({ phase: 'error', error: String((e as Error)?.message || e) })
   }

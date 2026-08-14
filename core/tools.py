@@ -1,5 +1,7 @@
 import json
 import os
+import re
+import fnmatch
 import subprocess
 import threading
 import queue
@@ -39,6 +41,31 @@ from .protocol import (
 worktree_manager = None
 
 # ---------- 工具函数实现 ----------
+# 沙箱模式（路径级加固）：会话级，由 server 通过 DSH_SANDBOX_MODE 注入。
+#   full-access      不限制（默认，与旧行为一致）
+#   workspace-write  禁止 cd .. / 绝对路径越出工作区（但允许写工作区内文件）
+#   read-only        额外禁止一切修改性命令与文件写入
+def _sandbox_mode() -> str:
+    return getattr(config, "SANDBOX_MODE", "full-access")
+
+
+_MUTATING_TOKENS = [
+    "del ", "rd ", "rmdir", "mkdir", "copy ", "xcopy", "move ", "ren ", "rename ",
+    ">", ">>", "git add", "git commit", "pip install", "npm install", "npm i ",
+    "python -m pip", "pip3 install", "conda install",
+]
+
+
+def _is_mutating(command: str) -> bool:
+    c = command.lower()
+    return any(t in c for t in _MUTATING_TOKENS)
+
+
+def _escapes_workspace(command: str) -> bool:
+    """检测 cd / pushd 到工作区之外（..、根目录、盘符）。"""
+    return bool(re.search(r"\b(?:cd|pushd)\s+(?:\.\.|[/\\]|[a-z]:)", command.lower()))
+
+
 def run_bash(command: str) -> str:
     """执行命令并返回 stdout/stderr，含基本安全防护（Windows）。
 
@@ -56,6 +83,13 @@ def run_bash(command: str) -> str:
     ]
     if any(d in command.lower() for d in dangerous):
         return "Error: Dangerous command blocked"
+    # 沙箱：路径级加固（full-access 不限制）
+    mode = _sandbox_mode()
+    if mode != "full-access":
+        if _escapes_workspace(command):
+            return "Error: 沙箱模式禁止越出工作区（cd .. / cd 绝对路径）"
+        if mode == "read-only" and _is_mutating(command):
+            return "Error: read-only 模式禁止修改性操作（del/rd/mkdir/copy/重定向/安装等）"
     # 第 12 课：cwd 跟随线程 session 基座（worktree_use 后落在 worktree 内）
     base = worktree_manager.resolve_dir() if worktree_manager else os.getcwd()
     proc = subprocess.Popen(
@@ -109,6 +143,8 @@ def _is_mod_file(path: str) -> bool:
 
 
 def run_write(path: str, content: str) -> str:
+    if _sandbox_mode() == "read-only":
+        return "Error: read-only 模式禁止写入文件"
     if _is_mod_file(path) and not any_loaded():
         return ("Error: MOD 文件禁止无技能依据写入。请先调用 load_skill 加载相关技能"
                 "（如 forge-items / forge-blocks / forge-resources-* / forge-networking），再重试。")
@@ -123,6 +159,8 @@ def run_write(path: str, content: str) -> str:
         return f"Error: {e}"
 
 def run_edit(path: str, old_text: str, new_text: str) -> str:
+    if _sandbox_mode() == "read-only":
+        return "Error: read-only 模式禁止修改文件"
     if _is_mod_file(path) and not any_loaded():
         return ("Error: MOD 文件禁止无技能依据修改。请先调用 load_skill 加载相关技能"
                 "（如 forge-items / forge-blocks / forge-resources-* / forge-networking），再重试。")
@@ -137,6 +175,189 @@ def run_edit(path: str, old_text: str, new_text: str) -> str:
         return f"Edited {path}"
     except Exception as e:
         return f"Error: {e}"
+
+# ---------- 文件搜索 / 网络工具（移植 dsh 的 tool-fs-search / tool-web）----------
+# grep/glob：直接搜工作区文件（含 mc_java_sources、skills、生成代码），
+# 不再依赖 bash findstr 的脆弱转义；web_search/web_fetch：联网查资料/抓取网页。
+_SEARCH_SKIP_DIRS = {
+    ".gradle", "build", "dist", ".git", ".idea", ".vscode",
+    "node_modules", ".worktrees", ".team", ".tasks", ".transcripts",
+    "__pycache__", "run", "bin", "venv", "mc_java_sources",
+}
+
+
+def _search_base() -> str:
+    return worktree_manager.resolve_dir() if worktree_manager else os.getcwd()
+
+
+def run_glob(pattern: str) -> str:
+    """按 glob 模式查找文件，返回相对工作区的路径列表（跳过运行时目录）。"""
+    try:
+        base = Path(_search_base()).resolve()
+        matches = []
+        for p in base.rglob(pattern):
+            if not p.is_file():
+                continue
+            try:
+                parts = p.relative_to(base).parts
+            except ValueError:
+                continue
+            if any(part in _SEARCH_SKIP_DIRS for part in parts):
+                continue
+            matches.append(str(p.relative_to(base)))
+        matches = matches[:200]
+        if not matches:
+            return "(no files matched)"
+        if len(matches) == 200:
+            return "\n".join(matches) + "\n... (仅显示前 200 条)"
+        return "\n".join(matches)
+    except Exception as e:
+        return f"Error: {e}"
+
+
+def run_grep(pattern: str, path: str = ".", glob_filter: str = None,
+             max_results: int = 50) -> str:
+    """正则搜索文件内容，返回 '相对路径:行号: 行内容'（跳过运行时目录）。"""
+    try:
+        base = Path(_search_base()).resolve()
+        root = (base / path).resolve() if not Path(path).is_absolute() else Path(path).resolve()
+        # 沙箱：非 full-access 禁止搜工作区之外
+        if _sandbox_mode() != "full-access" and not str(root).startswith(str(base)):
+            return "Error: grep 路径越出工作区"
+        rx = re.compile(pattern)
+        results = []
+
+        def _walk(directory: Path):
+            for dirpath, dirnames, filenames in os.walk(str(directory)):
+                dirnames[:] = [d for d in dirnames if d not in _SEARCH_SKIP_DIRS]
+                for fname in filenames:
+                    if glob_filter and not fnmatch.fnmatch(fname, glob_filter):
+                        continue
+                    fp = Path(dirpath) / fname
+                    try:
+                        text = fp.read_text(encoding="utf-8", errors="replace")
+                    except OSError:
+                        continue
+                    for i, line in enumerate(text.splitlines(), 1):
+                        if rx.search(line):
+                            try:
+                                rel = str(fp.relative_to(base))
+                            except ValueError:
+                                rel = str(fp)
+                            results.append(f"{rel}:{i}: {line[:300]}")
+                            if len(results) >= max_results:
+                                return
+
+        if root.is_dir():
+            _walk(root)
+        elif root.is_file():
+            try:
+                text = root.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                return "(no matches)"
+            for i, line in enumerate(text.splitlines(), 1):
+                if rx.search(line):
+                    results.append(f"{path}:{i}: {line[:300]}")
+                    if len(results) >= max_results:
+                        break
+        out = "\n".join(results) if results else "(no matches)"
+        if len(results) >= max_results:
+            out += f"\n... (截断，共显示 {max_results} 条)"
+        return out
+    except Exception as e:
+        return f"Error: {e}"
+
+
+def run_web_fetch(url: str, max_chars: int = 100000) -> str:
+    """抓取网页纯文本/HTML 内容（失败返回温和错误，不中断主循环）。"""
+    try:
+        import httpx
+        r = httpx.get(url, timeout=20, follow_redirects=False)
+        r.raise_for_status()
+        text = r.text
+        truncated = len(text) > max_chars
+        return text[:max_chars] + ("\n...(截断)" if truncated else "")
+    except Exception as e:
+        return f"Error: 抓取失败: {e}"
+
+
+def run_web_search(query: str, max_results: int = 5) -> str:
+    """联网搜索（DuckDuckGo HTML 端点，尽力而为，失败返回温和错误）。"""
+    try:
+        import httpx
+        from html import unescape as _unescape
+        r = httpx.post(
+            "https://html.duckduckgo.com/html/",
+            data={"q": query},
+            timeout=20,
+            follow_redirects=False,
+            headers={"User-Agent": "Mozilla/5.0"},
+        )
+        r.raise_for_status()
+        results = []
+        for m in re.finditer(
+            r'<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>(.*?)</a>', r.text
+        ):
+            href, title = m.group(1), re.sub(r"<[^>]+>", "", m.group(2))
+            results.append(f"- {_unescape(title).strip()}\n  {href}")
+            if len(results) >= max_results:
+                break
+        return "\n".join(results) if results else "(无结果或解析失败)"
+    except Exception as e:
+        return f"Error: 搜索失败: {e}"
+
+
+def run_ask_user(question: str, options: list = None) -> str:
+    """向用户提问并阻塞等待回答（文件 IPC：写 question.json，轮询 answer.json）。
+
+    前端轮询 /api/question 发现待答问题 → 展示选项/输入框 → 用户提交
+    → POST /api/answer 写 answer.json → 这里读到后返回答案、agent 继续。
+    超时 5 分钟未答则返回提示并继续（不永久卡死）。
+    """
+    options = options or []
+    base = Path.cwd()  # agent 子进程 cwd = 会话目录（run_task.py os.chdir）
+    qpath = base / "question.json"
+    apath = base / "answer.json"
+    try:
+        qpath.write_text(
+            json.dumps({"question": question, "options": options}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+    except OSError as e:
+        return f"Error: 无法写入问题文件: {e}"
+    logger.info(f"ask_user_question | 提出: {question}")
+
+    deadline = time.time() + 300  # 最多等 5 分钟
+    try:
+        while time.time() < deadline:
+            if apath.exists():
+                try:
+                    data = json.loads(apath.read_text(encoding="utf-8"))
+                    answer = str(data.get("answer", ""))
+                except (OSError, json.JSONDecodeError):
+                    time.sleep(1)
+                    continue
+                try:
+                    apath.unlink()
+                except OSError:
+                    pass
+                if qpath.exists():
+                    try:
+                        qpath.unlink()
+                    except OSError:
+                        pass
+                return answer or "(用户未提供回答)"
+            time.sleep(1)
+    except Exception as e:
+        return f"Error: {e}"
+    # 超时：清掉问题，避免前端一直显示
+    if qpath.exists():
+        try:
+            qpath.unlink()
+        except OSError:
+            pass
+    return "(用户未回答，已超时)"
+
 
 # ---------- TodoManager（叠加的规划系统，不改动 Agent Loop 核心）----------
 class TodoManager:
@@ -1169,7 +1390,7 @@ class TeammateManager:
         # 团队成员/子代理不可用（重工具主 agent 独占）：
         #   run_game_test_server / read_game_test_log —— GameTest 进程重、会互踩 run 目录
         excluded = {"spawn_teammate", "send_to_teammate", "team_status", "task",
-                    "request_shutdown", "run_game_test_server", "read_game_test_log", "run_client", "run_server", "run_data_gen", "run_game_test_server", "run_test_client", "run_test_server", "run_test_data", "run_test_gametest"}
+                    "request_shutdown", "ask_user_question", "run_game_test_server", "read_game_test_log", "run_client", "run_server", "run_data_gen", "run_game_test_server", "run_test_client", "run_test_server", "run_test_data", "run_test_gametest"}
         teammate_tools = [t for t in TOOLS if t["function"]["name"] not in excluded]
 
         logger.info(f"=== 队友 Agent 启动 | agent={agent_id} | task={task[:200]} ===")
@@ -1603,6 +1824,12 @@ def _gt_tool(name, kw):
     return _json.dumps(r, ensure_ascii=False)
 TOOL_HANDLERS = {
     "bash":         lambda **kw: run_bash(kw["command"]),
+    "grep":         lambda **kw: run_grep(kw["pattern"], kw.get("path", "."),
+                                          kw.get("glob_filter"), kw.get("max_results", 50)),
+    "glob":         lambda **kw: run_glob(kw["pattern"]),
+    "web_search":   lambda **kw: run_web_search(kw["query"], kw.get("max_results", 5)),
+    "web_fetch":    lambda **kw: run_web_fetch(kw["url"], kw.get("max_chars", 100000)),
+    "ask_user_question": lambda **kw: run_ask_user(kw.get("question", ""), kw.get("options", [])),
     "read_file":    lambda **kw: run_read(kw["path"], kw.get("limit")),
     "write_file":   lambda **kw: run_write(kw["path"], kw["content"]),
     "edit_file":    lambda **kw: run_edit(kw["path"], kw["old_text"],
@@ -1665,6 +1892,82 @@ TOOLS = [
                     "command": {"type": "string"},
                 },
                 "required": ["command"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "grep",
+            "description": "Search file contents with a regex across the workspace (skips build/runtime dirs). Returns 'relative/path:line: content'. Useful for finding exact APIs/errors in mc_java_sources, skills, or generated code.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pattern": {"type": "string", "description": "Regex to search for"},
+                    "path": {"type": "string", "description": "Directory or file to search (default workspace root)"},
+                    "glob_filter": {"type": "string", "description": "Optional filename glob filter, e.g. *.java"},
+                    "max_results": {"type": "integer", "description": "Max matches to return (default 50)"},
+                },
+                "required": ["pattern"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "glob",
+            "description": "Find files by glob pattern under the workspace (skips build/runtime dirs).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pattern": {"type": "string", "description": "Glob pattern, e.g. **/*.java"},
+                },
+                "required": ["pattern"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "web_search",
+            "description": "Search the web (best-effort DuckDuckGo HTML). Returns a list of title + URL.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query"},
+                    "max_results": {"type": "integer", "description": "Max results (default 5)"},
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "web_fetch",
+            "description": "Fetch a URL and return its text/HTML content (capped).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "URL to fetch"},
+                    "max_chars": {"type": "integer", "description": "Max characters to return (default 100000)"},
+                },
+                "required": ["url"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "ask_user_question",
+            "description": "Ask the user a clarifying question and wait for their answer. Use when the requirement is ambiguous and you need the user to choose or clarify. 'options' is an optional list of preset choices; the user can also type a free-form answer.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "question": {"type": "string", "description": "The question to ask the user"},
+                    "options": {"type": "array", "items": {"type": "string"}, "description": "Optional preset choices"},
+                },
+                "required": ["question"],
             },
         },
     },

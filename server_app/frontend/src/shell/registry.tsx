@@ -73,7 +73,7 @@ export function SlotView({
     <>
       {registry
         .entries(name)
-        .filter((e) => !disabled.has(e.pluginId))
+        .filter((e) => !disabled.has(e.pluginId) || e.pluginId === 'modforge-settings')
         .map((e) => {
           // 每个槽位渲染函数作为独立 React 组件调用，保证内部 hooks 有独立 fiber
           const Comp = e.render as any

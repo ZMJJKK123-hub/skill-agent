@@ -18,6 +18,7 @@
 """
 
 import os
+import json
 import shutil
 import subprocess
 import sys
@@ -54,7 +55,9 @@ class Session:
     """一个用户的生成会话：独立 mod 工作目录 + 子进程状态。"""
 
     def __init__(self, session_id: str, mod_dir: Path, api_key: str, owner: str = "",
-                 game: str = "minecraft", loader: str = "", version: str = ""):
+                 game: str = "minecraft", loader: str = "", version: str = "",
+                 model: str = "deepseek-v4-flash", base_url: str = "https://api.deepseek.com/v1",
+                 sandbox: str = "full-access"):
         self.id = session_id
         self.mod_dir = mod_dir
         self.api_key = api_key
@@ -62,6 +65,9 @@ class Session:
         self.game = game          # 目标游戏（重置时重建骨架用）
         self.loader = loader      # 加载器（如 forge）
         self.version = version    # 版本（如 1.21.1）
+        self.model = model        # 生成用的模型名（如 deepseek-v4-flash / 自定义 provider 的模型）
+        self.base_url = base_url  # 生成用的 API base_url（OpenAI 兼容）
+        self.sandbox = sandbox    # 会话沙箱模式：full-access | workspace-write | read-only
         self.proc: Optional[subprocess.Popen] = None
         self.started_at: Optional[float] = None
         self.finished_at: Optional[float] = None
@@ -128,6 +134,9 @@ class SessionRequest(BaseModel):
     game: str = "minecraft"   # 默认 Minecraft
     loader: str = ""          # 可选：Mod Loader（如 forge / fabric）
     version: str = ""         # 可选：游戏版本（如 1.21.1）
+    model: str = "deepseek-v4-flash"          # 生成模型
+    base_url: str = "https://api.deepseek.com/v1"  # OpenAI 兼容 API 地址
+    sandbox: str = "full-access"              # 沙箱模式：full-access | workspace-write | read-only
 
 
 class TaskRequest(BaseModel):
@@ -138,6 +147,11 @@ class TaskRequest(BaseModel):
 class AuthRequest(BaseModel):
     username: str
     password: str
+
+
+class AnswerRequest(BaseModel):
+    session_id: str
+    answer: str
 
 
 class HistoryEntry(BaseModel):
@@ -182,7 +196,11 @@ def _copy_template(game: str, dest: Path, loader: str = "", version: str = "") -
     # read_file / bash findstr 查阅（不依赖任何受限工具）。源码只对
     # agent 可见，用户下载 zip / 文件树 / 统计都会被排除（见 download_mod /
     # build_file_tree / _session_stats）。
-    mc_sources = PROJECT_ROOT / "mc_java_sources"
+    # 按会话版本选择对应的 MC+Forge 源码树（会话内目录名保持 mc_java_sources 不变）
+    if version.startswith("26.2"):
+        mc_sources = PROJECT_ROOT / "mc_java_sources_26.2"
+    else:
+        mc_sources = PROJECT_ROOT / "mc_java_sources_1.21.11"
     if mc_sources.is_dir():
         try:
             shutil.copytree(mc_sources, dest / "mc_java_sources", dirs_exist_ok=True)
@@ -353,7 +371,8 @@ def create_session(req: SessionRequest, authorization: str = Header(default=""))
     except OSError:
         pass
     sessions[session_id] = Session(session_id, mod_dir, req.api_key, owner=username,
-                                  game=req.game, loader=req.loader, version=req.version)
+                                  game=req.game, loader=req.loader, version=req.version,
+                                  model=req.model, base_url=req.base_url, sandbox=req.sandbox)
     return {"session_id": session_id, "mod_dir": str(mod_dir)}
 
 
@@ -365,11 +384,14 @@ async def import_session(
     game: str = "minecraft",
     loader: str = "forge",
     version: str = "1.21.11",
+    model: str = "deepseek-v4-flash",
+    base_url: str = "https://api.deepseek.com/v1",
+    sandbox: str = "full-access",
 ):
     """导入已有 mod 文件夹：前端选目录打成 zip 上传，解压成新会话工作区。
 
     请求体 = 原始 zip 字节（Content-Type: application/zip）；
-    api_key 走 X-API-Key 头，game/loader/version 走 query 参数。
+    api_key 走 X-API-Key 头，game/loader/version/model/base_url 走 query 参数。
     不依赖 python-multipart，后端零新增依赖。
     """
     import io
@@ -403,7 +425,11 @@ async def import_session(
         raise HTTPException(400, "无效的 zip 文件")
 
     # 供 agent 查阅 MC+Forge 源码（与 _copy_template 一致）
-    mc_sources = PROJECT_ROOT / "mc_java_sources"
+    # 按会话版本选择对应的 MC+Forge 源码树（会话内目录名保持 mc_java_sources 不变）
+    if version.startswith("26.2"):
+        mc_sources = PROJECT_ROOT / "mc_java_sources_26.2"
+    else:
+        mc_sources = PROJECT_ROOT / "mc_java_sources_1.21.11"
     if mc_sources.is_dir():
         try:
             shutil.copytree(mc_sources, mod_dir / "mc_java_sources", dirs_exist_ok=True)
@@ -415,7 +441,8 @@ async def import_session(
     except OSError:
         pass
     sessions[session_id] = Session(session_id, mod_dir, api_key, owner=username,
-                                  game=game, loader=loader, version=version)
+                                  game=game, loader=loader, version=version,
+                                  model=model, base_url=base_url, sandbox=sandbox)
     return {"session_id": session_id, "mod_dir": str(mod_dir)}
 
 
@@ -497,7 +524,9 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
         cwd=str(BASE_DIR),
         stdout=open(sess.log_path, "w", encoding="utf-8"),
         stderr=subprocess.STDOUT,
-        env={**os.environ, "PYTHONUNBUFFERED": "1"},
+        env={**os.environ, "PYTHONUNBUFFERED": "1",
+             "DSH_MODEL": sess.model, "DSH_BASE_URL": sess.base_url,
+             "DSH_SANDBOX_MODE": sess.sandbox},
     )
     sess.proc = proc
     sess.started_at = time.time()
@@ -814,6 +843,33 @@ def list_sessions(authorization: str = Header(default="")):
                 pass
             out.append({"sessionId": child.name, "owner": owner, "has_jar": has_jar, "date": date})
     return {"sessions": out}
+
+
+@app.get("/api/question")
+def get_question(session_id: str, authorization: str = Header(default="")):
+    """返回 agent 当前待回答的问题（agent 调 ask_user_question 时写入 question.json）。"""
+    username = _auth_username(authorization)
+    sess = _get_session(session_id)
+    _assert_owner(sess, username)
+    qpath = sess.mod_dir.parent / "question.json"
+    if not qpath.exists():
+        return {"status": "none"}
+    try:
+        data = json.loads(qpath.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"status": "none"}
+    return {"status": "pending", **data}
+
+
+@app.post("/api/answer")
+def post_answer(req: AnswerRequest, authorization: str = Header(default="")):
+    """用户回答 agent 的问题：写 answer.json，agent 的 ask_user_question 轮询到后继续。"""
+    username = _auth_username(authorization)
+    sess = _get_session(req.session_id)
+    _assert_owner(sess, username)
+    apath = sess.mod_dir.parent / "answer.json"
+    apath.write_text(json.dumps({"answer": req.answer}, ensure_ascii=False), encoding="utf-8")
+    return {"ok": True}
 
 
 @app.put("/api/history")
