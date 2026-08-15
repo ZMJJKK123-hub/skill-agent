@@ -144,6 +144,8 @@ class TaskRequest(BaseModel):
     prompt: str
     mode: str = "chat"   # chat（通用对话，默认）| mod（MOD 制作）
     resume: bool = False  # True=从断点恢复继续（暂停后点继续按钮）
+    model: str = ""       # 可选：覆盖会话模型（前端切换 flash/pro 后立即生效）
+    base_url: str = ""    # 可选：覆盖会话 base_url（自定义 provider）
 
 
 class AuthRequest(BaseModel):
@@ -153,7 +155,8 @@ class AuthRequest(BaseModel):
 
 class AnswerRequest(BaseModel):
     session_id: str
-    answer: str
+    answer: str = ""   # 单题回答（legacy）
+    answers: Optional[list] = None  # 多题回答：[{"question": "...", "answer": "..."}, ...]
 
 
 class HistoryEntry(BaseModel):
@@ -414,74 +417,80 @@ def prepare_mod_session(
     return {"session_id": sess.id, "mod_ready": True, "already": already}
 
 
-@app.post("/api/import")
-async def import_session(
-    request: Request,
-    authorization: str = Header(default=""),
-    api_key: str = Header(default="", alias="X-API-Key"),
-    game: str = "minecraft",
-    loader: str = "forge",
-    version: str = "1.21.11",
-    model: str = "deepseek-v4-flash",
-    base_url: str = "https://api.deepseek.com/v1",
-    sandbox: str = "full-access",
-):
-    """导入已有 mod 文件夹：前端选目录打成 zip 上传，解压成新会话工作区。
-
-    请求体 = 原始 zip 字节（Content-Type: application/zip）；
-    api_key 走 X-API-Key 头，game/loader/version/model/base_url 走 query 参数。
-    不依赖 python-multipart，后端零新增依赖。
-    """
-    import io
-    import zipfile
-
-    username = _auth_username(authorization)
-    session_id = uuid.uuid4().hex[:12]
-    mod_dir = SESSIONS_DIR / session_id / "mod"
-    mod_dir.mkdir(parents=True, exist_ok=True)
-
-    data = await request.body()
-    if not data:
-        raise HTTPException(400, "上传文件为空")
-    try:
-        with zipfile.ZipFile(io.BytesIO(data)) as zf:
-            for member in zf.infolist():
-                # 防 zip-slip：拒绝绝对路径与越界（..）路径
-                member_path = Path(member.filename)
-                if member_path.is_absolute() or ".." in member_path.parts:
-                    raise HTTPException(400, f"zip 内含非法路径: {member.filename}")
-                target = (mod_dir / member_path).resolve()
-                if not target.is_relative_to(mod_dir.resolve()):
-                    raise HTTPException(400, f"zip 内含非法路径: {member.filename}")
-                if member.is_dir():
-                    target.mkdir(parents=True, exist_ok=True)
-                else:
-                    target.parent.mkdir(parents=True, exist_ok=True)
-                    with zf.open(member) as src, open(target, "wb") as dst:
-                        shutil.copyfileobj(src, dst)
-    except zipfile.BadZipFile:
-        raise HTTPException(400, "无效的 zip 文件")
-
-    # 供 agent 查阅 MC+Forge 源码（与 _copy_template 一致）
-    # 按会话版本选择对应的 MC+Forge 源码树（会话内目录名保持 mc_java_sources 不变）
-    if version.startswith("26.2"):
-        mc_sources = PROJECT_ROOT / "mc_java_sources_26.2"
-    else:
-        mc_sources = PROJECT_ROOT / "mc_java_sources_1.21.11"
-    if mc_sources.is_dir():
-        try:
-            shutil.copytree(mc_sources, mod_dir / "mc_java_sources", dirs_exist_ok=True)
-        except OSError as e:
-            print(f"[server] 复制 mc_java_sources 失败: {e}")
-
-    try:
-        (mod_dir.parent / "owner.txt").write_text(username, encoding="utf-8")
-    except OSError:
-        pass
-    sessions[session_id] = Session(session_id, mod_dir, api_key, owner=username,
-                                  game=game, loader=loader, version=version,
-                                  model=model, base_url=base_url, sandbox=sandbox)
-    return {"session_id": session_id, "mod_dir": str(mod_dir)}
+# ============================================================================
+# 【导入文件夹功能 - 已临时禁用】
+# 说明：导入后 bug 较多，暂时注释停用；代码保留，后续扩展时恢复。
+# 恢复方法：取消本段注释即可（前端 workspace.tsx 同步恢复）。
+# ============================================================================
+# @app.post("/api/import")
+# async def import_session(
+#     request: Request,
+#     authorization: str = Header(default=""),
+#     api_key: str = Header(default="", alias="X-API-Key"),
+#     game: str = "minecraft",
+#     loader: str = "forge",
+#     version: str = "1.21.11",
+#     model: str = "deepseek-v4-flash",
+#     base_url: str = "https://api.deepseek.com/v1",
+#     sandbox: str = "full-access",
+# ):
+#     """导入已有 mod 文件夹：前端选目录打成 zip 上传，解压成新会话工作区。
+#
+#     请求体 = 原始 zip 字节（Content-Type: application/zip）；
+#     api_key 走 X-API-Key 头，game/loader/version/model/base_url 走 query 参数。
+#     不依赖 python-multipart，后端零新增依赖。
+#     """
+#     import io
+#     import zipfile
+#
+#     username = _auth_username(authorization)
+#     session_id = uuid.uuid4().hex[:12]
+#     mod_dir = SESSIONS_DIR / session_id / "mod"
+#     mod_dir.mkdir(parents=True, exist_ok=True)
+#
+#     data = await request.body()
+#     if not data:
+#         raise HTTPException(400, "上传文件为空")
+#     try:
+#         with zipfile.ZipFile(io.BytesIO(data)) as zf:
+#             for member in zf.infolist():
+#                 # 防 zip-slip：拒绝绝对路径与越界（..）路径
+#                 member_path = Path(member.filename)
+#                 if member_path.is_absolute() or ".." in member_path.parts:
+#                     raise HTTPException(400, f"zip 内含非法路径: {member.filename}")
+#                 target = (mod_dir / member_path).resolve()
+#                 if not target.is_relative_to(mod_dir.resolve()):
+#                     raise HTTPException(400, f"zip 内含非法路径: {member.filename}")
+#                 if member.is_dir():
+#                     target.mkdir(parents=True, exist_ok=True)
+#                 else:
+#                     target.parent.mkdir(parents=True, exist_ok=True)
+#                     with zf.open(member) as src, open(target, "wb") as dst:
+#                         shutil.copyfileobj(src, dst)
+#     except zipfile.BadZipFile:
+#         raise HTTPException(400, "无效的 zip 文件")
+#
+#     # 供 agent 查阅 MC+Forge 源码（与 _copy_template 一致）
+#     # 按会话版本选择对应的 MC+Forge 源码树（会话内目录名保持 mc_java_sources 不变）
+#     if version.startswith("26.2"):
+#         mc_sources = PROJECT_ROOT / "mc_java_sources_26.2"
+#     else:
+#         mc_sources = PROJECT_ROOT / "mc_java_sources_1.21.11"
+#     if mc_sources.is_dir():
+#         try:
+#             shutil.copytree(mc_sources, mod_dir / "mc_java_sources", dirs_exist_ok=True)
+#         except OSError as e:
+#             print(f"[server] 复制 mc_java_sources 失败: {e}")
+#
+#     try:
+#         (mod_dir.parent / "owner.txt").write_text(username, encoding="utf-8")
+#     except OSError:
+#         pass
+#     sessions[session_id] = Session(session_id, mod_dir, api_key, owner=username,
+#                                   game=game, loader=loader, version=version,
+#                                   model=model, base_url=base_url, sandbox=sandbox)
+#     return {"session_id": session_id, "mod_dir": str(mod_dir)}
+# ============================================================================
 
 
 @app.delete("/api/session")
@@ -571,6 +580,14 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
 
     # ── 恢复模式：从断点继续（暂停后点继续按钮）──
     if req.resume:
+        # 带 prompt 的恢复 = 暂停后强注入新消息：先写入 pending（同时落历史），
+        # 恢复的 run_task 从断点加载后，agent 第一轮会 drain 到该消息作为 user 注入。
+        if req.prompt.strip():
+            try:
+                from core.conversation import enqueue_pending
+                enqueue_pending(sess.mod_dir.parent, req.prompt)
+            except Exception:
+                raise HTTPException(500, "排队消息写入失败")
         # 校验断点存在（没有断点则回退普通启动，由 run_task 决定）
         pass
 
@@ -600,6 +617,13 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
             env_extra["DSH_PROMPT_FILE"] = prompt_file
         except OSError as e:
             raise HTTPException(500, f"提示词临时文件写入失败: {e}")
+
+    # 模型/地址：请求里带了就用最新的（前端切换 flash/pro 或自定义 provider
+    # 后立即生效），否则用会话创建时存储的值；同时回写会话，保持后续一致。
+    if req.model:
+        sess.model = req.model
+    if req.base_url:
+        sess.base_url = req.base_url
 
     # 启动隔离子进程：cwd 切到工作目录（run_task.py 内部 os.chdir）。
     # PYTHONUNBUFFERED=1：强制子进程 stdout 无缓冲，否则 print 会积压到
@@ -1050,7 +1074,11 @@ def _session_title(child: Path) -> str:
 
 @app.get("/api/question")
 def get_question(session_id: str, authorization: str = Header(default="")):
-    """返回 agent 当前待回答的问题（agent 调 ask_user_question 时写入 question.json）。"""
+    """返回 agent 当前待回答的问题（agent 调 ask_user_question 时写入 question.json）。
+
+    新格式：{"questions": [{"question": "...", "options": [...]}, ...]}（多问题）；
+    兼容旧格式 {"question": "...", "options": [...]} → 归一化为 questions 数组。
+    """
     username = _auth_username(authorization)
     sess = _get_session(session_id)
     _assert_owner(sess, username)
@@ -1061,17 +1089,28 @@ def get_question(session_id: str, authorization: str = Header(default="")):
         data = json.loads(qpath.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return {"status": "none"}
-    return {"status": "pending", **data}
+    # 归一化：新格式 questions 数组 / 旧格式单 question
+    if isinstance(data.get("questions"), list) and data["questions"]:
+        return {"status": "pending", "questions": data["questions"]}
+    if data.get("question"):
+        return {"status": "pending", "questions": [{"question": data["question"], "options": data.get("options") or []}]}
+    return {"status": "none"}
 
 
 @app.post("/api/answer")
 def post_answer(req: AnswerRequest, authorization: str = Header(default="")):
-    """用户回答 agent 的问题：写 answer.json，agent 的 ask_user_question 轮询到后继续。"""
+    """用户回答 agent 的问题：写 answer.json，agent 的 ask_user_question 轮询到后继续。
+
+    支持两种 body：
+      - 多题：{"session_id": ..., "answers": [{"question": "...", "answer": "..."}, ...]}
+      - 单题（legacy）：{"session_id": ..., "answer": "..."}
+    """
     username = _auth_username(authorization)
     sess = _get_session(req.session_id)
     _assert_owner(sess, username)
     apath = sess.mod_dir.parent / "answer.json"
-    apath.write_text(json.dumps({"answer": req.answer}, ensure_ascii=False), encoding="utf-8")
+    payload = {"answers": req.answers} if req.answers is not None else {"answer": req.answer}
+    apath.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
     return {"ok": True}
 
 

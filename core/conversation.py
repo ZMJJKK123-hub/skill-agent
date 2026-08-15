@@ -184,7 +184,12 @@ def pending_path(session_root: str | os.PathLike) -> Path:
 
 
 def enqueue_pending(session_root: str | os.PathLike, content: str) -> None:
-    """把运行中用户发来的消息排入队列（当前轮跑完后由前端自动续跑处理）。"""
+    """把运行中用户发来的消息排入队列（当前轮跑完后由前端自动续跑处理）。
+
+    同步写入 conversation.jsonl 历史——否则消息只进 pending 队列、
+    agent 后端能收到（drain 注入）但历史记录文件里没有（实测 bug：
+    追加输入的内容在 data 里为空）。
+    """
     path = pending_path(session_root)
     try:
         with open(path, "a", encoding="utf-8") as f:
@@ -192,6 +197,8 @@ def enqueue_pending(session_root: str | os.PathLike, content: str) -> None:
         logger.info(f"conversation.enqueue_pending | 已排队用户消息")
     except OSError as e:
         logger.error(f"conversation.enqueue_pending 写入失败: {e}")
+    # 同步写入对话历史（幂等：只追加，不重复）
+    append_user(session_root, content)
 
 
 def drain_pending(session_root: str | os.PathLike) -> list:

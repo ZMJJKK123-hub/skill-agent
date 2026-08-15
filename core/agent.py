@@ -52,16 +52,34 @@ def _save_checkpoint(messages: list) -> None:
 
 
 def _drain_interjections(messages: list) -> None:
-    """读取运行中用户插入的排队消息并注入上下文（每轮循环开头）。"""
+    """读取运行中用户插入的排队消息并注入上下文（每轮循环开头）。
+
+    去重：enqueue_pending 已把消息同步写入 conversation 历史，自动续跑时
+    load_recent_history 可能已包含它——这里按 (role, content) 去重，
+    避免同一条消息被注入两次。
+    """
     if not SESSION_ROOT:
         return
     try:
         from .conversation import drain_pending
         pending = drain_pending(SESSION_ROOT)
         if pending:
+            existing = {
+                (m.get("role"), m.get("content"))
+                for m in messages
+                if isinstance(m, dict) and m.get("role") in ("user", "assistant")
+            }
+            added = 0
             for m in pending:
+                key = (m.get("role"), m.get("content"))
+                if key in existing:
+                    logger.info(f"跳过重复注入的排队消息: {str(m.get('content'))[:40]}")
+                    continue
                 messages.append(m)
-            logger.info(f"注入 {len(pending)} 条运行中用户插入消息")
+                existing.add(key)
+                added += 1
+            if added:
+                logger.info(f"注入 {added} 条运行中用户插入消息")
     except Exception as e:
         logger.warning(f"排队消息注入失败: {e}")
 
@@ -317,6 +335,21 @@ def agent_loop(messages: list) -> str:
                 used_todo = True
                 print(f"\n[todo]\n{output}")   # 终端显示完整 todo 清单
             logger.info(f"工具调用: {tc.function.name} | 参数={json.dumps(args, ensure_ascii=False)} | output={output}")
+            # ── 结构化工具日志（供前端 DSH 风格渲染）──
+            # run.log 格式：
+            #   [tool] <工具名> <参数JSON>        → 工具调用（命令/参数）
+            #   [tool-result] <成功|失败> <输出>  → 执行结果（成功/失败 + 输出）
+            # 与 [supervisor:xxx]/[subagent:xxx] 的旧格式并存，前端优先识别新格式。
+            try:
+                args_str = json.dumps(args, ensure_ascii=False)
+                if tc.function.name == "bash":
+                    # bash 特例：参数里的 command 直接展示（更友好）
+                    args_str = str(args.get("command", args_str))
+                ok = not str(output).lstrip().startswith("Error")
+                print(f"[tool] {tc.function.name} {args_str}", flush=True)
+                print(f"[tool-result] {'success' if ok else 'failed'}\n{output}", flush=True)
+            except Exception:
+                pass
             messages.append(
                 {
                     "role": "tool",

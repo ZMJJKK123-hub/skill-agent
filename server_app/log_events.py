@@ -69,6 +69,33 @@ def _parse_run_block(text: str) -> list[dict]:
         elif stripped.startswith("[subagent 思考]"):
             events.append(_ev("thinking", _after(stripped, "[subagent 思考]"), seq,
                               peer="subagent")); seq += 1
+        elif stripped.startswith("[supervisor 思考]"):
+            events.append(_ev("thinking", _after(stripped, "[supervisor 思考]"), seq,
+                              peer="supervisor")); seq += 1
+        # ── 新结构化工具日志（core/agent.py 主 agent 输出，DSH 风格渲染用）──
+        elif stripped.startswith("[tool-result]"):
+            # [tool-result] success|failed\n<输出> —— 多行块：收集后续行，
+            # 遇到下一个 [标记行 或 空行 时停止（不能吞掉后续工具事件）
+            rest = _after(stripped, "[tool-result]")
+            block = [rest]
+            j = i + 1
+            while j < len(lines):
+                nxt = lines[j].rstrip("\r")
+                if not nxt.strip() or nxt.strip().startswith("["):
+                    break
+                block.append(nxt)
+                j += 1
+            status = "success" if rest.startswith("success") else "failed"
+            content = "\n".join(block)
+            events.append(_ev("tool_result", content, seq, status=status)); seq += 1
+            i = j
+        elif stripped.startswith("[tool]"):
+            # [tool] <工具名> <参数JSON/命令>
+            rest = _after(stripped, "[tool]")
+            parts = rest.split(" ", 1)
+            tool_name = parts[0] if parts else "tool"
+            detail = parts[1] if len(parts) > 1 else ""
+            events.append(_ev("tool_call", detail, seq, tool=tool_name)); seq += 1
         elif stripped.startswith("[teammate:") and "]" in stripped:
             name, rest = _split_tag(stripped)
             events.append(_ev("tool_call", _after(rest, "]"), seq,
@@ -77,6 +104,10 @@ def _parse_run_block(text: str) -> list[dict]:
             name, rest = _split_tag(stripped)
             events.append(_ev("tool_call", _after(rest, "]"), seq,
                               tool=name, peer="subagent")); seq += 1
+        elif stripped.startswith("[supervisor:") and "]" in stripped:
+            name, rest = _split_tag(stripped)
+            events.append(_ev("tool_call", _after(rest, "]"), seq,
+                              tool=name, peer="supervisor")); seq += 1
         elif stripped == "[todo]":
             block = []
             j = i + 1

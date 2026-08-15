@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import * as api from './api'
-import type { EventItem, HistoryEntry, ImportFile } from './api'
+import type { EventItem, HistoryEntry } from './api'
 
 // 会话/生成编排：一个对话 = 一个工作区文件夹（后端 /api/session 创建）
 export interface GenSettings {
@@ -19,6 +19,8 @@ export interface SessionState {
   error: string | null
   title: string | null
   question: { question: string; options: string[] } | null
+  // 多题提问（agent 一次问多个，前端草稿式确认）：
+  questions: { question: string; options: string[] }[] | null
   prompts: string[]
   events: EventItem[]
   cursor: { run: number; agent: number } | null
@@ -40,6 +42,7 @@ let state: SessionState = {
   error: null,
   title: null,
   question: null,
+  questions: null,
   prompts: [],
   events: [],
   cursor: null,
@@ -92,7 +95,7 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
   if (state.phase === 'creating' || state.phase === 'running') {
     if (state.sessionId) {
       try {
-        await api.startTask(state.sessionId, prompt, mode)
+        await api.startTask(state.sessionId, prompt, mode, false, settings.model, settings.baseUrl)
         // 本地乐观显示排队消息（chat 模式）
         setState({
           chatMessages: [...state.chatMessages, { role: 'user', content: prompt }],
@@ -101,6 +104,20 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
       } catch (e) {
         setState({ error: String((e as Error)?.message || e) })
       }
+    }
+    return
+  }
+  // 已暂停：发送 = 恢复运行 + 消息强注入
+  // 后端 resume=true + 带 prompt 时：先 enqueue（写 pending+历史），
+  // 再从断点恢复；恢复的 agent 第一轮 drain 到该消息作为 user 强行注入。
+  if (state.paused && state.sessionId) {
+    try {
+      setState({ phase: 'running', paused: false, stoppedNotice: false, chatMessages: [...state.chatMessages, { role: 'user', content: prompt }] })
+      await api.startTask(state.sessionId, prompt, state.mode ?? 'chat', true, settings.model, settings.baseUrl)
+      void poll()
+      startPolling(2000)
+    } catch (e) {
+      setState({ phase: 'paused', error: String((e as Error)?.message || e) })
     }
     return
   }
@@ -144,7 +161,7 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
       ? [...state.chatMessages, { role: 'user' as const, content: prompt }]
       : state.chatMessages
     setState({ prompts, phase: 'running', title, chatMessages })
-    await api.startTask(sid, prompt, mode)
+    await api.startTask(sid, prompt, mode, false, settings.model, settings.baseUrl)
     void poll()
     void loadHistory()
   } catch (e) {
@@ -214,10 +231,15 @@ export async function poll() {
       void loadHistory()
     }
     const q = await api.getQuestion(sid)
-    if (q.status === 'pending' && q.question) {
-      setState({ question: { question: q.question, options: q.options ?? [] } })
-    } else if (state.question) {
-      setState({ question: null })
+    if (q.status === 'pending' && q.questions && q.questions.length > 0) {
+      // 多题：agent 一次问多个
+      const qs = q.questions.map((it) => ({ question: it.question, options: it.options ?? [] }))
+      setState({ questions: qs, question: null })
+    } else if (q.status === 'pending' && q.question) {
+      // 兼容单题
+      setState({ question: { question: q.question, options: q.options ?? [] }, questions: null })
+    } else if (state.question || state.questions) {
+      setState({ question: null, questions: null })
     }
   } catch {
     /* 轮询瞬时失败忽略，下一轮重试 */
@@ -254,15 +276,20 @@ export async function loadConversation(sessionId: string) {
   }
 }
 
-export async function answerQuestion(answer: string) {
+// 提交回答：单题（legacy）或多题确认（answers 数组）
+export async function answerQuestion(answer: string, answers?: { question: string; answer: string }[]) {
   const sid = state.sessionId
   if (!sid) return
   try {
-    await api.answerQuestion(sid, answer)
+    if (answers && answers.length > 0) {
+      await api.answerQuestions(sid, answers)
+    } else {
+      await api.answerQuestion(sid, answer)
+    }
   } catch {
     /* 提交失败也本地清掉，避免卡死界面 */
   }
-  setState({ question: null })
+  setState({ question: null, questions: null })
 }
 
 let pollTimer: number | null = null
@@ -288,6 +315,7 @@ export async function newConversation() {
     prompts: [],
     title: null,
     question: null,
+    questions: null,
     error: null,
     hasJar: false,
     elapsed: null,
@@ -306,7 +334,7 @@ export async function newConversation() {
 // 会覆盖新会话的显示（实测：记录消失/屏幕空白/状态打架）。
 export async function openHistorySession(id: string) {
   stopPolling()
-  setState({ sessionId: id, phase: 'idle', events: [], cursor: null, prompts: [], title: null, error: null, mode: null, chatMessages: [], paused: false, pending: 0, stoppedNotice: false })
+  setState({ sessionId: id, phase: 'idle', events: [], cursor: null, prompts: [], title: null, error: null, mode: null, chatMessages: [], paused: false, pending: 0, stoppedNotice: false, question: null, questions: null })
   await loadConversation(id)
   // 单次探测状态：若该会话仍在运行则恢复轮询显示进行中
   void poll()
@@ -318,20 +346,25 @@ export async function regenerate() {
   if (!sid) return
   try {
     await api.resetSession(sid)
-    setState({ phase: 'idle', events: [], cursor: null, prompts: [], error: null, hasJar: false, elapsed: null, logTail: '', mode: null, chatMessages: [], paused: false, pending: 0, stoppedNotice: false })
+    setState({ phase: 'idle', events: [], cursor: null, prompts: [], error: null, hasJar: false, elapsed: null, logTail: '', mode: null, chatMessages: [], paused: false, pending: 0, stoppedNotice: false, question: null, questions: null })
   } catch (e) {
     setState({ error: String((e as Error)?.message || e) })
   }
 }
 
-// 导入已有 mod 文件夹：上传 zip → 后端解压成新会话工作区 → 回到可对话态
-export async function importWorkspace(files: ImportFile[], settings: GenSettings, title?: string) {
-  setState({ phase: 'creating', error: null, events: [], cursor: null, prompts: [], hasJar: false, elapsed: null, logTail: '', title: title ?? null })
-  try {
-    const { session_id } = await api.importSession(files, settings)
-    setState({ sessionId: session_id, phase: 'idle', title: title ?? null })
-    void loadHistory()
-  } catch (e) {
-    setState({ phase: 'error', error: String((e as Error)?.message || e) })
-  }
-}
+// ============================================================================
+// 【导入文件夹功能 - 已临时禁用】
+// 说明：导入后 bug 较多，暂时注释停用；代码保留，后续扩展时恢复。
+// ============================================================================
+// // 导入已有 mod 文件夹：上传 zip → 后端解压成新会话工作区 → 回到可对话态
+// export async function importWorkspace(files: ImportFile[], settings: GenSettings, title?: string) {
+//   setState({ phase: 'creating', error: null, events: [], cursor: null, prompts: [], hasJar: false, elapsed: null, logTail: '', title: title ?? null })
+//   try {
+//     const { session_id } = await api.importSession(files, settings)
+//     setState({ sessionId: session_id, phase: 'idle', title: title ?? null })
+//     void loadHistory()
+//   } catch (e) {
+//     setState({ phase: 'error', error: String((e as Error)?.message || e) })
+//   }
+// }
+// ============================================================================

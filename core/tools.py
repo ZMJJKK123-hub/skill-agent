@@ -309,33 +309,53 @@ def run_web_search(query: str, max_results: int = 5) -> str:
         return f"Error: 搜索失败: {e}"
 
 
-def run_ask_user(question: str, options: list = None) -> str:
-    """向用户提问并阻塞等待回答（文件 IPC：写 question.json，轮询 answer.json）。
+def run_ask_user(questions, options: list = None) -> str:
+    """向用户提出一个或多个问题并阻塞等待回答（文件 IPC：写 question.json，轮询 answer.json）。
 
-    前端轮询 /api/question 发现待答问题 → 展示选项/输入框 → 用户提交
-    → POST /api/answer 写 answer.json → 这里读到后返回答案、agent 继续。
-    超时 5 分钟未答则返回提示并继续（不永久卡死）。
+    支持两种入参：
+      - 多问题：questions=[{"question": "...", "options": [...]}, ...]
+      - 单问题（legacy）：questions="...", options=[...]
+    前端轮询 /api/question 发现待答问题 → 展示所有问题（可选项/自由填写，
+    确认前可随意切换修改）→ 用户点确认 → POST /api/answer 写 answer.json
+    （{"answers": [{"question": "...", "answer": "..."}, ...]}）→ 这里读到后
+    返回结构化多答案 JSON、agent 继续。
+    超时：从用户确认提交后开始计时 5 分钟（等待 agent 读取），
+    用户填写阶段不设超时（避免慢慢填被强杀）。
     """
     options = options or []
+    # 归一化为标准 questions 列表
+    if isinstance(questions, list) and questions:
+        qs = []
+        for q in questions:
+            if isinstance(q, dict):
+                qs.append({"question": str(q.get("question", "")), "options": list(q.get("options") or [])})
+            else:
+                qs.append({"question": str(q), "options": []})
+    else:
+        qs = [{"question": str(questions or ""), "options": options}]
+    if not qs or not qs[0]["question"].strip():
+        return "Error: 问题为空"
+
     base = Path.cwd()  # agent 子进程 cwd = 会话目录（run_task.py os.chdir）
     qpath = base / "question.json"
     apath = base / "answer.json"
     try:
         qpath.write_text(
-            json.dumps({"question": question, "options": options}, ensure_ascii=False),
+            json.dumps({"questions": qs}, ensure_ascii=False),
             encoding="utf-8",
         )
     except OSError as e:
         return f"Error: 无法写入问题文件: {e}"
-    logger.info(f"ask_user_question | 提出: {question}")
+    logger.info(f"ask_user_question | 提出 {len(qs)} 个问题")
 
-    deadline = time.time() + 300  # 最多等 5 分钟
+    # 等 answer.json：用户确认提交后这里才读到；读到后 5 分钟超时兜底
+    # （防止前端已确认但消息丢失导致 agent 永久卡死）。
+    deadline = time.time() + 300
     try:
         while time.time() < deadline:
             if apath.exists():
                 try:
                     data = json.loads(apath.read_text(encoding="utf-8"))
-                    answer = str(data.get("answer", ""))
                 except (OSError, json.JSONDecodeError):
                     time.sleep(1)
                     continue
@@ -348,7 +368,24 @@ def run_ask_user(question: str, options: list = None) -> str:
                         qpath.unlink()
                     except OSError:
                         pass
-                return answer or "(用户未提供回答)"
+                # 结构化多答案：{answers: [{question, answer}, ...]}
+                raw_answers = data.get("answers")
+                if isinstance(raw_answers, list):
+                    # 归一化：与 qs 对齐（可能缺题/多余，按 question 文本匹配或按序）
+                    out = []
+                    for idx, q in enumerate(qs):
+                        ans = ""
+                        if idx < len(raw_answers):
+                            candidate = raw_answers[idx]
+                            if isinstance(candidate, dict):
+                                ans = str(candidate.get("answer", ""))
+                            else:
+                                ans = str(candidate)
+                        out.append({"question": q["question"], "answer": ans})
+                    return json.dumps(out, ensure_ascii=False)
+                # 兼容旧单答格式：{"answer": "..."}
+                legacy = str(data.get("answer", ""))
+                return json.dumps([{"question": qs[0]["question"], "answer": legacy}], ensure_ascii=False)
             time.sleep(1)
     except Exception as e:
         return f"Error: {e}"
@@ -1832,7 +1869,7 @@ TOOL_HANDLERS = {
     "glob":         lambda **kw: run_glob(kw["pattern"]),
     "web_search":   lambda **kw: run_web_search(kw["query"], kw.get("max_results", 5)),
     "web_fetch":    lambda **kw: run_web_fetch(kw["url"], kw.get("max_chars", 100000)),
-    "ask_user_question": lambda **kw: run_ask_user(kw.get("question", ""), kw.get("options", [])),
+    "ask_user_question": lambda **kw: run_ask_user(kw.get("questions") or kw.get("question", ""), kw.get("options", [])),
     "read_file":    lambda **kw: run_read(kw["path"], kw.get("limit")),
     "write_file":   lambda **kw: run_write(kw["path"], kw["content"]),
     "edit_file":    lambda **kw: run_edit(kw["path"], kw["old_text"],
@@ -1963,14 +2000,26 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "ask_user_question",
-            "description": "Ask the user a clarifying question and wait for their answer. Use when the requirement is ambiguous and you need the user to choose or clarify. 'options' is an optional list of preset choices; the user can also type a free-form answer.",
+            "description": "Ask the user one or more clarifying questions and wait for their answers. Use when the requirement is ambiguous and you need the user to choose or clarify. Pass 'questions' as an array to ask several at once (the user sees them all together, can answer each with a preset option or free text, and confirms once); each item has 'question' (string) and optional 'options' (list of preset choices). For a single question you may also use the legacy 'question' + 'options' form. The return value is a JSON array of {'question', 'answer'} pairs — one per question, in the order you asked them.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "question": {"type": "string", "description": "The question to ask the user"},
-                    "options": {"type": "array", "items": {"type": "string"}, "description": "Optional preset choices"},
+                    "questions": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "question": {"type": "string", "description": "The question to ask"},
+                                "options": {"type": "array", "items": {"type": "string"}, "description": "Optional preset choices"},
+                            },
+                            "required": ["question"],
+                        },
+                        "description": "Multiple questions to ask at once (recommended)",
+                    },
+                    "question": {"type": "string", "description": "[legacy] Single question to ask"},
+                    "options": {"type": "array", "items": {"type": "string"}, "description": "[legacy] Optional preset choices for the single question"},
                 },
-                "required": ["question"],
+                "required": [],
             },
         },
     },

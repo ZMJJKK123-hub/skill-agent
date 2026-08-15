@@ -25,11 +25,12 @@ export interface StatusResponse extends SessionStats {
 export interface EventItem {
   id: string
   ts: number
-  type: string // thinking | tool_call | todo | log | round | system | background | protocol | worktree
+  type: string // thinking | tool_call | todo | log | round | system | background | protocol | worktree | tool_result
   source: string
   content: string
   tool?: string
-  peer?: string
+  peer?: string   // teammate | subagent | supervisor
+  status?: string // tool_result: success | failed
 }
 
 export interface EventsResponse {
@@ -141,10 +142,10 @@ export function deleteSession(sessionId: string) {
   return api(`/api/session?session_id=${sessionId}`, { method: 'DELETE' })
 }
 
-export function startTask(sessionId: string, prompt: string, mode = 'chat', resume = false) {
+export function startTask(sessionId: string, prompt: string, mode = 'chat', resume = false, model = '', baseUrl = '') {
   return api<{ session_id: string; status: string; mode: string; resume?: boolean }>('/api/task', {
     method: 'POST',
-    body: JSON.stringify({ session_id: sessionId, prompt, mode, resume }),
+    body: JSON.stringify({ session_id: sessionId, prompt, mode, resume, model, base_url: baseUrl }),
   })
 }
 
@@ -193,10 +194,16 @@ export function getSessions() {
   return api<{ sessions: HistoryEntry[] }>('/api/sessions')
 }
 
+export interface QuestionItem {
+  question: string
+  options?: string[]
+}
+
 export interface Question {
   status: string
-  question?: string
-  options?: string[]
+  question?: string       // legacy 单题
+  options?: string[]      // legacy 单题
+  questions?: QuestionItem[]  // 多题
 }
 
 export function getQuestion(sessionId: string) {
@@ -207,6 +214,14 @@ export function answerQuestion(sessionId: string, answer: string) {
   return api(`/api/answer`, {
     method: 'POST',
     body: JSON.stringify({ session_id: sessionId, answer }),
+  })
+}
+
+// 多题确认提交：answers = [{question, answer}, ...]
+export function answerQuestions(sessionId: string, answers: { question: string; answer: string }[]) {
+  return api(`/api/answer`, {
+    method: 'POST',
+    body: JSON.stringify({ session_id: sessionId, answers }),
   })
 }
 
@@ -246,40 +261,45 @@ export async function downloadSourceZip(sessionId: string) {
   URL.revokeObjectURL(url)
 }
 
-// 导入已有 mod 文件夹：客户端打包 zip → 上传 → 后端解压成新会话工作区
-export interface ImportFile {
-  path: string
-  data: Uint8Array
-}
-
-export async function importSession(
-  files: ImportFile[],
-  settings: { apiKey: string; game: string; loader: string; version: string; model: string; baseUrl: string; sandbox: string },
-) {
-  const zip = new JSZip()
-  for (const f of files) zip.file(f.path, f.data)
-  const blob = await zip.generateAsync({ type: 'blob' })
-
-  const qs = `game=${encodeURIComponent(settings.game)}&loader=${encodeURIComponent(settings.loader)}&version=${encodeURIComponent(settings.version)}&model=${encodeURIComponent(settings.model)}&base_url=${encodeURIComponent(settings.baseUrl)}&sandbox=${encodeURIComponent(settings.sandbox)}`
-  const token = getToken()
-  const res = await fetch(`/api/import?${qs}`, {
-    method: 'POST',
-    body: blob,
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      'X-API-Key': settings.apiKey,
-      'Content-Type': 'application/zip',
-    },
-  })
-  if (!res.ok) {
-    let detail = `${res.status}`
-    try {
-      const j = await res.json()
-      if (j && j.detail) detail = j.detail
-    } catch {
-      /* ignore */
-    }
-    throw new Error(detail)
-  }
-  return res.json() as Promise<{ session_id: string; mod_dir: string }>
-}
+// ============================================================================
+// 【导入文件夹功能 - 已临时禁用】
+// 说明：导入后 bug 较多，暂时注释停用；代码保留，后续扩展时恢复。
+// ============================================================================
+// // 导入已有 mod 文件夹：客户端打包 zip → 上传 → 后端解压成新会话工作区
+// export interface ImportFile {
+//   path: string
+//   data: Uint8Array
+// }
+//
+// export async function importSession(
+//   files: ImportFile[],
+//   settings: { apiKey: string; game: string; loader: string; version: string; model: string; baseUrl: string; sandbox: string },
+// ) {
+//   const zip = new JSZip()
+//   for (const f of files) zip.file(f.path, f.data)
+//   const blob = await zip.generateAsync({ type: 'blob' })
+//
+//   const qs = `game=${encodeURIComponent(settings.game)}&loader=${encodeURIComponent(settings.loader)}&version=${encodeURIComponent(settings.version)}&model=${encodeURIComponent(settings.model)}&base_url=${encodeURIComponent(settings.baseUrl)}&sandbox=${encodeURIComponent(settings.sandbox)}`
+//   const token = getToken()
+//   const res = await fetch(`/api/import?${qs}`, {
+//     method: 'POST',
+//     body: blob,
+//     headers: {
+//       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+//       'X-API-Key': settings.apiKey,
+//       'Content-Type': 'application/zip',
+//     },
+//   })
+//   if (!res.ok) {
+//     let detail = `${res.status}`
+//     try {
+//       const j = await res.json()
+//       if (j && j.detail) detail = j.detail
+//     } catch {
+//       /* ignore */
+//     }
+//     throw new Error(detail)
+//   }
+//   return res.json() as Promise<{ session_id: string; mod_dir: string }>
+// }
+// ============================================================================

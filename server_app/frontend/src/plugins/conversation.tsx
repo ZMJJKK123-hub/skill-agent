@@ -6,38 +6,146 @@ import { useSession, sendPrompt, startPolling, stopPolling, regenerate, answerQu
 import { downloadJar, downloadSourceZip } from '../lib/api'
 import type { EventItem } from '../lib/api'
 
-const EVENT_META: Record<string, { icon: string; color: string }> = {
-  thinking: { icon: '🧠', color: 'text-violet-400' },
-  tool_call: { icon: '🔧', color: 'text-forge-400' },
-  todo: { icon: '📋', color: 'text-amber-400' },
-  round: { icon: '🔁', color: 'text-faint' },
-  system: { icon: '⚙️', color: 'text-faint' },
-  background: { icon: '⏳', color: 'text-faint' },
-  protocol: { icon: '🤝', color: 'text-emerald-400' },
-  worktree: { icon: '🌲', color: 'text-emerald-400' },
-  log: { icon: '📄', color: 'text-faint' },
-}
-
 function errMsg(e: unknown): string {
   if (e instanceof Error) return e.message
   return String(e)
 }
 
-function EventRow({ ev }: { ev: EventItem }) {
-  const meta = EVENT_META[ev.type] ?? { icon: '·', color: 'text-faint' }
+/** 思考气泡的显示名：peer 映射（supervisor/teammate/subagent），无 peer 是主 agent */
+function thinkingName(ev: EventItem, t: (k: string) => string): string {
+  switch (ev.peer) {
+    case 'supervisor': return '🛡 Supervisor'
+    case 'teammate': return '👥 Teammate'
+    case 'subagent': return '🔬 Subagent'
+    default: return t('conv.agent')
+  }
+}
+
+/** DSH 风格思考行：默认折叠只显示第一行，点击展开全部 */
+function ThinkingRow({ ev, t }: { ev: EventItem; t: (k: string) => string }) {
+  const [open, setOpen] = useState(false)
+  const lines = ev.content.split('\n').filter((l) => l.trim())
+  const first = lines[0] ?? ''
   return (
-    <div className="flex gap-2 py-0.5 font-mono text-[11px] leading-relaxed">
-      <span className={`shrink-0 ${meta.color}`}>{meta.icon}</span>
-      <span className="whitespace-pre-wrap break-all text-muted">{ev.content}</span>
+    <div className="flex justify-start">
+      <div className="max-w-[85%]">
+        <div className="mb-0.5 text-[11px] text-violet-400/80">{thinkingName(ev, t)}</div>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="w-full rounded-2xl rounded-bl-sm border border-violet-500/20 bg-violet-500/5 px-3 py-1.5 text-left text-xs leading-relaxed text-violet-200/80 hover:bg-violet-500/10"
+        >
+          <div className="whitespace-pre-wrap break-all">{open ? ev.content : first}</div>
+          {!open && lines.length > 1 && (
+            <div className="mt-1 text-[10px] text-faint">… 思考中（点击展开 {lines.length - 1} 行）</div>
+          )}
+          {open && lines.length > 1 && (
+            <div className="mt-1 text-[10px] text-faint">▲ 收起</div>
+          )}
+        </button>
+      </div>
     </div>
   )
+}
+
+/** 工具调用行：特殊颜色标注 工具名 + 参数/命令 */
+function ToolCallRow({ ev }: { ev: EventItem }) {
+  const tool = ev.tool ?? 'tool'
+  const peerLabel = ev.peer === 'supervisor' ? '🛡 ' : ev.peer === 'teammate' ? '👥 ' : ev.peer === 'subagent' ? '🔬 ' : ''
+  return (
+    <div className="flex justify-start">
+      <div className="max-w-[90%] rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-1.5">
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className="font-semibold text-amber-400">🔧 {peerLabel}{tool}</span>
+          <span className="text-faint">调用</span>
+        </div>
+        <div className="mt-0.5 whitespace-pre-wrap break-all font-mono text-[11px] text-amber-100/70">{ev.content}</div>
+      </div>
+    </div>
+  )
+}
+
+/** 工具结果：代码块样式（成功绿边 / 失败红边），可折叠 */
+function ToolResultRow({ ev }: { ev: EventItem }) {
+  const [open, setOpen] = useState(true)
+  const ok = ev.status !== 'failed'
+  // 去掉首行 "success|failed" 标记，只显示输出内容
+  const lines = ev.content.split('\n')
+  const body = (lines.slice(1).join('\n').trim() || (lines[0] ?? '')).trim()
+  const preview = body.split('\n').slice(0, 6).join('\n')
+  return (
+    <div className="flex justify-start">
+      <div className={`w-full max-w-[90%] overflow-hidden rounded-lg border ${ok ? 'border-emerald-500/25' : 'border-red-500/30'}`}>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className={`flex w-full items-center gap-1.5 px-2 py-1 text-[10px] font-medium ${ok ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}
+        >
+          <span>{ok ? '✓' : '✗'}</span>
+          <span>{ok ? '执行成功' : '执行失败'}</span>
+          <span className="flex-1" />
+          <span>{open ? '▲ 收起' : `▼ 展开（${body.length} 字符）`}</span>
+        </button>
+        {open && (
+          <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all bg-black/30 px-2 py-1.5 font-mono text-[11px] leading-relaxed text-muted">
+            {open ? body : preview}
+          </pre>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** 中间分界线（round / system 事件）：居中显示，不归属任何人 */
+function DividerRow({ ev }: { ev: EventItem }) {
+  const text = ev.type === 'round'
+    ? (ev.content.replace('===', '').trim().slice(0, 30))
+    : ev.content
+  return (
+    <div className="flex items-center gap-2 py-0.5">
+      <div className="h-px flex-1 bg-line" />
+      <span className="text-[10px] text-faint">🔁 {text}</span>
+      <div className="h-px flex-1 bg-line" />
+    </div>
+  )
+}
+
+/** 普通日志（todo/background/protocol/worktree/log/system）：左侧小字 */
+function LogRow({ ev }: { ev: EventItem }) {
+  return (
+    <div className="flex justify-start">
+      <div className="max-w-[90%] whitespace-pre-wrap break-all font-mono text-[10px] leading-relaxed text-faint">
+        {ev.content}
+      </div>
+    </div>
+  )
+}
+
+/** DSH 风格事件渲染器：按类型分派 */
+function EventView({ ev, t }: { ev: EventItem; t: (k: string) => string }) {
+  switch (ev.type) {
+    case 'thinking':
+      return <ThinkingRow ev={ev} t={t} />
+    case 'tool_call':
+      return <ToolCallRow ev={ev} />
+    case 'tool_result':
+      return <ToolResultRow ev={ev} />
+    case 'round':
+      return <DividerRow ev={ev} />
+    case 'todo':
+    case 'background':
+    case 'protocol':
+    case 'worktree':
+    case 'system':
+    case 'log':
+    default:
+      return <LogRow ev={ev} />
+  }
 }
 
 function Messages() {
   const { user, apiKey } = useUi()
   const t = useT()
   const sess = useSession()
-  const { phase, prompts, events, elapsed, hasJar, error, mode, chatMessages, stoppedNotice, sessionId } = sess
+  const { phase, prompts, events, elapsed, hasJar, error, mode, chatMessages, stoppedNotice, sessionId, paused } = sess
 
   useEffect(() => {
     if (phase === 'running') {
@@ -46,7 +154,7 @@ function Messages() {
     }
   }, [phase])
 
-  const shownEvents = useMemo(() => events.slice(-80), [events])
+  const shownEvents = useMemo(() => events.slice(-120), [events])
 
   // 空态判断以"是否有会话"为准：无会话 → 引导页；
   // 有会话（含历史会话，phase=idle + chatMessages 有内容）→ 显示聊天流
@@ -54,11 +162,10 @@ function Messages() {
     return <EmptyState loggedIn={!!user} configured={!!apiKey} />
   }
 
-  // ── 统一微信式聊天流：chat 模式显示气泡对话；mod 模式气泡 + 底部工具按钮 ──
-  // mod 模式的用户 prompt 显示为右侧气泡；agent 事件流折叠成左侧"生成中"状态
+  // ── 统一微信式聊天流：chat 模式显示气泡对话；mod 模式 DSH 风格事件流 ──
   return (
-    <div className="mx-auto max-w-3xl space-y-4 p-4">
-      <div className="space-y-3">
+    <div className="mx-auto max-w-3xl space-y-3 p-4">
+      <div className="space-y-2">
         {/* chat 模式：完整气泡历史（用户 + agent 回复） */}
         {mode === 'chat' && chatMessages.map((m, i) => (
           <div key={i} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
@@ -83,29 +190,16 @@ function Messages() {
           </div>
         ))}
 
-        {/* 运行中：左侧"进行中"状态条（chat 模式显示文本；mod 模式显示事件流摘要） */}
-        {(phase === 'running' || phase === 'creating') && (
+        {/* mod 模式：DSH 风格事件流（每条事件独立渲染，不再是框内列表） */}
+        {mode === 'mod' && shownEvents.map((ev) => (
+          <EventView key={ev.id} ev={ev} t={t} />
+        ))}
+
+        {/* 运行中（chat 模式）：左侧"进行中"提示 */}
+        {(phase === 'running' || phase === 'creating') && mode !== 'mod' && (
           <div className="flex justify-start">
-            <div className="max-w-[90%] rounded-2xl rounded-bl-sm border border-line bg-panel px-4 py-2 text-sm">
-              {phase === 'creating' ? (
-                <span className="text-faint">正在准备工作区…</span>
-              ) : mode === 'mod' ? (
-                <div className="space-y-0.5">
-                  <div className="text-forge-400">
-                    {t('conv.running')}
-                    {elapsed ? ` · ${elapsed}s` : ''}…
-                  </div>
-                  {shownEvents.length === 0 && <div className="text-faint">{t('conv.starting')}</div>}
-                  {shownEvents.map((ev) => (
-                    <EventRow key={ev.id} ev={ev} />
-                  ))}
-                </div>
-              ) : (
-                <span className="text-faint">
-                  {t('conv.running')}
-                  {elapsed ? ` · ${elapsed}s` : ''}…
-                </span>
-              )}
+            <div className="rounded-2xl rounded-bl-sm border border-line bg-panel px-4 py-2 text-sm text-faint">
+              {phase === 'creating' ? '正在准备工作区…' : `${t('conv.running')}${elapsed ? ` · ${elapsed}s` : ''}…`}
             </div>
           </div>
         )}
@@ -122,8 +216,8 @@ function Messages() {
         {error && <div className="text-sm text-red-400">{errMsg(error)}</div>}
       </div>
 
-      {/* mod 模式：对话最底部的工具按钮（下载 jar / 下载源码 / 重新生成） */}
-      {mode === 'mod' && (
+      {/* mod 模式：下载/重新生成按钮 —— 运行中隐藏，暂停/完成后显示 */}
+      {mode === 'mod' && (paused || phase === 'finished') && (
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <button
             onClick={() => sess.sessionId && downloadJar(sess.sessionId).catch((e) => alert(errMsg(e)))}
@@ -170,45 +264,98 @@ function EmptyState({ loggedIn, configured }: { loggedIn: boolean; configured: b
 
 function QuestionCard() {
   const sess = useSession()
-  const [text, setText] = useState('')
-  const q = sess.question
-  if (!q) return null
-  const submit = (v: string) => {
-    answerQuestion(v)
-    setText('')
+  const t = useT()
+  // 支持多题：questions（数组）优先；兼容单题 question
+  const qs = sess.questions ?? (sess.question ? [sess.question] : null)
+  // 每题的草稿答案（index → string）；null = 未作答
+  const [drafts, setDrafts] = useState<Record<number, string>>({})
+  const [customText, setCustomText] = useState<Record<number, string>>({})
+
+  if (!qs || qs.length === 0) return null
+
+  // 点选项：暂存为该题答案（不提交！可随时改）
+  const pick = (idx: number, opt: string) => {
+    setDrafts((d) => ({ ...d, [idx]: opt }))
+    setCustomText((c) => ({ ...c, [idx]: '' }))
   }
+  // 自由填写：输入即暂存（不提交）
+  const type = (idx: number, v: string) => {
+    setCustomText((c) => ({ ...c, [idx]: v }))
+    if (v.trim()) setDrafts((d) => ({ ...d, [idx]: v.trim() }))
+  }
+  // 确认：一次性提交所有题目的答案
+  const confirmAll = () => {
+    const answers = qs.map((q, i) => ({
+      question: q.question,
+      answer: drafts[i] ?? customText[i]?.trim() ?? '',
+    }))
+    answerQuestion('', answers)
+    setDrafts({})
+    setCustomText({})
+  }
+  const answeredCount = qs.filter((_, i) => (drafts[i] ?? '').trim()).length
+  const allAnswered = answeredCount === qs.length
+
   return (
     <div className="mb-2 rounded-xl border border-forge-500/40 bg-forge-500/10 p-3">
-      <div className="mb-2 text-sm font-medium text-forge-300">💬 {q.question}</div>
-      {q.options.length > 0 && (
-        <div className="mb-2 flex flex-wrap gap-2">
-          {q.options.map((o) => (
-            <button
-              key={o}
-              onClick={() => submit(o)}
-              className="rounded-md border border-forge-500/40 px-3 py-1 text-sm text-forge-400 hover:bg-forge-500/10"
-            >
-              {o}
-            </button>
-          ))}
-        </div>
-      )}
-      <div className="flex gap-2">
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && text.trim()) submit(text.trim())
-          }}
-          placeholder="输入回答…"
-          className="flex-1 rounded-md border border-line bg-field px-3 py-1.5 text-sm outline-none"
-        />
+      <div className="mb-1 text-xs text-faint">
+        {t('conv.questionTitle')}（{answeredCount}/{qs.length}）
+      </div>
+      <div className="space-y-3">
+        {qs.map((q, i) => (
+          <div key={i} className="rounded-lg border border-line bg-panel/50 p-2">
+            <div className="mb-1.5 text-sm font-medium text-forge-300">
+              {i + 1}. {q.question}
+            </div>
+            {q.options.length > 0 && (
+              <div className="mb-1.5 flex flex-wrap gap-1.5">
+                {q.options.map((o) => (
+                  <button
+                    key={o}
+                    onClick={() => pick(i, o)}
+                    className={`rounded-md border px-2.5 py-1 text-xs transition ${
+                      drafts[i] === o
+                        ? 'border-forge-500 bg-forge-500/20 text-forge-300'
+                        : 'border-forge-500/30 text-forge-400 hover:bg-forge-500/10'
+                    }`}
+                  >
+                    {o}
+                  </button>
+                ))}
+              </div>
+            )}
+            <input
+              value={customText[i] ?? ''}
+              onChange={(e) => type(i, e.target.value)}
+              placeholder={drafts[i] && drafts[i] !== customText[i] ? `已选「${drafts[i]}」，可在此修改或自填…` : '也可自行填写…'}
+              className="w-full rounded-md border border-line bg-field px-2 py-1 text-xs outline-none placeholder:text-faint focus:border-forge-500"
+            />
+            {drafts[i] && (
+              <div className="mt-1 text-[11px] text-faint">
+                当前答案：{drafts[i]}
+                <button
+                  onClick={() => {
+                    setDrafts((d) => { const n = { ...d }; delete n[i]; return n })
+                    setCustomText((c) => { const n = { ...c }; delete n[i]; return n })
+                  }}
+                  className="ml-2 text-red-400 hoverable"
+                >
+                  ✕ 清除
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 flex items-center gap-2">
         <button
-          onClick={() => text.trim() && submit(text.trim())}
-          className="rounded-md bg-forge-500 px-3 py-1.5 text-sm text-ink-950"
+          onClick={confirmAll}
+          disabled={!allAnswered}
+          className="rounded-md bg-forge-500 px-4 py-1.5 text-sm font-medium text-ink-950 hover:bg-forge-400 disabled:opacity-40"
         >
-          回答
+          {t('conv.questionConfirm')} {allAnswered ? '' : `（还差 ${qs.length - answeredCount} 题）`}
         </button>
+        {!allAnswered && <span className="text-xs text-faint">全部回答后即可确认，可随时修改</span>}
       </div>
     </div>
   )
