@@ -148,41 +148,6 @@ def finalize_known_issues(session_dir: Path) -> None:
     )
 
 
-def _reset_round_state() -> None:
-    """daemon 每轮开始前重置进程内存级状态，防止跨轮污染。
-
-    agent_loop 使用模块级全局单例（task_manager / todo_manager /
-    teammate_manager / bg_manager / coordinator），一轮跑完后这些状态
-    会残留到下一轮（例如上一轮建的 .tasks/ 任务、队友名册、协议请求）。
-    每轮开始前把它们清回初始状态——与"每任务一个全新进程"的语义对齐。
-    """
-    try:
-        from core.tools import (
-            task_manager, todo_manager, teammate_manager, bg_manager,
-        )
-        from core.protocol import coordinator
-        task_manager.clear()
-        todo_manager.todos = []
-        teammate_manager.team.clear()
-        teammate_manager.threads.clear()
-        teammate_manager._save_team_config()
-        teammate_manager.bus.clear_all()
-        coordinator.reset()
-        # 后台任务残留：清空注册表与通知队列（线程本身 daemon=True 不阻塞退出）
-        try:
-            bg_manager.tasks.clear()
-            q = bg_manager.notification_queue
-            while not q.empty():
-                try:
-                    q.get_nowait()
-                except Exception:
-                    break
-        except Exception:
-            pass
-    except Exception as e:
-        print(f"[run_task] 重置内存状态失败（继续）: {e}", flush=True)
-
-
 def _run_one_round(messages: list, session_dir: Path,
                    session_root_path: Path, mode: str) -> str:
     """跑一轮 agent_loop 并完成收尾：清断点、写回复历史、收集错误信号。"""
@@ -216,14 +181,18 @@ def _run_one_round(messages: list, session_dir: Path,
 
 
 def daemon_loop(session_dir: Path, session_root_path: Path, mode: str) -> None:
-    """chat 模式常驻循环（M-opt1：消除每轮冷启动）。
+    """chat / mod 模式常驻循环（M-opt1：消除每轮冷启动）。
 
     首轮跑完后不退出进程：每 0.5s 轮询 .chat/pending.jsonl，
-    有新消息就（drain 消费队列 → 重置内存状态 → 组装历史上下文 →
-    agent_loop → 收尾），再回到等待。第二轮起零 import / 零技能扫描开销。
+    有新消息就（drain 消费队列 → 组装历史上下文 → agent_loop → 收尾），
+    再回到等待。第二轮起零 import / 零技能扫描开销。
 
-    空闲超时（env DSH_DAEMON_IDLE_TIMEOUT，默认 600s）后自动退出，
-    由 server 下次请求时重新拉起（长时间不用时释放进程资源）。
+    状态持久化（长对话语义）：daemon 常驻期间，进程内存状态
+    （task_manager / todo / teammate_manager / coordinator / bg_manager）
+    跨轮保留——上一轮建的任务、队友名册、协议请求在下一轮继续可用。
+    不主动清空；队友线程自身有 60s IDLE 自动 shutdown，不会泄漏。
+    空闲超时（env DSH_DAEMON_IDLE_TIMEOUT，默认 600s）后进程退出，
+    内存状态随之消失（.tasks/ 任务文件仍落盘，下次进程自动恢复）。
 
     兼容性（已核对 server.py 逻辑）：
     - 运行中插话：server 在进程存活时把新消息 enqueue_pending 并同步写历史，
@@ -287,10 +256,8 @@ def daemon_loop(session_dir: Path, session_root_path: Path, mode: str) -> None:
                 print(f"[run_task] drain_pending 失败: {e}", flush=True)
                 continue
 
-            # 重置内存级状态（对齐"每任务全新进程"语义）
-            _reset_round_state()
-
-            # 组装上下文：历史已包含新消息（enqueue_pending 同步写历史）
+            # 组装上下文：历史已包含新消息（enqueue_pending 同步写历史）。
+            # 不重置任何状态：长对话语义下任务/队友/协议状态跨轮保留。
             try:
                 messages = load_recent_history(session_root_path)
             except Exception as e:
@@ -401,8 +368,8 @@ def main() -> int:
 
     # 4. 组装 messages
     #    - 恢复模式（DSH_RESUME=1）：从 .chat/working.jsonl 原样加载断点（暂停/继续）
-    #    - chat 模式：加载历史对话 + 当前 prompt
-    #    - mod 模式：直接当前 prompt
+    #    - chat / mod 模式：加载历史对话 + 当前 prompt（长对话语义：
+    #      首轮即带历史，agent 能看到之前的对话，mod 制作可多轮迭代）
     #    - 若运行中排队的消息尚未被 agent 消费（例如恢复时队列里有消息），
     #      会由 agent_loop 每轮开头的 _drain_interjections 自动注入
     messages = []
@@ -419,27 +386,23 @@ def main() -> int:
         except Exception as e:
             print(f"[run_task] 断点加载失败（回退普通启动）: {e}", flush=True)
     if not messages:
-        if mode == "chat":
-            try:
-                from core.conversation import load_recent_history
-                messages = load_recent_history(session_root_path)
-            except Exception as e:
-                print(f"[run_task] 加载对话历史失败（继续，仅当前 prompt）: {e}", flush=True)
-                messages = []
-            # 把当前 prompt 作为本轮 user 消息（历史已在步骤 2.5 提前写入，
-            # 这里只组装进模型上下文，不重复 append）
-            messages.append({"role": "user", "content": task_prompt})
-        else:
-            messages = [{"role": "user", "content": task_prompt}]
+        try:
+            from core.conversation import load_recent_history
+            messages = load_recent_history(session_root_path)
+        except Exception as e:
+            print(f"[run_task] 加载对话历史失败（继续，仅当前 prompt）: {e}", flush=True)
+            messages = []
+        # 把当前 prompt 作为本轮 user 消息（历史已在步骤 2.5 提前写入，
+        # 这里只组装进模型上下文，不重复 append）
+        messages.append({"role": "user", "content": task_prompt})
 
     # 5. 跑完整 agent 循环（首轮）
     _run_one_round(messages, session_dir, session_root_path, mode)
 
-    # 6. chat 模式常驻：首轮与 resume 恢复后都进入 daemon 循环，
+    # 6. chat / mod 模式都常驻：首轮与 resume 恢复后都进入 daemon 循环，
     #    第二轮起零冷启动（openai SDK / 技能扫描只在首轮支付一次）。
-    #    mod 模式维持"每任务一进程"（7s 占比小，且 mod 状态污染风险高）。
-    if mode == "chat":
-        daemon_loop(session_dir, session_root_path, mode)
+    #    状态跨轮保留：任务/队友/协议等长对话状态不清空（见 daemon_loop 注释）。
+    daemon_loop(session_dir, session_root_path, mode)
     return 0
 
 

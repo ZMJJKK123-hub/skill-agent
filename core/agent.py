@@ -4,11 +4,11 @@ import os
 from . import config
 from .config import client, MODEL, logger, MODE
 from .tools import (
-    TOOL_HANDLERS, task_manager, todo_manager, bg_manager,
+    TOOL_HANDLERS, bg_manager,
     format_background_results, teammate_manager, maybe_inject_skill_catalog,
     tool_registry,
 )
-from .protocol import inject_pending_requests, coordinator
+from .protocol import inject_pending_requests
 from .subagent import run_subagent_async
 from .compact import (
     micro_compact,
@@ -325,17 +325,12 @@ def agent_loop(messages: list) -> str:
                 logger.info(f"gametest-check 跳过: {_e}")
             if not _gametest_ok:
                 continue
-            # ★ 任务全部完成时，自动清空 .tasks、todo 和 team config
-            # 每次运行干净开始：不跨 session 持久化（队友无持久记忆，保留名册无意义）
-            if task_manager.all_completed():
-                task_manager.clear()
-                todo_manager.todos = []
-                teammate_manager.team.clear()
-                teammate_manager.threads.clear()
-                teammate_manager._save_team_config()
-                teammate_manager.bus.clear_all()  # 第 11 课：清空 .team/inbox/*.jsonl 消息文件
-                coordinator.reset()  # 第 10 课：清空协议请求与写入登记
-                logger.info("所有任务已完成，已自动清空 .tasks、todo、team config、inbox 和协议状态")
+            # ★ 长对话语义（M-opt4）：不自动清空 .tasks / todo / team /
+            #    协议状态。daemon 常驻期间任务、队友名册、协议请求跨轮保留，
+            #    用户可以在"完成一轮"后继续对话迭代（例如"再优化一下"）。
+            #    进程退出（空闲超时）后 .tasks/ 仍落盘，下次进程自动恢复；
+            #    队友名册/todo/协议为内存态，随进程退出消失（可接受）。
+            #    （旧逻辑：任务全部完成时清空——已按用户要求移除）
 
             # ── 收尾：构建 mod jar（成功会复制到 dist/）。C 组合：仅 GameTest 已通过后自动构建 ──
             # 未跑通 GameTest（_gametest_ok=False）不会走到这里（已在上面 continue 强制补测）。
