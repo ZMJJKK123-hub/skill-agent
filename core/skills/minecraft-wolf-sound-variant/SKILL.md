@@ -1,77 +1,35 @@
 ---
 name: minecraft-wolf-sound-variant
-description: |
-  狼音效变种定义格式（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】狼音效变种定义文件是狼音效变种（Wolf Sound Variant）在数据包中的数据驱动定义文件。
-  
-  【涵盖内容】
-  - （自动提取章节）
-  
-  【关键定义】
-  - 注册表：WOLF_SOUND_VARIANT
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 狼音效变种定义格式 的完整规范时
+description: Wolf sound variant definition JSON: WOLF_SOUND_VARIANT registry, events.
+whenToUse: Use when writing datapack wolf_sound_variant definitions or custom wolf sounds.
 ---
 
-本条目所述内容仅适用于Java版。
-狼音效变种定义文件是狼音效变种（Wolf Sound Variant）在数据包中的数据驱动定义文件。
+# Wolf Sound Variants
 
-# 定义格式
+This content applies only to Java Edition.
 
-狼音效变种在游戏内使用
-```
-WOLF_SOUND_VARIANT
-```
+Wolf sound variant definition files are the data-driven definitions of wolf sound variants in datapacks.
 
-注册表，数据包路径为
-```
-wolf_sound_variant
-```
+## Definition format
 
-，即所有狼音效变种自定义文件都需要在
-```
-data/<
-命名空间
->/wolf_sound_variant
-```
+Wolf sound variants use the `WOLF_SOUND_VARIANT` registry; the datapack path is `wolf_sound_variant` (definitions in `data/<namespace>/wolf_sound_variant`).
 
-目录中定义。
+Definition files use JSON with the following structure:
 
-狼音效变种定义文件使用JSON格式，并具有下列结构：
+- JSON file root object
+  - `adult_sounds` (compound, required): sounds used by adult wolves.
+    - `ambient_sound` (string/compound): idle sound event (registry name or inline; same format for all below).
+    - `death_sound` (string/compound): death sound event.
+    - `growl_sound` (string/compound): growling sound event.
+    - `hurt_sound` (string/compound): hurt sound event.
+    - `pant_sound` (string/compound): panting sound event.
+    - `whine_sound` (string/compound): whining sound event.
+  - `baby_sounds` (compound, required): sounds used by baby wolves; same format as `adult_sounds`.
 
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:NBT复合标签/JSON对象]*adult_sounds：成年狼使用的音效。 - [图:字符串][图:NBT复合标签/JSON对象]*ambient_sound：狼空闲音效使用的声音事件。可以为一个声音事件的命名空间ID，也可以直接定义一个新的声音事件。下方字段格式与此相同。 - - 声音事件，见Template:Nbt inherit/sound event/source - [图:字符串][图:NBT复合标签/JSON对象]*death_sound：狼死亡音效使用的声音事件。 - - 声音事件，见Template:Nbt inherit/sound event/source - [图:字符串][图:NBT复合标签/JSON对象]*growl_sound：狼嚎叫音效使用的声音事件。 - - 声音事件，见Template:Nbt inherit/sound event/source - [图:字符串][图:NBT复合标签/JSON对象]*hurt_sound：狼受伤音效使用的声音事件。 - - 声音事件，见Template:Nbt inherit/sound event/source - [图:字符串][图:NBT复合标签/JSON对象]*pant_sound：狼喘息音效使用的声音事件。 - - 声音事件，见Template:Nbt inherit/sound event/source - [图:字符串][图:NBT复合标签/JSON对象]*whine_sound：狼呜咽音效使用的声音事件。 - - 声音事件，见Template:Nbt inherit/sound event/source - [图:NBT复合标签/JSON对象]*baby_sounds：幼年狼使用的音效。 - 格式同[图:NBT复合标签/JSON对象]adult_sounds。
+## Definition behavior
 
-# 定义行为
+Wolf sound variant data is loaded only once at server startup; `/reload` does not reload it — a server restart is required. The `WOLF_SOUND_VARIANT` registry must have at least one element, or the game errors during sync and blocks world loading.
 
-狼音效变种定义数据仅在服务端启动时被加载一次，使用
-```
-/
-reload
-```
+Wolf sound variants are independent of wolf variants; each spawned wolf randomly picks one registered sound variant.
 
-命令不可以使狼音效变种定义被重新加载，而必须重启服务端。
-
-```
-WOLF_SOUND_VARIANT
-```
-
-注册表中必须至少有一个元素，否则游戏会在同步时报错并阻止世界加载。
-
-狼音效变种与狼变种相互独立，狼生成后会从世界内已注册的所有狼音效变种数据内随机选择一项作为自己的音效。这些音效会在狼的不同状态下播放。
-
-满足条件时立刻播放的音效：
-
-- ``` hurt_sound ``` ：狼受伤且狼铠未生效时播放。
-- ``` death_sound ``` ：狼死亡时播放。
-
-满足条件时随机播放的音效：
-
-- ``` growl_sound ``` ：狼为愤怒状态时播放。
-- ``` whine_sound ``` ：狼被驯服且生命值低于20（[图:♥] × 10）时播放。
-- ``` pant_sound ``` ：狼被驯服且生命值不低于20（[图:♥] × 10），或狼未驯服时播放。
-- ``` ambient_sound ``` ：不满足 ``` growl_sound ``` 和​ ``` whine_sound ``` 播放的条件时播放。
-
-# 历史
-
-# 导航
+Immediate sounds: `hurt_sound` (hurt, when wolf armor is not absorbing), `death_sound` (death). Random sounds: `growl_sound` (angry), `whine_sound` (tamed with health <20), `pant_sound` (tamed with health ≥20, or untamed), `ambient_sound` (when growl/whine conditions don't apply).

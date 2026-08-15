@@ -1,16 +1,7 @@
 ---
 name: advanced-access-transformers
-description: |
-  Forge Access Transformers（ATs）完整指南（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】Access Transformers
-  
-  【涵盖内容】
-  - Classes
-  - Fields
-  - Methods
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge Access Transformers（ATs）完整指南 的完整规范时
+description: Forge Access Transformers (ATs): making classes, fields, and methods accessible to mod code.
+whenToUse: Use when access-transforming vanilla or mod classes/fields/methods.
 ---
 
 Access Transformers

@@ -1,174 +1,163 @@
 ---
 name: minecraft-tag-structure
-description: |
-  Java版标签/结构（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】结构标签（Structure Tags）是生成结构的组合。
-  
-  【涵盖内容】
-  - abandoned_camp
-  - cats_spawn_as_black
-  - cats_spawn_in
-  - dolphin_located
-  - eye_of_ender_located
-  - mineshaft
-  - ocean_ruin
-  - on_desert_village_maps
-  - on_jungle_explorer_maps
-  - on_ocean_explorer_maps
-  - on_plains_village_maps
-  - on_savanna_village_maps
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Java版标签/结构 的完整规范时
+description: Structure tags and their members, used for locating structures, explorer maps, and related commands.
+whenToUse: Use when querying or using structure tags for structure location.
 ---
 
-本条目所述内容仅适用于Java版。
-结构标签（Structure Tags）是生成结构的组合。
+# Structure Tags
 
-# 使用
+This content applies only to Java Edition.
 
-结构标签通常用于定位结构，如探险家地图的定位和命令
-```
-/
-locate
- structure
-```
+Structure tags are groups of generated structures.
 
-的定位。
+## Usage
 
-# 标签列表
+Structure tags are typically used for locating structures, such as explorer maps and the `/locate structure` command.
 
-此章节缺失以下信息：标签on_abandoned_camp_bamboo_jungle、on_abandoned_camp_cherry_grove、on_ancient_city_maps、on_abandoned_camp_pale_garden、on_abandoned_camp_dappled_forest、on_ocean_ruin_warm_maps、on_mineshaft_maps、on_abandoned_camp_flower_forest、on_abandoned_camp_windswept、on_abandoned_camp_birch_forest、on_abandoned_camp_swamp、on_desert_pyramid_maps
+## Tag list
 
-## abandoned_camp
+### `#abandoned_camp` (18 entries)
 
-本段落包含会在下一次更新中出现的内容。
-这些特性在Java版26.3的开发版本中加入。
+Contains all abandoned camps. Members are named after biomes, e.g.:
 
-- 包含全部废弃营地。
+- `abandoned_camp_bamboo_jungle`
+- `abandoned_camp_birch_forest`
+- `abandoned_camp_cherry_grove`
+- `abandoned_camp_taiga`
+- `abandoned_camp_swamp`
 
-- #abandoned_camp（18项） - ``` abandoned_camp_bamboo_jungle ``` （File:EnvSprite abandoned-camp-bamboo-jungle.pngabandoned camp bamboo jungle） - ``` abandoned_camp_birch_forest ``` （File:EnvSprite abandoned-camp-birch-forest.pngabandoned camp birch forest） - ``` abandoned_camp_cherry_grove ``` （File:EnvSprite abandoned-camp-cherry-grove.pngabandoned camp cherry grove） - ``` abandoned_camp_dappled_forest ``` （File:EnvSprite abandoned-camp-dappled-forest.pngabandoned camp dappled forest） - ``` abandoned_camp_flower_forest ``` （File:EnvSprite abandoned-camp-flower-forest.pngabandoned camp flower forest） - ``` abandoned_camp_forest ``` （File:EnvSprite abandoned-camp-forest.pngabandoned camp forest） - ``` abandoned_camp_meadow ``` （File:EnvSprite abandoned-camp-meadow.pngabandoned camp meadow） - ``` abandoned_camp_old_growth_birch_forest ``` （File:EnvSprite abandoned-camp-old-growth-birch-forest.pngabandoned camp old growth birch forest） - ``` abandoned_camp_old_growth_pine_taiga ``` （File:EnvSprite abandoned-camp-old-growth-pine-taiga.pngabandoned camp old growth pine taiga） - ``` abandoned_camp_old_growth_spruce_taiga ``` （File:EnvSprite abandoned-camp-old-growth-spruce-taiga.pngabandoned camp old growth spruce taiga） - ``` abandoned_camp_pale_garden ``` （File:EnvSprite abandoned-camp-pale-garden.pngabandoned camp pale garden） - ``` abandoned_camp_savanna ``` （File:EnvSprite abandoned-camp-savanna.pngabandoned camp savanna） - ``` abandoned_camp_snowy_taiga ``` （File:EnvSprite abandoned-camp-snowy-taiga.pngabandoned camp snowy taiga） - ``` abandoned_camp_sparse_jungle ``` （File:EnvSprite abandoned-camp-sparse-jungle.pngabandoned camp sparse jungle） - ``` abandoned_camp_swamp ``` （File:EnvSprite abandoned-camp-swamp.pngabandoned camp swamp） - ``` abandoned_camp_taiga ``` （File:EnvSprite abandoned-camp-taiga.pngabandoned camp taiga） - ``` abandoned_camp_windswept_forest ``` （File:EnvSprite abandoned-camp-windswept-forest.pngabandoned camp windswept forest） - ``` abandoned_camp_wooded_badlands ``` （File:EnvSprite abandoned-camp-wooded-badlands.pngabandoned camp wooded badlands）
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-## cats_spawn_as_black
+### `#cats_spawn_as_black` (1 entry)
 
-- 黑猫在此标签的结构中生成。
+Black cats spawn in structures in this tag:
 
-- #cats_spawn_as_black（1项） - ``` swamp_hut ``` （沼泽小屋）
+- `swamp_hut` (Swamp Hut)
 
-## cats_spawn_in
+### `#cats_spawn_in` (1 entry)
 
-- 猫在此标签的结构中生成。
+Cats spawn in structures in this tag:
 
-- #cats_spawn_in（1项） - ``` swamp_hut ``` （沼泽小屋）
+- `swamp_hut` (Swamp Hut)
 
-## dolphin_located
+### `#dolphin_located` (2 entries)
 
-- 海豚被喂食生鳕鱼或生鲑鱼后，将玩家引导向此标签的结构。
+Dolphins lead players toward structures in this tag after being fed raw cod or raw salmon:
 
-- #dolphin_located（2项） - ``` #ocean_ruin ``` - ``` #shipwreck ```
+- `#ocean_ruin`
+- `#shipwreck`
 
-## eye_of_ender_located
+### `#eye_of_ender_located` (1 entry)
 
-- 末影之眼指向最近的此标签的结构。
+Eyes of ender point toward the nearest structure in this tag:
 
-- #eye_of_ender_located（1项） - ``` stronghold ``` （要塞）
+- `stronghold` (Stronghold)
 
-## mineshaft
+### `#mineshaft` (2 entries)
 
-- 包含全部废弃矿井。
+Contains all mineshafts:
 
-- #mineshaft（2项） - ``` mineshaft ``` （废弃矿井） - ``` mineshaft_mesa ``` （废弃矿井）
+- `mineshaft` (Mineshaft)
+- `mineshaft_mesa` (Mineshaft)
 
-## ocean_ruin
+### `#ocean_ruin` (2 entries)
 
-- 包含全部海底废墟。
+Contains all ocean ruins:
 
-- #ocean_ruin（2项） - ``` ocean_ruin_cold ``` （海底废墟） - ``` ocean_ruin_warm ``` （海底废墟）
+- `ocean_ruin_cold` (Ocean Ruin)
+- `ocean_ruin_warm` (Ocean Ruin)
 
-## on_desert_village_maps
+### `#on_desert_village_maps` (1 entry)
 
-- 沙漠村庄地图指向最近的此标签的结构。
+Desert village maps point toward the nearest structure in this tag:
 
-- #on_desert_village_maps（1项） - ``` village_desert ``` （沙漠村庄）
+- `village_desert` (Desert Village)
 
-## on_jungle_explorer_maps
+### `#on_jungle_explorer_maps` (1 entry)
 
-- 丛林探险家地图指向最近的此标签的结构。
+Jungle explorer maps point toward the nearest structure in this tag:
 
-- #on_jungle_explorer_maps（1项） - ``` jungle_pyramid ``` （丛林神庙）
+- `jungle_pyramid` (Jungle Pyramid)
 
-## on_ocean_explorer_maps
+### `#on_ocean_explorer_maps` (1 entry)
 
-- 海洋探险家地图指向最近的此标签的结构。
+Ocean explorer maps point toward the nearest structure in this tag:
 
-- #on_ocean_explorer_maps（1项） - ``` monument ``` （海底神殿）
+- `monument` (Ocean Monument)
 
-## on_plains_village_maps
+### `#on_plains_village_maps` (1 entry)
 
-- 平原村庄地图指向最近的此标签的结构。
+Plains village maps point toward the nearest structure in this tag:
 
-- #on_plains_village_maps（1项） - ``` village_plains ``` （平原村庄）
+- `village_plains` (Plains Village)
 
-## on_savanna_village_maps
+### `#on_savanna_village_maps` (1 entry)
 
-- 热带草原村庄地图指向最近的此标签的结构。
+Savanna village maps point toward the nearest structure in this tag:
 
-- #on_savanna_village_maps（1项） - ``` village_savanna ``` （热带草原村庄）
+- `village_savanna` (Savanna Village)
 
-## on_snowy_village_maps
+### `#on_snowy_village_maps` (1 entry)
 
-- 雪原村庄地图指向最近的此标签的结构。
+Snowy village maps point toward the nearest structure in this tag:
 
-- #on_snowy_village_maps（1项） - ``` village_snowy ``` （雪原村庄）
+- `village_snowy` (Snowy Village)
 
-## on_swamp_explorer_maps
+### `#on_swamp_explorer_maps` (1 entry)
 
-- 沼泽探险家地图指向最近的此标签的结构。
+Swamp explorer maps point toward the nearest structure in this tag:
 
-- #on_swamp_explorer_maps（1项） - ``` swamp_hut ``` （沼泽小屋）
+- `swamp_hut` (Swamp Hut)
 
-## on_taiga_village_maps
+### `#on_taiga_village_maps` (1 entry)
 
-- 针叶林村庄地图指向最近的此标签的结构。
+Taiga village maps point toward the nearest structure in this tag:
 
-- #on_taiga_village_maps（1项） - ``` village_taiga ``` （针叶林村庄）
+- `village_taiga` (Taiga Village)
 
-## on_treasure_maps
+### `#on_treasure_maps` (1 entry)
 
-- 藏宝图指向最近的此标签的结构。
+Treasure maps point toward the nearest structure in this tag:
 
-- #on_treasure_maps（1项） - ``` buried_treasure ``` （埋藏的宝藏）
+- `buried_treasure` (Buried Treasure)
 
-## on_trial_chambers_maps
+### `#on_trial_chambers_maps` (1 entry)
 
-- 试炼探险家地图指向最近的此标签的结构。
+Trial explorer maps point toward the nearest structure in this tag:
 
-- #on_trial_chambers_maps（1项） - ``` trial_chambers ``` （试炼密室）
+- `trial_chambers` (Trial Chambers)
 
-## on_woodland_explorer_maps
+### `#on_woodland_explorer_maps` (1 entry)
 
-- 林地探险家地图指向最近的此标签的结构。
+Woodland explorer maps point toward the nearest structure in this tag:
 
-- #on_woodland_explorer_maps（1项） - ``` mansion ``` （林地府邸）
+- `mansion` (Woodland Mansion)
 
-## ruined_portal
+### `#ruined_portal` (7 entries)
 
-- 包含全部废弃传送门。
+Contains all ruined portals, e.g.:
 
-- #ruined_portal（7项） - ``` ruined_portal_desert ``` （废弃传送门） - ``` ruined_portal_jungle ``` （废弃传送门） - ``` ruined_portal_mountain ``` （废弃传送门） - ``` ruined_portal_nether ``` （废弃传送门） - ``` ruined_portal_ocean ``` （废弃传送门） - ``` ruined_portal ``` （废弃传送门） - ``` ruined_portal_swamp ``` （废弃传送门）
+- `ruined_portal_desert` (Ruined Portal)
+- `ruined_portal_jungle` (Ruined Portal)
+- `ruined_portal_nether` (Ruined Portal)
+- `ruined_portal_ocean` (Ruined Portal)
+- `ruined_portal` (Ruined Portal)
 
-## shipwreck
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-- 包含全部沉船。
+### `#shipwreck` (2 entries)
 
-- #shipwreck（2项） - ``` shipwreck ``` （沉船） - ``` shipwreck_beached ``` （沉船）
+Contains all shipwrecks:
 
-## village
+- `shipwreck` (Shipwreck)
+- `shipwreck_beached` (Shipwreck)
 
-- 包含全部村庄。
+### `#village` (5 entries)
 
-- #village（5项） - ``` village_plains ``` （平原村庄） - ``` village_desert ``` （沙漠村庄） - ``` village_savanna ``` （热带草原村庄） - ``` village_snowy ``` （雪原村庄） - ``` village_taiga ``` （针叶林村庄）
+Contains all villages:
 
-# 历史
-
-# 导航
+- `village_plains` (Plains Village)
+- `village_desert` (Desert Village)
+- `village_savanna` (Savanna Village)
+- `village_snowy` (Snowy Village)
+- `village_taiga` (Taiga Village)

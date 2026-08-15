@@ -1,52 +1,50 @@
 ---
 name: minecraft-tag-point-of-interest-type
-description: |
-  Java版标签/兴趣点类型（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】兴趣点标签（POI Tags）是兴趣点类型的组合。
-  
-  【涵盖内容】
-  - acquirable_job_site
-  - bee_home
-  - village
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Java版标签/兴趣点类型 的完整规范时
+description: Point of interest (POI) type tags and their members, used when writing datapacks or custom POIs.
+whenToUse: Use when referencing POI type tags (acquirable_job_site, bee_home, village etc.).
 ---
 
-本条目所述内容仅适用于Java版。
-兴趣点标签（POI Tags）是兴趣点类型的组合。
+# Point of Interest (POI) Type Tags
 
-# 使用
+This content applies only to Java Edition.
 
-兴趣点标签在游戏内部用于快速定位，与兴趣点类似。其也可以被命令
-```
-/
-locate
- poi
-```
+POI tags are groups of point of interest types.
 
-定位。
+## Usage
 
-# 标签列表
+POI tags are used internally by the game for fast location lookup, similar to POIs. They can also be located with the `/locate poi` command.
 
-## acquirable_job_site
+## Tag list
 
-- 村民可获取职业的点。
+### `#acquirable_job_site` (13 entries)
 
-- #acquirable_job_site（13项） - ``` armorer ``` - ``` butcher ``` - ``` cartographer ``` - ``` cleric ``` - ``` farmer ``` - ``` fisherman ``` - ``` fletcher ``` - ``` leatherworker ``` - ``` librarian ``` - ``` mason ``` - ``` shepherd ``` - ``` toolsmith ``` - ``` weaponsmith ```
+Points where villagers can acquire a profession:
 
-## bee_home
+- `armorer`
+- `butcher`
+- `cartographer`
+- `cleric`
+- `farmer`
+- `fisherman`
+- `fletcher`
+- `leatherworker`
+- `librarian`
+- `mason`
+- `shepherd`
+- `toolsmith`
+- `weaponsmith`
 
-- 蜜蜂的栖息地。
+### `#bee_home` (2 entries)
 
-- #bee_home（2项） - ``` beehive ``` - ``` bee_nest ```
+Bee habitats:
 
-## village
+- `beehive`
+- `bee_nest`
 
-- 村庄需具备的兴趣点。
+### `#village` (3 entries)
 
-- #village（3项） - ``` #acquirable_job_site ``` - ``` home ``` - ``` meeting ```
+POIs a village must have:
 
-# 历史
-
-# 导航
+- `#acquirable_job_site`
+- `home`
+- `meeting`

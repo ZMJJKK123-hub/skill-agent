@@ -1,181 +1,32 @@
 ---
 name: minecraft-world-clock
-description: |
-  世界时钟定义格式（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】世界时钟（World Clock）是游戏用于管理不同世界时钟实例的技术性概念，其在游戏内被简称为时钟（clock）。世界时钟定义文件是世界时钟在数据包中的数据驱动定义文件。
-  
-  【涵盖内容】
-  - 世界时钟行为
-  - 时间标记
-  
-  【关键定义】
-  - 注册表：WORLD_CLOCK
-  - 数据包路径：data//time
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 世界时钟定义格式 的完整规范时
+description: World clock definition format: WORLD_CLOCK registry, time markers, /time.
+whenToUse: Use when understanding world clocks, time markers, or /time command behavior.
 ---
 
-本条目所述内容仅适用于Java版。
-世界时钟（World Clock）是游戏用于管理不同世界时钟实例的技术性概念，其在游戏内被简称为时钟（clock）。世界时钟定义文件是世界时钟在数据包中的数据驱动定义文件。
+# World Clocks
 
-# 定义格式
+This content applies only to Java Edition.
 
-世界时钟在游戏内使用
-```
-WORLD_CLOCK
-```
+World clocks (clocks) manage different world clock instances. Definition files are their data-driven definitions in datapacks.
 
-注册表，数据包路径为
-```
-world_clock
-```
+## Definition format
 
-，即所有世界时钟定义文件都需要在
-```
-data/<
-命名空间
->/world_clock
-```
+World clocks use the `WORLD_CLOCK` registry; the datapack path is `world_clock` (definitions in `data/<namespace>/world_clock`, tags in `data/<namespace>/tags/world_clock`). Definition files are empty JSON objects `{}`.
 
-目录中定义，世界时钟标签则需要在
-```
-data/<
-命名空间
->/tags/world_clock
-```
+## Definition behavior
 
-目录中定义。
+World clock data is loaded only once at server startup; `/reload` does not reload it — a server restart is required.
 
-世界时钟定义文件使用JSON格式，并具有下列结构：
+### World clock behavior
 
-- [图:NBT复合标签/JSON对象]：空对象。
+A world clock itself carries no data; the game distinguishes clocks by ID. Each clock holds an internal time that increments every tick and can be paused; it is managed by `/time`. With the `advance_time` game rule `false`, clocks do not advance even when unpaused. Each dimension gets its world clock from its dimension type (default for `/time`, and time markers per the used timelines). Each timeline computes environment attribute tracks from its clock. Save run time (GameTime) is not managed by clocks.
 
-# 定义行为
+### Time markers
 
-世界时钟定义数据仅在服务端启动时被加载一次，使用
-```
-/
-reload
-```
+Time markers name specific clock times. They are defined in timelines' `time_markers` and registered to the timeline's clock at startup. Usable in `/time`. Game-defined markers: `wake_up_from_sleep` (time after sleeping; absent = no time change on waking) and `roll_village_siege` (zombie siege check time; absent = no sieges).
 
-命令不可以使世界时钟定义被重新加载，而必须重启服务端。
+## Built-in clocks
 
-## 世界时钟行为
-
-世界时钟本身不包含任何数据，游戏使用其ID来区分不同的世界时钟。每个世界时钟都代表了一个内部时间，此时间每游戏刻都会增加，可以设定是否暂停。世界时钟的时间设定和是否暂停直接受命令
-```
-/
-time
-```
-
-管理。
-
-如果游戏规则“游戏内时间流逝”（
-```
-advance_time
-```
-
-）为
-```
-false
-```
-
-，即使世界时钟没有被暂停也不会随时间增加。
-
-在世界中时，每个维度都会根据维度类型获取自身的世界时钟，作为命令
-```
-/
-time
-```
-
-未显式指定世界时钟的默认值，以及根据使用了此世界时钟的时间线来确定使用哪些时间标记。
-
-在世界中时，每个时间线都会根据自身使用的世界时钟来计算环境属性轨道的时间。
-
-存档的运行时间（或称游戏时间，GameTime）不受世界时钟管理。
-
-## 时间标记
-
-时间标记（Time Marker）为世界时钟的特定时间节点赋予了特定名称。时间标记在时间线的[图:NBT复合标签/JSON对象]time_markers内定义，服务端启动时会将其注册到时间线使用的世界时钟上。
-
-时间标记可以在命令
-```
-/
-time
-```
-
-中使用。除此之外，游戏定义了下列用于控制游戏行为的时间标记：
-
-- ``` wake_up_from_sleep ``` ：玩家睡觉醒来后，游戏将时间快进到的时间。当前维度不存在此时间标记时玩家醒来将不会改变时间。
-- ``` roll_village_siege ``` ：游戏开始判定僵尸围城发生的时间。当前维度不存在此时间标记时不会进行僵尸围城判定。
-
-# 内置世界时钟
-
-游戏中存在2个世界时钟，分别是
-```
-overworld
-```
-
-和
-```
-the_end
-```
-
-。
-
-世界时钟
-```
-overworld
-```
-
-被用于主世界维度，且游戏内所有的内置时间线均使用它来计算时间。
-
-世界时钟
-```
-overworld
-```
-
-拥有6个时间标记，这6个时间标记均由时间线
-```
-day
-```
-
-定义：
-
-- ``` day ``` ：1000
-- ``` noon ``` ：6000
-- ``` night ``` ：13000
-- ``` midnight ``` ：18000
-- ``` wake_up_from_sleep ``` ：0，且不在 ``` /time ``` 的命令提示中出现
-- ``` roll_village_siege ``` ：18000，且不在 ``` /time ``` 的命令提示中出现
-
-世界时钟
-```
-overworld
-```
-
-也被游戏用于计算区域难度（不存在此世界时钟时始终为0）、固定调试模式世界的时间（不存在此世界时钟时服务端会崩溃，若此世界时钟没有时间标记
-```
-noon
-```
-
-则不会修改时间）。
-
-世界时钟
-```
-the_end
-```
-
-被用于末地维度，用来计算末地闪光的出现时间。
-
-# 历史
-
-# 参见
-
-- 命令/time
-- 维度类型
-- 时间线定义格式
-- 世界时钟存储格式
-
-# 导航
+- `overworld`: used by the Overworld; all built-in timelines use it. Markers (from the `day` timeline): `day` 1000, `noon` 6000, `night` 13000, `midnight` 18000, `wake_up_from_sleep` 0 (hidden in `/time`), `roll_village_siege` 18000 (hidden). Also used for regional difficulty (0 without the clock) and fixed debug worlds (server crashes without it; no `noon` marker = no time changes).
+- `the_end`: used by the End for end sky flash timing.

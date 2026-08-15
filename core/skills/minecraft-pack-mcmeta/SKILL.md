@@ -1,116 +1,43 @@
 ---
 name: minecraft-pack-mcmeta
-description: |
-  Pack.mcmeta（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】，也即包的元数据，是游戏将文件夹或ZIP压缩包识别为数据包或资源包的标识文件。
-  
-  【涵盖内容】
-  - 资源包元数据
-  - 数据包元数据
-  - 版本验证
-  - Java版
-  - 愚人节版本
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Pack.mcmeta 的完整规范时
+description: pack.mcmeta — pack metadata, version validation, overlays, filters, languages.
+whenToUse: Use when writing pack.mcmeta for resource packs or data packs.
 ---
 
-本条目所述内容仅适用于Java版。
-```
-pack.mcmeta
-```
+# pack.mcmeta
 
-，也即包的元数据，是游戏将文件夹或ZIP压缩包识别为数据包或资源包的标识文件。
+The pack metadata is the only required file for a folder/zip to be recognized as a data pack or resource pack. Java Edition only.
 
-# 文件格式
+## Resource Pack Metadata
 
- 参见：数据包 § 目录结构和资源包 § 目录结构 
-包的元数据文件是数据包或资源包唯一必要的文件，游戏使用它来判定当前目录是否是有效的数据包或资源包。
+`pack` object:
 
-## 资源包元数据
+- `description` (required) — text component shown in the pack list (max 2 lines; truncates; formatting codes allowed).
+- `min_format` (required) / `max_format` (required) — version range as `[major, minor]` arrays (bare int = `[n, 0]`; max_format bare int = max possible).
+- `pack_format` / `supported_formats` — deprecated compatibility fields.
+- `overlays` — sub-packs applied by version: `entries` (order matters; later entries take priority) each with `directory` (relative path; zips can't be overlay directories — inside a zip it's a path within it), `min_format`/`max_format` (or deprecated `formats`). Overlay packs ignore metadata and icons.
+- `language` — extra languages: per language code (1–16 chars): `bidirectional` (default false), `name` (full name), `region` (country/region); the language file is `assets/<ns>/lang/<code>.json`.
+- `filter` — blocks lower-priority packs' resources (position-dependent): `block` list of `{namespace (regex), path (regex)}`; empty object matches everything (fully blocks).
 
-资源包元数据位于资源包根目录，其名称为
-```
-pack.mcmeta
-```
+## Data Pack Metadata
 
-，使用JSON格式，并具有下列元素：
+Same core fields as above (`description`, `min_format`, `max_format`, deprecated `pack_format`/`supported_formats`), plus:
 
-- [图:NBT复合标签/JSON对象] JSON文件根元素 - [图:NBT复合标签/JSON对象]*pack：资源包基础元信息。 - [图:字符串][图:NBT列表/JSON数组][图:NBT复合标签/JSON对象]*description：（文本组件）在资源包列表里要显示的资源包描述。可使用格式化代码。该文本最多显示为2行。如果文本太长则会被截断。 - [图:整型][图:整型数组]*min_format：资源包兼容的最低版本号，通常为含有2个整数的数组，这两个整数依次为主要版本号和次要版本号。当只有1个整数时，该整数被视为主要版本号，同时次要版本号被视为 ``` 0 ``` ，如 ``` 74 ``` 、 ``` [74] ``` 等价于 ``` [74, 0] ``` 。 - [图:整型][图:整型数组]*max_format：资源包兼容的最高版本号，通常为含有 2 个整数的数组，这两个整数依次为主要版本号和次要版本号。当只有 1 个整数时，该整数被视为主要版本号，同时次要版本号被视为最大的可能值。 - [图:整型]pack_format：已弃用，为兼容性而保留。资源包的格式版本。 - [图:整型][图:NBT列表/JSON数组][图:NBT复合标签/JSON对象]supported_formats：已弃用，为兼容性而保留。资源包支持的格式版本范围。 - - 整数范围，见Template:Nbt inherit/int inclusive range/source - [图:NBT复合标签/JSON对象]overlays：设置资源包在不同格式版本之间叠加的资源包数据。 - [图:NBT列表/JSON数组]*entries：叠加资源包的列表。此列表需要保证顺序，游戏从下往上依次读取，即后定义的叠加资源包会优先于前定义的叠加资源包。 - [图:NBT复合标签/JSON对象]：一项叠加资源包数据。叠加资源包与正常资源包结构一致，但元数据和图标会被忽略。 - [图:字符串]*directory：叠加资源包相对于资源包根目录的路径。叠加资源包不可以使用 ``` zip ``` 格式，如果此资源包本身是 ``` zip ``` 格式那么此值代表在 ``` zip ``` 文件内的路径。 - [图:整型][图:整型数组]min_format：此叠加资源包生效的最低版本号。 - [图:整型][图:整型数组]max_format：此叠加资源包生效的最高版本号。 - [图:整型][图:NBT列表/JSON数组][图:NBT复合标签/JSON对象]formats：已弃用，为兼容性而保留。此叠加资源包生效的格式版本。 - - 整数范围，见Template:Nbt inherit/int inclusive range/source - [图:NBT复合标签/JSON对象]language：定义向语言菜单里添加的附加语言。 - [图:NBT复合标签/JSON对象]<语言代码>：定义一个语言并定义其语言代码，语言代码长度必须在1到16字符之间。游戏会读取 ``` assets/< 命名空间 >/lang ``` 下与语言代码同名的JSON文件作为其对应的语言文件。 - [图:布尔型]bidirectional：（默认为 ``` false ``` ）语言是否从右到左显示。 - [图:字符串]*name：（非空字符串）语言的完整名称。 - [图:字符串]*region：（非空字符串）国家或地区名称。 - [图:NBT复合标签/JSON对象]filter：指定资源包需要过滤哪些下层资源包的资源。此过滤只能影响来自下层资源包，而无法影响上层资源包，即玩家设置的资源包位置顺序会影响此元素的效果。 - [图:NBT列表/JSON数组]*block：指定要过滤的内容列表。游戏将不读取在下层资源包内符合此列表内定义的命名空间ID的对应资源。 - [图:NBT复合标签/JSON对象]：一项过滤匹配数据。如果此数据内不包含任何元素则代表匹配一切命名空间ID，即完全屏蔽下层资源包。 - [图:字符串]namespace：（正则表达式）指定符合的命名空间。 - [图:字符串]path：（正则表达式）指定符合的路径。
+- `overlays` — same semantics (directory chars `a-z0-9_-`).
+- `filter` — `block` patterns of files to ignore.
+- `features` — experimental features to enable: `enabled` list of namespace IDs; adding this field requires adding the pack at world creation (or editing an old save's level.dat).
 
-## 数据包元数据
+## Version Validation
 
-数据包元数据位于数据包根目录，其名称为
-```
-pack.mcmeta
-```
+Version ranges also gate overlay usage; whether the pack actually works depends on content, not metadata. Two format eras (boundary: game 1.21.8, data pack 81, resource pack 64):
 
-，使用JSON格式，并具有下列元素：
+- **Only post-1.21.8** (min > 81/64): must specify `min_format` + `max_format`; `pack_format`/`supported_formats` forbidden.
+- **Only up to 1.21.8** (max < 82/65): must specify `pack_format`; `supported_formats` (if used) must contain `pack_format` and its max ≥ 15; `min_format`/`max_format` forbidden.
+- **Both eras**: all four fields required; `min_format`'s major must equal `supported_formats`' min; the max is valid if `max_format`'s major equals `supported_formats`' max, OR `supported_formats`' max equals 64 (resource) / 81 (data) (then `max_format` is the actual max); `pack_format` must be inside the range.
+- Overlays: if any overlay targets pre-1.21.8, `formats` must be specified; if none does, `formats` must not be specified (kept for old-version file validation even when the pack is post-1.21.8).
 
-- [图:NBT复合标签/JSON对象]：根对象。 - [图:NBT复合标签/JSON对象]*pack：存放数据包信息。 - [图:字符串][图:NBT复合标签/JSON对象][图:NBT列表/JSON数组]*description：（文本组件）数据包的描述信息。在创建世界的数据包页面，或光标在 ``` / datapack list ``` 命令列出的数据包名称上悬停时，会显示此描述。 - [图:整型][图:整型数组]*min_format：数据包兼容的最低版本号，为两个整数组成的数组，依次为主要版本号和次要版本号。单个整数被视为次要版本号 ``` 0 ``` ，如 ``` 94 ``` 、 ``` [94] ``` 等价于 ``` [94, 0] ``` 。 - [图:整型][图:整型数组]*max_format：数据包兼容的最高版本号，为两个整数组成的数组，依次为主要版本号和次要版本号。单个整数被视为次要版本号 ``` 0x7fffffff ``` 。 - [图:整型]pack_format：已弃用，为兼容性而保留。数据包的基础版本。 - [图:整型][图:NBT列表/JSON数组][图:NBT复合标签/JSON对象]supported_formats：已弃用，为兼容性而保留。此数据包支持的数据包版本范围。 - - 整数范围，见Template:Nbt inherit/int inclusive range/source - [图:NBT复合标签/JSON对象]overlays：指定要覆盖的部分，即应用在“标准”包内容上的子包。其目录是其自己的资源和 ``` data ``` 目录（存放于包的根目录下）。 - [图:NBT列表/JSON数组]*entries：覆盖列表。其顺序很重要，列表中的第一个对象将被首先应用。 - [图:NBT复合标签/JSON对象] - [图:字符串]*directory：此子包所在的相对路径。允许的字符： ``` a-z ``` 、 ``` 0-9 ``` 、 ``` _ ``` 和 ``` - ``` 。 - [图:整型][图:整型数组]min_format：此叠加数据包生效的最低版本号。 - [图:整型][图:整型数组]max_format：此叠加数据包生效的最高版本号。 - [图:整型][图:NBT列表/JSON数组][图:NBT复合标签/JSON对象]*formats：已弃用，为兼容性而保留。此叠加数据包生效的数据包版本范围。 - - 整数范围，见Template:Nbt inherit/int inclusive range/source - [图:NBT复合标签/JSON对象]filter：包过滤器，用于指定数据包要忽略的文件。在[图:NBT列表/JSON数组]block内被匹配到的任何模式都将形如其不在该数据包中存在。 - [图:NBT列表/JSON数组]block：模式列表。 - [图:NBT复合标签/JSON对象]： - [图:字符串]namespace：一个正则表达式，表示要滤除文件的命名空间。若省略则匹配所有命名空间。 - [图:字符串]path：一个正则表达式，表示要滤除文件的路径。若省略则匹配所有文件。 - [图:NBT复合标签/JSON对象]features：要启用的实验性内容。注意：如果添加了该字段，则该数据包需要在创建新世界的时候添加，否则在更改旧世界的level.dat前无法添加。 - [图:NBT列表/JSON数组]*enabled：启用的内容。 - [图:字符串]：（命名空间ID）一项实验性内容。可用值见实验性内容 § 数据值。
+Min version 2147483647 or failed validation shows "(broken or incompatible)".
 
-# 文件行为
+## Format Version List
 
-元数据文件除了用于游戏识别此文件目录是否是数据包或资源包之外，也提供了其他的一些通用属性，包括：
-
-- 校验适用版本：如果当前游戏的数据包或资源包版本在数据包或资源包的适用版本区间内，则游戏会认为此数据包或资源包兼容。详见§ 版本验证。
-- 过滤下层文件：使游戏不读取某些数据包或资源包文件。
-- 叠加目录：也被称为“子包”，使数据包或资源包根据版本修改内容。
-
-## 版本验证
-
- 参见：数据包 § 数据包版本和资源包 § 资源包格式版本 
-由于游戏保有对旧版本的兼容性，故游戏设置了一系列对版本号的验证条件，以保证数据包或资源包若适用于旧版本则版本验证可以正常工作。在最低版本号为2147483647或版本验证失败时游戏会显示为“（已损坏或不兼容）”。
-
-下文为数据包或资源包基础信息[图:NBT复合标签/JSON对象]pack的验证：
-
-每个数据包或资源包都有其适用的版本号或版本区间。对于版本区间而言，总是存在可兼容的最低版本号和最高版本号。此版本区间仅是游戏兼容验证和允许使用覆盖子包的版本区间，数据包或资源包本体是否能正常工作取决于内容而非元数据。由于游戏以游戏版本1.21.8、数据包版本81或资源包版本64为界使用两种格式指定版本区间，因而版本验证与数据包或资源包的适用版本不同而不同。
-
-如果数据包或资源包仅适用于1.21.8后，即资源包最低版本号高于64时或数据包最低版本号高于81时：
-
-- 必须指定 ``` min_format ``` 和 ``` max_format ``` 来指定版本区间。
-- 不能指定 ``` pack_format ``` 或 ``` supported_formats ``` ，它们仅用于1.21.8及之前。
-
-如果数据包或资源包仅适用于1.21.8及之前，即资源包最高版本号低于65时或数据包最高版本号低于82时：
-
-- 必须指定 ``` pack_format ``` 来指定基础版本。
-- 如果指定了 ``` supported_formats ``` 来指定版本区间，则必须包含 ``` pack_format ``` ，且最高版本号不能低于15。
-- 不能指定 ``` min_format ``` 或 ``` max_format ``` ，它们仅用于1.21.8后。
-
-如果数据包或资源包同时适用于1.21.8前和1.21.8后，则上述四个字段必须同时指定，此时游戏会验证最低版本和最高版本的有效性：
-
-- 对最低版本号的验证： - ``` min_format ``` 的主要版本号和 ``` supported_formats ``` 的最小值必须相等，以保证最低版本号只有一个。
-- 对最高版本号的验证，二选一： - ``` max_format ``` 的主要版本号和 ``` supported_formats ``` 的最大值相等，以保证最高版本号只有一个。 - 资源包 ``` supported_formats ``` 的最大值等于64，或数据包 ``` supported_formats ``` 的最大值等于81，以保证 ``` supported_formats ``` 只在1.21.8及之前使用，游戏会使用 ``` max_format ``` 作为实际的最高版本号。
-- ``` pack_format ``` 仍需要在版本区间内。
-
-叠加目录[图:NBT复合标签/JSON对象]overlays加载版本的验证可类比推导基础信息[图:NBT复合标签/JSON对象]pack的验证。但与基础信息不同，即使叠加目录仅适用于1.21.8后，只要数据包或资源包整体适用于1.21.8及以前，就必须保留
-```
-formats
-```
-
-，以保证旧版本游戏的文件格式验证。
-
-- 若任意叠加目录适用于1.21.8前，则应当指定 ``` formats ``` 。若所有叠加目录都不适用于1.21.8前，不能指定 ``` formats ``` 。
-
-# 格式版本列表
-
-此段内容过长，请通过显示按钮阅读
-
-## Java版
-
-## 愚人节版本
-
-愚人节版本中的更改对后来的版本无影响。
-
-# 历史
-
-# 参考
-
-1. ↑ MC-302239
-1. ↑ MC-302593
-
-# 外部链接
-
-- misode.github.io网站的Pack.mcmeta生成器
-
-# 导航
+The per-release pack format numbers (Java and April Fools versions; April Fools changes don't affect later versions): see the Minecraft Wiki "Pack format" page. External tool: the pack.mcmeta generator on misode.github.io.

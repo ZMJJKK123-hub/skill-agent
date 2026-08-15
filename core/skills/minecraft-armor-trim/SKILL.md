@@ -1,213 +1,41 @@
 ---
 name: minecraft-armor-trim
-description: |
-  盔甲纹饰定义格式（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】Wiki上有与该主题相关的教程！
-  
-  【涵盖内容】
-  - 纹饰图案
-  - 纹饰材料
-  - 物品提示框
-  - 纹理
-  - 26.3前
-  - 26.3后
-  
-  【关键定义】
-  - 注册表：TRIM_PATTERN、TRIM_MATERIAL
-  - 数据包路径：data/assets/minecraft/textures/trim/entity/humanoid/flow.png、data/assets/minecraft/textures/palettes/trim_base.png、data/assets/minecraft/textures/palettes/trim/gold.png
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 盔甲纹饰定义格式 的完整规范时
+description: Armor trim definition format — patterns, materials, tooltips, texture generation.
+whenToUse: Use when authoring armor trim patterns/materials in data packs.
 ---
 
-本条目所述内容仅适用于Java版。
- Wiki上有与该主题相关的教程！
-见教程:自定义盔甲纹饰。
+# Armor Trim Definition
 
- Wiki上有与该主题相关的教程！
-见教程:自定义盔甲纹饰。
+Armor trims are decorative appearances added to armor/equipment models, combining a **trim pattern** and a **trim material**. Java Edition only.
 
- 
-盔甲纹饰（Armor Trim），或简称为纹饰（Trim），是附加于盔甲模型等装备模型上的装饰性外观，由纹饰图案（Trim Pattern）和纹饰材料（Trim Material）两部分组成。纹饰图案定义文件和纹饰材料定义文件分别是纹饰图案和纹饰材料在数据包中的数据驱动定义文件。
+## Trim Pattern
 
-# 定义格式
+Registry `TRIM_PATTERN`, data pack path `trim_pattern` (files in `data/<namespace>/trim_pattern/`; tags in `tags/trim_pattern/`):
 
-## 纹饰图案
+- `description` (required) — text component shown in tooltips.
+- `asset_id` (required) — namespace ID affecting the trim texture.
+- `decal` (default false) — render the trim only over the base armor texture's non-transparent pixels.
 
-纹饰图案在游戏内使用
-```
-TRIM_PATTERN
-```
+## Trim Material
 
-注册表，数据包路径为
-```
-trim_pattern
-```
+Registry `TRIM_MATERIAL`, data pack path `trim_material` (files in `data/<namespace>/trim_material/`; tags in `tags/trim_material/`):
 
-，即所有纹饰图案定义文件都需要在
-```
-data/<
-命名空间
->/trim_pattern
-```
+- `description` (required) — tooltip name.
+- `asset_name` (required) — string suffix of the trim texture path.
+- `palette_id` (required) — the palette used for trim texture tinting.
+- `override_armor_assets` — per equipment asset: a string overriding `asset_name` for that asset.
 
-目录内定义，纹饰图案标签则需要在
-```
-data/<
-命名空间
->/tags/trim_pattern
-```
+Definitions load once at server startup (restart required). The smithing trim recipe defines the material inline in the addition's `provides_trim_material` component and names the pattern; applying it adds the `trim` component.
 
-目录内定义。
+## Tooltips
 
-纹饰图案定义文件使用JSON格式，并具有下列结构：
+Trimmed items show two tooltip lines: the pattern name, then the material name. Material name styles override the pattern's styles for the same properties.
 
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:字符串][图:NBT复合标签/JSON对象][图:NBT列表/JSON数组]* *description：（文本组件）物品提示框内盔甲纹饰图案的名称。 - [图:字符串]* *asset_id：（命名空间ID）影响盔甲纹饰使用的纹理。 - [图:布尔型]decal：（默认为 ``` false ``` ）渲染盔甲纹饰时是否只在原盔甲纹理的位置上渲染。为 ``` true ``` 时盔甲纹饰不会在原盔甲的透明像素区域渲染。
+## Textures
 
-## 纹饰材料
-
-纹饰材料在游戏内使用
-```
-TRIM_MATERIAL
-```
-
-注册表，数据包路径为
-```
-trim_material
-```
-
-，即所有纹饰材料定义文件都需要在
-```
-data/<
-命名空间
->/trim_material
-```
-
-目录内定义，纹饰材料标签则需要在
-```
-data/<
-命名空间
->/tags/trim_material
-```
-
-目录内定义。
-
-纹饰材料定义文件使用JSON格式，并具有下列结构：
-
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:字符串][图:NBT复合标签/JSON对象][图:NBT列表/JSON数组]* *description：（文本组件）物品提示框内盔甲纹饰材料的名称。 - [图:字符串]* *asset_name：一个字符串，决定盔甲纹饰纹理资源路径的后缀。 - [图:字符串]* *palette_id：（命名空间ID）盔甲纹饰纹理使用的调色板。 - [图:NBT复合标签/JSON对象]override_armor_assets：对于指定的装备资产，使用指定纹理覆盖而不使用[图:字符串]asset_name。 - [图:字符串]<装备资产命名空间ID>：一个字符串，决定盔甲纹饰纹理资源路径的后缀。
-
-# 定义行为
-
-纹饰图案或材料定义数据仅在服务端启动时被加载一次，使用
-```
-/
-reload
-```
-
-命令不可以使盔甲纹饰定义被重新加载，而必须重启服务端。
-
-在盔甲纹饰配方中，纹饰材料被内联定义于锻造原材料的
-```
-provides_trim_material
-```
-
-组件内，纹饰图案被配方直接指定。此配方就可以为基础物品添加具有对应纹饰图案和材料的
-```
-trim
-```
-
-组件，用于外观的渲染。
-
-## 物品提示框
-
-具有
-```
-trim
-```
-
-物品堆叠组件的物品会在物品提示框内显示[图:字符串][图:NBT复合标签/JSON对象][图:NBT列表/JSON数组]description定义的文本，第一行是盔甲纹饰图案，第二行是盔甲纹饰材料。
-
-只要盔甲纹饰材料名称定义了某项文本组件样式，此样式就会覆盖盔甲纹饰图案名称定义的此项文本组件样式。
-
-## 纹理
-
-当生物装备了具有
-```
-trim
-```
-
-物品堆叠组件的物品时，游戏会获取盔甲纹饰数据，并尝试获取应该使用的装备模型预设层类型，在盔甲模型之上进行渲染。
-
-### 26.3前
-
-本段落包含会在下一次更新中移除的内容。
-这些特性在Java版26.3的开发版本中移除。
-
-盔甲纹饰纹理由纹理图集
-```
-minecraft:armor_trims
-```
-
-生成，游戏在渲染时将纹理解析为
-```
-assets/<
-命名空间
->/textures/trims/entity/<
-装备模型预设层类型
->/<
-图案路径
->_<
-材料字符串
->.png
-```
-
-。
-
-- ``` < 装备模型预设层类型 > ``` 参见装备资产。
-- ``` < 命名空间 > ``` 和 ``` < 图案路径 > ``` 即纹饰图案[图:字符串]asset_id定义的命名空间ID。
-- ``` < 材料字符串 > ``` 即纹饰材料[图:字符串]asset_name和[图:字符串]override_armor_assets.<装备资产命名空间ID>定义的字符串。
-
-盔甲纹饰的纹理映射与其盔甲的装备模型的纹理映射相同，也即任何物品都具有渲染纹饰的能力。原版游戏并未直接定义实际纹理，而是定义了若干基本图案和调色板，使用
-```
-paletted_permutations
-```
-
-图集源类型枚举混合自动生成。因此在不修改此纹理图集的前提下所有的非原版盔甲纹饰纹理不会被主动加载。
-
-### 26.3后
-
-本段落包含会在下一次更新中出现的内容。
-这些特性在Java版26.3的开发版本中加入。
-
-盔甲纹饰纹理在实体上和在物品上具有不同的处理方式。在实体上，游戏会按需生成纹饰纹理；在物品上，游戏会使用
-```
-paletted_permutations
-```
-
-图集源在纹理图集中枚举混合预先生成全部可用的纹理。
-
-以下只介绍实体盔甲纹饰纹理的机制，游戏需要根据装备资产、纹饰材料和纹饰图案组合为完整的盔甲纹饰纹理。
-
-以玩家的金质涡流盔甲纹饰的下界合金胸甲为例：
-
-- 涡流盔甲纹饰对应的纹饰图案为 ``` minecraft:flow ``` ，其[图:字符串]asset_id为 ``` minecraft:flow ``` 。
-- 金锭引用的纹饰材料为 ``` minecraft:gold ``` ，其[图:字符串]palette_id为 ``` minecraft:trim/gold ``` 。
-- 对玩家而言，下界合金胸甲在实体上使用的模型层为 ``` humanoid ``` 。
-
-获取相关纹理资源：
-
-- 读取纹饰图案的纹理ID，将其解析为 ``` assets/< 命名空间 >/textures/trim/entity/< 装备模型预设层 >/< 路径 >.png ``` 。此处为 ``` assets/minecraft/textures/trim/entity/humanoid/flow.png ``` 。
-- 读取纹饰图案纹理元数据的调色板ID，将其解析为 ``` assets/< 命名空间 >/textures/palettes/< 路径 >.png ``` ，下称基础调色板。此处为 ``` trim_base ``` ，即 ``` assets/minecraft/textures/palettes/trim_base.png ``` 。
-- 读取纹饰材料的调色板ID，将其解析为 ``` assets/< 命名空间 >/textures/palettes/< 路径 >.png ``` ，下称目标调色板。此处为 ``` assets/minecraft/textures/palettes/trim/gold.png ``` 。
-
-当玩家穿着金质涡流盔甲纹饰的下界合金胸甲时，游戏会以纹饰图案纹理为基础，对于所有基础纹理中颜色与基础调色板相同的像素，将其替换为目标调色板中的对应像素。然后再根据对应模型层的纹理映射，将纹饰渲染在盔甲外部。如果基础调色板或目标调色板任一文件缺失，或基础调色板和目标调色板的尺寸不匹配，则替换无效，游戏什么也不渲染。
-
-如果对应的装备资产定义了[图:NBT复合标签/JSON对象]trim_palette_replacements，且目前的盔甲纹饰使用的目标调色板符合替换规则，则游戏使用替换后的调色板。
-
-# 历史
-
-# 参考
-
-1. ↑ MC-260446 — 漏洞状态为“无效”。
-
-# 导航
+- **Pre-26.3**: trims render from the `minecraft:armor_trims` atlas; textures resolve to `assets/<ns>/textures/trims/entity/<equipment model layer>/<pattern path>_<material string>.png`. Trim textures share the armor model's UV mapping (any item can render trims). Vanilla defines base patterns and palettes and generates combinations via the `paletted_permutations` atlas source — non-vanilla trim textures aren't loaded without modifying the atlas.
+- **From 26.3**: entity trims generate on demand; item trims pre-generate via `paletted_permutations`. For entities, the game combines the equipment asset, material, and pattern:
+  1. Pattern texture → `assets/<ns>/textures/trim/entity/<layer>/<path>.png` (e.g. `humanoid/flow.png`).
+  2. The pattern texture's metadata `palette.base_palette` → the base palette (`assets/<ns>/textures/palettes/<path>.png`, e.g. `trim_base`).
+  3. The material's `palette_id` → the target palette (e.g. `trim/gold`).
+  Then every base-texture pixel matching a base-palette color is replaced with the target palette's corresponding pixel, rendered over the armor via the layer's UV mapping. Missing/mismatched palettes render nothing. Equipment assets may define `trim_palette_replacements` to swap target palettes under conditions.

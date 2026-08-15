@@ -1,31 +1,18 @@
 ---
 name: forge-concept-internationalization
-description: |
-  Forge 国际化（i18n）与本地化指南（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】Internationalization and Localization
-  
-  【涵盖内容】
-  - `net.minecraft.client.resources.language.I18n` (client only)
-  - `TranslatableContents`
-  - `TextComponentHelper`
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge 国际化（i18n）与本地化指南 的完整规范时
+description: Forge i18n: translation keys, language files, getDescriptionId, client/server localization.
+whenToUse: Use when localizing Forge mod text or sending translatable text to players.
 ---
 
-Internationalization and Localization
-=====================================
+# Internationalization and Localization
 
-Internationalization, i18n for short, is a way of designing code so that it requires no changes to be adapted for various languages. Localization is the process of adapting displayed text to the user's language.
+Internationalization (i18n) designs code so it needs no changes for various languages; localization adapts displayed text to the user's language. i18n uses translation keys (language-neutral identifiers, e.g. `block.minecraft.dirt`).
 
-I18n is implemented using _translation keys_. A translation key is a string that identifies a piece of displayable text in no specific language. For example, `block.minecraft.dirt` is the translation key referring to the name of the Dirt block. This way, displayable text may be referenced with no concern for a specific language. The code requires no changes to be adapted in a new language.
+Localization happens in the game's locale: the client uses its language setting; a dedicated server only supports `en_us`.
 
-Localization will happen in the game's locale. In a Minecraft client the locale is specified by the language settings. On a dedicated server, the only supported locale is `en_us`. A list of available locales can be found on the [Minecraft Wiki][langs].
+## Language files
 
-Language files
---------------
-
-Language files are located by `assets/[namespace]/lang/[locale].json` (e.g. all US English translations provided by `examplemod` would be within `assets/examplemod/lang/en_us.json`). The file format is simply a json map from translation keys to values. The file must be encoded in UTF-8. Old .lang files can be converted to json using a [converter][converter].
+Located at `assets/[namespace]/lang/[locale].json` (UTF-8), a JSON map of keys to values:
 
 ```js
 {
@@ -35,48 +22,16 @@ Language files are located by `assets/[namespace]/lang/[locale].json` (e.g. all 
 }
 ```
 
-Usage with Blocks and Items
----------------------------
+## Usage with blocks and items
 
-Block, Item and a few other Minecraft classes have built-in translation keys used to display their names. These translation keys are specified by overriding `#getDescriptionId`. Item also has `#getDescriptionId(ItemStack)` which can be overridden to provide different translation keys depending on ItemStack NBT.
+Block/Item names use translation keys from `#getDescriptionId` (Item also has `#getDescriptionId(ItemStack)`). The default is `block.`/`item.` + registry name with the colon replaced by a dot; `BlockItem`s inherit their block's key. Example: item `examplemod:example_item` needs `"item.examplemod.example_item": "..."`.
 
-By default, `#getDescriptionId` will return `block.` or `item.` prepended to the registry name of the block or item, with the colon replaced by a dot. `BlockItem`s override this method to take their corresponding `Block`'s translation key by default. For example, an item with ID `examplemod:example_item` effectively requires the following line in a language file:
+> Translation keys are only for i18n — never use them for logic; use registry names.
 
-```js
-{
-  "item.examplemod.example_item": "Example Item Name"
-}
-```
+## Localization methods
 
-!!! note
-    The only purpose of a translation key is internationalization. Do not use them for logic. Use registry names instead.
+> **Warning**: the server can only localize in its own locale. To respect client language settings, send `TranslatableComponent` (or similar language-neutral keys) so clients localize in their own locale.
 
-
-Localization methods
---------------------
-
-!!! warning
-    A common issue is having the server localize for clients. The server can only localize in its own locale, which does not necessarily match the locale of connected clients.
-    
-    To respect the language settings of clients, the server should have clients localize text in their own locale using `TranslatableComponent` or other methods preserving the language neutral translation keys.
-
-### `net.minecraft.client.resources.language.I18n` (client only)
-
-**This I18n class can only be found on a Minecraft client!** It is intended to be used by code that only runs on the client. Attempts to use this on a server will throw exceptions and crash.
-
-- `get(String, Object...)` localizes in the client's locale with formatting. The first parameter is a translation key, and the rest are formatting arguments for `String.format(String, Object...)`.
-
-### `TranslatableContents`
-
-`TranslatableContents` is a `ComponentContents` that is localized and formatted lazily. It is very useful when sending messages to players because it will be automatically localized in their own locale.
-
-The first parameter of the `TranslatableContents(String, Object...)` constructor is a translation key, and the rest are used for formatting. The only supported format specifiers are `%s` and `%1$s`, `%2$s`, `%3$s` etc. Formatting arguments may be `Component`s that will be inserted into the resulting formatted text with all their attributes preserved.
-
-A `MutableComponent` can be created using `Component#translatable` by passing in the `TranslatableContents`'s parameters. It can also be created using `MutableComponent#create` by passing in the `ComponentContents` itself.
-
-### `TextComponentHelper`
-
-- `createComponentTranslation(CommandSource, String, Object...)` creates a localized and formatted `MutableComponent` depending on a receiver. The localization and formatting is done eagerly if the receiver is a vanilla client. If not, the localization and formatting is done lazily with a `Component` containing `TranslatableContents`. This is only useful if the server should allow vanilla clients to connect.
-
-[langs]: https://minecraft.wiki/w/Language#Languages
-[converter]: https://tterrag.com/lang2json/
+- `net.minecraft.client.resources.language.I18n` (client only!): `get(String, Object...)` localizes in the client's locale with `String.format` arguments. Using it on a server crashes.
+- `TranslatableContents`: lazily localized/formatted `ComponentContents`; parameters after the key are formatting args, only `%s`, `%1$s`, `%2$s`... supported; `Component`s keep their attributes. Create via `Component#translatable` or `MutableComponent#create`.
+- `TextComponentHelper#createComponentTranslation(CommandSource, String, Object...)`: localized eagerly for vanilla clients, lazily via `TranslatableContents` otherwise; useful when servers allow vanilla clients.

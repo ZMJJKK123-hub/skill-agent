@@ -1,278 +1,46 @@
 ---
 name: minecraft-pig
-description: |
-  猪（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】本条目介绍的是主世界的友好生物。关于其他相似的生物，请见“猪（消歧义）”。
-  
-  【涵盖内容】
-  - 音效变种
-  - 繁殖
-  - 骑乘
-  - 成年
-  - 共通音效
-  - 变种音效
-  - 幼年
-  - ID
-  - 实体数据
-  - 猪变种
-  - 猪音效变种
-  - 纹理
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 猪 的完整规范时
+description: Pig — spawning, variants, sound variants, drops, breeding, riding (carrot on a stick speed), NBT.
+whenToUse: Use when working with pigs (breeding, riding, variants).
 ---
 
-本条目介绍的是主世界的友好生物。关于其他相似的生物，请见“猪（消歧义）”。
+# Pig
 
-猪
+Pigs are common friendly mobs in the Overworld — the main source of raw/cooked porkchops.
 
-成年
+## Spawning
 
-成年，已上鞍
+Periodic + pack spawns on grass blocks with light ≥ 7 and 2 blocks of air above. Biome variants exist (temperate, cold, warm...); natural spawns only in plains, sunflower plains, swamp, cherry grove, windswept hills/forest/gravelly hills, forest-type biomes (except pale garden), and dry biomes (except desert). Pigs also spawn in village pig pens, huts, and butcher backyards. 5% of natural spawns are babies.
 
-幼年
+### Sound Variants
 
-成年
+**Big**, **Classic**, **Mini** (33.3% each, independent of the biome variant) — used for idle, eating, death, and hurt sounds.
 
-成年，已上鞍
+## Drops
 
-幼年
+Raw porkchop (cooked when killed while on fire; Java: also with Fire Aspect unless not on fire), the saddle (if saddled), 1–3 XP (player/tamed wolf kill). Babies drop nothing.
 
-成年
+## Behavior
 
-成年，已上鞍
+Like other passive mobs: wander, avoid lava/falling cliffs, flee when hurt. Lightning turns pigs into zombified piglins (non-peaceful). Pigs follow players holding carrots, carrot-on-a-stick, potatoes, or beetroot within 10/16 blocks.
 
-幼年
+### Breeding
 
-[[|]][图:Invicon Pig Spawn Egg.png：Minecraft中Pig Spawn Egg的精灵图，描述：猪刷怪蛋]
+Feed two adults carrots, potatoes, or beetroot → love mode → 1 baby (1–7 XP; 5-min/1-min cooldown). Babies grow in 20 minutes (each feed −10% remaining); variant = random parent's. Golden dandelions halt/restart growth (halted babies accept only golden dandelions).
 
- Wiki上有与该主题相关的教程！
-见教程:家畜养殖。
+### Riding
 
- Wiki上有与该主题相关的教程！
-见教程:家畜养殖。
+Saddle an adult pig to ride it (leashable); a carrot on a stick steers it. Pigs auto-step over 1-block heights; only the pig takes fall damage. Lightning turning a saddled pig into a zombified piglin removes the saddle (Java: riders don't dismount); leashes don't break on conversion (Java).
 
- 
-“> 猪是一种简单的动物，喜欢吃根类蔬菜，拥有着强壮的背部。
+Speed: 2.42 blocks/s normally. Using a carrot on a stick boosts speed (7 or 2 durability lost) for 7–49 s or 3 s, to 1 + 1.15×sin(t/t0·π) × base.
 
-”——Minecraft Earth内描述
-猪（Pig）是生成于主世界中的常见友好生物。它们是生猪排和熟猪排的主要来源。
+## Data Values
 
-# 生成
+- ID: `minecraft:pig`.
+- NBT: entity/living/mob/breedable/animal common tags plus:
+  - `sound_variant` (invalid → `classic`; → component `pig/sound_variant`).
+  - `variant` (invalid → `temperate`; → component `pig/variant`).
 
-猪会在主世界亮度等级大于等于7，且上方空间至少为2格的草方块上周期生成与伴随生成。
+## Trivia
 
-在不同的生物群系中，猪会生成为不同的变种，具体如下表所示：
-
-尽管在所有生物群系中生成的猪都有对应变种，但它们只会在平原、向日葵平原、沼泽、樱花树林、风袭丘陵、风袭森林、风袭沙砾丘陵、以及苍白之园以外的森林类生物群系、沙漠以外的干旱类生物群系中自然生成。
-
-猪也会在村庄的猪圈、棚屋或者屠夫小屋的后院中伴随生成。
-
-每只自然生成的猪有5%的概率生成为幼年个体。
-
-## 音效变种
-
-猪有3种音效变种：Big、Classic和Mini。
-
-猪的音效变种会独立于猪的生物群系生成进行分配，每种音效变种有33.3%的生成概率。猪在发出空闲、进食、死亡或受伤的音效时，会发出与其变种相关联的音效。音效变种与其品种变种和状态无关。
-
-关于所有猪的音效，详见§ 音效。
-
-# 掉落物
-
-成年猪在死亡时会掉落：
-
-Java版：
-
-1. ↑ 仅当不在着火下死亡且武器不附魔火焰附加时。
-1. ↑ 仅当着火状态下死亡或武器附魔火焰附加时。
-
-基岩版：
-
-1. ↑ 仅当不在着火下死亡时。
-1. ↑ 仅当着火状态下死亡时。
-
-- 1 鞍（若被装上鞍）
-- 1–3 经验值（若被玩家或驯服的狼杀死）
-
-与其他幼年动物类似，杀死幼年猪不会掉落任何物品和经验值。
-
-# 行为
-
-猪的行为类似其他的友好生物：它们会漫无目的地游荡，躲避熔岩以及足以造成坠落伤害的悬崖，并且会在受到伤害后四处逃窜。
-
-在非和平难度下，猪被闪电击中会变为僵尸猪灵。
-
-猪会跟随10格或16格内手持胡萝卜、胡萝卜钓竿、马铃薯或甜菜根的玩家。
-
-## 繁殖
-
- 参见：繁殖 
-猪可以通过喂食胡萝卜、马铃薯或甜菜根来繁殖。给两只成年猪喂食胡萝卜、马铃薯或甜菜根后会使其进入求爱模式，成功繁殖后会产下一只幼年猪，并掉落1–7 经验值，繁殖后双亲在5分钟或1分钟内不能再次喂食或繁殖。
-
-幼年猪需要20分钟成长为成年个体。幼年猪通常会跟随成年猪，直到长大。繁殖出的幼年猪的变种从双亲的变种中随机选择。
-
-给幼年猪喂食胡萝卜、马铃薯或甜菜根可以加快其成长速度，一次可以减少约剩余成长时间的10%。
-
-对幼年猪使用金蒲公英可以阻止其成长为成年猪，再次对其使用金蒲公英将使其重新开始成长。被阻止成长的幼年猪无法被喂食除金蒲公英外的其他物品。
-
-## 骑乘
-
- 参见：鞍 
-“> 我随身带着胡萝卜，迎接猪驱动的未来交通……这种未来味道有些搞笑:(
-
-”——Dinnerbone宣布猪可骑乘
-
-玩家可对成年猪使用鞍使其可被骑乘，并且可使用拴绳牵引。猪可使用胡萝卜钓竿来控制方向。
-
-猪会自动走过1格高的方块。骑乘猪时，只有猪会受到摔落伤害。
-
-带鞍的猪被闪电击中变成僵尸猪灵后，猪身上的鞍会消失，但在Java版中，骑在其身上的实体不会脱离。
-
-在Java版中，当被拴住的猪转化为僵尸猪灵时，拴绳不会断裂。
-
-速度计算
-猪的常规行进速度为2.42格/秒。
-
-使用胡萝卜钓竿可以加快猪的行进速度，同时使胡萝卜钓竿降低7点或2点耐久度。此时猪会获得一个7到49秒或3秒的加速时间，加速期间的速度会在常规行进速度的基础上加速至1+1.15×sin⁡(tt0π)倍，其中t是已经过的加速时间，t0是总加速时间。
-
-# 音效
-
-## 成年
-
-### 共通音效
-
-Java版：
-
-基岩版：
-
-### 变种音效
-
-Big
-
-Java版：
-
-基岩版：
-
-Classic
-
-Java版：
-
-基岩版：
-
-Mini
-
-Java版：
-
-基岩版：
-
-## 幼年
-
-Java版：
-
-基岩版：
-
-# 数据值
-
-## ID
-
-Java版：
-
-基岩版：
-
-## 实体数据
-
-Java版：
-
-主条目：实体数据格式
-猪有与之相联系的包含许多该生物属性的存档数据。
-
-- [图:NBT复合标签/JSON对象] 实体数据 - - 实体共通标签，见Template:Nbt inherit/entity/source - - 生物共通标签，见Template:Nbt inherit/living entity/source - - AI生物共通标签，见Template:Nbt inherit/mob/source - - 可成长生物共通标签，见Template:Nbt inherit/breedable/source - - 动物共通标签，见Template:Nbt inherit/animal/source - [图:字符串]* *sound_variant：（命名空间ID）猪的音效变种。如果设置值无效则设置为 ``` classic ``` 。此项实体数据会被视为数据组件pig/sound_variant。 - [图:字符串]* *variant：（命名空间ID）猪的变种。如果设置值无效则设置为 ``` temperate ``` 。此项实体数据会被视为数据组件pig/variant。
-
-基岩版：
-
- 参见：基岩版存档格式/实体格式和基岩版存档格式/实体格式/组件 
-
-### 猪变种
-
-主条目：猪/DV
-
-### 猪音效变种
-
-主条目：猪/DV2
-
-# 成就
-
-主条目：成就
-以下成就适用于所有生物：
-
-# 进度
-
-主条目：进度
-以下进度适用于所有生物：
-
-# 视频
-
-注意：该视频所叙述之僵尸猪人已于下界更新变更名称及纹理。
-
-# 历史
-
-- 被制作为苦力怕之前原来的猪的模型
-- 旧版斗鸡眼猪的纹理
-- Java版24w33a前，如果玩家骑猪进入矿车，矿车速度会增加
-
-# 你知道吗
-
-- 装载着带鞍的猪的矿车特性会发生变化： - 如果使用命令让部分生物骑猪进入矿车，矿车速度会增加至其在动力铁轨上的速度。 - 矿车无论被乘坐与否，必须在撞到方块后才会停下。其他实体和未激活的动力铁轨只会将其减小到最低速度。
-- 在第一次创造猪时，Notch把其身体的宽和高弄混了，但他通过这个模型制作出了苦力怕。
-- 浩室音乐艺术家deadmau5发布过名为Get In The Cart, Pig（后来改名为Fn Pig）和Infra Turbo Pigcart Racer的歌曲，歌名引用自他在Minecraft中把猪赶上矿车的经历。
-- 温带猪与现实中的约克郡猪相似。
-- 热带猪和现实中分布在非洲雨林里的红河猪相似。
-
-# 画廊
-
-- 死亡的猪
-- 幼年猪与成年猪的对比
-- 小鬼当家小更新前，幼年猪的头部尺寸与成年猪相同
-- 小鬼当家小更新前带鞍的成年和幼年猪，后者只能通过命令生成
-- 骑猪的玩家在矿车内
-- Dinnerbone公布的第一张控制骑猪的照片
-- 跟随手持甜菜根的玩家的猪
-- 猪脚内部
-- 猪的三种变种
-
-## 纹理
-
-- 成年温带猪的纹理
-- 猪身上的鞍的纹理
-
-## 艺术作品
-
-- 猪的官方艺术作品
-- 另一幅猪的官方艺术作品
-- 
-- 带鞍的猪的官方艺术作品
-- 猪的艺术动图
-- Alex骑乘猪的艺术作品，致敬了《阿基拉》的侧滑停车
-
-# 参考
-
-1. ↑ https://twitter.com/Dinnerbone/status/240428477856231424
-1. ↑ MC-276342 — 漏洞状态为“有意为之”。
-1. ↑ https://twitter.com/notch/status/57426954093211648
-1. ↑ https://twitter.com/notch/status/109628703788646400
-1. ↑ Notch在Reddit的回复：http://www.reddit.com/r/Minecraft/comments/k2gkw/ok/
-1. ↑ MC-82235 — 漏洞状态为“已修复”。
-1. ↑ MC-260059 — 漏洞状态为“已修复”。
-1. ↑ MC-67 — 漏洞状态为“已修复”。
-1. ↑ MC-279315 — 漏洞状态为“已修复”。
-1. ↑ MC-279280 — 漏洞状态为“已修复”。
-1. ↑ MC-279235 — 漏洞状态为“已修复”。
-1. ↑ MC-279292 — 漏洞状态为“已修复”。
-1. ↑ MCPE-38134 — 漏洞状态为“已修复”。
-1. ↑ MCPE-190750 — 漏洞状态为“已修复”。
-1. ↑ https://twitter.com/Dinnerbone/status/430684874576760832
-1. ↑ pig cart - deadmau5 — YouTube。
-1. ↑ Name that title 🏍️，来自@Minecraft。X（曾名Twitter），2023年11月14日。
-
-# 导航
+Pigs in minecarts behave specially (speed boost, stop only by collision); Notch accidentally made the pig's body dimensions swapped and reused the model for creepers; temperate pigs resemble Yorkshire pigs, tropical pigs resemble red river hogs; deadmau5's songs reference pig minecarts; pre-24w33a, riding a pig into a minecart increased its speed.

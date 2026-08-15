@@ -1,362 +1,464 @@
 ---
 name: minecraft-tag-entity-type
-description: |
-  Java版标签/实体类型（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】实体类型标签（Entity Type Tags）是实体类型的组合。
-  
-  【涵盖内容】
-  - accepts_iron_golem_gift
-  - aquatic
-  - arrows
-  - arthropod
-  - axolotl_always_hostiles
-  - axolotl_hunt_targets
-  - beehive_inhabitors
-  - boat
-  - burn_in_daylight
-  - can_breathe_under_water
-  - can_equip_harness
-  - can_equip_saddle
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Java版标签/实体类型 的完整规范时
+description: Entity type tags and their members, used in entity predicates, target selectors, and game behavior.
+whenToUse: Use when writing entity predicates, target selectors, or datapacks via entity type tags (#undead, #skeletons etc.).
 ---
 
-本条目所述内容仅适用于Java版。
-实体类型标签（Entity Type Tags）是实体类型的组合。
+# Entity Type Tags
 
-# 使用
+This content applies only to Java Edition.
 
-实体类型标签可以被实体谓词和目标选择器等调用以测试实体类型。只要实体类型在此标签内，测试就会成功。实体类型标签也控制了一些与特定实体相关的游戏行为，参考以下每个标签的介绍。
+Entity type tags are groups of entity types.
 
-# 标签列表
+## Usage
 
-## accepts_iron_golem_gift
+Entity type tags can be used by entity predicates and target selectors to test entity types: the test succeeds if the entity type is in the tag. Entity type tags also control game behaviors related to specific entities, described per tag below.
 
-- 会将铁傀儡的赠礼戴到头上的实体。
+## Tag list
 
-- #accepts_iron_golem_gift（1项） - ``` copper_golem ``` （铜傀儡）
+### `#accepts_iron_golem_gift` (1 entry)
 
-## aquatic
+Entities that wear the iron golem's gift on their head:
 
-- 被视为水生生物的实体。
+- `copper_golem` (Copper Golem)
 
-- #aquatic（14项） - ``` turtle ``` （海龟） - ``` axolotl ``` （美西螈） - ``` guardian ``` （守卫者） - ``` elder_guardian ``` （远古守卫者） - ``` cod ``` （鳕鱼） - ``` pufferfish ``` （河豚） - ``` salmon ``` （鲑鱼） - ``` tropical_fish ``` （热带鱼） - ``` dolphin ``` （海豚） - ``` squid ``` （鱿鱼） - ``` glow_squid ``` （发光鱿鱼） - ``` tadpole ``` （蝌蚪） - ``` nautilus ``` （鹦鹉螺） - ``` zombie_nautilus ``` （僵尸鹦鹉螺）
+### `#aquatic` (14 entries)
 
-## arrows
+Entities considered aquatic:
 
-- 用于瞄准目标进度。
+- `turtle` (Turtle)
+- `axolotl` (Axolotl)
+- `guardian` (Guardian)
+- `cod` (Cod)
+- `dolphin` (Dolphin)
 
-- #arrows（2项） - ``` arrow ``` （箭） - ``` spectral_arrow ``` （光灵箭）
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-## arthropod
+### `#arrows` (2 entries)
 
-- 被视为节肢生物的实体。
+Used by the "Sniper duel" advancement:
 
-- #arthropod（5项） - ``` bee ``` （蜜蜂） - ``` endermite ``` （末影螨） - ``` silverfish ``` （蠹虫） - ``` spider ``` （蜘蛛） - ``` cave_spider ``` （洞穴蜘蛛）
+- `arrow` (Arrow)
+- `spectral_arrow` (Spectral Arrow)
 
-## axolotl_always_hostiles
+### `#arthropod` (5 entries)
 
-- 美西螈总是对这些实体保持敌对。
+Entities considered arthropods:
 
-- #axolotl_always_hostiles（3项） - ``` drowned ``` （溺尸） - ``` guardian ``` （守卫者） - ``` elder_guardian ``` （远古守卫者）
+- `bee` (Bee)
+- `endermite` (Endermite)
+- `silverfish` (Silverfish)
+- `spider` (Spider)
+- `cave_spider` (Cave Spider)
 
-## axolotl_hunt_targets
+### `#axolotl_always_hostiles` (3 entries)
 
-- 美西螈会在有冷却时间的情况下“猎杀”这些实体。
+Entities axolotls are always hostile toward:
 
-- #axolotl_hunt_targets（7项） - ``` tropical_fish ``` （热带鱼） - ``` pufferfish ``` （河豚） - ``` salmon ``` （鲑鱼） - ``` cod ``` （鳕鱼） - ``` squid ``` （鱿鱼） - ``` glow_squid ``` （发光鱿鱼） - ``` tadpole ``` （蝌蚪）
+- `drowned` (Drowned)
+- `guardian` (Guardian)
+- `elder_guardian` (Elder Guardian)
 
-## beehive_inhabitors
+### `#axolotl_hunt_targets` (7 entries)
 
-- 这些实体可以进入蜂箱。
+Entities axolotls "hunt" on a cooldown:
 
-- #beehive_inhabitors（1项） - ``` bee ``` （蜜蜂）
+- `tropical_fish` (Tropical Fish)
+- `pufferfish` (Pufferfish)
+- `salmon` (Salmon)
+- `cod` (Cod)
+- `squid` (Squid)
+- `glow_squid` (Glow Squid)
+- `tadpole` (Tadpole)
 
-## boat
+### `#beehive_inhabitors` (1 entry)
 
-- 用于羊帆起航！进度。
+Entities that can enter beehives:
 
-- #boat（11项） - ``` oak_boat ``` （橡木船） - ``` spruce_boat ``` （云杉木船） - ``` birch_boat ``` （白桦木船） - ``` jungle_boat ``` （丛林木船） - ``` acacia_boat ``` （金合欢木船） - ``` cherry_boat ``` （樱花木船） - ``` dark_oak_boat ``` （深色橡木船） - ``` pale_oak_boat ``` （苍白橡木船） - ``` mangrove_boat ``` （红树木船） - ``` bamboo_raft ``` （竹筏） - ``` poplar_boat ``` （杨木船）
+- `bee` (Bee)
 
-## burn_in_daylight
+### `#boat` (11 entries)
 
-- 会在阳光下着火的实体。
+Used by the "Smooth Sailing" advancement:
 
-- #burn_in_daylight（10项） - ``` skeleton ``` （骷髅） - ``` stray ``` （流浪者） - ``` wither_skeleton ``` （凋灵骷髅） - ``` bogged ``` （沼骸） - ``` zombie ``` （僵尸） - ``` zombie_horse ``` （僵尸马） - ``` zombie_villager ``` （僵尸村民） - ``` drowned ``` （溺尸） - ``` zombie_nautilus ``` （僵尸鹦鹉螺） - ``` phantom ``` （幻翼）
+- `oak_boat` (Oak Boat)
+- `spruce_boat` (Spruce Boat)
+- `acacia_boat` (Acacia Boat)
+- `bamboo_raft` (Bamboo Raft)
+- `poplar_boat` (Poplar Boat)
 
-## can_breathe_under_water
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-- 拥有该标签的生物不会溺水。
+### `#burn_in_daylight` (10 entries)
 
-- #can_breathe_under_water（16项） - ``` #undead ``` - ``` axolotl ``` （美西螈） - ``` frog ``` （青蛙） - ``` guardian ``` （守卫者） - ``` elder_guardian ``` （远古守卫者） - ``` turtle ``` （海龟） - ``` glow_squid ``` （发光鱿鱼） - ``` cod ``` （鳕鱼） - ``` pufferfish ``` （河豚） - ``` salmon ``` （鲑鱼） - ``` squid ``` （鱿鱼） - ``` tropical_fish ``` （热带鱼） - ``` tadpole ``` （蝌蚪） - ``` armor_stand ``` （盔甲架） - ``` copper_golem ``` （铜傀儡） - ``` nautilus ``` （鹦鹉螺）
+Entities that catch fire in sunlight:
 
-## can_equip_harness
+- `skeleton` (Skeleton)
+- `stray` (Stray)
+- `zombie` (Zombie)
+- `drowned` (Drowned)
+- `phantom` (Phantom)
 
-- 可装备挽具的实体。
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-- #can_equip_harness（1项） - ``` happy_ghast ``` （快乐恶魂）
+### `#can_breathe_under_water` (16 entries)
 
-## can_equip_saddle
+Entities with this tag do not drown:
 
-- 可装备鞍的实体。
+- `#undead`
+- `axolotl` (Axolotl)
+- `guardian` (Guardian)
+- `turtle` (Turtle)
+- `armor_stand` (Armor Stand)
 
-- #can_equip_saddle（11项） - ``` horse ``` （马） - ``` skeleton_horse ``` （骷髅马） - ``` zombie_horse ``` （僵尸马） - ``` donkey ``` （驴） - ``` mule ``` （骡） - ``` pig ``` （猪） - ``` strider ``` （炽足兽） - ``` camel ``` （骆驼） - ``` camel_husk ``` （骆驼尸壳） - ``` nautilus ``` （鹦鹉螺） - ``` zombie_nautilus ``` （僵尸鹦鹉螺）
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-## can_float_while_ridden
+### `#can_equip_harness` (1 entry)
 
-- 控制生物被骑乘时是否可在水上漂浮游泳而非下沉。
+Entities that can equip a harness:
 
-- #can_float_while_ridden（6项） - ``` horse ``` （马） - ``` zombie_horse ``` （僵尸马） - ``` mule ``` （骡） - ``` donkey ``` （驴） - ``` camel ``` （骆驼） - ``` camel_husk ``` （骆驼尸壳）
+- `happy_ghast` (Happy Ghast)
 
-## can_turn_in_boats
+### `#can_equip_saddle` (11 entries)
 
-- 拥有该标签的生物能在船中改变方向。
+Entities that can equip a saddle:
 
-- #can_turn_in_boats（1项） - ``` breeze ``` （旋风人）
+- `horse` (Horse)
+- `skeleton_horse` (Skeleton Horse)
+- `pig` (Pig)
+- `strider` (Strider)
+- `camel` (Camel)
 
-## can_wear_horse_armor
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-- 拥有该标签的生物会在其马类实体物品栏中显示马铠槽位。
+### `#can_float_while_ridden` (6 entries)
 
-- #can_wear_horse_armor（2项） - ``` horse ``` （马） - ``` zombie_horse ``` （僵尸马）
+Controls whether a ridden mob floats/swims on water instead of sinking:
 
-## can_wear_nautilus_armor
+- `horse` (Horse)
+- `zombie_horse` (Zombie Horse)
+- `mule` (Mule)
+- `donkey` (Donkey)
+- `camel` (Camel)
+- `camel_husk` (Camel Husk)
 
-- 可装备鹦鹉螺铠的实体。
+### `#can_turn_in_boats` (1 entry)
 
-- #can_wear_nautilus_armor（2项） - ``` nautilus ``` （鹦鹉螺） - ``` zombie_nautilus ``` （僵尸鹦鹉螺）
+Mobs with this tag can turn direction in boats:
 
-## candidate_for_iron_golem_gift
+- `breeze` (Breeze)
 
-- 会被铁傀儡赠予虞美人的实体。
+### `#can_wear_horse_armor` (2 entries)
 
-- #candidate_for_iron_golem_gift（2项） - ``` villager ``` （村民） - ``` #accepts_iron_golem_gift ```
+Mobs with this tag show the horse armor slot in their horse inventory:
 
-## cannot_be_age_locked
+- `horse` (Horse)
+- `zombie_horse` (Zombie Horse)
 
-- 不可以被金蒲公英停止生长的可成长生物。
+### `#can_wear_nautilus_armor` (2 entries)
 
-- #cannot_be_age_locked（3项） - ``` zombie_horse ``` （僵尸马） - ``` skeleton_horse ``` （骷髅马） - ``` villager ``` （村民）
+Entities that can equip nautilus armor:
 
-## cannot_be_dismounted_by_item_usage
+- `nautilus` (Nautilus)
+- `zombie_nautilus` (Zombie Nautilus)
 
-本段落包含会在下一次更新中出现的内容。
-这些特性在Java版26.3的开发版本中加入。
+### `#candidate_for_iron_golem_gift` (2 entries)
 
-- 生物对这些实体使用物品后，不会脱离骑乘状态。
+Entities that receive poppies from iron golems:
 
-- #cannot_be_dismounted_by_item_usage（1项） - ``` interaction ``` （交互实体）
+- `villager` (Villager)
+- `#accepts_iron_golem_gift`
 
-## cannot_be_pushed_onto_boats
+### `#cannot_be_age_locked` (3 entries)
 
-- 不会被推进船的实体。
+Growable mobs that cannot be stopped from aging with golden dandelions:
 
-- #cannot_be_pushed_onto_boats（14项） - ``` player ``` （玩家） - ``` elder_guardian ``` （远古守卫者） - ``` cod ``` （鳕鱼） - ``` pufferfish ``` （河豚） - ``` salmon ``` （鲑鱼） - ``` tropical_fish ``` （热带鱼） - ``` dolphin ``` （海豚） - ``` squid ``` （鱿鱼） - ``` glow_squid ``` （发光鱿鱼） - ``` tadpole ``` （蝌蚪） - ``` creaking ``` （嘎枝） - ``` nautilus ``` （鹦鹉螺） - ``` zombie_nautilus ``` （僵尸鹦鹉螺） - ``` sulfur_cube ``` （硫方怪）
+- `zombie_horse` (Zombie Horse)
+- `skeleton_horse` (Skeleton Horse)
+- `villager` (Villager)
 
-## deflects_projectiles
+### `#cannot_be_dismounted_by_item_usage`
 
-- 拥有该标签的生物能反射弹射物。
+This section contains content from an upcoming update (Java Edition 26.3 development versions).
 
-- #deflects_projectiles（1项） - ``` breeze ``` （旋风人）
+Mobs do not dismount after using an item on these entities:
 
-## dismounts_underwater
+- `interaction` (Interaction)
 
-- 这些实体会在进入水中时强制其乘客离开。
+### `#cannot_be_pushed_onto_boats` (14 entries)
 
-- #dismounts_underwater（13项） - ``` camel ``` （骆驼） - ``` chicken ``` （鸡） - ``` donkey ``` （驴） - ``` happy_ghast ``` （快乐恶魂） - ``` horse ``` （马） - ``` llama ``` （羊驼） - ``` mule ``` （骡） - ``` pig ``` （猪） - ``` ravager ``` （劫掠兽） - ``` spider ``` （蜘蛛） - ``` strider ``` （炽足兽） - ``` trader_llama ``` （行商羊驼） - ``` zombie_horse ``` （僵尸马）
+Entities that cannot be pushed onto boats:
 
-## fall_damage_immune
+- `player` (Player)
+- `elder_guardian` (Elder Guardian)
+- `dolphin` (Dolphin)
+- `creaking` (Creaking)
+- `sulfur_cube` (Sulfur Cube)
 
-- 这些实体不会受到摔落伤害。
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-- #fall_damage_immune（18项） - ``` copper_golem ``` （铜傀儡） - ``` iron_golem ``` （铁傀儡） - ``` snow_golem ``` （雪傀儡） - ``` shulker ``` （潜影贝） - ``` allay ``` （悦灵） - ``` bat ``` （蝙蝠） - ``` bee ``` （蜜蜂） - ``` blaze ``` （烈焰人） - ``` cat ``` （猫） - ``` chicken ``` （鸡） - ``` ghast ``` （恶魂） - ``` happy_ghast ``` （快乐恶魂） - ``` phantom ``` （幻翼） - ``` magma_cube ``` （岩浆怪） - ``` ocelot ``` （豹猫） - ``` parrot ``` （鹦鹉） - ``` wither ``` （凋灵） - ``` breeze ``` （旋风人）
+### `#deflects_projectiles` (1 entry)
 
-## followable_friendly_mobs
+Mobs with this tag can deflect projectiles:
 
-- 会被小恶魂跟随的非幼年实体。
+- `breeze` (Breeze)
 
-- #followable_friendly_mobs（25项） - ``` armadillo ``` （犰狳） - ``` bee ``` （蜜蜂） - ``` camel ``` （骆驼） - ``` cat ``` （猫） - ``` chicken ``` （鸡） - ``` cow ``` （牛） - ``` donkey ``` （驴） - ``` fox ``` （狐狸） - ``` goat ``` （山羊） - ``` happy_ghast ``` （快乐恶魂） - ``` horse ``` （马） - ``` skeleton_horse ``` （骷髅马） - ``` llama ``` （羊驼） - ``` mule ``` （骡） - ``` ocelot ``` （豹猫） - ``` panda ``` （熊猫） - ``` parrot ``` （鹦鹉） - ``` pig ``` （猪） - ``` polar_bear ``` （北极熊） - ``` rabbit ``` （兔子） - ``` sheep ``` （绵羊） - ``` sniffer ``` （嗅探兽） - ``` strider ``` （炽足兽） - ``` villager ``` （村民） - ``` wolf ``` （狼）
+### `#dismounts_underwater` (13 entries)
 
-## freeze_hurts_extra_types
+These entities force their riders to dismount when entering water:
 
-- 拥有这个标签的实体在细雪中会受到额外伤害。
+- `camel` (Camel)
+- `horse` (Horse)
+- `llama` (Llama)
+- `ravager` (Ravager)
+- `strider` (Strider)
 
-- #freeze_hurts_extra_types（3项） - ``` strider ``` （炽足兽） - ``` blaze ``` （烈焰人） - ``` magma_cube ``` （岩浆怪）
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-## freeze_immune_entity_types
+### `#fall_damage_immune` (18 entries)
 
-- 拥有这个标签的实体免疫冰冻伤害。
+Entities immune to fall damage:
 
-- #freeze_immune_entity_types（4项） - ``` stray ``` （流浪者） - ``` polar_bear ``` （北极熊） - ``` snow_golem ``` （雪傀儡） - ``` wither ``` （凋灵）
+- `iron_golem` (Iron Golem)
+- `shulker` (Shulker)
+- `bat` (Bat)
+- `phantom` (Phantom)
+- `wither` (Wither)
 
-## frog_food
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-- 青蛙会捕食这些实体，只有是生物的实体才有效。
+### `#followable_friendly_mobs` (25 entries)
 
-- #frog_food（2项） - ``` slime ``` （史莱姆） - ``` magma_cube ``` （岩浆怪）
+Non-baby entities that happy ghasts follow:
 
-## ignores_poison_and_regen
+- `villager` (Villager)
+- `horse` (Horse)
+- `cat` (Cat)
+- `wolf` (Wolf)
+- `sniffer` (Sniffer)
 
-- 免疫中毒和生命恢复效果的实体。
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-- #ignores_poison_and_regen（1项） - ``` #undead ```
+### `#freeze_hurts_extra_types` (3 entries)
 
-## illager
+Entities with this tag take extra damage in powder snow:
 
-- 被视为灾厄村民的实体。
+- `strider` (Strider)
+- `blaze` (Blaze)
+- `magma_cube` (Magma Cube)
 
-- #illager（4项） - ``` evoker ``` （唤魔者） - ``` illusioner ``` （幻术师） - ``` pillager ``` （掠夺者） - ``` vindicator ``` （卫道士）
+### `#freeze_immune_entity_types` (4 entries)
 
-## illager_friends
+Entities with this tag are immune to freezing damage:
 
-- 被灾厄村民视为盟友的实体（不包括在其他队伍中的）。
+- `stray` (Stray)
+- `polar_bear` (Polar Bear)
+- `snow_golem` (Snow Golem)
+- `wither` (Wither)
 
-- #illager_friends（1项） - ``` #illager ```
+### `#frog_food` (2 entries)
 
-## immune_to_infested
+Entities frogs prey on (only mob entities are effective):
 
-- 免疫寄生状态效果的实体。
+- `slime` (Slime)
+- `magma_cube` (Magma Cube)
 
-- #immune_to_infested（1项） - ``` silverfish ``` （蠹虫）
+### `#ignores_poison_and_regen` (1 entry)
 
-## immune_to_oozing
+Entities immune to Poison and Regeneration effects:
 
-- 免疫渗浆状态效果的实体。
+- `#undead`
 
-- #immune_to_oozing（1项） - ``` slime ``` （史莱姆）
+### `#illager` (4 entries)
 
-## impact_projectiles
+Entities considered illagers:
 
-- 用来决定哪些实体可以破坏紫颂花和饰纹陶罐。
-- 实体可以从这个标签中移除，若添加其他实体，则只有标靶可以响应的实体才有效。
+- `evoker` (Evoker)
+- `illusioner` (Illusioner)
+- `pillager` (Pillager)
+- `vindicator` (Vindicator)
 
-- #impact_projectiles（11项） - ``` #arrows ``` - ``` firework_rocket ``` （烟花火箭） - ``` snowball ``` （雪球） - ``` fireball ``` （火球） - ``` small_fireball ``` （小火球） - ``` egg ``` （掷出的鸡蛋） - ``` trident ``` （三叉戟） - ``` dragon_fireball ``` （末影龙火球） - ``` wither_skull ``` （凋灵之首） - ``` wind_charge ``` （风弹） - ``` breeze_wind_charge ``` （风弹）
+### `#illager_friends` (1 entry)
 
-## inverted_healing_and_harm
+Entities illagers treat as allies (excluding those in other teams):
 
-- 瞬间治疗和瞬间伤害会对其产生相反效果的实体。
+- `#illager`
 
-- #inverted_healing_and_harm（1项） - ``` #undead ```
+### `#immune_to_infested` (1 entry)
 
-## nautilus_hostiles
+Entities immune to the Infested effect:
 
-- 未驯服的鹦鹉螺和僵尸鹦鹉螺默认敌对的实体。
+- `silverfish` (Silverfish)
 
-- #nautilus_hostiles（1项） - ``` pufferfish ``` （河豚）
+### `#immune_to_oozing` (1 entry)
 
-## no_anger_from_wind_charge
+Entities immune to the Oozing effect:
 
-- 不会被风弹激怒的实体。
+- `slime` (Slime)
 
-- #no_anger_from_wind_charge（9项） - ``` breeze ``` （旋风人） - ``` skeleton ``` （骷髅） - ``` bogged ``` （沼骸） - ``` stray ``` （流浪者） - ``` zombie ``` （僵尸） - ``` husk ``` （尸壳） - ``` spider ``` （蜘蛛） - ``` cave_spider ``` （洞穴蜘蛛） - ``` slime ``` （史莱姆）
+### `#impact_projectiles` (11 entries)
 
-## non_controlling_rider
+Determines which entities can break chorus flowers and decorated pots. Entities can be removed from this tag; adding other entities only works if the target block can respond:
 
-- 不能控制载具移动的实体。
+- `#arrows`
+- `firework_rocket` (Firework Rocket)
+- `snowball` (Snowball)
+- `trident` (Trident)
+- `wind_charge` (Wind Charge)
 
-- #non_controlling_rider（3项） - ``` slime ``` （史莱姆） - ``` magma_cube ``` （岩浆怪） - ``` sulfur_cube ``` （硫方怪）
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-## not_affected_by_geysers
+### `#inverted_healing_and_harm` (1 entry)
 
-- 不会受到间歇泉喷发提供的向上冲量影响的实体。
+Entities on which Instant Health and Instant Damage have inverted effects:
 
-- #not_affected_by_geysers（1项） - ``` ender_dragon ``` （末影龙）
+- `#undead`
 
-## not_scary_for_pufferfish
+### `#nautilus_hostiles` (1 entry)
 
-- 不会使河豚膨胀的实体。
+Entities untamed nautiluses and zombie nautiluses are hostile toward by default:
 
-- #not_scary_for_pufferfish（14项） - ``` turtle ``` （海龟） - ``` guardian ``` （守卫者） - ``` elder_guardian ``` （远古守卫者） - ``` cod ``` （鳕鱼） - ``` pufferfish ``` （河豚） - ``` salmon ``` （鲑鱼） - ``` tropical_fish ``` （热带鱼） - ``` dolphin ``` （海豚） - ``` squid ``` （鱿鱼） - ``` glow_squid ``` （发光鱿鱼） - ``` tadpole ``` （蝌蚪） - ``` nautilus ``` （鹦鹉螺） - ``` zombie_nautilus ``` （僵尸鹦鹉螺） - ``` sulfur_cube ``` （硫方怪）
+- `pufferfish` (Pufferfish)
 
-## powder_snow_walkable_mobs
+### `#no_anger_from_wind_charge` (9 entries)
 
-- 拥有这个标签的实体可以在细雪顶部行走。
+Entities not angered by wind charges:
 
-- #powder_snow_walkable_mobs（4项） - ``` rabbit ``` （兔子） - ``` endermite ``` （末影螨） - ``` silverfish ``` （蠹虫） - ``` fox ``` （狐狸）
+- `breeze` (Breeze)
+- `skeleton` (Skeleton)
+- `zombie` (Zombie)
+- `spider` (Spider)
+- `slime` (Slime)
 
-## raiders
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-- 决定敲钟时哪些实体获得发光效果。
-- 此标签中的实体在骑乘劫掠兽时不会覆盖劫掠兽的AI。
-- 用于自我放逐进度。
+### `#non_controlling_rider` (3 entries)
 
-- #raiders（6项） - ``` evoker ``` （唤魔者） - ``` pillager ``` （掠夺者） - ``` ravager ``` （劫掠兽） - ``` vindicator ``` （卫道士） - ``` illusioner ``` （幻术师） - ``` witch ``` （女巫）
+Entities that cannot control vehicle movement:
 
-## redirectable_projectile
+- `slime` (Slime)
+- `magma_cube` (Magma Cube)
+- `sulfur_cube` (Sulfur Cube)
 
-- 能被玩家攻击和弹射物击中且会随玩家视角或弹射物方向偏转的弹射物实体。
+### `#not_affected_by_geysers` (1 entry)
 
-- #redirectable_projectile（3项） - ``` fireball ``` （火球） - ``` wind_charge ``` （风弹） - ``` breeze_wind_charge ``` （风弹）
+Entities unaffected by the upward impulse of geyser eruptions:
 
-## sensitive_to_bane_of_arthropods
+- `ender_dragon` (Ender Dragon)
 
-- 节肢杀手魔咒会对其产生额外伤害的实体。
+### `#not_scary_for_pufferfish` (14 entries)
 
-- #sensitive_to_bane_of_arthropods（1项） - ``` #arthropod ```
+Entities that do not inflate pufferfish:
 
-## sensitive_to_impaling
+- `turtle` (Turtle)
+- `guardian` (Guardian)
+- `pufferfish` (Pufferfish)
+- `dolphin` (Dolphin)
+- `sulfur_cube` (Sulfur Cube)
 
-- 穿刺魔咒会对其产生额外伤害的实体。
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-- #sensitive_to_impaling（1项） - ``` #aquatic ```
+### `#powder_snow_walkable_mobs` (4 entries)
 
-## sensitive_to_smite
+Entities with this tag can walk on top of powder snow:
 
-- 亡灵杀手魔咒会对其产生额外伤害的实体。
+- `rabbit` (Rabbit)
+- `endermite` (Endermite)
+- `silverfish` (Silverfish)
+- `fox` (Fox)
 
-- #sensitive_to_smite（1项） - ``` #undead ```
+### `#raiders` (6 entries)
 
-## skeletons
+Determines which entities get the glowing effect when a bell rings. Entities in this tag do not override the ravager's AI when riding one. Used by the "Self-Exile" advancement:
 
-- 苦力怕在被这些实体杀死时掉落音乐唱片。
+- `evoker` (Evoker)
+- `pillager` (Pillager)
+- `ravager` (Ravager)
+- `vindicator` (Vindicator)
+- `illusioner` (Illusioner)
+- `witch` (Witch)
 
-- #skeletons（6项） - ``` skeleton ``` （骷髅） - ``` stray ``` （流浪者） - ``` wither_skeleton ``` （凋灵骷髅） - ``` skeleton_horse ``` （骷髅马） - ``` bogged ``` （沼骸） - ``` parched ``` （焦骸）
+### `#redirectable_projectile` (3 entries)
 
-## undead
+Projectiles that can be hit by player attacks and projectiles, deflecting with the player's view direction or projectile direction:
 
-- 拥有这个标签的实体属于亡灵生物。
+- `fireball` (Fireball)
+- `wind_charge` (Wind Charge)
+- `breeze_wind_charge` (Wind Charge)
 
-- #undead（4项） - ``` #skeletons ``` - ``` #zombies ``` - ``` wither ``` （凋灵） - ``` phantom ``` （幻翼）
+### `#sensitive_to_bane_of_arthropods` (1 entry)
 
-## wither_friends
+Entities taking extra damage from the Bane of Arthropods enchantment:
 
-- 不被凋灵视为目标，也不会对凋灵造成伤害的实体。
+- `#arthropod`
 
-- #wither_friends（1项） - ``` #undead ```
+### `#sensitive_to_impaling` (1 entry)
 
-## zombies
+Entities taking extra damage from the Impaling enchantment:
 
-- 拥有这个标签的实体属于僵尸类生物。
+- `#aquatic`
 
-- #zombies（9项） - ``` zombie_horse ``` （僵尸马） - ``` camel_husk ``` （骆驼尸壳） - ``` zombie ``` （僵尸） - ``` zombie_villager ``` （僵尸村民） - ``` zombified_piglin ``` （僵尸猪灵） - ``` zoglin ``` （僵尸疣猪兽） - ``` drowned ``` （溺尸） - ``` husk ``` （尸壳） - ``` zombie_nautilus ``` （僵尸鹦鹉螺）
+### `#sensitive_to_smite` (1 entry)
 
-# 已移除的标签
+Entities taking extra damage from the Smite enchantment:
 
-## axolotl_tempted_hostiles
+- `#undead`
 
-- 已被 ``` #axolotl_always_hostiles ``` 标签取代。
+### `#skeletons` (6 entries)
 
-添加于：20w51a。移除于：21w13a。
+Creepers drop music discs when killed by these entities:
 
-- #axolotl_tempted_hostiles（2项） - ``` drowned ``` - ``` guardian ```
+- `skeleton` (Skeleton)
+- `stray` (Stray)
+- `wither_skeleton` (Wither Skeleton)
+- `skeleton_horse` (Skeleton Horse)
+- `bogged` (Bogged)
+- `parched` (Parched)
 
-## deflects_arrows
+### `#undead` (4 entries)
 
-- 已被 ``` #deflects_projectiles ``` 标签取代。
+Entities with this tag are undead:
 
-添加于：23w45a。移除于：24w03a。
+- `#skeletons`
+- `#zombies`
+- `wither` (Wither)
+- `phantom` (Phantom)
 
-- #deflects_arrows（1项） - ``` breeze ```
+### `#wither_friends` (1 entry)
 
-## deflects_tridents
+Entities not targeted by the wither and unable to damage it:
 
-- 已被 ``` #deflects_projectiles ``` 标签取代。
+- `#undead`
 
-添加于：23w45a。移除于：24w03a。
+### `#zombies` (9 entries)
 
-- #deflects_tridents（1项） - ``` breeze ```
+Entities with this tag are zombie-type mobs:
 
-# 历史
+- `zombie` (Zombie)
+- `zombie_villager` (Zombie Villager)
+- `drowned` (Drowned)
+- `husk` (Husk)
+- `zoglin` (Zoglin)
 
-# 导航
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
+
+## Removed tags
+
+### `#axolotl_tempted_hostiles`
+
+Replaced by `#axolotl_always_hostiles`. Added in 20w51a, removed in 21w13a:
+
+- `drowned`
+- `guardian`
+
+### `#deflects_arrows`
+
+Replaced by `#deflects_projectiles`. Added in 23w45a, removed in 24w03a:
+
+- `breeze`
+
+### `#deflects_tridents`
+
+Replaced by `#deflects_projectiles`. Added in 23w45a, removed in 24w03a:
+
+- `breeze`

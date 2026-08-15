@@ -1,200 +1,52 @@
 ---
 name: minecraft-caves-and-cliffs-preview-datapack
-description: |
-  洞穴与山崖预览数据包（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】洞穴与山崖预览数据包（Caves & Cliffs Prototype Data Pack）是由Mojang Studios发布的一款数据包，类似于基岩版中的实验性玩法。该数据包最初随1.17的快照版本21w15a一同发布。
-  
-  【涵盖内容】
-  - 新内容
-  - 更改
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 洞穴与山崖预览数据包 的完整规范时
+description: Caves & Cliffs Prototype Data Pack — the 8 versions and their worldgen changes.
+whenToUse: Use when researching the 1.17-era Caves & Cliffs prototype datapack (historical).
 ---
 
-本条目所述内容仅适用于Java版。
-洞穴与山崖预览数据包（Caves & Cliffs Prototype Data Pack）是由Mojang Studios发布的一款数据包，类似于基岩版中的实验性玩法。该数据包最初随1.17的快照版本21w15a一同发布。
+# Caves & Cliffs Prototype Data Pack
 
-此数据包用于在开始洞穴与山崖第二部分（Java版1.18）开发前，使玩家能体验到快照21w06a和21w14a之间的世界生成方面的修改，并帮助开发者提早完善相关机制。
+A Mojang-published data pack (like Bedrock's experimental gameplay), first shipped with snapshot 21w15a (April 14, 2021), letting players experience the worldgen changes between 21w06a and 21w14a before 1.18 development.
 
-此处记录了此数据包的更新情况，以及相应的变更。
+## Version 1 (21w15a)
 
-# 第一版
+- **Noise caves**: spaghetti caves (long/curved, sometimes wide like tagliatelle) and cheese caves (Swiss-cheese-like holes of varying sizes); noise-generator based; entrances form where caves meet the surface.
+- **Aquifers**: replace old underwater carver caves and canyons; generate water bodies in noise caves (below Y=31); magma blocks on aquifer floors create whirlpool bubble columns; fish spawn in aquifers under oceans/rivers.
+- **Cracks (fissures)**: narrower/straighter than canyons, extending from the surface up to 90 blocks deep into deepslate.
+- **World height**: buildable range now −64..319 (384 total).
+- **Ore changes**: most ores gained spread-type generation (like lapis); some kept linear too. Coal: spread Y0–192 (peak 96) + linear Y136–319; copper: linear Y0–63; diamond: spread Y−144..16 (peak −64) + separate large clusters; emerald: spread Y32–480 (peak 256); gold: spread Y−64..32 (peak −16; badlands unchanged); iron: linear Y−64..−32 + spread Y−24..56 (peak 16) + spread Y128–384 (peak 256); lapis: spread Y−32..32 (peak 0) + linear Y−64..64 (buried like ancient debris); redstone: spread Y−96..−32 (peak −64) + linear Y−64..15. Frequency changes: less exposed coal, less copper, smaller/more frequent diamond blobs (50% not air-exposed), more emerald, more gold (50% not exposed), less iron, more buried lapis, less redstone. Deep variants generate when replacing deepslate/tuff (coal/copper/emerald never below Y=0 → no deep variants).
+- **Deepslate**: primary rock below Y=0; stone→deepslate transition Y=−1..−8, full below −8; tuff randomly replaces deepslate there; still clusters at Y0–16.
+- **Diorite/andesite/granite**: larger, rounder, rarer clusters; never below Y=0.
+- Dirt never below Y=0; tuff clusters below Y=0; lava starts at Y=−54; strongholds fully wrapped in deepslate.
 
-第一版（下载链接）与21w15a一同发布，发布于2021年4月14日。
+## Version 2 (21w16a)
 
-## 新内容
+Rare snaking ore veins: large copper veins with granite above Y=0; large iron veins with tuff below Y=0. Aquifers below Y=0 can be fully lava.
 
-洞穴
+## Version 3 (21w17a)
 
-- 加入了噪声洞穴（Noise Caves），有“意面洞穴（Spaghetti Cave）”和“芝士洞穴（Cheese Cave）”两种。 - 意面洞穴形状像意面一样长而弯曲，有时像宽意面（Tagliatelle）一样宽。 - 芝士洞穴形状像瑞士奶酪上的孔，且大小不一。
-- 生成时使用了噪声生成器。
-- 与地面相交时，会在地面生成洞穴入口。
+Noodle caves (narrower, more winding, tighter than spaghetti). Veins rarer/smaller, ore unevenly distributed with more clustering, may contain raw iron/copper blocks. Emerald now replaces granite/diorite/andesite/tuff/deepslate; coal/copper can replace deepslate/tuff at Y0–16 (deep variants).
 
-含水层
+## Version 4 (21w18a)
 
-- 取代了旧的水下雕刻器洞穴和水下峡谷。
-- 用于生成噪声洞穴中的水体，仅在Y=31以下产生。
-- 岩浆块可以在噪声洞穴水体的底部生成，产生涡流气泡柱。
-- 鱼会在海洋或河流下的含水层中生成。
+Slightly less copper; medium iron clusters rarer; small iron cluster max height −32 → 64. Veins smaller/rarer with more raw metal blocks. Carver caves now generate under oceans below Y=0; noodle caves no longer above Y=30; larger minimum sizes for carvers and noodles. Deepslate no longer clusters above Y=0 (deep coal/copper gone again).
 
-裂隙
+## Version 5 (21w19a)
 
-- 一种从地表向下延伸的裂缝，类似于峡谷，但比峡谷更窄更直。其最多可以深达90个方块，直通深板岩层。
+Bundle and candle crafting recipes added.
 
-## 更改
+## Version 6 (21w20a)
 
-世界高度
+No listed changes.
 
-- 将主世界可建筑范围的总高度提升至384格。 - 主世界可建筑范围的Y坐标现在是-64到319。
+## Version 7 (1.17-pre1)
 
-矿石
+Candle crafting recipe removed.
 
-- 通过为大多数矿石设置一个类似于之前青金石矿石的蔓延（spread）值，更改了它们的生成机制。 - 一些矿石既有了新的蔓延式生成机制，同时又保留着之前的线性生成机制。 - 煤矿石会尝试生成两次： - 使用蔓延机制在Y=0至Y=192之间生成，在Y=96处生成最多。 - 使用线性生成机制在Y=136至Y=319之间均匀生成。 - 铜矿石会尝试生成一次： - 使用线性生成机制在Y=0至Y=63之间生成。 - 钻石矿石会尝试生成两次： - 使用蔓延机制在Y=-144（尽管常规世界生成无法达到如此低的高度）至Y=16之间生成，且在Y=-64处生成最多。 - 大型钻石矿团簇会独立生成，生成方法与范围与普通钻石矿团簇相同。 - 绿宝石矿石会尝试生成一次： - 使用蔓延机制在Y=32至Y=480（尽管常规世界生成无法达到此高度）之间生成，在Y=256处生成最多。 - 金矿石会尝试生成一次： - 使用蔓延机制在Y=-64至Y=32之间生成，在Y=-16处生成最多。 - 恶地的金矿生成机制未改变。 - 铁矿石会尝试生成三次： - 使用线性生成机制在Y=-64至Y=-32之间生成。 - 使用蔓延机制在Y=-24至Y=56之间生成，在Y=16处生成最多。 - 使用蔓延机制在Y=128至Y=384（尽管常规世界生成无法达到此高度）之间生成，在Y=256处生成最多。 - 青金石矿石会尝试生成两次： - 使用“蔓延”机制在Y=-32至Y=32之间生成，在Y=0处生成最多。 - 使用线性生成机制在Y=-64至Y=64之间均匀生成。 - 这种方式生成的青金石矿石会像远古残骸一样埋藏在方块之中。 - 红石矿石会尝试生成两次： - 使用蔓延机制在Y=-96（尽管常规世界生成无法达到如此低的高度）至Y=-32之间生成，在Y=-64处生成最多。 - 使用线性生成机制在Y=-64至Y=15之间均匀生成。
-- 更改了各种矿石的生成频率。 - 减少了裸露煤矿石的生成。 - 降低了铜矿石的生成频率。 - 缩小了普通钻石矿团簇的规模，略微提高了生成频率（导致总生成量略微下降），且有50%的概率不会暴露在空气中。 - 提高了绿宝石矿石生成频率。 - 提高了金矿石的生成频率，且有50%的概率不会暴露在空气中。 - 降低了铁矿石的生成频率。 - 提高了青金石矿石的掩埋频率和生成频率。 - 降低了红石矿石的生成频率。
-- 如果矿石在生成时替代的是深板岩或凝灰岩，则会生成其深层变种。 - 煤矿石、铜矿石和绿宝石矿石不会在Y=0以下生成，因此其深层变种不会自然生成。
+## Version 8 (1.17-pre2)
 
-深板岩
+For 1.17-pre2+; no listed changes.
 
-- 在Y=0以下，深板岩会作为主要岩石生成。 - 从Y=-1至Y=-8处，石头逐渐会向深板岩过渡。 - 从Y=-8处开始会完全替换掉石头。 - 凝灰岩在此高度下会随机替换深板岩生成。
-- 仍会在Y=0至Y=16处以团簇形式生成。
+## Trivia
 
-闪长岩、安山岩和花岗岩
-
-- 调整了生成团簇的大小以及生成位置。 - 每次生成的闪长岩、花岗岩和安山岩会更多且更像一个球型，但它们的生成频率会更低。
-- 不会在Y=0以下生成。
-
-泥土
-
-- 不会在Y=0以下生成。
-
-凝灰岩
-
-- 会在Y=0以下以团簇的形式生成。
-
-熔岩
-
-- 会从Y=-54处开始生成。
-
-要塞
-
-- 现在根据深度也会被深板岩完全包裹住了。
-
-# 第二版
-
-第二版（下载链接）与21w16a一同发布，发布于2021年4月21日。
-
-## 新内容
-
-矿石分布
-
-- 加入了罕见的蛇形矿脉。 - 在主世界Y=0以上的区域，大型铜矿脉伴随花岗岩生成。 - 在主世界Y=0以下的区域，大型铁矿脉伴随凝灰岩生成。
-
-## 更改
-
-含水层
-
-- 在主世界Y=0以下区域生成的含水层现在有概率完全由熔岩组成。
-
-# 第三版
-
-第三版（下载链接）与21w17a一同发布，发布于2021年4月28日。
-
-## 新内容
-
-面条洞穴
-
-- 一种新的洞穴类型，比意面洞穴更加狭窄、弯曲而密闭。
-
-## 更改
-
-矿脉
-
-- 现在更加罕见且规模更小。
-- 现在其中的矿石分布更不均匀，且有更高的概率呈团簇状生成。
-- 现在有概率包含粗铁块或粗铜块。
-
-矿石生成
-
-- 由于21w17a的更改，绿宝石矿石现在能够取代花岗岩、闪长岩、安山岩、凝灰岩和深板岩生成了。
-- 煤矿石和铜矿石现在能够在Y=0至Y=16处取代深板岩或凝灰岩并生成其深层变种了。
-
-# 第四版
-
-第四版（下载链接）与21w18a一同发布，发布于2021年5月5日。
-
-## 更改
-
-矿石分布
-
-- 略微降低了铜矿石的生成频率。
-- 略微降低了中型铁矿石团簇的生成频率。
-- 将小型铁矿石团簇的最大生成高度由-32提高至64。
-
-矿脉
-
-- 再次缩减了平均规模和生成频率。
-- 提高了粗金属块在矿脉中的生成频率。
-
-洞穴
-
-- 雕刻器洞穴现在能生成于海洋生物群系下方低于Y=0的区域。
-- 面条洞穴不再生成于主世界Y=30以上的区域。
-- 扩大了雕刻器洞穴和面条洞穴的最小规模。
-
-深板岩
-
-- 现在不再能够在主世界Y=0以上的区域以团簇的形式生成。 - 这也使得深层煤矿石和深层铜矿石再次无法自然生成。
-
-# 第五版
-
-第五版（下载链接）与21w19a一同发布，发布于2021年5月12日。
-
-## 更改
-
-配方
-
-- 移入了收纳袋和蜡烛的合成配方。
-
-# 第六版
-
-第六版（下载链接）与21w20a一同发布，发布于2021年5月19日。
-
-# 第七版
-
-第七版（下载链接）与1.17-pre1一同发布，发布于2021年5月27日。
-
-## 更改
-
-配方
-
-- 移出了蜡烛的合成配方。
-
-# 第八版
-
-第八版（下载链接）与1.17-pre2一同发布，发布于2021年5月31日，适用于1.17-pre2及更高版本。
-
-# 历史
-
-# 你知道吗
-
-- 该数据包并未向游戏加入任何新的地物生成机制或是噪声洞穴生成机制，而是直接调用/开启了它们。 - 这意味着各种新的世界生成机制实际上存在于21w15a及之后版本的client.jar中，但在原版游戏中并未被启用。
-
-# 参考
-
-1. ↑ Minecraft Snapshot 21w15a — Minecraft.net，2021年4月14日。
-1. ↑ Minecraft Snapshot 21w16a — Minecraft.net，2021年4月21日。
-1. ↑ Minecraft Snapshot 21w17a — Minecraft.net，2021年4月28日。
-1. ↑ Minecraft Snapshot 21w18a — Minecraft.net，2021年5月5日。
-1. ↑ Minecraft Snapshot 21w19a — Minecraft.net，2021年5月12日。
-1. ↑ Minecraft Snapshot 21w20a — Minecraft.net，2021年5月19日。
-1. ↑ Minecraft 1.17 Pre-Release 1 — Minecraft.net，2020年5月27日。
-1. ↑ Minecraft 1.17 Pre-Release 2 — Minecraft.net，2020年5月31日。
-1. ↑ Minecraft 1.17 Release Candidate 1 — Minecraft.net，2021年6月4日。
-1. ↑ Caves & Cliffs: Part I out today on Java — Minecraft.net，2021年6月8日。
-1. ↑ Minecraft 1.17.1 Pre-Release 1 — Minecraft.net，2021年6月18日。
-1. ↑ Minecraft 1.17.1 Pre-Release 2 — Minecraft.net，2021年6月29日。
-1. ↑ Minecraft 1.17.1 Release Candidate 1 — Minecraft.net，2021年7月1日。
-1. ↑ Minecraft Java Edition 1.17.1 — Minecraft.net，2021年7月6日。
-
-# 导航
+The pack adds no new worldgen mechanisms — it simply enables mechanisms already present in the client.jar since 21w15a but inactive in vanilla.

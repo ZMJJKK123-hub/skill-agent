@@ -1,129 +1,35 @@
 ---
 name: minecraft-chat-type
-description: |
-  聊天类型定义格式（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】聊天类型定义文件是聊天类型（Chat Type）在数据包中的数据驱动定义文件。
-  
-  【涵盖内容】
-  - 聊天类型装饰
-  - 生成翻译文本
-  
-  【关键定义】
-  - 注册表：CHAT_TYPE
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 聊天类型定义格式 的完整规范时
+description: Chat type definition JSON: CHAT_TYPE registry, chat/narration decorations, params.
+whenToUse: Use when overriding the 7 vanilla chat types in datapacks to control chat display style and narration.
 ---
 
-本条目所述内容仅适用于Java版。
-聊天类型定义文件是聊天类型（Chat Type）在数据包中的数据驱动定义文件。
+# Chat Types
 
-# 聊天类型
+This content applies only to Java Edition.
 
-聊天类型是游戏用于标识不同聊天信息作用的元信息。例如，游戏内系统信息和玩家发出的聊天信息就不是一种聊天类型。
+Chat types are metadata identifying the purpose of chat messages (e.g. system messages vs. player chat). They control the display style in the chat box and the narration text.
 
-聊天类型可以控制聊天信息在聊天框内的显示样式，也可以控制聊天信息的复述内容。游戏内只会使用下列7种聊天类型，由数据包定义的其他聊天类型在游戏内无法使用任何方式调用，但数据包可以覆盖定义这7种聊天类型以控制聊天信息的显示样式和复述内容。
+The game only uses the following 7 chat types; datapack-defined types cannot be invoked, but datapacks can override these 7 to control display and narration. Chat type tags have no effect. Placeholder parameters: `sender` (sender's name), `target` (receiver player/team name), `content` (chat message).
 
-下表中，
-```
-sender
-```
+## Definition format
 
-表示发送信息的玩家名称，
-```
-target
-```
+Chat types use the `CHAT_TYPE` registry; the datapack path is `chat_type` (definitions in `data/<namespace>/chat_type`, tags in `data/<namespace>/tags/chat_type`).
 
-表示接收信息的玩家或队伍名称，
-```
-content
-```
+Definition files use JSON with the following structure:
 
-表示发送的聊天消息。
+- JSON file root object
+  - `chat` (compound, required): display style in the chat box (see Decoration below).
+  - `narration` (compound, required): narration text (see Decoration below).
 
-# 定义格式
+### Chat type decoration
 
-聊天类型在游戏内使用
-```
-CHAT_TYPE
-```
+- `translation_key` (string, required): a translation key.
+- `parameters` (list, required): parameters passed into the translated text, in order (`sender`/`target`/`content`; may repeat).
+- `style` (compound, default none): text component style; does not affect narration.
 
-注册表，数据包路径为
-```
-chat_type
-```
+## Definition behavior
 
-，即所有聊天类型定义文件都需要在
-```
-data/<
-命名空间
->/chat_type
-```
+Chat type data is loaded only once at server startup; `/reload` does not reload it — a server restart is required.
 
-目录内定义，聊天类型标签则需要在
-```
-data/<
-命名空间
->/tags/chat_type
-```
-
-目录内定义。
-
-由于游戏不会使用数据包自定义的聊天类型，也没有提供使用自定义聊天类型的方式，所以实际上真正可以生效的聊天类型定义文件只有游戏内定义的7个聊天类型，数据包也只能覆盖定义这7个聊天类型，其他文件均不生效，但会被游戏解析。另外，游戏也不使用聊天类型标签，因此所有聊天类型标签在游戏内无任何作用。
-
-聊天类型定义文件使用JSON格式，并具有下列结构：
-
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:NBT复合标签/JSON对象]*chat：聊天信息在聊天框内的显示样式。 - 见下文§ 聊天类型装饰。 - [图:NBT复合标签/JSON对象]*narration：聊天信息在使用复述功能时朗读的文本。 - 见下文§ 聊天类型装饰。
-
-## 聊天类型装饰
-
-聊天消息会读取聊天类型中的装饰（Decoration）信息，将原始的发送者、接收者和消息内容格式化为文本组件或复述信息。
-
-- [图:NBT复合标签/JSON对象] 聊天类型装饰 - [图:字符串]*translation_key：一个翻译键。 - [图:NBT列表/JSON数组]*parameters：传入到翻译文本中的参数。 - [图:字符串]：一个参数，对应的下标代表了传入到翻译文本中的顺序。具体取值见下文§ 生成翻译文本。 - [图:NBT复合标签/JSON对象]style：（默认没有样式）设置文本组件的样式。此项对复述文本无效。 - 见文本组件 § 组件样式。
-
-# 定义行为
-
-聊天类型定义数据仅在服务端启动时被加载一次，使用
-```
-/
-reload
-```
-
-命令不可以使聊天类型定义被重新加载，而必须重启服务端。
-
-## 生成翻译文本
-
-当游戏在聊天栏内显示聊天信息，或复述聊天信息时，游戏就会读取对应聊天类型的装饰信息。
-
-每种聊天类型的应用场景不同，导致实际上每种类型的参数不同。除一定存在的消息内容外，聊天信息还包含发送者和接收者，但有些类型不存在接收者。这三种参数可以在[图:NBT列表/JSON数组]*parameters中定义，游戏会将对应下标的参数转换为文本组件后传入翻译文本内进行替换。下表中给出了这三种参数的枚举值和使用条件：
-
-[图:NBT列表/JSON数组]*parameters中参数可以重复出现。例如一个装饰信息中此项为
-```
-["sender", "content", "sender"]
-```
-
-，且翻译文本为
-```
-%s: %s (%s)
-```
-
-，假设发送者显示名称为
-```
-A
-```
-
-，消息内容为
-```
-B
-```
-
-，则最终显示的文本组件是
-```
-A: B (A)
-```
-
-。
-
-# 历史
-
-# 导航
+When displaying or narrating a message, the game reads the type's decoration and replaces parameters with text components. Example: `parameters: ["sender", "content", "sender"]` with translation `%s: %s (%s)` and sender A / content B produces `A: B (A)`.

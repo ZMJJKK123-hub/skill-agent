@@ -1,130 +1,61 @@
 ---
 name: minecraft-fluid
-description: |
-  流体（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】液体（Liquid），也作流体（Fluid），是可以自由流动，形成河流、瀑布和湖泊的特殊方块。
-  
-  【涵盖内容】
-  - 概览
-  - 机制
-  - 深度
-  - 扩散
-  - 流动方向
-  - 液滴
-  - 方块更新
-  - 液体互动
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 流体 的完整规范时
+description: Fluids — properties, depth, spreading, flow direction, droplets, interactions.
+whenToUse: Use when working with water/lava mechanics (spreading, source conversion, fluid interactions).
 ---
 
-液体（Liquid），也作流体（Fluid），是可以自由流动，形成河流、瀑布和湖泊的特殊方块。
+# Fluid
 
-# 属性
+Liquids (fluids) are special blocks that flow freely, forming rivers, waterfalls, and lakes.
 
-## 概览
+## Overview
 
-目前游戏中有2种液体：
+Two liquids: water and lava. All liquid blocks originate from **source blocks** (full blocks). Confined sources (surrounded by solid or liquid blocks) don't flow and render still; once at least part is unconfined, they flow per basic fluid dynamics, rendering flowing with animated directional lines; flowing blocks get shallower with distance.
 
-所有液体方块都自然地起源于它的源方块，即被完全填满的液体方块。被其他方块（无论是固体方块或液体方块）局限的源方块无法流动，并且被渲染成静止的。当源方块至少有一部分不被局限后便会开始流动，扩散规则基于最基础的流体力学。视觉上，它们被渲染为流动的，有动态的线条纹理指示流动方向。流动的液体方块离源方块越远，它就会变得越浅。
+Liquids interact with each other and with blocks; they push most entities/items (drown or float). Most mobs (including players) can swim/float; undead generally can't swim well. Sources can be picked up with buckets (Java: liquids have no item form). Liquid blocks are replaceable — placing a block replaces them. Java: snow doesn't accumulate under liquids; water under water doesn't freeze.
 
-液体可以与其他液体发生交互，或者与方块（根据其影响的方块属性）互动。液体也会对大多数浮于它的实体和掉落物施加动力，使得它们被沿着流向推动或者沉入底下。除了亡灵生物以外，绝大多数的生物，包括玩家，都拥有游泳与浮在液体上的能力，但这并不代表亡灵生物都不会游泳。
+## Mechanics
 
-液体的源方块可以用铁桶装起来。在Java版中，液体不存在物品形式。
+### Depth
 
-与空气相似，液体方块会被视为可替代方块。玩家尝试在液体占用的空间放置一个方块，液体方块会被直接替代掉。
+Depth describes how "empty" a block is: sources are always depth 0; horizontal flow increases depth by 1 per block from the source; max depth 7 (no more horizontal spreading beyond). Vertically falling liquid is depth 0. Lava's max depth is 3 in the Overworld/End, but 7 in the Nether.
 
-在Java版中，液体下方不会积雪，液体下方的水不结冰。
+### Spreading
 
-## 机制
+When a source is placed (in air or waterlogging), it's added to a spreading queue. It first tries to form streams on each open face — a flat surface spreads in four directions up to the depth limit (a floating source still spreads 1 block horizontally even with air below). Then, for the block below the source and each flowing block in the queue:
 
-### 深度
+1. Air → replaced by liquid.
+2. Waterlogged non-solid block → stop (each waterlogged block has its own queue).
+3. Fluid-affected non-solid blocks, bamboo shoots, cobwebs → try to drop as items and get replaced; the upper block is removed from the queue.
+4. Solid blocks (or a few unaffected non-solids) → spread to the four open faces; new flows join the queue.
+5. Another liquid → liquid mixing; new flows join the queue.
+6. Same-liquid source → stop.
+7. All four neighbors solid → stop (why 1-block-wide columns don't spread at the ground).
 
-液体的深度值用来描述这个液体方块有多少“空的”部分。
+At max depth no horizontal spreading happens. Flow speed: water 1 block per 5 ticks (0.25 s; can't be placed in the Nether but still flows); lava 1 block per 60 ticks (3 s) in the Overworld/End, 1 per 10 ticks (0.5 s) in the Nether.
 
-液体源方块的深度始终是0，即源方块是“满的”。在水平方向上扩散时，流动的液体方块的深度会逐块加1, 取决于其距离源方块的距离。液体方块最大可能的深度为7。当到达最大深度时，液体方块不再计算水平方向的扩散。
+### Flow Direction
 
-液体方块垂直方向下落形成的液体方块的深度始终是0。
+The liquid checks terrain within 5 blocks/horizontal flow distance for air, pure liquid, or flushable blocks below (Java: also waterlogged blocks with exposed liquid tops) and tries to form streams toward the nearest found spot (1-block-wide streams near edges; those blocks are removed from the spreading queue).
 
-熔岩在主世界和末地所拥有的最大深度为3，但在下界中，熔岩拥有7的最大深度上限。
+Java **water source conversion**: with the `water_source_conversion` game rule true, a non-waterlogged waterloggable block horizontally adjacent to ≥2 water source blocks (or waterlogged blocks with unobstructed liquid faces; flowing water counts as full) with a solid/water/waterlogged block below becomes waterlogged when water flows into it.
 
-### 扩散
+## Droplets
 
-当液体源方块被放置，液体扩散计算就会开始。放置在空气中的源方块与放置为含水方块的源方块的扩散计算相同。源方块被最先添加到一个“扩散处理清单”中。
+With particles fully enabled, dripping particles form under blocks with liquid above (Java: blocks whose top touches liquid and whose bottom is above the neighbor below). Lava droplets don't damage or ignite. Newly placed liquid takes seconds to "percolate" before dripping.
 
-液体源方块会首先向每个开放面尝试形成水流。也就是说，平坦平面上的水方块会向四个方向扩散，直到到达深度限制。这同样表示，一个悬空的水源方块即使下方是空气，仍然会向水平四个方向扩散1格。扩散形成的流动方块被加入“扩散处理清单”中以进一步处理扩散。
+## Block Updates (Java)
 
-这之后，直接位于源方块下方的方块和扩散处理清单中的流动方块被进行如下检查：
+Liquid updates from NC updates (liquid flowing in / neighbor drying) and PP updates (depth changes). Structure generation never updates liquids on load — e.g. cave entrances cut into underground lakes stay static until something updates them; structure-generated liquids flow immediately.
 
-1. 如果这个方块是空气，则方块被替换成液体方块。
-1. 如果这个方块是含水的非固体方块，则检查停止。因为每一个含水源方块都有独自的扩散处理清单。
-1. 如果下方的这个方块是受液体影响的非固体方块、竹笋或蜘蛛网，则方块会试图掉落为物品，并被替换成液体方块。上方方块从清单中移除。
-1. 如果下方的这个方块是固体方块（竹笋和蜘蛛网除外，例如栅栏）或少数几种不受液体影响的非固体方块，则液体试图向四个开放面扩散。将新形成的流动方块加入处理清单。
-1. 如果这个方块是另一种液体的方块，则进行液体混合的处理。若有新的流动方块形成，则将其加入处理清单。
-1. 如果这个方块是同种液体的源方块，则停止扩散计算。
-1. 如果这个方块周围四个方块都是固体，则停止扩散处理。这也就是水和熔岩能够形成1格宽的液体柱且不在地面扩散的原因。
+## Liquid Interactions
 
-当液体方块的深度值到达最大值时，液体方块不再进行水平扩散。液体的水平扩散还受到后面的流动方向章节所描述的现象影响。
+Two behaviors: **touch** (adjacent blocks) and **flow-in** (occupying the same block). Flow-in requires touch first. Results (all reactions happen on the lava side):
 
-流动的液体有一个速度值，它决定了扩散影响发生有多快：水每5游戏刻（0.25秒）流动一格（在下界无法放置，但仍会流动）；熔岩在主世界与末地中比水慢得多，每60游戏刻（3秒）流动一格，但在下界，它每10游戏刻（0.5秒）流动一格。
+- Lava source touching water horizontally or above → obsidian.
+- Lava source/flow touching water below → no reaction.
+- Lava flow touching water horizontally or above → cobblestone.
+- Lava flowing down into water → stone.
+- Lava touching soul soil below + blue ice horizontally/above → basalt.
 
-### 流动方向
-
-液体在计算扩散时，会考虑周围的地形，以优先形成水或熔岩的瀑布。
-
-在计算水平扩散时，液体方块周围5格区域或水平流动5格范围内的下方方块会被检查是否为空气、纯液体或可冲毁的方块，在Java版中，水还会查找顶面露出液相的含水方块。若存在，则液体方块与距离最近的找到的方块之间会试图形成一条或多条流水。形成流水中生成的流动方块以及最初的液体方块将从扩散计算清单中移除，不计算其他方向的扩散。例如，在距平面边缘5格内放置一个水源方块，会形成一条1格宽的流水，如右图所示。
-
-在Java版中，若一个未含水的可含水方块在水平方向上紧挨着2个或更多个水方块或可以向这个方向流出水的含水方块（液相被该可含水方块的表面完全阻挡的除外，例如下半台阶的表面完全阻挡水平毗邻的含水上半台阶的液相。流动水一律视为完整的水方块），其中2个或更多个为水源或含水方块，且该可含水方块下方有一个固体方块、另一个水源方块或含水非固体方块，并且游戏规则“允许流动水转化为水源”（
-```
-water_source_conversion
-```
-
-）为true，则满足上述要求（即液相未被阻挡）的水（可以是流动水）或含水方块计算流动方向时会将该可含水方块纳入流动范围，若决定向该方块流动，该方块将含水。
-
-## 液滴
-
-当粒子在选项菜单中被完全启用后，在基岩版中下方是空气而上方是液体的固体方块、在Java版中上表面接触液体而下表面高于下方方块上表面的方块会产生液滴，这一视觉效果可以让玩家得以区分方块的上方有液体的存在。下坠的熔岩液滴不会造成任何伤害或者导致生物着火。新的液体放置后，液滴在开始滴下之前需要数秒的时间来“渗透”。
-
-## 方块更新
-
-本段落所述内容仅适用于Java版。
-下列的方块更新将会导致一个液体方块的更新：
-
-- NC更新，包括液体流入毗邻的方块和毗邻的液体干燥。
-- PP更新，包括液体的深度改变。
-
-结构的生成永远不会进行方块更新使其在被载入的时候进行调整。例如，一个洞穴入口可能被部分地生成在一个地下熔岩湖或地下水湖的边缘，并且这些液体将不会流动直至一个动作更新它们。另一方面，作为结构的一部分生成的液体会立即流动，尽管它们没有被完全确认。这包含了海洋底端的洞穴，其水流将会直接灌入峡谷之中。
-
-## 液体互动
-
-液体之间有两种互动行为，分别为触碰和流入。两种液体位于相邻的两个方块内时会发生触碰，两种液体试图挤占同一方块时则会发生流入。流入发生前一定会发生触碰，但触碰发生后不一定会发生流入（例如两种液体在最远流动距离处水平触碰）。以下为所有液体互动的判定方式和结果：
-
-- 熔岩源水平方向或上方触碰水源或水流，熔岩源变为黑曜石；
-- 熔岩源或熔岩流下方触碰水源或水流，无反应；
-- 熔岩流水平方向或上方触碰水源或水流，熔岩流变为圆石；
-- 熔岩源或熔岩流向下流入水源或水流，流入的熔岩流（被流入的水源或水流）变为石头；
-- 熔岩源或熔岩流下方触碰灵魂土，且水平方向或上方触碰蓝冰，熔岩源或熔岩流变成玄武岩。
-
-注意，由于液体有向下流动的趋势，上述两种无反应的情况通常为瞬时现象，只有一种情况下熔岩和水相互触碰但始终不会发生任何反应，即上方为熔岩，下方为含水方块（可阻止熔岩向下流动）。
-
-液体互动还有以下几点需要注意：
-
-- 水平方向上熔岩和水只会发生触碰，不会发生流入，因为触碰时即会发生反应；
-- 竖直方向上只有熔岩会流入水，水并不会流入熔岩，因为触碰时即会发生反应；
-- 无论方向和生成物，所有反应均在熔岩一侧发生。
-
-# 历史
-
-# 画廊
-
-- 水源
-- 水流
-- 熔岩源
-- 熔岩流
-
-# 参考
-
-1. ↑ https://joakimthorsen.github.io/MCPropertyEncyclopedia/?selection=solid,gets_flushed&filter=(solid:No);(gets_flushed:No)
-1. ↑ MCPE-75124 — 漏洞状态为“已修复”。
-
-# 导航
+Notes: down-flowing tendencies make the "no reaction" cases transient; the only permanent no-reaction case is lava above a waterlogged block (blocks the flow). Horizontal lava-water contact only touches (reacts immediately); vertically only lava flows into water (water touching lava reacts); all reactions occur on the lava side.

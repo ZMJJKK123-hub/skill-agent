@@ -1,106 +1,34 @@
 ---
 name: minecraft-tutorial-datapack-install
-description: |
-  Tutorial:安装数据包（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】本教程介绍的是怎样安装数据包。关于什么是数据包，请见“数据包”；关于有关如何制作数据包的教程，请见“Tutorial:制作数据包”。
-  
-  【涵盖内容】
-  - 在创建世界时加入数据包
-  - 在已有世界内加入数据包
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Tutorial:安装数据包 的完整规范时
+description: Tutorial — installing data packs: at world creation, into existing worlds, on servers.
+whenToUse: Use when installing data packs in single-player or multiplayer.
 ---
 
-本教程介绍的是怎样安装数据包。关于什么是数据包，请见“数据包”；关于有关如何制作数据包的教程，请见“Tutorial:制作数据包”。
+# Tutorial: Installing Data Packs
 
-本教程所述内容仅适用于Java版。
-这些教程旨在帮助你在Minecraft中使用数据包。
+Java Edition only.
 
-# 获取数据包
+## Getting a Data Pack
 
-数据包允许玩家在不修改代码的情况下定制游戏。在安装之前，你首先需要拥有数据包。
+Download one or make your own. A recognized pack (folder or zip) has `pack.mcmeta` at its first level (the only required file), plus optional `pack.png` (icon) and `data/<namespace>/...`. If the game doesn't recognize it, the pack is probably wrapped in an extra directory layer.
 
-你可以从网上下载一个你喜欢的数据包，也可以自行制作一个。
+## Single-Player
 
-一个能被游戏正常识别到的数据包应该是下面的结构：
+### At World Creation
 
-- [图:File directory.png：Minecraft中directory的精灵图] ``` 一个 .zip 文件或者一个文件夹 ``` - [图:File file.png：Minecraft中file的精灵图] ``` pack.mcmeta ``` ：数据包元数据文件。该文件是唯一必须存在的文件。 - [图:File file.png：Minecraft中file的精灵图] ``` pack.png ``` ：该数据包的图标，用来显示在“选择数据包”界面中。 - [图:File directory.png：Minecraft中directory的精灵图] ``` data ``` - [图:File directory.png：Minecraft中directory的精灵图] ``` < 命名空间 > ``` ：命名空间文件夹。允许[图:File directory.png：Minecraft中directory的精灵图] ``` data ``` 目录下同时存在多个命名空间文件夹。 - 更多目录…
+1. "Create New World" → "More" → "Data Packs".
+2. Drag the pack file into the window ("Yes"); or use "Open Pack Folder" to add/remove several. Arrows reorder selection/priority; arrows on selected packs unselect them.
+3. If the pack doesn't appear, check the file layer and `pack.mcmeta` validity. "Incompatible" warnings don't necessarily break the pack — actual loading depends on content/structure vs the current version.
+4. "Done".
 
-总之，不管数据包是文件夹还是压缩包形式，只要点开后的第一层带有[图:File file.png：Minecraft中file的精灵图] 
-```
-pack.mcmeta
-```
+Troubleshooting: "unable to verify" usually means missing key content (often tags) — keep the vanilla pack loaded or ensure the pack includes the required content; don't remove the vanilla pack to strip vanilla advancements/recipes (use dedicated packs). World-creation errors often come from custom-dimension/worldgen packs — remove and report to the author; check mods in modded environments.
 
-，那么这个数据包就能被游戏识别。否则，你可能需要手动调整数据包中的文件层级。
+### Into an Existing World
 
-# 单人游戏
+Not recommended for dimension/worldgen packs (they may not work). Steps: select the world → "Edit" → "Open World Folder" → open `datapacks/` → drop the pack in. Re-enter the world. Verify with `/datapack list enabled` (cheats on; listed in priority order). Note: successful loading only means pack.mcmeta was read, not that all registrations loaded.
 
-## 在创建世界时加入数据包
+## Multiplayer
 
-自Java版1.16开始，玩家可以在创建世界时安装数据包。
-
-要在新世界内安装数据包，你需要：
-
-1.选择“创建新的世界”，然后点击“更多”，在该界面中，点击“数据包”。
-
-2.在选择数据包界面中，左侧默认会显示可用的内置实验性数据包。如果要添加外部数据包，可直接拖入下载的数据包文件，然后点击“是”。如果要删除或批量添加数据包，则可点击“打开包文件夹”按钮，在弹出的目录窗口中，选择要删除的数据包，或者将多个数据包拖入目录中。在已选中的数据包中，你也可点击其中一个数据包的箭头按钮来取消选中。如果你选中了多个数据包，你可以点击上下箭头调整数据包的加载顺序。
-
-3.在拖入数据包后，若左侧没有显示拖入的数据包，则应检查放入的文件是否为数据包本体（数据包可能被重复包裹了一层目录）。若是，则再检查
-```
-pack.mcmeta
-```
-
-文件是否有错误。另外，若加入的数据包提示“不兼容”，你也可以尝试将其选为备选数据包——该不兼容提示不会影响数据包的实际运作，其加载是否成功取决于数据包的具体代码和目录结构是否和当前版本匹配。
-
-4.最后，点击“完成”按钮，即完成了数据包的安装。
-
-其他意外和问题解决方法
-
-- 无法验证已选数据包：通常是因为加载时缺失关键内容（通常是标签）。请保证原版的数据包正常加载，或加入的数据包包含所有关键内容。如果你需要移除原版的进度、配方等内容，请寻找移除这些内容的专用数据包而非直接移除原版数据包。
-- 在创建世界时出现错误：这种错误多出现在涉及自定义维度与自定义世界生成的数据包。请尝试移除包含这些内容的数据包，并将问题反馈给作者。若为Mod环境，也请检查安装的Mod。
-
-## 在已有世界内加入数据包
-
-不推荐使用此方法安装涉及自定义维度和自定义世界生成的数据包，这些数据包可能无法正常使用。
-
-如果你需要在已有的世界内安装数据包，或游戏版本不足以支持你在创建时选择数据包，你可以通过下面的步骤安装数据包：
-
-- 选择你需要安装数据包的世界，点击“编辑”。
-- 然后点击“打开世界文件夹”。
-- 打开其中名为 ``` datapacks ``` 的文件夹，并将数据包放入其中。
-
-以上步骤完成后，重新进入世界，此时所添加的数据包若无错误就会被正常加载。
-
-要确认数据包是否已经成功加载，请在开启作弊的前提下在世界中键入
-```
-/
-datapack
- list enabled
-```
-
-命令确认启用的数据包（所列出的数据包按照优先级排列）。
-
-数据包成功加载可能仅仅代表其
-```
-pack.mcmeta
-```
-
-被正常读取，并不代表其中的所有注册内容被正常加载。
-
-# 多人游戏
-
-以下是在多人游戏中安装数据包的方法：
-
-1. 打开服务器文件夹，然后打开其中的 ``` world ``` 文件夹。
-1. 打开其中名为 ``` datapacks ``` 的文件夹，并将数据包放入其中。
-1. 下次服务器启动的时候这个数据包就会被加载，并且优先级最高。
-1. 如果服务器已经启动，请在控制台或拥有至少3级管理员权限时键入 ``` / reload ``` 以加载数据包。 - 同样，你可以在控制台或拥有至少2级管理员权限时键入 ``` / datapack list enabled ``` 命令确认启用的数据包。
-
-# 参见
-
-- 数据包
-- 资源包
-- Tutorial:制作数据包
-
-# 导航
+1. Open the server folder → `world/` → `datapacks/`, drop the pack in.
+2. It loads at the next server start (highest priority).
+3. On a running server: `/reload` (console or ≥3 permission level); confirm with `/datapack list enabled` (console or ≥2).

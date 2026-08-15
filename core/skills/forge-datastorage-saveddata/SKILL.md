@@ -1,42 +1,27 @@
 ---
 name: forge-datastorage-saveddata
-description: |
-  Forge SavedData（世界持久数据）指南（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】Saved Data
-  
-  【涵盖内容】
-  - （自动提取章节）
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge SavedData（世界持久数据）指南 的完整规范时
+description: Forge SavedData: per-level persistent data via computeIfAbsent, save/setDirty.
+whenToUse: Use when attaching persistent data to a level in a Forge mod.
 ---
 
-Saved Data
-==========
+# Saved Data
 
-The Saved Data (SD) system is an alternative to level capabilities that can attach data per level.
+The Saved Data (SD) system is an alternative to level capabilities for attaching data per level.
 
-Declaration
------------
+## Declaration
 
-Each SD implementation must subtype the `SavedData` class. There are two important methods to be aware of:
+Each SD implementation must subtype the `SavedData` class:
 
-* `save`: Allows the implementation to write NBT data to the level.
-* `setDirty`: A method that must be called after changing the data, to notify the game that there are changes that need to be written. If not called, `#save` will not get called and the existing data will persist.
+- `save`: writes NBT data to the level.
+- `setDirty`: must be called after changing data to mark it for writing; without it, `#save` is not called.
 
-Attaching to a Level
-----------------------
+## Attaching to a level
 
-Any `SavedData` is loaded and/or attached to a level dynamically. As such, if one is never created on a level, then it will not exist.
+`SavedData`s are loaded/attached dynamically — if never created on a level, they don't exist. Create or load one via `DimensionDataStorage#computeIfAbsent`, obtained from `ServerChunkCache#getDataStorage` or `ServerLevel#getDataStorage`. `computeIfAbsent` takes a load function (NBT → SD), a supplier (new instance), and the `.dat` file name in the level's `data` folder.
 
-`SavedData`s are created and loaded from the `DimensionDataStorage`, which can be accessed by either `ServerChunkCache#getDataStorage` or `ServerLevel#getDataStorage`. From there, you can get or create an instance of your SD by calling `DimensionDataStorage#computeIfAbsent`. This will attempt to get the current instance of the SD if present or create a new one and load all available data.
-
-`DimensionDataStorage#computeIfAbsent` takes in three arguments: a function to load NBT data into a SD and return it, a supplier to construct a new instance of the SD, and the name of the `.dat` file stored within the `data` folder for the implemented level.
-
-For example, if a SD was named "example" within the Nether, then a file would be created at `./<level_folder>/DIM-1/data/example.dat` and would be implemented like so:
+Example (SD named "example" in the Nether creates `./<level_folder>/DIM-1/data/example.dat`):
 
 ```java
-// In some class
 public ExampleSavedData create() {
   return new ExampleSavedData();
 }
@@ -47,8 +32,7 @@ public ExampleSavedData load(CompoundTag tag) {
   return data;
 }
 
-// In some method within the class
 netherDataStorage.computeIfAbsent(this::load, this::create, "example");
 ```
 
-To persist a SD across levels, a SD should be attached to the Overworld, which can be obtained from `MinecraftServer#overworld`. The Overworld is the only dimension that is never fully unloaded and as such makes it perfect to store multi-level data on.
+To persist across levels, attach the SD to the Overworld (`MinecraftServer#overworld`) — the only dimension never fully unloaded.

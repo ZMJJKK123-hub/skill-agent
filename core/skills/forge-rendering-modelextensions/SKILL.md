@@ -1,20 +1,7 @@
 ---
 name: forge-rendering-modelextensions
-description: |
-  Forge 模型扩展（Model Extensions）指南（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】In a vanilla "elements" model, additional data about an element's faces can be specified at either the element level or …
-  
-  【涵盖内容】
-  - Color
-  - Block and Sky Light
-  - Ambient Occlusion
-  - Origin
-  - Translation
-  - Left and Right Rotation
-  - Scale
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge 模型扩展（Model Extensions）指南 的完整规范时
+description: Forge model extensions: per-element face data — color, light, AO, origin, translation, rotation.
+whenToUse: Use when adding per-face color, light, AO, or transform data to vanilla elements models.
 ---
 
 Face Data

@@ -1,115 +1,29 @@
 ---
 name: minecraft-trade-set
-description: |
-  交易集定义格式（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】Wiki上有与该主题相关的教程！
-  
-  【涵盖内容】
-  - （自动提取章节）
-  
-  【关键定义】
-  - 注册表：TRADE_SET
-  - 数据包路径：data/wandering_trader/buying、data/wandering_trader/uncommon、data/wandering_trader/common
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 交易集定义格式 的完整规范时
+description: Trade set definition JSON: TRADE_SET registry, trades, villager usage.
+whenToUse: Use when writing datapack trade_set definitions or understanding villager trade generation.
 ---
 
-本条目所述内容仅适用于Java版。
- Wiki上有与该主题相关的教程！
-见教程:数据驱动/交易。
+# Trade Sets
 
- Wiki上有与该主题相关的教程！
-见教程:数据驱动/交易。
+This content applies only to Java Edition. See the tutorial on data-driven trading for examples.
 
- 
-交易集（Trade Set）控制了村民和流浪商人如何抽取交易项。交易集定义文件是交易集在数据包中的数据驱动定义文件。
+Trade sets control how villagers and wandering traders draw trade offers. Definition files are their data-driven definitions in datapacks.
 
-# 定义格式
+## Definition format
 
-交易集在游戏内使用
-```
-TRADE_SET
-```
+Trade sets use the `TRADE_SET` registry; the datapack path is `trade_set` (definitions in `data/<namespace>/trade_set`, tags in `data/<namespace>/tags/trade_set`).
 
-注册表，数据包路径为
-```
-trade_set
-```
+Definition files use JSON with the following structure:
 
-，即所有交易集定义文件都需要在
-```
-data/<
-命名空间
->/trade_set
-```
+- JSON file root object
+  - `trades` (string/list, required): a villager trade ID, list of IDs, or trade tag — the trades this set can draw.
+  - `amount` (int/float/compound, required): number of trades to generate (rounded); with duplicates allowed each draw is independent, otherwise drawn trades are removed. A draw may still fail predicate checks and not count. Drawing stops when the amount is reached or nothing is drawable (number provider).
+  - `allow_duplicates` (bool, default `false`): whether duplicate trades are allowed.
+  - `random_sequence` (string): random sequence used when generating trades.
 
-目录内定义，交易集标签则需要在
-```
-data/<
-命名空间
->/tags/trade_set
-```
+Villagers draw with the `villager_trade` loot context; parameters: `this_entity` (the villager), `origin` (its feet position), `additional_cost_component_allowed`.
 
-目录内定义。
+## Definition behavior
 
-交易集定义文件使用JSON格式，并具有下列结构：
-
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:字符串][图:NBT列表/JSON数组]*trades：一个村民交易ID、村民交易ID的列表或一个村民交易标签，代表此项交易集可以抽取的交易。 - [图:整型][图:单精度浮点数][图:NBT复合标签/JSON对象]*amount：生成交易的数量，游戏最终将此值四舍五入取整计算。在抽取交易时，如果允许出现重复交易，则每次抽取是独立的；反之，每抽取一次就会将抽取结果从可抽取交易中移出。抽取到交易不代表会生成一项交易：交易可能会因为谓词检测失败等因素不生成、不计入交易数量。游戏会在达到交易数量或没有可抽取项时停止抽取。 - - 数值提供器，见战利品表/数值提供器 - [图:布尔型]allow_duplicates：（默认为 ``` false ``` ）是否允许出现重复交易。 - [图:字符串]random_sequence：该交易集生成交易时使用的随机序列。
-
-村民抽取交易时会使用战利品上下文
-```
-villager_trade
-```
-
-，上述字段使用的参数如下：
-
-- ``` this_entity ``` ：生成交易的村民。
-- ``` origin ``` ：此村民脚部的位置。
-- ``` additional_cost_component_allowed ```
-
-# 定义行为
-
-交易集定义数据仅在服务端启动时被加载一次，使用
-```
-/
-reload
-```
-
-命令不可以使交易集定义被重新加载，而必须重启服务端。
-
-当村民尝试生成交易选项时，会调用一个内置的交易集，根据此交易集生成当前的交易内容。这意味着只有内置的交易集才有实际作用。
-
-目前，除了失业和傻子外的村民会根据自身的职业和等级调用交易集
-```
-<
-职业ID
->/level_<
-等级
->
-```
-
-，而流浪商人会依次调用交易集
-```
-wandering_trader/buying
-```
-
-、
-```
-wandering_trader/uncommon
-```
-
-和
-```
-wandering_trader/common
-```
-
-。
-
-# 历史
-
-# 参考
-
-1. ↑ MC-307833 — 漏洞状态为“已修复”。
-
-# 导航
+Trade set data is loaded only once at server startup; `/reload` does not reload it — a server restart is required. Only built-in trade sets are actually used: villagers (except unemployed/nitwit) call `<profession ID>/level_<level>`; wandering traders call `wandering_trader/buying`, `wandering_trader/uncommon`, and `wandering_trader/common` in order.

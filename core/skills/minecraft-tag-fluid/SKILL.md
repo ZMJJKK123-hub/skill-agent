@@ -1,94 +1,83 @@
 ---
 name: minecraft-tag-fluid
-description: |
-  Java版标签/流体（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】理由：需要检查目前的行为是否还是由对应的流体标签负责。
-  
-  【涵盖内容】
-  - bubble_column_can_occupy
-  - lava
-  - supports_frogspawn
-  - supports_lily_pad
-  - supports_sugar_cane_adjacently
-  - water
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Java版标签/流体 的完整规范时
+description: Java Edition fluid tags and their members controlling fluid behavior.
+whenToUse: Use when querying fluid tags (water, lava etc.) or judging which fluid tag controls a game behavior.
 ---
 
-本条目所述内容仅适用于Java版。此条目需要更新。
-理由：需要检查目前的行为是否还是由对应的流体标签负责。
+# Fluid Tags
 
-流体标签（Fluid Tags）是流体的组合。
+This content applies only to Java Edition.
 
-# 使用
+Fluid tags are groups of fluids.
 
-流体标签被游戏用来控制各种涉及到流体的游戏行为。
+## Usage
 
-流体标签也可以在方块谓词和进度谓词中使用，用来判断某个位置是否为指定流体。
+The game uses fluid tags to control various fluid-related behaviors. Fluid tags can also be used in block predicates and advancement predicates to test whether a position contains a specified fluid.
 
-# 标签列表
+## Tag list
 
-## bubble_column_can_occupy
+### `#bubble_column_can_occupy` (1 entry)
 
-- 可被气泡柱占据的流体。
+Fluids that can be occupied by bubble columns:
 
-- #bubble_column_can_occupy（1项） - ``` water ```
+- `water`
 
-## lava
+### `#lava` (2 entries)
 
-- 这种流体会使相邻的仙人掌破碎。
-- 用于在流体上实现熔岩纹理效果。
-- 用于在雨中生成烟雾粒子而非常规的降雨粒子。
-- 用于实现类似熔岩迷雾的雾效果。
-- 物品和经验球在接触这种流体时会燃烧。
-- 使用装有这种流体的水桶时将播放熔岩的声音效果。
-- 表示熔岩（LAVA）路径节点。
-- 用于形成石头、圆石或玄武岩。
-- 用于炽足兽的各种寻路过程。
-- 炽足兽浸入到这些流体中时将不能被骑乘。
+- This fluid breaks adjacent cacti.
+- Used to render the lava texture effect on fluids.
+- Used to spawn smoke particles instead of normal rain particles while raining.
+- Used for fog effects similar to lava fog.
+- Items and experience orbs burn when touching this fluid.
+- Using a bucket of this fluid plays the lava sound effect.
+- Represents a LAVA pathfinding node.
+- Used to form stone, cobblestone, or basalt.
+- Used in various strider pathfinding processes.
+- Striders cannot be ridden while immersed in these fluids.
 
-- #lava（2项） - ``` lava ``` - ``` flowing_lava ```
+Members:
 
-## supports_frogspawn
+- `lava`
+- `flowing_lava`
 
-- 青蛙卵可以放置在这些流体上。
+### `#supports_frogspawn` (1 entry)
 
-- #supports_frogspawn（1项） - ``` water ```
+Fluids on which frogspawn can be placed:
 
-## supports_lily_pad
+- `water`
 
-- 睡莲可以放置并存活在这些流体上。
+### `#supports_lily_pad` (1 entry)
 
-- #supports_lily_pad（1项） - ``` water ```
+Fluids on which lily pads can be placed and survive:
 
-## supports_sugar_cane_adjacently
+- `water`
 
-- 甘蔗可以放置并存活在这些流体毗邻的方块上。
+### `#supports_sugar_cane_adjacently` (1 entry)
 
-- #supports_sugar_cane_adjacently（1项） - ``` #water ```
+Fluids adjacent to blocks on which sugar cane can be placed and survive:
 
-## water
+- `#water`
 
-- 珊瑚必须确保至少一面接触该流体，否则可能失活。
-- 珊瑚扇必须放置在该流体中。
-- 农田通过该流体来确定土壤的干湿。
-- 海绵可以吸收这种流体。
-- 一些粒子会使用这种物质来决定它们是否应该持续存在（ ``` bubble ``` 、​ ``` bubble_column_up ``` 、​ ``` current_down ``` 和​ ``` underwater ``` ）。
-- 滴落粒子内部会使用这种流体来确定其颜色。
-- 用于启用水下迷雾效果。
-- 决定实体的移动是否表现为水中的移动行为。
-- 表示一个水（WATER）寻路节点。某些生物会朝着这个节点移动。
-- 船会检查此流体。
-- 混凝土会在此流体中固化。
-- 物品和经验球会在此流体中漂浮。
-- 守卫、乌贼和海龟会检查此流体是否存在。
-- 渔钓浮标在此液体中会上下浮动。
-- 玻璃瓶可通过该液体被装满。
-- 在下界中不能用桶放置这种液体。
+### `#water` (2 entries)
 
-- #water（2项） - ``` water ``` - ``` flowing_water ```
+- Coral requires at least one side touching this fluid, otherwise it may deactivate.
+- Coral fans must be placed in this fluid.
+- Farmland determines its moisture via this fluid.
+- Sponges absorb this fluid.
+- Some particles use it to decide whether they should persist (`bubble`, `bubble_column_up`, `current_down`, `underwater`).
+- Dripping particles internally use this fluid to determine their color.
+- Used to enable underwater fog.
+- Determines whether entity movement behaves like swimming.
+- Represents a WATER pathfinding node; some mobs move toward it.
+- Boats check this fluid.
+- Concrete solidifies in this fluid.
+- Items and experience orbs float in this fluid.
+- Guardians, squids, and turtles check for this fluid.
+- Fishing bobbers bob up and down in this liquid.
+- Glass bottles can be filled from this liquid.
+- Cannot be placed with a bucket in the Nether.
 
-# 历史
+Members:
 
-# 导航
+- `water`
+- `flowing_water`

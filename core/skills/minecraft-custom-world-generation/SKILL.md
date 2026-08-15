@@ -1,83 +1,47 @@
 ---
 name: minecraft-custom-world-generation
-description: |
-  自定义世界生成（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】本条目介绍的是数据包控制的自定义世界。关于由JSON驱动的自定义世界，请见“自定义”；关于Java版1.13前的世界类型，请见“自定义/Java版1.13前”。
-  
-  【涵盖内容】
-  - （自动提取章节）
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 自定义世界生成 的完整规范时
+description: Custom world generation overview: presets, dimensions, noise, biomes, features, structures.
+whenToUse: Use when creating custom world generation via datapacks.
 ---
 
-本条目介绍的是数据包控制的自定义世界。关于由JSON驱动的自定义世界，请见“自定义”；关于Java版1.13前的世界类型，请见“自定义/Java版1.13前”。
+# Custom World Generation
 
-本条目所述内容仅适用于Java版。
-自定义世界生成（Custom world generation）可以让数据包改变世界的生成方式。
+This content applies only to Java Edition. This article covers datapack-controlled custom worlds (see "Custom" for JSON-driven worlds, and "Custom/Java Edition before 1.13" for legacy world types).
 
-# 世界预设和维度
+Custom world generation lets datapacks change how worlds generate.
 
-主条目：世界预设定义格式和维度定义格式
-世界预设（World Preset）和维度（Dimension）控制世界具有哪些维度。虽然原版游戏全部使用世界预设定义维度，但游戏仍然支持通过维度文件定义维度。
+## World presets and dimensions
 
-每个维度都定义了维度使用的地形生成器（噪声、调试或超平坦）。如果是噪声生成器，则还定义了使用的噪声设置和可生成的生物群系，以及生物群系的分布。
+World presets and dimensions control which dimensions a world has. Every dimension defines its chunk generator (noise, debug, or flat); noise generators additionally define noise settings, biomes, and biome distribution. See the world preset definition format and dimension definition format.
 
-# 噪声设置
+## Noise settings
 
-主条目：噪声设置
-噪声设置（Noise settings）定义了地形和噪声洞穴所生成的形状，以及地形生成时所附带的方块。噪声设置可通过维度中的噪声生成器来使用。
+Noise settings define the shapes of terrain and noise caves plus the blocks attached during terrain generation; used via the dimension's noise generator. See noise settings.
 
-# 密度函数
+## Density functions
 
-主条目：密度函数
-密度函数（Density Function）能将随坐标变化的值提供给噪声设置的噪声分配器。
+Density functions provide coordinate-dependent values to the noise router of noise settings. See density functions.
 
-# 噪声
+## Noise
 
-主条目：噪声
-噪声（Noise）用于产生随坐标变化的值，可被密度函数或表面规则引用。
+Noise produces coordinate-dependent values, referenced by density functions or surface rules. See noise.
 
-# 生物群系
+## Biomes
 
-主条目：生物群系定义格式
-生物群系（Biome）是在维度里划分出的区域，具有独特的地物、雕刻器、气候、生成的生物、环境音效、音乐以及天空、水、草方块和树叶的颜色。
+Biomes are regions within a dimension with unique features, carvers, climate, mob spawning, ambience, and colors. See the biome definition format.
 
-# 雕刻器
+## Carvers
 
-主条目：雕刻器定义格式
-雕刻器（Carver）用于雕刻出洞穴或峡谷。注意：噪声洞穴由噪声设置生成，而非雕刻器。
+Carvers carve caves and canyons. Note: noise caves come from noise settings, not carvers. See the carver definition format.
 
-# 地物
+## Features
 
-主条目：已配置的地物和已放置的地物
-地物（Feature）是在地形生成后在每个区块生成的装饰性方块结构。
+Features are decorative block structures generated per chunk after terrain. See configured features and placed features.
 
-# 结构
+## Structures
 
-主条目：结构模板、​结构定义格式、​结构集、​模板池以及处理器列表
-结构（Structure），也被称为结构地物（Structure Feature），是一种用于生成结构的地物，其中拼图结构提供了多种自定义结构的方法。
+Structures (structure features) generate structures; jigsaw structures offer extensive customization. See structure templates, structure definitions, structure sets, template pools, and processor lists.
 
-# 地表生成器
+## Surface builders (removed)
 
-主条目：已配置的地表生成器
-此章节所介绍的内容已从Java版中移除。
-自21w41a起，地表方块由噪声设置控制。
-
-地表生成器（Surface builder）控制了地表的形状和其生成的方块。
-
-# 历史
-
-# 外部链接
-
-原版世界生成设置（直接下载）
-
-- 1.19 - 1.19.4
-- 1.18.2
-- 1.18
-- 1.17.1
-- 1.16.2 - 1.16.5
-
-1. ↑ 更新版本的世界生成设置已内置于对应版本的client.jar中。
-
-# 导航
+Since 21w41a, surface blocks are controlled by noise settings. Surface builders were removed from Java Edition.

@@ -1,403 +1,70 @@
 ---
 name: minecraft-cat
-description: |
-  猫（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】本条目介绍的是可驯服的友好生物。关于不可驯服的生物，请见“豹猫”；关于其他含义，请见“猫（消歧义）”。
-  
-  【涵盖内容】
-  - Java版
-  - 村庄生成
-  - 沼泽小屋生成
-  - 基岩版
-  - 音效变种
-  - 流浪猫
-  - 繁殖
-  - 治疗
-  - 传送
-  - 礼物
-  - 成年
-  - Classic
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 猫 的完整规范时
+description: Cat — spawning, skins, sound variants, taming, breeding, sitting, teleporting, gifts, NBT.
+whenToUse: Use when working with cats (taming, breeding, variants, gifts).
 ---
 
-本条目介绍的是可驯服的友好生物。关于不可驯服的生物，请见“豹猫”；关于其他含义，请见“猫（消歧义）”。
+# Cat
 
- “cat”重定向至此。关于名为“cat”的音乐唱片和音乐，请见“音乐唱片cat”。
+Cats are tameable friendly mobs (untameable ocelots are separate). "cat" also names a music disc.
 
-此页面还需添加更多图像。
-请在添加后将此信息移除。
-具体要求：Java版与基岩版的猫的模型不同
+## Spawning
 
-猫
+- A witch and an untamed **black cat** always generate at swamp huts (in front of the red mushroom pot) and never despawn. Java: spawn eggs/unspecified `/summon` inside the hut's 7×7×9 area also yield black cats.
+- **Villages (Java)**: every 60 seconds per dimension, a random non-dead player (incl. spectator) is picked; a position 8–31 blocks off (X/Z) from them is chosen. If valid, with ≥5 claimed beds within 48 blocks and <5 cats within 48×48×8 (Chebyshev), a random-look cat spawns (10 looks off full moon, all 11 during full moon).
+- **Swamp hut (Java)**: if the spot is valid but fails village conditions and lies in a swamp hut, a black cat spawns.
+- **Bedrock**: villages spawn untamed cats to meet a quota of 1 per 4 villagers (max 5; all cats in the village count); spawn area matches iron golems (17×13×17 around the village center). 25% spawn as babies; 50% black during full moon.
 
-成年猫
+### Sound Variants
 
-幼年猫
+2 sound variants: **Classic** and **Royal**, assigned independently (50% each); used for idle, death, and hurt sounds.
 
-躺在床上的驯服的猫
+## Drops
 
-成年猫
+1–3 XP when killed by a player or tamed wolf (adults only; babies drop nothing).
 
-幼年猫
+## Behavior
 
-躺在床上的驯服的猫
+- Immune to fall damage (still avoids big falls). Sees invisible players. Babies are just faster.
+- Java: hisses at Phantoms pursuing the player. Creepers keep 6 blocks away (not if already primed and the player is out of blast range); Phantoms keep 16 blocks away.
+- Cats float in water; babies may drown before being rescued.
 
-成年猫
+### Stray Cats (untamed)
 
-幼年猫
+Strays despawn like other wild mobs (only after >120 s when too far). They hunt rabbits and baby turtles within 15 blocks (sneaking approach first; Bedrock: see through blocks). They wander, avoid non-creative/spectator players within 16 blocks, and flee faster (1.33×) when the player moves significantly (≥0.1 blocks/tick, not sneaking) or shakes the camera (≥5°/tick). They slowly approach players holding raw cod/salmon within 6 blocks and beg; any fast movement, camera shake, or item change breaks it.
 
-躺在床上的驯服的猫
+### Breeding
 
-成年猫
+Feed two full-health tamed adults raw cod/salmon → love mode (at least one standing) → 1 baby (1–7 XP; 5-min/1-min cooldown; full-health parents can't be fed again). Baby takes a random parent's coat; collar = valid mix of parents' colors (else random parent's); owner per the same rules as wolves (same owner; different owners → the later-loaded cat's owner unless one was ordered to sit → the other's). Feed babies raw cod/salmon to grow ~10% faster per fish. Golden dandelions halt/restart baby growth (halted babies accept only golden dandelions).
 
-幼年猫
+### Healing
 
-躺在床上的驯服的猫
+Only the owner's raw cod/salmon heals a tamed cat (2 HP). Cat tails do not reflect health.
 
-成年猫
+## Appearance
 
-幼年猫
+22 skins (11 per age): black (all-black, orange eyes), British shorthair (light gray, black eyes), calico (orange/white/black, heterochromia), Jellie (gray/white, gray-green — community-voted from GoodTimesWithScar's cat), Persian (tan, blue eyes, distinct face), Ragdoll (white/soft amber, blue eyes), red tabby (orange/white, green), Siamese (light brown/white, blue), tabby (brown/white, yellow), tuxedo (black/white, green), white (all-white, light blue/yellow eyes). Tamed cats have a dyeable collar.
 
-躺在床上的驯服的猫
+## Taming
 
-成年猫
+Feed strays raw cod/salmon (1/3 chance per feed, average 3 fish). Unlike wolves, stray cats can be tamed even mid-fight. Tamed cats don't despawn, follow their owner, and purr/meow. Interacting (without fish/lead) makes them sit/stand. They love sitting on chests, bed halves, and lit furnaces (the 8 candidate offsets around them, requiring air above); sitting on a chest locks it. Cats sleep on empty beds (Java). Java: after hostile damage, standing tamed cats can't be ordered to sit for a while.
 
-幼年猫
+### Teleporting
 
-躺在床上的驯服的猫
+Tamed cats teleport when >12 blocks from the owner (possible bad teleports: suffocation/drowning). No teleport when: ordered to sit (exception: sitting cats attacked may teleport, e.g. lightning-struck); attempting to sit on chest/bed/furnace; sleeping on a bed; in a minecart/boat; leashed; chunk unloaded; no valid 5×5×1 rim spot; owner in another dimension; owner in water (teleports right after). Silent.
 
-成年猫
+### Gifts
 
-幼年猫
+A tamed, standing cat walks onto the owner's bed while the owner sleeps (one cat only). 70% chance to give a morning gift after a **night** sleep (not daytime thunderstorms); loot from `gameplay/cat_morning_gift` loot table.
 
-躺在床上的驯服的猫
+## Data Values
 
-成年猫
+- ID: `minecraft:cat`.
+- NBT: entity/living/mob/breedable/animal/tameable common tags plus:
+  - `CollarColor` (0–15, default 14 red; strays have it but don't render; out of range → 0 white; → component `cat/collar`).
+  - `sound_variant` (namespace ID; invalid → `classic`; → component `cat/sound_variant`).
+  - `variant` (namespace ID; invalid → `black`; → component `cat/variant`).
 
-幼年猫
+## Trivia
 
-躺在床上的驯服的猫
-
-成年猫
-
-幼年猫
-
-躺在床上的驯服的猫
-
-成年猫
-
-幼年猫
-
-躺在床上的驯服的猫
-
-成年猫
-
-幼年猫
-
-躺在床上的驯服的猫
-
-[[|]][图:Invicon Cat Spawn Egg.png：Minecraft中Cat Spawn Egg的精灵图，描述：猫刷怪蛋]
-
-“> 你知道你可以不用总是被苦力怕炸得粉碎的吗？这听起来可能很奇怪，但确实是真的。有一种秘密武器可以用来应对那些嘶嘶作响的绿色烦人精。它是一种毛茸茸的友好生物，常常会把腐肉丢到你的脚边。它就是我们的本月生物——猫！
-
-”——Duncan Geere
-猫（Cat）是一种可驯服的友好生物。
-
-# 生成
-
-在世界生成时，一个女巫和一只未驯服的黑猫固定生成于沼泽小屋的红色蘑菇盆栽前，它们不会自然消失。
-
-在Java版中，通过刷怪蛋或未指定种类的
-```
-/
-summon
-```
-
-命令在沼泽小屋7×7×9格的区域内生成的猫都是黑猫。
-
-## Java版
-
-### 村庄生成
-
-猫会在一个拥有5张已被使用的床的村庄中生成。
-
-每个维度每隔1200游戏刻（60秒），游戏会随机选择一名非死亡状态下的玩家（包含旁观模式），然后基于该玩家的位置，在X轴和Z轴方向分别随机偏移8-31格作为生成位置。
-
-如果该生成位置合法且半径48格范围内有5张以上已被认领的床，且水平切比雪夫距离48格内、竖直距离8格内的猫的数量小于5，则在该位置生成一只随机外观的猫。非满月期间，猫在生成时会随机挑选除黑猫外的10种外观；满月期间，猫在生成时会随机挑选所有11种外观。
-
-### 沼泽小屋生成
-
-若生成位置合法且不符合上述村庄生成条件，但该位置位于沼泽小屋中，则在该位置生成一只黑猫。
-
-## 基岩版
-
-村庄会不定期随机生成未驯服的猫以满足每4个村民1只猫的配额，最多达到5只。所有村庄边界以内的猫都会被计入，包括幼年猫、从村庄以外进入的猫甚至被玩家驯服的猫。如果猫的数量不够配额，村庄就会尝试生成直到满足配额数量。村庄生成的猫的生成范围总是与铁傀儡的生成范围一致，即生成在围绕由床、钟或其他工作方块构建的村庄范围的中心的17×13×17范围内的最高可生成位置。
-
-猫在村庄生成时，有25%概率是幼年猫；满月期间在村庄生成时，有50%概率是黑猫。
-
-## 音效变种
-
-猫有2种音效变种：Classic和Royal。
-
-猫的音效变种会独立于猫的生物群系生成进行分配，每种音效变种有50%的生成概率。猫在发出空闲、死亡或受伤的音效时，会发出与其变种相关联的音效。音效变种与其品种变种和状态无关。
-
-关于所有猫的音效，详见§ 音效。
-
-# 掉落物
-
-成年猫死亡后掉落：
-
-Java版：
-
-基岩版：
-
-- 1–3 经验值，在被玩家或驯服的狼杀死时。
-
-像其他幼年动物一样，杀死幼年猫不会掉落任何物品和经验值。
-
-# 行为
-
-猫不会受到摔落伤害，但仍会像大多数生物那样避免掉下正常情况下会造成摔落伤害的悬崖。
-
-猫能看到隐身的玩家。
-
-除了移动速度较快外，幼年猫的行为与成年猫没有差别。
-
-在Java版中，猫会对正在追赶玩家的幻翼发出嘶嘶声。
-
-苦力怕会与猫保持6格的距离。不过已经开始引爆的苦力怕不会远离猫，除非玩家不在其爆炸半径内。
-
-幻翼会与猫保持16格距离。
-
-猫会浮在水中，而幼年猫在获救前可能会溺水死亡。
-
-## 流浪猫
-
-流浪猫默认是未驯服的。自然生成的猫都是流浪猫。
-
-与狼不同，流浪猫会消失。流浪猫存在时间超过2400游戏刻（120秒）后才会因为距离玩家过远而消失。
-
-流浪猫会寻找并攻击15格内的兔子和幼年海龟。在发动攻击之前，它们会先以潜行姿态接近猎物。
-
-在基岩版中，流浪猫可以透过方块定位目标。
-
-尽管流浪猫自然生成在村庄中，它们也不一定会留在那里，它们更喜欢到处探索。
-
-流浪猫会主动远离16格以内、非创造或旁观模式的玩家，并且当玩家显著移动（大于等于0.1格/刻，玩家正常行走会触发，潜行时移动则不会）或晃动视角（大于等于5°/刻）时，流浪猫会以更快的速度逃跑（1.33倍原本移动速度）。流浪猫没有处于逃跑状态时，可以主动慢慢接近6格以内、手持生鳕鱼或生鲑鱼的玩家，最终停留并进入乞食状态。驯服前如果玩家有发生显著移动、晃动视角，或手持物品变为前述以外物品的情况，也会立即使流浪猫进入逃跑状态。
-
-## 繁殖
-
-主条目：繁殖
-
-当给两只生命值已满的已驯服的成年猫喂生鳕鱼或生鲑鱼时，它们会进入求爱模式。且其中至少有一只猫未坐着时，才会繁殖出一只幼年猫，并掉落1–7 经验值，且双亲在5分钟或1分钟内无法再次繁殖，以及无法对生命值已满的双亲喂食。幼年猫会随机遗传双亲某一方的毛色，项圈的颜色为双亲项圈颜色的有效混色，如果有效混色不存在则随机遗传一方的项圈颜色。
-
-繁殖出的幼年猫会出生在其中一只猫的判定箱内，并选择该猫的主人作为自己的主人，出生在哪只猫的判定箱内与幼猫的毛色没有关系。
-
-- 如果两只猫属于同一个玩家，那么其繁殖出的猫也会属于这个玩家。
-- 两只猫所属的玩家不同时，若喂食后其中一只猫被下令坐下，则繁殖出的幼年猫属于另一只猫的主人；否则幼年猫将属于更早被加载的猫的主人。
-
-可以给幼年猫喂生鳕鱼或生鲑鱼来加快其生长。每条生鱼可以减少约剩余成长时间的10%。
-
-对幼年猫使用金蒲公英可以阻止其成长为成年猫，再次对其使用金蒲公英将使其重新开始成长。被阻止成长的幼年猫无法被喂食除金蒲公英外的其他物品。
-
-## 治疗
-
-猫的主人给受伤的猫喂食生鳕鱼和生鲑鱼能恢复它们的生命值2（[图:♥]），其他玩家给猫喂食不能恢复生命值。
-
-与驯服的狼不同，驯服的猫的尾巴并不会反映其生命值。
-
-# 外观
-
-尽管使用相同的模型，但是猫的大小明显小于豹猫。现在猫有22种皮肤（成年幼年各11种），其中一种皮肤是Jellie（YouTube用户GoodTimesWithScar的猫的皮肤），这种皮肤是在Twitter投票中选中的。这些皮肤有：
-
-- 黑猫（通体黑色，橙色眼睛）
-- 英国短毛猫（浅灰色毛，黑色眼睛）
-- 花猫（橙色、白色、黑色相间毛，橙色和蓝色眼睛）
-- Jellie（灰色和白色毛，灰绿色眼睛）
-- 波斯猫（黄褐色毛，蓝色眼睛，独特的鼻子和嘴巴）
-- 布偶猫（白色与柔和的琥珀色毛，蓝色眼睛）
-- 红虎斑猫（橙白相间毛，绿色眼睛）
-- 暹罗猫（浅褐色与白色相间毛，蓝色眼睛）
-- 虎斑猫（棕白相间毛，黄色眼睛）
-- 西服猫（黑白相间毛，绿色眼睛）
-- 白猫（通体白色，浅蓝色和黄色眼睛）
-
-像驯服的狼一样，驯服的猫也在脖子上也会有一个项圈，其颜色可以使用染料改变。
-
-# 驯服
-
-流浪猫可以用生鳕鱼或生鲑鱼驯服，每次喂食有⁄3的概率驯服成功。与野生的狼不同的是，流浪猫即使正在攻击其他生物，也可以被驯服。驯服后，猫会跟随驯服它们的玩家。已被驯服的猫不会消失，也不会害怕玩家，并经常性地发出咕噜咕噜或喵~的声音。与狼类似，且如相同的条件，它们会在玩家离开超过12格远时传送到玩家处。
-
-在不拿着生鳕鱼、生鲑鱼或拴绳的情况下，玩家可以对猫按使用键来让它们坐下并且可以再次按使用键来让它站起来。同时猫也会主动坐在某些方块上（详见下方）。
-
-除非被命令坐下，否则猫不会长时间保持不动，它们喜欢围着玩家转悠。
-
-没有坐下的猫会在以所在方块对应的（dx+7，dz+7，dy+0），（dx+7，dz+7，dy-2），（dx+7，dz-7，dy+0），（dx+7，dz-7，dy-2），（dx-7，dz+7，dy+0），（dx-7，dz+7，dy-2），（dx-7，dz-7，dy+0），（dx-7，dz-7，dy-2）这8个方块构成的长方体内尝试跳到上方方块为空气的箱子、床的下半部分和燃烧的熔炉上，并且会在没有玩家命令的情况下立刻坐下。当猫坐在箱子或大型箱子上时，会导致该箱子或大型箱子无法被打开。自行坐下的猫可被命令站起，玩家手持生鱼靠近它们也可以让它们站起来。也可以通过移除其下面的方块或推开它们的办法使猫下来。如果猫在地面层（地表的一部分）或顶部有方块时，猫不会尝试坐在这些方块上。在Java版中，猫可能会趴在空床上睡觉。
-
-在Java版中，当玩家被敌对生物伤害（或被药水伤害，但不包括自然伤害）后一段时间，站立且驯服的猫不可被命令坐下。
-
-与其他可驯服生物一样，驯服的猫死亡时会给其主人或世界中的所有玩家显示一条死亡消息。
-
-## 传送
-
-除了以下例外，猫会在与玩家距离12格以上时传送到玩家身边。猫有可能传送到一些例如冰层下的危险区域以至于受到窒息、溺水等伤害。
-
-猫在下列情况下不会传送：
-
-- 猫已经被命令坐下。 - 例外：当坐下的猫受到攻击时，它很可能会传送（传送后不会坐下）。一个戏剧性的例子：如果一只猫坐在室外并被闪电击中，它将浑身是火地出现在主人面前。
-- 猫正在尝试坐上箱子、床或者熔炉。
-- 猫趴在空床上睡觉。
-- 猫坐在矿车或船里。
-- 猫被拴绳拴到栅栏上。
-- 猫位于一个未载入的区块里。
-- 玩家为中心的5×5×1的区域边缘的方块都不是下面为固体方块、上面为透明方块的透明方块。
-- 玩家在其他维度中。猫会待在所在的维度，直到玩家回到该维度。
-- 玩家在水中。猫会在玩家离开水后立即尝试传送到玩家旁边。
-
-猫的传送过程不会有任何音效。
-
-## 礼物
-
-当玩家睡觉的时候，已驯服且未坐下的猫会走上它们的主人所睡的床并趴在床的下半部分上睡觉。当玩家醒来时，猫也会醒来。与玩家一起睡觉的猫有70%的概率在度过夜晚后给予玩家礼物，但只在玩家在夜晚睡觉时发生（如在白天的雷暴天气中入睡，则没有礼物）。驯服多只猫时，只会有一只猫上床睡觉并给予玩家礼物。已入睡玩家的数量不足以跳过夜晚的情况下，玩家躺在床上直到自然起床依然可以获得礼物 。当玩家附近所有站立的已驯服的猫均被阻止到达玩家那么每只猫都有70%的概率提供礼物或只有一只猫可赠送礼物。礼物是从
-```
-cat_morning_gift.json
-```
-
-战利品表中选择出来的掉落物品，其中包含：
-
-# 音效
-
-## 成年
-
-### Classic
-
-Java版：
-
-基岩版：
-
-1. ↑ 这里代表四条音效文件分别以四种不同的音量播放。
-
-### Royal
-
-Java版：
-
-基岩版：
-
-## 幼年
-
-Java版：
-
-基岩版：
-
-# 数据值
-
-## ID
-
-Java版：
-
-基岩版：
-
-## 实体数据
-
-Java版：
-
-主条目：实体数据格式
-猫有与之相联系的包含许多该生物属性的存档数据。
-
-- [图:NBT复合标签/JSON对象] 实体数据 - - 实体共通标签，见Template:Nbt inherit/entity/source - - 生物共通标签，见Template:Nbt inherit/living entity/source - - AI生物共通标签，见Template:Nbt inherit/mob/source - - 可成长生物共通标签，见Template:Nbt inherit/breedable/source - - 动物共通标签，见Template:Nbt inherit/animal/source - - 可驯服动物共通标签，见Template:Nbt inherit/tameable/source - [图:字节型]*CollarColor：（0≤值≤15，默认为14（红色））猫的项圈颜色，颜色取对应染料序号的颜色。未驯服的流浪猫也有此字段，但是不进行渲染。如果设置值超出值域则设置为0（白色）。此项实体数据会被视为数据组件cat/collar。 - [图:字符串]* *sound_variant：（命名空间ID）猫的音效变种。如果设置值无效则设置为 ``` classic ``` 。此项实体数据会被视为数据组件cat/sound_variant。 - [图:字符串]* *variant：（命名空间ID）猫的皮肤。如果设置值无效则设置为 ``` black ``` （西服猫）。此项实体数据会被视为数据组件cat/variant。
-
-基岩版：
-
- 参见：基岩版存档格式/实体格式和基岩版存档格式/实体格式/组件 
-
-### 猫的种类
-
-主条目：猫/DV
-
-### 项圈颜色
-
-主条目：猫/DV2
-
-### 猫音效变种
-
-主条目：猫/DV3
-
-# 成就
-
-主条目：成就
-以下成就适用于所有生物：
-
-# 进度
-
-主条目：进度
-以下进度适用于所有生物：
-
-# 历史
-
-# 你知道吗
-
-- 在基岩版的默认资源包中，有一个驯服的灰虎斑猫纹理，但它未被使用，不能在游戏中生成。
-- 在MINECON Earth 2018直播中，Jeb透露猫的另一种新纹理将由社区玩家选出后加入。最终，GoodTimesWithScar的猫“Jellie”获胜，其皮肤在Java版1.14和基岩版1.10.0中加入。“Jellie”猫已于2024年1月5日去世。
-- 现实生活中，猫从高空坠落时自动调整姿态的能力十分著名（虽然还是有可能摔伤）。这一点也反映到了Minecraft中——猫与豹猫对坠落伤害完全免疫。
-- 在Java版1.14和基岩版1.10.0前，猫是从豹猫驯服而来的，而现实中的猫是从生活在稀树草原等干旱地带的非洲野猫进化而来的。
-- 对着已驯服的猫使用猫刷怪蛋，生成的幼年猫也是已驯服的。
-- 早在花猫加入原版Minecraft游戏之前，在Minecraft: Story Mode第六章“通往神秘国度的传送门”中，就出现了一只名为“Winslow”的花猫，且二者的皮肤十分相似。
-- 西服猫是基于Jeb的宠物，母猫“牛顿”（Newton）设计的。它已于2014年去世。
-- 白猫的皮肤外观基于泰国御猫，泰国的一个稀有猫品种。
-- 黑猫的皮肤外观基于孟买猫。其祖先品种是缅甸猫和美国短毛猫。
-- 游戏中的花猫和白猫表现出了异瞳特征（即两只眼睛颜色不同）。
-- 在游戏中可以让两只花猫繁殖，但在现实生活中是行不通的。这是因为绝大部分三花猫都是母猫，而此类极少数的公猫却不具备生育能力。
-- 猫的音效是基于Samuel Åberg的宠物Odi录制的。
-
-# 画廊
-
-- Dinnerbone在Twitter上公布的猫的坐下效果测试截图
-- 截图展示了猫与幼年猫之间的大小差异
-- 旧版本中的三种原始类型的猫，每种两只
-- Jeb的宠物猫“牛顿”与Minecraft中的西服猫对比
-- 新的猫外观，在MINECON Earth 2018中被透露
-- 在基岩版1.8.0.8中新的猫
-- 除了Jellie以外的所有猫
-- 在村庄里生成的猫
-- 在沼泽小屋附近发现的黑猫
-- 猫和已驯服的狼坐在地毯上
-- 躺在床上的黑猫
-
-# 注释
-
-1. ↑ X×Y×Z。X轴与Z轴为整个屋顶的范围再向门口平台延伸1格，Y轴从小屋地板下方一格开始算起。
-1. ↑ 使用兴趣点 ``` home ```
-1. ↑ 由 ``` #cats_spawn_in ``` 标签控制
-1. ↑ 由 ``` #cats_spawn_as_black ``` 标签控制
-1. ↑ 在Java版中，猫坐在其上的判定条件为猫的边界箱是否与该箱子或大型箱子上方方块相交
-1. ↑ 如猫被船或矿车困住
-
-# 参考
-
-1. ↑ Mob Menagerie: Cat — Minecraft.net，2023年8月18日。
-1. ↑ Which cat do you want to see added to Minecraft? Cast your vote!，来自@Minecraft。X（曾名Twitter），2018年11月16日。
-1. ↑ MC-265635 — 猫坐在箱子上会使箱下箱也无法打开（即两个箱子）
-1. ↑ MC-166291 — 漏洞状态为“无效”。
-1. ↑ MCPE-184544
-1. ↑ https://twitter.com/jonkagstrom/status/163970822497763328
-1. ↑ Jeb：“我让猫变得更真实……可能更烦人。”
-1. ↑ MC-1407 — 漏洞状态为“已修复”。
-1. ↑ MC-145021 — 漏洞状态为“已修复”。
-1. ↑ MC-138880 — 漏洞状态为“已修复”。
-1. ↑ MC-138598 — 漏洞状态为“已修复”。
-1. ↑ MC-147591 — 漏洞状态为“已修复”。
-1. ↑ MC-230792 — 漏洞状态为“已修复”。
-1. ↑ MC-237556 — 漏洞状态为“已修复”。
-1. ↑ MC-305507 — 漏洞状态为“已修复”。
-1. ↑ MC-306657 — 漏洞状态为“已修复”。
-1. ↑ MC-306837 — 漏洞状态为“有意为之”。
-1. ↑ MCPE-60331 — 漏洞状态为“已修复”。
-1. ↑
-1. ↑ https://twitter.com/GTWScar/status/1743041274343776507
-1. ↑ https://twitter.com/LydiaWinters/status/162557057407520769
-1. ↑ https://twitter.com/jeb_/status/469403596455673856
-1. ↑ HOW MINECRAFT SOUNDS ARE MADE — YouTube。
-
-# 导航
+- Pre-1.14/1.10.0, cats came from taming ocelots. Tuxedo is based on Jeb's cat Newton; white on the Khao Manee; black on Bombay cats. Calico cats are almost always female in real life. Jellie's cat died Jan 5, 2024. Cat sounds were recorded from Samuel Åberg's pet Odi.

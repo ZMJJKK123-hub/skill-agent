@@ -1,662 +1,630 @@
 ---
 name: minecraft-tag-biome
-description: |
-  Java版标签/生物群系（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】生物群系标签（Biome Tags）是生物群系的组合。
-  
-  【涵盖内容】
-  - allows_surface_slime_spawns
-  - allows_tropical_fish_spawns_at_any_height
-  - has_structure/abandoned_camp_bamboo_jungle
-  - has_structure/abandoned_camp_birch_forest
-  - has_structure/abandoned_camp_cherry_grove
-  - has_structure/abandoned_camp_dappled_forest
-  - has_structure/abandoned_camp_flower_forest
-  - has_structure/abandoned_camp_forest
-  - has_structure/abandoned_camp_meadow
-  - has_structure/abandoned_camp_old_growth_birch_forest
-  - has_structure/abandoned_camp_old_growth_pine_taiga
-  - has_structure/abandoned_camp_old_growth_spruce_taiga
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Java版标签/生物群系 的完整规范时
+description: Biome tags and their members, controlling structure generation, mob spawning, and other mechanics.
+whenToUse: Use when querying or using biome tags for structure generation or mob spawning.
 ---
 
-本条目所述内容仅适用于Java版。
-生物群系标签（Biome Tags）是生物群系的组合。
+# Biome Tags
 
-# 使用
+This content applies only to Java Edition.
 
-生物群系标签控制了结构生成、生物生成等许多功能。命令
-```
-/
-locate
- biome
-```
+Biome tags are groups of biomes.
 
-、
-```
-/
-execute
- if biome
-```
+## Usage
 
-等也可以调用生物群系标签。
+Biome tags control structure generation, mob spawning, and many other functions. Commands such as `/locate biome` and `/execute if biome` can also reference biome tags.
 
-# 标签列表
+## Tag list
 
-## allows_surface_slime_spawns
+### `#allows_surface_slime_spawns` (2 entries)
 
-- 此标签中的生物群系中生成史莱姆无视史莱姆区块的限制，但受月相的影响。
+Slimes spawn in these biomes regardless of slime chunk restrictions, but are affected by the moon phase:
 
-- #allows_surface_slime_spawns（2项） - ``` swamp ``` （沼泽） - ``` mangrove_swamp ``` （红树林沼泽）
+- `swamp` (Swamp)
+- `mangrove_swamp` (Mangrove Swamp)
 
-## allows_tropical_fish_spawns_at_any_height
+### `#allows_tropical_fish_spawns_at_any_height` (1 entry)
 
-- 在此标签中的生物群系中生成热带鱼无视生成高度的限制。
+Tropical fish spawn in these biomes regardless of the height limit:
 
-- #allows_tropical_fish_spawns_at_any_height（1项） - ``` lush_caves ``` （繁茂洞穴）
+- `lush_caves` (Lush Caves)
 
-## has_structure/abandoned_camp_bamboo_jungle
+### `#has_structure/abandoned_camp_*` (18 tags)
 
-本段落包含会在下一次更新中出现的内容。
-这些特性在Java版26.3的开发版本中加入。
+This section contains content from an upcoming update (Java Edition 26.3 development versions).
 
-- 竹林废弃营地可生成的生物群系。
+Biomes where each abandoned camp variant can generate; each tag has 1 member, the biome itself, e.g.:
 
-- #has_structure/abandoned_camp_bamboo_jungle（1项） - ``` bamboo_jungle ``` （竹林）
+- `has_structure/abandoned_camp_bamboo_jungle`: `bamboo_jungle` (Bamboo Jungle)
+- `has_structure/abandoned_camp_birch_forest`: `birch_forest` (Birch Forest)
+- `has_structure/abandoned_camp_cherry_grove`: `cherry_grove` (Cherry Grove)
+- `has_structure/abandoned_camp_taiga`: `taiga` (Taiga)
+- `has_structure/abandoned_camp_swamp`: `swamp` (Swamp)
 
-## has_structure/abandoned_camp_birch_forest
+For the complete list, see the tag definitions under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-本段落包含会在下一次更新中出现的内容。
-这些特性在Java版26.3的开发版本中加入。
+### `#has_structure/ancient_city` (1 entry)
 
-- 桦木森林废弃营地可生成的生物群系。
+Biomes where ancient cities can generate:
 
-- #has_structure/abandoned_camp_birch_forest（1项） - ``` birch_forest ``` （桦木森林）
+- `deep_dark` (Deep Dark)
 
-## has_structure/abandoned_camp_cherry_grove
+### `#has_structure/bastion_remnant` (4 entries)
 
-本段落包含会在下一次更新中出现的内容。
-这些特性在Java版26.3的开发版本中加入。
+Biomes where bastion remnants can generate:
 
-- 樱花树林废弃营地可生成的生物群系。
+- `crimson_forest` (Crimson Forest)
+- `nether_wastes` (Nether Wastes)
+- `soul_sand_valley` (Soul Sand Valley)
+- `warped_forest` (Warped Forest)
 
-- #has_structure/abandoned_camp_cherry_grove（1项） - ``` cherry_grove ``` （樱花树林）
+### `#has_structure/buried_treasure` (1 entry)
 
-## has_structure/abandoned_camp_dappled_forest
+Biomes where buried treasure can generate:
 
-本段落包含会在下一次更新中出现的内容。
-这些特性在Java版26.3的开发版本中加入。
+- `#is_beach`
 
-- 斑驳森林废弃营地可生成的生物群系。
+### `#has_structure/desert_pyramid` (1 entry)
 
-- #has_structure/abandoned_camp_dappled_forest（1项） - ``` dappled_forest ``` （斑驳森林）
+Biomes where desert pyramids can generate:
 
-## has_structure/abandoned_camp_flower_forest
+- `desert` (Desert)
 
-本段落包含会在下一次更新中出现的内容。
-这些特性在Java版26.3的开发版本中加入。
+### `#has_structure/end_city` (2 entries)
 
-- 繁花森林废弃营地可生成的生物群系。
+Biomes where end cities can generate:
 
-- #has_structure/abandoned_camp_flower_forest（1项） - ``` flower_forest ``` （繁花森林）
+- `end_highlands` (End Highlands)
+- `end_midlands` (End Midlands)
 
-## has_structure/abandoned_camp_forest
+### `#has_structure/igloo` (3 entries)
 
-本段落包含会在下一次更新中出现的内容。
-这些特性在Java版26.3的开发版本中加入。
+Biomes where igloos can generate:
 
-- 森林废弃营地可生成的生物群系。
+- `snowy_taiga` (Snowy Taiga)
+- `snowy_plains` (Snowy Plains)
+- `snowy_slopes` (Snowy Slopes)
 
-- #has_structure/abandoned_camp_forest（1项） - ``` forest ``` （森林）
+### `#has_structure/jungle_temple` (2 entries)
 
-## has_structure/abandoned_camp_meadow
+Biomes where jungle temples can generate:
 
-本段落包含会在下一次更新中出现的内容。
-这些特性在Java版26.3的开发版本中加入。
+- `bamboo_jungle` (Bamboo Jungle)
+- `jungle` (Jungle)
 
-- 草甸废弃营地可生成的生物群系。
+### `#has_structure/mineshaft` (23 entries)
 
-- #has_structure/abandoned_camp_meadow（1项） - ``` meadow ``` （草甸）
+Biomes where regular (underground) mineshafts can generate; members include multiple `#is_*` biome tag references and directly listed biomes, e.g.:
 
-## has_structure/abandoned_camp_old_growth_birch_forest
+- `#is_ocean`
+- `#is_river`
+- `#is_taiga`
+- `desert` (Desert)
+- `dripstone_caves` (Dripstone Caves)
 
-本段落包含会在下一次更新中出现的内容。
-这些特性在Java版26.3的开发版本中加入。
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-- 原始桦木森林废弃营地可生成的生物群系。
+### `#has_structure/mineshaft_mesa` (1 entry)
 
-- #has_structure/abandoned_camp_old_growth_birch_forest（1项） - ``` old_growth_birch_forest ``` （原始桦木森林）
+Biomes where badlands-variant (surface) mineshafts can generate:
 
-## has_structure/abandoned_camp_old_growth_pine_taiga
+- `#is_badlands`
 
-本段落包含会在下一次更新中出现的内容。
-这些特性在Java版26.3的开发版本中加入。
+### `#has_structure/nether_fortress` (1 entry)
 
-- 原始松木针叶林废弃营地可生成的生物群系。
+Biomes where nether fortresses can generate:
 
-- #has_structure/abandoned_camp_old_growth_pine_taiga（1项） - ``` old_growth_pine_taiga ``` （原始松木针叶林）
+- `#is_nether`
 
-## has_structure/abandoned_camp_old_growth_spruce_taiga
+### `#has_structure/nether_fossil` (1 entry)
 
-本段落包含会在下一次更新中出现的内容。
-这些特性在Java版26.3的开发版本中加入。
+Biomes where nether fossils can generate:
 
-- 原始云杉针叶林废弃营地可生成的生物群系。
+- `soul_sand_valley` (Soul Sand Valley)
 
-- #has_structure/abandoned_camp_old_growth_spruce_taiga（1项） - ``` old_growth_spruce_taiga ``` （原始云杉针叶林）
+### `#has_structure/ocean_monument` (1 entry)
 
-## has_structure/abandoned_camp_pale_garden
+Biomes where ocean monuments can generate:
 
-本段落包含会在下一次更新中出现的内容。
-这些特性在Java版26.3的开发版本中加入。
+- `#is_deep_ocean`
 
-- 苍白之园废弃营地可生成的生物群系。
+### `#has_structure/ocean_ruin_cold` (6 entries)
 
-- #has_structure/abandoned_camp_pale_garden（1项） - ``` pale_garden ``` （苍白之园）
+Biomes where cold-ocean-variant ocean ruins can generate:
 
-## has_structure/abandoned_camp_savanna
+- `frozen_ocean` (Frozen Ocean)
+- `cold_ocean` (Cold Ocean)
+- `ocean` (Ocean)
+- `deep_frozen_ocean` (Deep Frozen Ocean)
+- `deep_cold_ocean` (Deep Cold Ocean)
+- `deep_ocean` (Deep Ocean)
 
-本段落包含会在下一次更新中出现的内容。
-这些特性在Java版26.3的开发版本中加入。
+### `#has_structure/ocean_ruin_warm` (3 entries)
 
-- 热带草原废弃营地可生成的生物群系。
+Biomes where warm-ocean-variant ocean ruins can generate:
 
-- #has_structure/abandoned_camp_savanna（1项） - ``` savanna ``` （热带草原）
+- `lukewarm_ocean` (Lukewarm Ocean)
+- `warm_ocean` (Warm Ocean)
+- `deep_lukewarm_ocean` (Deep Lukewarm Ocean)
 
-## has_structure/abandoned_camp_snowy_taiga
+### `#has_structure/pillager_outpost` (7 entries)
 
-本段落包含会在下一次更新中出现的内容。
-这些特性在Java版26.3的开发版本中加入。
+Biomes where pillager outposts can generate, e.g.:
 
-- 积雪针叶林废弃营地可生成的生物群系。
+- `desert` (Desert)
+- `plains` (Plains)
+- `savanna` (Savanna)
+- `snowy_plains` (Snowy Plains)
+- `taiga` (Taiga)
 
-- #has_structure/abandoned_camp_snowy_taiga（1项） - ``` snowy_taiga ``` （积雪针叶林）
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-## has_structure/abandoned_camp_sparse_jungle
+### `#has_structure/ruined_portal_desert` (1 entry)
 
-本段落包含会在下一次更新中出现的内容。
-这些特性在Java版26.3的开发版本中加入。
+Biomes where desert-variant ruined portals can generate:
 
-- 稀疏丛林废弃营地可生成的生物群系。
+- `desert` (Desert)
 
-- #has_structure/abandoned_camp_sparse_jungle（1项） - ``` sparse_jungle ``` （稀疏丛林）
+### `#has_structure/ruined_portal_jungle` (1 entry)
 
-## has_structure/abandoned_camp_swamp
+Biomes where jungle-variant ruined portals can generate:
 
-本段落包含会在下一次更新中出现的内容。
-这些特性在Java版26.3的开发版本中加入。
+- `#is_jungle`
 
-- 沼泽废弃营地可生成的生物群系。
+### `#has_structure/ruined_portal_mountain` (6 entries)
 
-- #has_structure/abandoned_camp_swamp（1项） - ``` swamp ``` （沼泽）
+Biomes where mountain-variant ruined portals can generate:
 
-## has_structure/abandoned_camp_taiga
+- `#is_badlands`
+- `#is_hill`
+- `savanna_plateau` (Savanna Plateau)
+- `windswept_savanna` (Windswept Savanna)
+- `stony_shore` (Stony Shore)
+- `#is_mountain`
 
-本段落包含会在下一次更新中出现的内容。
-这些特性在Java版26.3的开发版本中加入。
+### `#has_structure/ruined_portal_nether` (1 entry)
 
-- 针叶林废弃营地可生成的生物群系。
+Biomes where nether-variant ruined portals can generate:
 
-- #has_structure/abandoned_camp_taiga（1项） - ``` taiga ``` （针叶林）
+- `#is_nether`
 
-## has_structure/abandoned_camp_windswept_forest
+### `#has_structure/ruined_portal_ocean` (1 entry)
 
-本段落包含会在下一次更新中出现的内容。
-这些特性在Java版26.3的开发版本中加入。
+Biomes where ocean-variant ruined portals can generate:
 
-- 风袭森林废弃营地可生成的生物群系。
+- `#is_ocean`
 
-- #has_structure/abandoned_camp_windswept_forest（1项） - ``` windswept_forest ``` （风袭森林）
+### `#has_structure/ruined_portal_standard` (13 entries)
 
-## has_structure/abandoned_camp_wooded_badlands
+Biomes where regular ruined portals can generate, e.g.:
 
-本段落包含会在下一次更新中出现的内容。
-这些特性在Java版26.3的开发版本中加入。
+- `#is_beach`
+- `#is_river`
+- `#is_taiga`
+- `#is_forest`
+- `plains` (Plains)
 
-- 疏林恶地废弃营地可生成的生物群系。
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-- #has_structure/abandoned_camp_wooded_badlands（1项） - ``` wooded_badlands ``` （疏林恶地）
+### `#has_structure/ruined_portal_swamp` (2 entries)
 
-## has_structure/ancient_city
+Biomes where swamp-variant ruined portals can generate:
 
-- 远古城市可生成的生物群系。
+- `swamp` (Swamp)
+- `mangrove_swamp` (Mangrove Swamp)
 
-- #has_structure/ancient_city（1项） - ``` deep_dark ``` （深暗之域）
+### `#has_structure/shipwreck` (1 entry)
 
-## has_structure/bastion_remnant
+Biomes where regular shipwrecks can generate:
 
-- 堡垒遗迹可生成的生物群系。
+- `#is_ocean`
 
-- #has_structure/bastion_remnant（4项） - ``` crimson_forest ``` （绯红森林） - ``` nether_wastes ``` （下界荒地） - ``` soul_sand_valley ``` （灵魂沙峡谷） - ``` warped_forest ``` （诡异森林）
+### `#has_structure/shipwreck_beached` (1 entry)
 
-## has_structure/buried_treasure
+Biomes where beached shipwrecks can generate:
 
-- 埋藏的宝藏可生成的生物群系。
+- `#is_beach`
 
-- #has_structure/buried_treasure（1项） - ``` #is_beach ```
+### `#has_structure/stronghold` (1 entry)
 
-## has_structure/desert_pyramid
+Biomes where strongholds can generate:
 
-- 沙漠神殿可生成的生物群系。
+- `#is_overworld`
 
-- #has_structure/desert_pyramid（1项） - ``` desert ``` （沙漠）
+### `#has_structure/swamp_hut` (1 entry)
 
-## has_structure/end_city
+Biomes where swamp huts can generate:
 
-- 末地城可生成的生物群系。
+- `swamp` (Swamp)
 
-- #has_structure/end_city（2项） - ``` end_highlands ``` （末地高地） - ``` end_midlands ``` （末地内陆）
+### `#has_structure/trail_ruins` (6 entries)
 
-## has_structure/igloo
+Biomes where trail ruins can generate:
 
-- 雪屋可生成的生物群系。
+- `taiga` (Taiga)
+- `snowy_taiga` (Snowy Taiga)
+- `old_growth_pine_taiga` (Old Growth Pine Taiga)
+- `old_growth_spruce_taiga` (Old Growth Spruce Taiga)
+- `old_growth_birch_forest` (Old Growth Birch Forest)
+- `jungle` (Jungle)
 
-- #has_structure/igloo（3项） - ``` snowy_taiga ``` （积雪针叶林） - ``` snowy_plains ``` （雪原） - ``` snowy_slopes ``` （积雪山坡）
+### `#has_structure/trial_chambers` (55 entries)
 
-## has_structure/jungle_temple
+Biomes where trial chambers can generate, e.g.:
 
-- 丛林神庙可生成的生物群系。
+- `mushroom_fields` (Mushroom Fields)
+- `swamp` (Swamp)
+- `plains` (Plains)
+- `desert` (Desert)
+- `dripstone_caves` (Dripstone Caves)
 
-- #has_structure/jungle_temple（2项） - ``` bamboo_jungle ``` （竹林） - ``` jungle ``` （丛林）
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-## has_structure/mineshaft
+### `#has_structure/village_desert` (1 entry)
 
-- 普通（地下）废弃矿井可生成的生物群系。
+Biomes where desert-variant villages can generate:
 
-- #has_structure/mineshaft（23项） - ``` #is_ocean ``` - ``` #is_river ``` - ``` #is_beach ``` - ``` #is_mountain ``` - ``` #is_hill ``` - ``` #is_taiga ``` - ``` #is_jungle ``` - ``` #is_forest ``` - ``` stony_shore ``` （石岸） - ``` mushroom_fields ``` （蘑菇岛） - ``` ice_spikes ``` （冰刺之地） - ``` windswept_savanna ``` （风袭热带草原） - ``` desert ``` （沙漠） - ``` savanna ``` （热带草原） - ``` snowy_plains ``` （雪原） - ``` plains ``` （平原） - ``` sunflower_plains ``` （向日葵平原） - ``` swamp ``` （沼泽） - ``` mangrove_swamp ``` （红树林沼泽） - ``` savanna_plateau ``` （热带高原） - ``` dripstone_caves ``` （溶洞） - ``` lush_caves ``` （繁茂洞穴） - ``` sulfur_caves ``` （硫黄洞穴）
+- `desert` (Desert)
 
-## has_structure/mineshaft_mesa
+### `#has_structure/village_plains` (2 entries)
 
-- 恶地变种（地表）废弃矿井可生成的生物群系。
+Biomes where plains-variant villages can generate:
 
-- #has_structure/mineshaft_mesa（1项） - ``` #is_badlands ```
+- `plains` (Plains)
+- `meadow` (Meadow)
 
-## has_structure/nether_fortress
+### `#has_structure/village_savanna` (1 entry)
 
-- 下界要塞可生成的生物群系。
+Biomes where savanna-variant villages can generate:
 
-- #has_structure/nether_fortress（1项） - ``` #is_nether ```
+- `savanna` (Savanna)
 
-## has_structure/nether_fossil
+### `#has_structure/village_snowy` (1 entry)
 
-- 下界化石可生成的生物群系。
+Biomes where snowy-variant villages can generate:
 
-- #has_structure/nether_fossil（1项） - ``` soul_sand_valley ``` （灵魂沙峡谷）
+- `snowy_plains` (Snowy Plains)
 
-## has_structure/ocean_monument
+### `#has_structure/village_taiga` (1 entry)
 
-- 海底神殿可生成的生物群系。
+Biomes where taiga-variant villages can generate:
 
-- #has_structure/ocean_monument（1项） - ``` #is_deep_ocean ```
+- `taiga` (Taiga)
 
-## has_structure/ocean_ruin_cold
+### `#has_structure/woodland_mansion` (2 entries)
 
-- 冷水海洋变种海底废墟可生成的生物群系。
+Biomes where woodland mansions can generate:
 
-- #has_structure/ocean_ruin_cold（6项） - ``` frozen_ocean ``` （冻洋） - ``` cold_ocean ``` （冷水海洋） - ``` ocean ``` （海洋） - ``` deep_frozen_ocean ``` （冰冻深海） - ``` deep_cold_ocean ``` （冷水深海） - ``` deep_ocean ``` （深海）
+- `dark_forest` (Dark Forest)
+- `pale_garden` (Pale Garden)
 
-## has_structure/ocean_ruin_warm
+### `#is_badlands` (3 entries)
 
-- 暖水海洋变种海底废墟可生成的生物群系。
+Badlands biomes. Wolves spawning in these biomes are striped:
 
-- #has_structure/ocean_ruin_warm（3项） - ``` lukewarm_ocean ``` （温水海洋） - ``` warm_ocean ``` （暖水海洋） - ``` deep_lukewarm_ocean ``` （温水深海）
+- `badlands` (Badlands)
+- `eroded_badlands` (Eroded Badlands)
+- `wooded_badlands` (Wooded Badlands)
 
-## has_structure/pillager_outpost
+### `#is_beach` (2 entries)
 
-- 掠夺者前哨站可生成的生物群系。
+Beach biomes:
 
-- #has_structure/pillager_outpost（7项） - ``` desert ``` （沙漠） - ``` plains ``` （平原） - ``` savanna ``` （热带草原） - ``` snowy_plains ``` （雪原） - ``` taiga ``` （针叶林） - ``` #is_mountain ``` - ``` grove ``` （雪林）
+- `beach` (Beach)
+- `snowy_beach` (Snowy Beach)
 
-## has_structure/ruined_portal_desert
+### `#is_deep_ocean` (4 entries)
 
-- 沙漠变种废弃传送门可生成的生物群系。
+Deep ocean biomes:
 
-- #has_structure/ruined_portal_desert（1项） - ``` desert ``` （沙漠）
+- `deep_frozen_ocean` (Deep Frozen Ocean)
+- `deep_cold_ocean` (Deep Cold Ocean)
+- `deep_ocean` (Deep Ocean)
+- `deep_lukewarm_ocean` (Deep Lukewarm Ocean)
 
-## has_structure/ruined_portal_jungle
+### `#is_end` (5 entries)
 
-- 丛林变种废弃传送门可生成的生物群系。
+End biomes:
 
-- #has_structure/ruined_portal_jungle（1项） - ``` #is_jungle ```
+- `the_end` (The End)
+- `end_highlands` (End Highlands)
+- `end_midlands` (End Midlands)
+- `small_end_islands` (Small End Islands)
+- `end_barrens` (End Barrens)
 
-## has_structure/ruined_portal_mountain
+### `#is_forest` (8 entries)
 
-- 山地变种废弃传送门可生成的生物群系。
+Forest biomes, e.g.:
 
-- #has_structure/ruined_portal_mountain（6项） - ``` #is_badlands ``` - ``` #is_hill ``` - ``` savanna_plateau ``` （热带高原） - ``` windswept_savanna ``` （风袭热带草原） - ``` stony_shore ``` （石岸） - ``` #is_mountain ```
+- `forest` (Forest)
+- `flower_forest` (Flower Forest)
+- `birch_forest` (Birch Forest)
+- `old_growth_birch_forest` (Old Growth Birch Forest)
+- `dappled_forest` (Dappled Forest)
 
-## has_structure/ruined_portal_nether
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-- 下界变种废弃传送门可生成的生物群系。
+### `#is_hill` (3 entries)
 
-- #has_structure/ruined_portal_nether（1项） - ``` #is_nether ```
+Windswept hill biomes:
 
-## has_structure/ruined_portal_ocean
+- `windswept_hills` (Windswept Hills)
+- `windswept_forest` (Windswept Forest)
+- `windswept_gravelly_hills` (Windswept Gravelly Hills)
 
-- 海洋变种废弃传送门可生成的生物群系。
+### `#is_jungle` (3 entries)
 
-- #has_structure/ruined_portal_ocean（1项） - ``` #is_ocean ```
+Jungle biomes. Wolves spawning in these biomes are chestnut:
 
-## has_structure/ruined_portal_standard
+- `bamboo_jungle` (Bamboo Jungle)
+- `jungle` (Jungle)
+- `sparse_jungle` (Sparse Jungle)
 
-- 普通废弃传送门可生成的生物群系。
+### `#is_mountain` (6 entries)
 
-- #has_structure/ruined_portal_standard（13项） - ``` #is_beach ``` - ``` #is_river ``` - ``` #is_taiga ``` - ``` #is_forest ``` - ``` mushroom_fields ``` （蘑菇岛） - ``` ice_spikes ``` （冰刺之地） - ``` dripstone_caves ``` （溶洞） - ``` lush_caves ``` （繁茂洞穴） - ``` sulfur_caves ``` （硫黄洞穴） - ``` savanna ``` （热带草原） - ``` snowy_plains ``` （雪原） - ``` plains ``` （平原） - ``` sunflower_plains ``` （向日葵平原）
+Mountain biomes:
 
-## has_structure/ruined_portal_swamp
+- `meadow` (Meadow)
+- `frozen_peaks` (Frozen Peaks)
+- `jagged_peaks` (Jagged Peaks)
+- `stony_peaks` (Stony Peaks)
+- `snowy_slopes` (Snowy Slopes)
+- `cherry_grove` (Cherry Grove)
 
-- 沼泽变种废弃传送门可生成的生物群系。
+### `#is_nether` (5 entries)
 
-- #has_structure/ruined_portal_swamp（2项） - ``` swamp ``` （沼泽） - ``` mangrove_swamp ``` （红树林沼泽）
+Nether biomes:
 
-## has_structure/shipwreck
+- `nether_wastes` (Nether Wastes)
+- `soul_sand_valley` (Soul Sand Valley)
+- `crimson_forest` (Crimson Forest)
+- `warped_forest` (Warped Forest)
+- `basalt_deltas` (Basalt Deltas)
 
-- 普通沉船可生成的生物群系。
+### `#is_ocean` (6 entries)
 
-- #has_structure/shipwreck（1项） - ``` #is_ocean ```
+Ocean biomes:
 
-## has_structure/shipwreck_beached
+- `#is_deep_ocean`
+- `frozen_ocean` (Frozen Ocean)
+- `ocean` (Ocean)
+- `cold_ocean` (Cold Ocean)
+- `lukewarm_ocean` (Lukewarm Ocean)
+- `warm_ocean` (Warm Ocean)
 
-- 搁浅沉船可生成的生物群系。
+### `#is_overworld` (56 entries)
 
-- #has_structure/shipwreck_beached（1项） - ``` #is_beach ```
+Overworld biomes, e.g.:
 
-## has_structure/stronghold
+- `mushroom_fields` (Mushroom Fields)
+- `ocean` (Ocean)
+- `plains` (Plains)
+- `desert` (Desert)
+- `deep_dark` (Deep Dark)
 
-- 要塞可生成的生物群系。
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-- #has_structure/stronghold（1项） - ``` #is_overworld ```
+### `#is_river` (2 entries)
 
-## has_structure/swamp_hut
+River biomes:
 
-- 沼泽小屋可生成的生物群系。
+- `river` (River)
+- `frozen_river` (Frozen River)
 
-- #has_structure/swamp_hut（1项） - ``` swamp ``` （沼泽）
+### `#is_savanna` (3 entries)
 
-## has_structure/trail_ruins
+Savanna biomes. Wolves spawning in these biomes are spotted:
 
-- 古迹废墟可生成的生物群系。
+- `savanna` (Savanna)
+- `savanna_plateau` (Savanna Plateau)
+- `windswept_savanna` (Windswept Savanna)
 
-- #has_structure/trail_ruins（6项） - ``` taiga ``` （针叶林） - ``` snowy_taiga ``` （积雪针叶林） - ``` old_growth_pine_taiga ``` （原始松木针叶林） - ``` old_growth_spruce_taiga ``` （原始云杉针叶林） - ``` old_growth_birch_forest ``` （原始桦木森林） - ``` jungle ``` （丛林）
+### `#is_taiga` (4 entries)
 
-## has_structure/trial_chambers
+Taiga biomes:
 
-- 试炼密室可生成的生物群系。
+- `taiga` (Taiga)
+- `snowy_taiga` (Snowy Taiga)
+- `old_growth_pine_taiga` (Old Growth Pine Taiga)
+- `old_growth_spruce_taiga` (Old Growth Spruce Taiga)
 
-- #has_structure/trial_chambers（55项） - ``` mushroom_fields ``` （蘑菇岛） - ``` deep_frozen_ocean ``` （冰冻深海） - ``` frozen_ocean ``` （冻洋） - ``` deep_cold_ocean ``` （冷水深海） - ``` cold_ocean ``` （冷水海洋） - ``` deep_ocean ``` （深海） - ``` ocean ``` （海洋） - ``` deep_lukewarm_ocean ``` （温水深海） - ``` lukewarm_ocean ``` （温水海洋） - ``` warm_ocean ``` （暖水海洋） - ``` stony_shore ``` （石岸） - ``` swamp ``` （沼泽） - ``` mangrove_swamp ``` （红树林沼泽） - ``` snowy_slopes ``` （积雪山坡） - ``` snowy_plains ``` （雪原） - ``` snowy_beach ``` （积雪沙滩） - ``` windswept_gravelly_hills ``` （风袭沙砾丘陵） - ``` grove ``` （雪林） - ``` windswept_hills ``` （风袭丘陵） - ``` snowy_taiga ``` （积雪针叶林） - ``` windswept_forest ``` （风袭森林） - ``` taiga ``` （针叶林） - ``` plains ``` （平原） - ``` meadow ``` （草甸） - ``` beach ``` （沙滩） - ``` forest ``` （森林） - ``` old_growth_spruce_taiga ``` （原始云杉针叶林） - ``` flower_forest ``` （繁花森林） - ``` birch_forest ``` （桦木森林） - ``` dark_forest ``` （黑森林） - ``` pale_garden ``` （苍白之园） - ``` savanna_plateau ``` （热带高原） - ``` savanna ``` （热带草原） - ``` jungle ``` （丛林） - ``` badlands ``` （恶地） - ``` desert ``` （沙漠） - ``` wooded_badlands ``` （疏林恶地） - ``` jagged_peaks ``` （尖峭山峰） - ``` stony_peaks ``` （裸岩山峰） - ``` frozen_river ``` （冻河） - ``` river ``` （河流） - ``` ice_spikes ``` （冰刺之地） - ``` dappled_forest ``` （斑驳森林） - ``` old_growth_pine_taiga ``` （原始松木针叶林） - ``` sunflower_plains ``` （向日葵平原） - ``` old_growth_birch_forest ``` （原始桦木森林） - ``` sparse_jungle ``` （稀疏丛林） - ``` bamboo_jungle ``` （竹林） - ``` eroded_badlands ``` （风蚀恶地） - ``` windswept_savanna ``` （风袭热带草原） - ``` cherry_grove ``` （樱花树林） - ``` frozen_peaks ``` （冰封山峰） - ``` dripstone_caves ``` （溶洞） - ``` lush_caves ``` （繁茂洞穴） - ``` sulfur_caves ``` （硫黄洞穴）
+### `#mineshaft_blocking` (1 entry)
 
-## has_structure/village_desert
+Mineshaft generation is blocked in these biomes:
 
-- 沙漠变种村庄可生成的生物群系。
+- `deep_dark` (Deep Dark)
 
-- #has_structure/village_desert（1项） - ``` desert ``` （沙漠）
+### `#more_frequent_drowned_spawns` (1 entry)
 
-## has_structure/village_plains
+Drowned spawning in these biomes is not subject to the Y<58 height limit:
 
-- 平原变种村庄可生成的生物群系。
+- `#is_river`
 
-- #has_structure/village_plains（2项） - ``` plains ``` （平原） - ``` meadow ``` （草甸）
+### `#polar_bears_spawn_on_alternate_blocks` (2 entries)
 
-## has_structure/village_savanna
+Polar bears spawn on ice in these biomes:
 
-- 热带草原变种村庄可生成的生物群系。
+- `frozen_ocean` (Frozen Ocean)
+- `deep_frozen_ocean` (Deep Frozen Ocean)
 
-- #has_structure/village_savanna（1项） - ``` savanna ``` （热带草原）
+### `#produces_corals_from_bonemeal` (1 entry)
 
-## has_structure/village_snowy
+Using bone meal on specific underwater blocks in these biomes can generate coral:
 
-- 雪原变种村庄可生成的生物群系。
+- `warm_ocean` (Warm Ocean)
 
-- #has_structure/village_snowy（1项） - ``` snowy_plains ``` （雪原）
+### `#reduce_water_ambient_spawns` (1 entry)
 
-## has_structure/village_taiga
+Underwater ambient mobs spawn less frequently here:
 
-- 针叶林变种村庄可生成的生物群系。
+- `#is_river`
 
-- #has_structure/village_taiga（1项） - ``` taiga ``` （针叶林）
+### `#required_ocean_monument_surrounding` (2 entries)
 
-## has_structure/woodland_mansion
+Ocean monuments require all surrounding biomes to be in this tag:
 
-- 林地府邸可生成的生物群系。
+- `#is_ocean`
+- `#is_river`
 
-- #has_structure/woodland_mansion（2项） - ``` dark_forest ``` （黑森林） - ``` pale_garden ``` （苍白之园）
+### `#spawns_cold_variant_farm_animals` (23 entries)
 
-## is_badlands
+Pigs, cows, and chickens spawn as cold variants in these biomes; sheep wool is more often black:
 
-- 是恶地生物群系。 在此标签的生物群系中，生成的狼均为条纹狼。
+- `snowy_plains` (Snowy Plains)
+- `frozen_ocean` (Frozen Ocean)
+- `deep_dark` (Deep Dark)
+- `taiga` (Taiga)
+- `#is_end`
 
-- #is_badlands（3项） - ``` badlands ``` （恶地） - ``` eroded_badlands ``` （风蚀恶地） - ``` wooded_badlands ``` （疏林恶地）
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-## is_beach
+### `#spawns_cold_variant_frogs` (13 entries)
 
-- 是沙滩生物群系。
+Frogs spawn with green skin in these biomes:
 
-- #is_beach（2项） - ``` beach ``` （沙滩） - ``` snowy_beach ``` （积雪沙滩）
+- `snowy_plains` (Snowy Plains)
+- `frozen_ocean` (Frozen Ocean)
+- `deep_dark` (Deep Dark)
+- `snowy_taiga` (Snowy Taiga)
+- `#is_end`
 
-## is_deep_ocean
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-- 是深海生物群系。
+### `#spawns_coral_variant_zombie_nautilus` (1 entry)
 
-- #is_deep_ocean（4项） - ``` deep_frozen_ocean ``` （冰冻深海） - ``` deep_cold_ocean ``` （冷水深海） - ``` deep_ocean ``` （深海） - ``` deep_lukewarm_ocean ``` （温水深海）
+Biomes where coral-variant zombie nautiluses can spawn:
 
-## is_end
+- `warm_ocean` (Warm Ocean)
 
-- 是末地生物群系。
+### `#spawns_gold_rabbits` (1 entry)
 
-- #is_end（5项） - ``` the_end ``` （末地） - ``` end_highlands ``` （末地高地） - ``` end_midlands ``` （末地内陆） - ``` small_end_islands ``` （末地小型岛屿） - ``` end_barrens ``` （末地荒地）
+Rabbits spawn with golden fur in these biomes:
 
-## is_forest
+- `desert` (Desert)
 
-- 是森林生物群系。
+### `#spawns_snow_foxes` (10 entries)
 
-- #is_forest（8项） - ``` forest ``` （森林） - ``` flower_forest ``` （繁花森林） - ``` birch_forest ``` （桦木森林） - ``` old_growth_birch_forest ``` （原始桦木森林） - ``` dappled_forest ``` （斑驳森林） - ``` dark_forest ``` （黑森林） - ``` pale_garden ``` （苍白之园） - ``` grove ``` （雪林）
+Foxes spawn with white fur in these biomes, e.g.:
 
-## is_hill
+- `snowy_plains` (Snowy Plains)
+- `ice_spikes` (Ice Spikes)
+- `frozen_ocean` (Frozen Ocean)
+- `snowy_taiga` (Snowy Taiga)
+- `grove` (Grove)
 
-- 是风袭山地生物群系。
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-- #is_hill（3项） - ``` windswept_hills ``` （风袭丘陵） - ``` windswept_forest ``` （风袭森林） - ``` windswept_gravelly_hills ``` （风袭沙砾丘陵）
+### `#spawns_warm_variant_farm_animals` (9 entries)
 
-## is_jungle
+Pigs, cows, and chickens spawn as warm variants in these biomes; sheep wool is more often brown:
 
-- 是丛林生物群系。 在此标签的生物群系中，生成的狼均为赭红狼。
+- `desert` (Desert)
+- `warm_ocean` (Warm Ocean)
+- `#is_jungle`
+- `#is_savanna`
+- `#is_nether`
 
-- #is_jungle（3项） - ``` bamboo_jungle ``` （竹林） - ``` jungle ``` （丛林） - ``` sparse_jungle ``` （稀疏丛林）
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-## is_mountain
+### `#spawns_warm_variant_frogs` (7 entries)
 
-- 是山地生物群系。
+Frogs spawn with white skin in these biomes:
 
-- #is_mountain（6项） - ``` meadow ``` （草甸） - ``` frozen_peaks ``` （冰封山峰） - ``` jagged_peaks ``` （尖峭山峰） - ``` stony_peaks ``` （裸岩山峰） - ``` snowy_slopes ``` （积雪山坡） - ``` cherry_grove ``` （樱花树林）
+- `desert` (Desert)
+- `warm_ocean` (Warm Ocean)
+- `#is_jungle`
+- `#is_savanna`
+- `#is_nether`
 
-## is_nether
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-- 是下界生物群系。
+### `#spawns_white_rabbits` (10 entries)
 
-- #is_nether（5项） - ``` nether_wastes ``` （下界荒地） - ``` soul_sand_valley ``` （灵魂沙峡谷） - ``` crimson_forest ``` （绯红森林） - ``` warped_forest ``` （诡异森林） - ``` basalt_deltas ``` （玄武岩三角洲）
+Rabbits spawn with white fur in these biomes, e.g.:
 
-## is_ocean
+- `snowy_plains` (Snowy Plains)
+- `ice_spikes` (Ice Spikes)
+- `frozen_ocean` (Frozen Ocean)
+- `snowy_taiga` (Snowy Taiga)
+- `grove` (Grove)
 
-- 是海洋生物群系。
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-- #is_ocean（6项） - ``` #is_deep_ocean ``` - ``` frozen_ocean ``` （冻洋） - ``` ocean ``` （海洋） - ``` cold_ocean ``` （冷水海洋） - ``` lukewarm_ocean ``` （温水海洋） - ``` warm_ocean ``` （暖水海洋）
+### `#stronghold_biased_to` (38 entries)
 
-## is_overworld
+Biomes strongholds are biased toward:
 
-- 是主世界生物群系。
+- `plains` (Plains)
+- `desert` (Desert)
+- `forest` (Forest)
+- `taiga` (Taiga)
+- `meadow` (Meadow)
 
-- #is_overworld（56项） - ``` mushroom_fields ``` （蘑菇岛） - ``` deep_frozen_ocean ``` （冰冻深海） - ``` frozen_ocean ``` （冻洋） - ``` deep_cold_ocean ``` （冷水深海） - ``` cold_ocean ``` （冷水海洋） - ``` deep_ocean ``` （深海） - ``` ocean ``` （海洋） - ``` deep_lukewarm_ocean ``` （温水深海） - ``` lukewarm_ocean ``` （温水海洋） - ``` warm_ocean ``` （暖水海洋） - ``` stony_shore ``` （石岸） - ``` swamp ``` （沼泽） - ``` mangrove_swamp ``` （红树林沼泽） - ``` snowy_slopes ``` （积雪山坡） - ``` snowy_plains ``` （雪原） - ``` snowy_beach ``` （积雪沙滩） - ``` windswept_gravelly_hills ``` （风袭沙砾丘陵） - ``` grove ``` （雪林） - ``` windswept_hills ``` （风袭丘陵） - ``` snowy_taiga ``` （积雪针叶林） - ``` windswept_forest ``` （风袭森林） - ``` taiga ``` （针叶林） - ``` plains ``` （平原） - ``` meadow ``` （草甸） - ``` beach ``` （沙滩） - ``` forest ``` （森林） - ``` old_growth_spruce_taiga ``` （原始云杉针叶林） - ``` flower_forest ``` （繁花森林） - ``` birch_forest ``` （桦木森林） - ``` dark_forest ``` （黑森林） - ``` pale_garden ``` （苍白之园） - ``` savanna_plateau ``` （热带高原） - ``` savanna ``` （热带草原） - ``` jungle ``` （丛林） - ``` badlands ``` （恶地） - ``` desert ``` （沙漠） - ``` wooded_badlands ``` （疏林恶地） - ``` jagged_peaks ``` （尖峭山峰） - ``` stony_peaks ``` （裸岩山峰） - ``` frozen_river ``` （冻河） - ``` river ``` （河流） - ``` ice_spikes ``` （冰刺之地） - ``` dappled_forest ``` （斑驳森林） - ``` old_growth_pine_taiga ``` （原始松木针叶林） - ``` sunflower_plains ``` （向日葵平原） - ``` old_growth_birch_forest ``` （原始桦木森林） - ``` sparse_jungle ``` （稀疏丛林） - ``` bamboo_jungle ``` （竹林） - ``` eroded_badlands ``` （风蚀恶地） - ``` windswept_savanna ``` （风袭热带草原） - ``` cherry_grove ``` （樱花树林） - ``` frozen_peaks ``` （冰封山峰） - ``` dripstone_caves ``` （溶洞） - ``` lush_caves ``` （繁茂洞穴） - ``` sulfur_caves ``` （硫黄洞穴） - ``` deep_dark ``` （深暗之域）
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-## is_river
+### `#water_on_map_outlines` (4 entries)
 
-- 是河流生物群系。
+Biomes with this tag show as water on unexplored explorer maps:
 
-- #is_river（2项） - ``` river ``` （河流） - ``` frozen_river ``` （冻河）
+- `#is_ocean`
+- `#is_river`
+- `swamp` (Swamp)
+- `mangrove_swamp` (Mangrove Swamp)
 
-## is_savanna
+### `#without_wandering_trader_spawns` (1 entry)
 
-- 是热带草原生物群系。 在此标签的生物群系中，生成的狼均为斑点狼。
+Wandering traders do not spawn in these biomes:
 
-- #is_savanna（3项） - ``` savanna ``` （热带草原） - ``` savanna_plateau ``` （热带高原） - ``` windswept_savanna ``` （风袭热带草原）
+- `the_void` (The Void)
 
-## is_taiga
+### `#without_zombie_sieges` (1 entry)
 
-- 是针叶林生物群系。
+Zombie sieges do not occur in these biomes:
 
-- #is_taiga（4项） - ``` taiga ``` （针叶林） - ``` snowy_taiga ``` （积雪针叶林） - ``` old_growth_pine_taiga ``` （原始松木针叶林） - ``` old_growth_spruce_taiga ``` （原始云杉针叶林）
+- `mushroom_fields` (Mushroom Fields)
 
-## mineshaft_blocking
+## Removed tags
 
-- 在此标签的生物群系中，废弃矿井的生成会被阻断。
+### `#has_closer_water_fog`
 
-- #mineshaft_blocking（1项） - ``` deep_dark ``` （深暗之域）
+Added in 22w11a, removed in 25w42a. Underwater fog appears closer to the player in these biomes:
 
-## more_frequent_drowned_spawns
+- `swamp`
+- `mangrove_swamp`
 
-- 在此标签的生物群系中，溺尸的生成不会受到Y<58的高度限制。
+### `#increased_fire_burnout`
 
-- #more_frequent_drowned_spawns（1项） - ``` #is_river ```
+Added in 23w03a, removed in 25w42a. Fire burns out faster in these biomes, e.g.:
 
-## polar_bears_spawn_on_alternate_blocks
+- `bamboo_jungle`
+- `mushroom_fields`
+- `mangrove_swamp`
+- `snowy_slopes`
+- `frozen_peaks`
 
-- 北极熊会在此标签的生物群系的冰面上生成。
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-- #polar_bears_spawn_on_alternate_blocks（2项） - ``` frozen_ocean ``` （冻洋） - ``` deep_frozen_ocean ``` （冰冻深海）
+### `#plays_underwater_music`
 
-## produces_corals_from_bonemeal
+Added in 22w11a, removed in 25w42a. Underwater music plays while the player is in these biomes:
 
-- 在此标签的生物群系中，对水下的特定方块使用骨粉时，有概率生成珊瑚。
+- `#is_ocean`
+- `#is_river`
 
-- #produces_corals_from_bonemeal（1项） - ``` warm_ocean ``` （暖水海洋）
+### `#snow_golem_melts`
 
-## reduce_water_ambient_spawns
+Added in 23w03a, removed in 25w42a. Snow golems melt in these biomes, e.g.:
 
-- 水下环境生物会更少在此生成。
+- `badlands`
+- `basalt_deltas`
+- `crimson_forest`
+- `desert`
+- `nether_wastes`
 
-- #reduce_water_ambient_spawns（1项） - ``` #is_river ```
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-## required_ocean_monument_surrounding
+### `#without_patrol_spawns`
 
-- 海底神殿需要周围全部为此生物群系才可生成。
+Added in 22w11a, removed in 25w45a. Illager patrols do not spawn in these biomes:
 
-- #required_ocean_monument_surrounding（2项） - ``` #is_ocean ``` - ``` #is_river ```
-
-## spawns_cold_variant_farm_animals
-
-- 在此标签的生物群系中，生成的猪、牛和鸡为寒带变种，生成的绵羊毛色更常为黑色。
-
-- #spawns_cold_variant_farm_animals（23项） - ``` snowy_plains ``` （雪原） - ``` ice_spikes ``` （冰刺之地） - ``` frozen_peaks ``` （冰封山峰） - ``` jagged_peaks ``` （尖峭山峰） - ``` snowy_slopes ``` （积雪山坡） - ``` frozen_ocean ``` （冻洋） - ``` deep_frozen_ocean ``` （冰冻深海） - ``` grove ``` （雪林） - ``` deep_dark ``` （深暗之域） - ``` frozen_river ``` （冻河） - ``` snowy_taiga ``` （积雪针叶林） - ``` snowy_beach ``` （积雪沙滩） - ``` #is_end ``` - ``` cold_ocean ``` （冷水海洋） - ``` deep_cold_ocean ``` （冷水深海） - ``` old_growth_pine_taiga ``` （原始松木针叶林） - ``` old_growth_spruce_taiga ``` （原始云杉针叶林） - ``` taiga ``` （针叶林） - ``` windswept_forest ``` （风袭森林） - ``` windswept_gravelly_hills ``` （风袭沙砾丘陵） - ``` windswept_hills ``` （风袭丘陵） - ``` stony_peaks ``` （裸岩山峰） - ``` dappled_forest ``` （斑驳森林）
-
-## spawns_cold_variant_frogs
-
-- 在此标签的生物群系中，生成的青蛙肤色为绿色。
-
-- #spawns_cold_variant_frogs（13项） - ``` snowy_plains ``` （雪原） - ``` ice_spikes ``` （冰刺之地） - ``` frozen_peaks ``` （冰封山峰） - ``` jagged_peaks ``` （尖峭山峰） - ``` snowy_slopes ``` （积雪山坡） - ``` frozen_ocean ``` （冻洋） - ``` deep_frozen_ocean ``` （冰冻深海） - ``` grove ``` （雪林） - ``` deep_dark ``` （深暗之域） - ``` frozen_river ``` （冻河） - ``` snowy_taiga ``` （积雪针叶林） - ``` snowy_beach ``` （积雪沙滩） - ``` #is_end ```
-
-## spawns_coral_variant_zombie_nautilus
-
-- 珊瑚僵尸鹦鹉螺可以生成的生物群系。
-
-- #spawns_coral_variant_zombie_nautilus（1项） - ``` warm_ocean ``` （暖水海洋）
-
-## spawns_gold_rabbits
-
-- 在此标签的生物群系中，生成的兔子毛色为金黄色。
-
-- #spawns_gold_rabbits（1项） - ``` desert ``` （沙漠）
-
-## spawns_snow_foxes
-
-- 在此标签的生物群系中，生成的狐狸毛色为白色。
-
-- #spawns_snow_foxes（10项） - ``` snowy_plains ``` （雪原） - ``` ice_spikes ``` （冰刺之地） - ``` frozen_ocean ``` （冻洋） - ``` snowy_taiga ``` （积雪针叶林） - ``` frozen_river ``` （冻河） - ``` snowy_beach ``` （积雪沙滩） - ``` frozen_peaks ``` （冰封山峰） - ``` jagged_peaks ``` （尖峭山峰） - ``` snowy_slopes ``` （积雪山坡） - ``` grove ``` （雪林）
-
-## spawns_warm_variant_farm_animals
-
-- 在此标签的生物群系中，生成的猪、牛和鸡为热带变种，生成的绵羊毛色更常为棕色。
-
-- #spawns_warm_variant_farm_animals（9项） - ``` desert ``` （沙漠） - ``` warm_ocean ``` （暖水海洋） - ``` #is_jungle ``` - ``` #is_savanna ``` - ``` #is_nether ``` - ``` #is_badlands ``` - ``` mangrove_swamp ``` （红树林沼泽） - ``` deep_lukewarm_ocean ``` （温水深海） - ``` lukewarm_ocean ``` （温水海洋）
-
-## spawns_warm_variant_frogs
-
-- 在此标签的生物群系中，生成的青蛙肤色为白色。
-
-- #spawns_warm_variant_frogs（7项） - ``` desert ``` （沙漠） - ``` warm_ocean ``` （暖水海洋） - ``` #is_jungle ``` - ``` #is_savanna ``` - ``` #is_nether ``` - ``` #is_badlands ``` - ``` mangrove_swamp ``` （红树林沼泽）
-
-## spawns_white_rabbits
-
-- 在此标签的生物群系中，生成的兔子毛色为白色。
-
-- #spawns_white_rabbits（10项） - ``` snowy_plains ``` （雪原） - ``` ice_spikes ``` （冰刺之地） - ``` frozen_ocean ``` （冻洋） - ``` snowy_taiga ``` （积雪针叶林） - ``` frozen_river ``` （冻河） - ``` snowy_beach ``` （积雪沙滩） - ``` frozen_peaks ``` （冰封山峰） - ``` jagged_peaks ``` （尖峭山峰） - ``` snowy_slopes ``` （积雪山坡） - ``` grove ``` （雪林）
-
-## stronghold_biased_to
-
-- 要塞更倾向于生成的生物群系。
-
-- #stronghold_biased_to（38项） - ``` plains ``` （平原） - ``` sunflower_plains ``` （向日葵平原） - ``` snowy_plains ``` （雪原） - ``` ice_spikes ``` （冰刺之地） - ``` desert ``` （沙漠） - ``` forest ``` （森林） - ``` flower_forest ``` （繁花森林） - ``` birch_forest ``` （桦木森林） - ``` dark_forest ``` （黑森林） - ``` pale_garden ``` （苍白之园） - ``` old_growth_birch_forest ``` （原始桦木森林） - ``` old_growth_pine_taiga ``` （原始松木针叶林） - ``` old_growth_spruce_taiga ``` （原始云杉针叶林） - ``` taiga ``` （针叶林） - ``` snowy_taiga ``` （积雪针叶林） - ``` savanna ``` （热带草原） - ``` savanna_plateau ``` （热带高原） - ``` windswept_hills ``` （风袭丘陵） - ``` windswept_gravelly_hills ``` （风袭沙砾丘陵） - ``` windswept_forest ``` （风袭森林） - ``` windswept_savanna ``` （风袭热带草原） - ``` jungle ``` （丛林） - ``` sparse_jungle ``` （稀疏丛林） - ``` bamboo_jungle ``` （竹林） - ``` badlands ``` （恶地） - ``` eroded_badlands ``` （风蚀恶地） - ``` wooded_badlands ``` （疏林恶地） - ``` meadow ``` （草甸） - ``` cherry_grove ``` （樱花树林） - ``` grove ``` （雪林） - ``` snowy_slopes ``` （积雪山坡） - ``` frozen_peaks ``` （冰封山峰） - ``` jagged_peaks ``` （尖峭山峰） - ``` stony_peaks ``` （裸岩山峰） - ``` mushroom_fields ``` （蘑菇岛） - ``` dripstone_caves ``` （溶洞） - ``` lush_caves ``` （繁茂洞穴） - ``` sulfur_caves ``` （硫黄洞穴）
-
-## water_on_map_outlines
-
-- 拥有此标签的生物群系在未探索的探险家地图上会显示为水域。
-
-- #water_on_map_outlines（4项） - ``` #is_ocean ``` - ``` #is_river ``` - ``` swamp ``` （沼泽） - ``` mangrove_swamp ``` （红树林沼泽）
-
-## without_wandering_trader_spawns
-
-- 在此标签的生物群系中，流浪商人不会生成。
-
-- #without_wandering_trader_spawns（1项） - ``` the_void ``` （虚空）
-
-## without_zombie_sieges
-
-- 在此标签的生物群系中，僵尸围城不会生成。
-
-- #without_zombie_sieges（1项） - ``` mushroom_fields ``` （蘑菇岛）
-
-# 已移除的标签
-
-## has_closer_water_fog
-
-添加于：22w11a。移除于：25w42a。
-
-- 当玩家在此标签中的生物群系中时，水下迷雾效果距离玩家更近。
-
-- #has_closer_water_fog（2项） - ``` swamp ``` - ``` mangrove_swamp ```
-
-## increased_fire_burnout
-
-添加于：23w03a。移除于：25w42a。
-
-- 在此标签的生物群系中，火焰的燃烧速度会加快。
-
-- #increased_fire_burnout（8项） - ``` bamboo_jungle ``` - ``` mushroom_fields ``` - ``` mangrove_swamp ``` - ``` snowy_slopes ``` - ``` frozen_peaks ``` - ``` jagged_peaks ``` - ``` swamp ``` - ``` jungle ```
-
-## plays_underwater_music
-
-添加于：22w11a。移除于：25w42a。
-
-- 当玩家在此标签的生物群系中时，游戏会播放水下音乐。
-
-- #plays_underwater_music（2项） - ``` #is_ocean ``` - ``` #is_river ```
-
-## snow_golem_melts
-
-添加于：23w03a。移除于：25w42a。
-
-- 当雪傀儡在此标签的生物群系中时，会开始融化。
-
-- #plays_underwater_music（11项） - ``` badlands ``` - ``` basalt_deltas ``` - ``` crimson_forest ``` - ``` desert ``` - ``` eroded_badlands ``` - ``` nether_wastes ``` - ``` savanna ``` - ``` savanna_plateau ``` - ``` soul_and_valley ``` - ``` warped_forest ``` - ``` wooded_badlands ```
-
-## without_patrol_spawns
-
-添加于：22w11a。移除于：25w45a。
-
-- 在此标签的生物群系中，灾厄巡逻队不会生成。
-
-- #plays_underwater_music（1项） - ``` mushroom_fields ```
-
-# 历史
-
-# 导航
+- `mushroom_fields`

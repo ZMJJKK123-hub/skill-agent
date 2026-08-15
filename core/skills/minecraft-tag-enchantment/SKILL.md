@@ -1,215 +1,249 @@
 ---
 name: minecraft-tag-enchantment
-description: |
-  Java版标签/魔咒（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】魔咒标签（Enchantment Tags）是魔咒的组合。
-  
-  【涵盖内容】
-  - curse
-  - double_trade_price
-  - exclusive_set/armor
-  - exclusive_set/boots
-  - exclusive_set/bow
-  - exclusive_set/crossbow
-  - exclusive_set/damage
-  - exclusive_set/mining
-  - exclusive_set/riptide
-  - in_enchanting_table
-  - non_treasure
-  - on_mob_spawn_equipment
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Java版标签/魔咒 的完整规范时
+description: Enchantment tags: acquisition, exclusivity, loot, villager trades.
+whenToUse: Use when handling enchantment acquisition, exclusivity, loot, or villager trades via enchantment tags (#treasure, #non_treasure etc.).
 ---
 
-本条目所述内容仅适用于Java版。
-魔咒标签（Enchantment Tags）是魔咒的组合。
+# Enchantment Tags
 
-# 使用
+This content applies only to Java Edition.
 
-魔咒标签用于控制魔咒的出现条件和一些基本功能。
+Enchantment tags are groups of enchantments.
 
-# 标签列表
+## Usage
 
-## curse
+Enchantment tags control the conditions under which enchantments appear and some basic functions.
 
-- 在提示框中以红色文本显示且不可被祛魔的魔咒。
+## Tag list
 
-- #curse（2项） - ``` binding_curse ``` （绑定诅咒） - ``` vanishing_curse ``` （消失诅咒）
+### `#curse` (2 entries)
 
-## double_trade_price
+Enchantments shown in red in tooltips and not removable by grinding:
 
-- 需要花费双倍绿宝石交易的魔咒。
+- `binding_curse` (Curse of Binding)
+- `vanishing_curse` (Curse of Vanishing)
 
-- #double_trade_price（1项） - ``` #treasure ```
+### `#double_trade_price` (1 entry)
 
-## exclusive_set/armor
+Enchantments costing double emeralds in trades:
 
-- 不能在盔甲上共存的魔咒。
+- `#treasure`
 
-- #exclusive_set/armor（4项） - ``` protection ``` （保护） - ``` blast_protection ``` （爆炸保护） - ``` fire_protection ``` （火焰保护） - ``` projectile_protection ``` （弹射物保护）
+### `#exclusive_set/armor` (4 entries)
 
-## exclusive_set/boots
+Enchantments that cannot coexist on armor:
 
-- 不能在靴子上共存的魔咒。
+- `protection` (Protection)
+- `blast_protection` (Blast Protection)
+- `fire_protection` (Fire Protection)
+- `projectile_protection` (Projectile Protection)
 
-- #exclusive_set/boots（2项） - ``` frost_walker ``` （冰霜行者） - ``` depth_strider ``` （深海探索者）
+### `#exclusive_set/boots` (2 entries)
 
-## exclusive_set/bow
+Enchantments that cannot coexist on boots:
 
-- 不能在弓上共存的魔咒。
+- `frost_walker` (Frost Walker)
+- `depth_strider` (Depth Strider)
 
-- #exclusive_set/bow（2项） - ``` infinity ``` （无限） - ``` mending ``` （经验修补）
+### `#exclusive_set/bow` (2 entries)
 
-## exclusive_set/crossbow
+Enchantments that cannot coexist on bows:
 
-- 不能在弩上共存的魔咒。
+- `infinity` (Infinity)
+- `mending` (Mending)
 
-- #exclusive_set/crossbow（2项） - ``` multishot ``` （多重射击） - ``` piercing ``` （穿透）
+### `#exclusive_set/crossbow` (2 entries)
 
-## exclusive_set/damage
+Enchantments that cannot coexist on crossbows:
 
-- 不能共存的伤害增幅类魔咒。
+- `multishot` (Multishot)
+- `piercing` (Piercing)
 
-- #exclusive_set/damage（6项） - ``` sharpness ``` （锋利） - ``` smite ``` （亡灵杀手） - ``` bane_of_arthropods ``` （节肢杀手） - ``` impaling ``` （穿刺） - ``` density ``` （致密） - ``` breach ``` （破甲）
+### `#exclusive_set/damage` (6 entries)
 
-## exclusive_set/mining
+Damage-increasing enchantments that cannot coexist:
 
-- 不能共存的挖掘类魔咒。
+- `sharpness` (Sharpness)
+- `smite` (Smite)
+- `bane_of_arthropods` (Bane of Arthropods)
+- `impaling` (Impaling)
+- `density` (Density)
+- `breach` (Breach)
 
-- #exclusive_set/mining（2项） - ``` fortune ``` （时运） - ``` silk_touch ``` （精准采集）
+### `#exclusive_set/mining` (2 entries)
 
-## exclusive_set/riptide
+Mining enchantments that cannot coexist:
 
-- 不能与激流共存的魔咒。
+- `fortune` (Fortune)
+- `silk_touch` (Silk Touch)
 
-- #exclusive_set/riptide（2项） - ``` loyalty ``` （忠诚） - ``` channeling ``` （引雷）
+### `#exclusive_set/riptide` (2 entries)
 
-## in_enchanting_table
+Enchantments that cannot coexist with Riptide:
 
-- 会出现在附魔台里的魔咒。
+- `loyalty` (Loyalty)
+- `channeling` (Channeling)
 
-- #in_enchanting_table（1项） - ``` #non_treasure ```
+### `#in_enchanting_table` (1 entry)
 
-## non_treasure
+Enchantments appearing in the enchanting table:
 
-- 非宝藏类魔咒。
+- `#non_treasure`
 
-- #non_treasure（36项） - ``` protection ``` （保护） - ``` fire_protection ``` （火焰保护） - ``` feather_falling ``` （摔落缓冲） - ``` blast_protection ``` （爆炸保护） - ``` projectile_protection ``` （弹射物保护） - ``` respiration ``` （水下呼吸） - ``` aqua_affinity ``` （水下速掘） - ``` thorns ``` （荆棘） - ``` depth_strider ``` （深海探索者） - ``` sharpness ``` （锋利） - ``` smite ``` （亡灵杀手） - ``` bane_of_arthropods ``` （节肢杀手） - ``` knockback ``` （击退） - ``` fire_aspect ``` （火焰附加） - ``` looting ``` （抢夺） - ``` sweeping_edge ``` （横扫之刃） - ``` efficiency ``` （效率） - ``` silk_touch ``` （精准采集） - ``` unbreaking ``` （耐久） - ``` fortune ``` （时运） - ``` power ``` （力量） - ``` punch ``` （冲击） - ``` flame ``` （火矢） - ``` infinity ``` （无限） - ``` luck_of_the_sea ``` （海之眷顾） - ``` lure ``` （饵钓） - ``` loyalty ``` （忠诚） - ``` impaling ``` （穿刺） - ``` riptide ``` （激流） - ``` channeling ``` （引雷） - ``` multishot ``` （多重射击） - ``` quick_charge ``` （快速装填） - ``` piercing ``` （穿透） - ``` density ``` （致密） - ``` breach ``` （破甲） - ``` lunge ``` （突进）
+### `#non_treasure` (36 entries)
 
-## on_mob_spawn_equipment
+Non-treasure enchantments:
 
-- 会出现在随机生成生物所穿装备上的魔咒。
+- `protection` (Protection)
+- `sharpness` (Sharpness)
+- `efficiency` (Efficiency)
+- `fortune` (Fortune)
+- `power` (Power)
 
-- #on_mob_spawn_equipment（1项） - ``` #non_treasure ```
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-## on_random_loot
+### `#on_mob_spawn_equipment` (1 entry)
 
-- 会出现在战利品箱子内的战利品上的魔咒。
+Enchantments appearing on equipment of randomly spawned mobs:
 
-- #on_random_loot（5项） - ``` #non_treasure ``` - ``` binding_curse ``` （绑定诅咒） - ``` vanishing_curse ``` （消失诅咒） - ``` frost_walker ``` （冰霜行者） - ``` mending ``` （经验修补）
+- `#non_treasure`
 
-## on_traded_equipment
+### `#on_random_loot` (5 entries)
 
-- 会出现在交易中的附魔装备上的魔咒。
+Enchantments appearing on loot in loot chests:
 
-- #on_traded_equipment（1项） - ``` #non_treasure ```
+- `#non_treasure`
+- `binding_curse` (Curse of Binding)
+- `vanishing_curse` (Curse of Vanishing)
+- `frost_walker` (Frost Walker)
+- `mending` (Mending)
 
-## prevents_bee_spawns_when_mining
+### `#on_traded_equipment` (1 entry)
 
-- 使工具破坏蜂巢和蜂箱后不会释放激怒状态的蜜蜂的魔咒。
+Enchantments appearing on traded enchanted equipment:
 
-- #prevents_bee_spawns_when_mining（1项） - ``` silk_touch ``` （精准采集）
+- `#non_treasure`
 
-## prevents_decorated_pot_shattering
+### `#prevents_bee_spawns_when_mining` (1 entry)
 
-- 使工具不会打破饰纹陶罐的魔咒。
+Enchantments that prevent angry bees from spawning when mining beehives and bee nests:
 
-- #prevents_decorated_pot_shattering（1项） - ``` silk_touch ``` （精准采集）
+- `silk_touch` (Silk Touch)
 
-## prevents_ice_melting
+### `#prevents_decorated_pot_shattering` (1 entry)
 
-- 使工具不会将冰打破成水的魔咒。
+Enchantments that prevent decorated pots from shattering:
 
-- #prevents_ice_melting（1项） - ``` silk_touch ``` （精准采集）
+- `silk_touch` (Silk Touch)
 
-## prevents_infested_spawns
+### `#prevents_ice_melting` (1 entry)
 
-- 允许工具破坏虫蚀方块而不生成其中生物的魔咒。
+Enchantments that prevent ice from melting into water when mined:
 
-- #prevents_infested_spawns（1项） - ``` silk_touch ``` （精准采集）
+- `silk_touch` (Silk Touch)
 
-## smelts_loot
+### `#prevents_infested_spawns` (1 entry)
 
-- 使掉落的战利品经过烧炼的魔咒。
+Enchantments that allow mining infested blocks without spawning the mob inside:
 
-- #smelts_loot（1项） - ``` fire_aspect ``` （火焰附加）
+- `silk_touch` (Silk Touch)
 
-## tooltip_order
+### `#smelts_loot` (1 entry)
 
-- 影响在物品提示框中所显示魔咒的顺序。
+Enchantments that smelt dropped loot:
 
-- #tooltip_order（43项） - ``` binding_curse ``` （绑定诅咒） - ``` vanishing_curse ``` （消失诅咒） - ``` riptide ``` （激流） - ``` channeling ``` （引雷） - ``` wind_burst ``` （风爆） - ``` frost_walker ``` （冰霜行者） - ``` lunge ``` （突进） - ``` sharpness ``` （锋利） - ``` smite ``` （亡灵杀手） - ``` bane_of_arthropods ``` （节肢杀手） - ``` impaling ``` （穿刺） - ``` power ``` （力量） - ``` density ``` （致密） - ``` breach ``` （破甲） - ``` piercing ``` （穿透） - ``` sweeping_edge ``` （横扫之刃） - ``` multishot ``` （多重射击） - ``` fire_aspect ``` （火焰附加） - ``` flame ``` （火矢） - ``` knockback ``` （击退） - ``` punch ``` （冲击） - ``` protection ``` （保护） - ``` blast_protection ``` （爆炸保护） - ``` fire_protection ``` （火焰保护） - ``` projectile_protection ``` （弹射物保护） - ``` feather_falling ``` （摔落缓冲） - ``` fortune ``` （时运） - ``` looting ``` （抢夺） - ``` silk_touch ``` （精准采集） - ``` luck_of_the_sea ``` （海之眷顾） - ``` efficiency ``` （效率） - ``` quick_charge ``` （快速装填） - ``` lure ``` （饵钓） - ``` respiration ``` （水下呼吸） - ``` aqua_affinity ``` （水下速掘） - ``` soul_speed ``` （灵魂疾行） - ``` swift_sneak ``` （迅捷潜行） - ``` depth_strider ``` （深海探索者） - ``` thorns ``` （荆棘） - ``` loyalty ``` （忠诚） - ``` unbreaking ``` （耐久） - ``` infinity ``` （无限） - ``` mending ``` （经验修补）
+- `fire_aspect` (Fire Aspect)
 
-## tradeable
+### `#tooltip_order` (43 entries)
 
-- 会出现在交易中的附魔书上的魔咒。
+Affects the order of enchantments shown in item tooltips:
 
-- #tradeable（5项） - ``` #non_treasure ``` - ``` binding_curse ``` （绑定诅咒） - ``` vanishing_curse ``` （消失诅咒） - ``` frost_walker ``` （冰霜行者） - ``` mending ``` （经验修补）
+- `binding_curse` (Curse of Binding)
+- `sharpness` (Sharpness)
+- `protection` (Protection)
+- `fortune` (Fortune)
+- `efficiency` (Efficiency)
 
-## treasure
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.
 
-- 宝藏类魔咒。
+### `#tradeable` (5 entries)
 
-- #treasure（7项） - ``` binding_curse ``` （绑定诅咒） - ``` vanishing_curse ``` （消失诅咒） - ``` swift_sneak ``` （迅捷潜行） - ``` soul_speed ``` （灵魂疾行） - ``` frost_walker ``` （冰霜行者） - ``` mending ``` （经验修补） - ``` wind_burst ``` （风爆）
+Enchantments appearing on traded enchanted books:
 
-# 村民交易的平衡性调整
+- `#non_treasure`
+- `binding_curse` (Curse of Binding)
+- `vanishing_curse` (Curse of Vanishing)
+- `frost_walker` (Frost Walker)
+- `mending` (Mending)
 
-本段落包含在Java版的实验性内容中出现的内容。
-这些特性在当前版本中需要开启“村民交易的平衡性调整”选项才可使用。
+### `#treasure` (7 entries)
 
-## trades/desert_common
+Treasure enchantments:
 
-沙漠图书管理员售卖的附魔书能附加的普通魔咒。
+- `binding_curse` (Curse of Binding)
+- `vanishing_curse` (Curse of Vanishing)
+- `swift_sneak` (Swift Sneak)
+- `soul_speed` (Soul Speed)
+- `frost_walker` (Frost Walker)
+- `mending` (Mending)
+- `wind_burst` (Wind Burst)
 
-- #trades/desert_common（3项） - ``` fire_protection ``` - ``` thorns ``` - ``` infinity ```
+## Villager trade balancing
 
-## trades/jungle_common
+This section contains experimental content: these features require the "villager trade rebalancing" option to be enabled.
 
-丛林图书管理员售卖的附魔书能附加的普通魔咒。
+### `#trades/desert_common` (3 entries)
 
-- #trades/jungle_common（3项） - ``` feather_falling ``` - ``` projectile_protection ``` - ``` power ```
+Common enchantments on enchanted books sold by desert librarians:
 
-## trades/plains_common
+- `fire_protection`
+- `thorns`
+- `infinity`
 
-平原图书管理员售卖的附魔书能附加的普通魔咒。
+### `#trades/jungle_common` (3 entries)
 
-- #trades/plains_common（3项） - ``` punch ``` - ``` smite ``` - ``` bane_of_arthropods ```
+Common enchantments on enchanted books sold by jungle librarians:
 
-## trades/savanna_common
+- `feather_falling`
+- `projectile_protection`
+- `power`
 
-热带草原图书管理员售卖的附魔书能附加的普通魔咒。
+### `#trades/plains_common` (3 entries)
 
-- #trades/savanna_common（3项） - ``` knockback ``` - ``` binding_curse ``` - ``` sweeping_edge ```
+Common enchantments on enchanted books sold by plains librarians:
 
-## trades/snow_common
+- `punch`
+- `smite`
+- `bane_of_arthropods`
 
-雪原图书管理员售卖的附魔书能附加的普通魔咒。
+### `#trades/savanna_common` (3 entries)
 
-- #trades/snow_common（3项） - ``` aqua_affinity ``` - ``` looting ``` - ``` frost_walker ```
+Common enchantments on enchanted books sold by savanna librarians:
 
-## trades/swamp_common
+- `knockback`
+- `binding_curse`
+- `sweeping_edge`
 
-沼泽图书管理员售卖的附魔书能附加的普通魔咒。
+### `#trades/snow_common` (3 entries)
 
-- #trades/swamp_common（3项） - ``` depth_strider ``` - ``` respiration ``` - ``` vanishing_curse ```
+Common enchantments on enchanted books sold by snowy librarians:
 
-## trades/taiga_common
+- `aqua_affinity`
+- `looting`
+- `frost_walker`
 
-针叶林图书管理员售卖的附魔书能附加的普通魔咒。
+### `#trades/swamp_common` (3 entries)
 
-- #trades/taiga_common（3项） - ``` blast_protection ``` - ``` fire_aspect ``` - ``` flame ```
+Common enchantments on enchanted books sold by swamp librarians:
 
-# 历史
+- `depth_strider`
+- `respiration`
+- `vanishing_curse`
 
-# 导航
+### `#trades/taiga_common` (3 entries)
+
+Common enchantments on enchanted books sold by taiga librarians:
+
+- `blast_protection`
+- `fire_aspect`
+- `flame`

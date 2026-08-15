@@ -1,25 +1,7 @@
 ---
 name: forge-gui
-description: |
-  Forge GUI 系统指南（屏幕 / 菜单容器 / HUD）（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】Menus are one type of backend for Graphical User Interfaces, or GUIs; they handle the logic involved in interacting with…
-  
-  【涵盖内容】
-  - `MenuType`
-  - `MenuSupplier`
-  - `IContainerFactory`
-  - `AbstractContainerMenu`
-  - `#stillValid` and `ContainerLevelAccess`
-  - Data Synchronization
-  - Opening a Menu
-  - Common Implementations
-  - Vanilla Draw Order
-  - A Note About Layer Order
-  - Adding To ForgeLayeredDraws
-  - Cancelling Layers
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge GUI 系统指南（屏幕 / 菜单容器 / HUD） 的完整规范时
+description: Forge GUI guide: menus (MenuType, AbstractContainerMenu), screens and HUD, data synchronization.
+whenToUse: Use when implementing containers/menus, screens, or HUD elements.
 ---
 
 # Menus

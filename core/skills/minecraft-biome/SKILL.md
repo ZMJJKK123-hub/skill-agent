@@ -1,191 +1,52 @@
 ---
 name: minecraft-biome
-description: |
-  生物群系定义格式（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】基岩版的生物群系文件请参见官方文档
-  
-  【涵盖内容】
-  - 环境效果
-  - 生物群系分类
-  - 旧版环境效果
-  
-  【关键定义】
-  - 注册表：BIOME
-  - 数据包路径：data/worldgen/biome
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 生物群系定义格式 的完整规范时
+description: Biome definition format — climate, colors, carvers, features (11 stages), spawners, spawn costs.
+whenToUse: Use when authoring biome JSON files in data/worldgen/biome/.
 ---
 
-本条目所述内容仅适用于Java版。
-基岩版的生物群系文件请参见官方文档
+# Biome Definition
 
-生物群系定义文件是生物群系（Biome）在数据包中的数据驱动定义文件。
+Biome definition files define biomes data-driven. Java Edition only.
 
-# 定义格式
+## Definition Format
 
-生物群系在游戏中使用
-```
-BIOME
-```
+Registry `BIOME`, data pack path `worldgen/biome` (files in `data/<namespace>/worldgen/biome/`; tags in `tags/worldgen/biome/`).
 
-注册表，数据包路径为
-```
-worldgen/biome
-```
+- `has_precipitation` (required) — whether the biome has precipitation.
+- `temperature` (required) — temperature value.
+- `temperature_modifier` (default `none`) — `none` or `frozen` (sets some areas to 0.2 before height adjustment).
+- `downfall` (required) — affects plant colors (with temperature) but not actual precipitation.
+- `attributes` — environment attribute map (position-dependent attributes only; duplicates → last value wins). See the environment-attributes skill.
+- `effects` (required) — environmental effects (see below).
+- `carvers` (required, may be empty) — carvers usable in the biome (tag/ID/inline/list).
+- `features` (required, may be empty) — placed features; must have exactly 11 elements (one per decoration stage); each element is a feature tag/ID/list/inline.
+- `creature_spawn_probability` (0–0.9999999, default 0.1) — initial animal spawn probability during worldgen.
+- `spawners` (required, may be empty) — mob spawn entries per spawn category: `{type (entity ID; "other"-category entities spawn pigs only), weight, minCount (>0), maxCount (>0)}`.
+- `spawn_costs` (required, may be empty) — spawn "potential" per entity: `energyBudget` (max energy a spawn can consume; smaller → fewer spawns) and `charge` (point-charge model; larger → fewer spawns).
 
-，即所有的生物群系定义文件都需要在
-```
-data/<
-命名空间
->/worldgen/biome
-```
+### Effects
 
-目录下定义，生物群系标签则需要在
-```
-data/<
-命名空间
->/tags/worldgen/biome
-```
+- `water_color` (required) — RGB color.
+- `dry_foliage_color` — dead-bush coloring.
+- `foliage_color` — leaves/vines coloring.
+- `grass_color` — grass block, grass, ferns, bushes, sugar cane, flower stems coloring.
+- `grass_color_modifier` (default `none`) — `none`, `dark_forest` ((color & FEFEFE + 2634762) averaged), or `swamp` (noise-picked from 5011004/6975545).
+- Unspecified plant colors use temperature/downfall color maps. Colors are affected by the "biome transition distance" video option.
 
-目录下定义。
+## Behavior
 
-生物群系定义文件使用JSON格式，并具有下列结构：
+Biome definitions load once at server startup (`/reload` doesn't reload them — restart). In single-biome world presets every registered biome is selectable; its display name defaults to the namespace ID but can be set with the `biome.<ns>.<path>` localization key. Without a `plains` element in the `BIOME` registry the game refuses to load the world.
 
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:布尔型]*has_precipitation：生物群系是否拥有降水。 - [图:单精度浮点数]*temperature：生物群系的温度值。 - [图:字符串]*temperature_modifier：（默认为 ``` none ``` ）温度修饰器，在计算随高度调整的温度值之前对初始温度值进行随机修改。取值只能为 ``` none ``` （不修改）或 ``` frozen ``` （将某些区域设定为0.2）。 - [图:单精度浮点数]*downfall：生物群系的降水值。此值并不影响降水行为，而是和温度值一起影响植物颜色。 - [图:NBT复合标签/JSON对象]attributes：生物群系的环境属性映射，不能指定不依赖位置解析的环境属性。如果有多个相同的环境属性，则游戏只使用最后一个值。 - [图:任意类型][图:NBT复合标签/JSON对象]<环境属性ID>：一项环境属性及其对应的值，详见环境属性。 - [图:NBT复合标签/JSON对象]*effects：生物群系的环境效果。 - 见下文§ 环境效果。 - [图:字符串][图:NBT复合标签/JSON对象][图:NBT列表/JSON数组]*carvers：（可以为空）可以在生物群系内生成的雕刻器。可以为以 ``` # ``` 开头的雕刻器标签、雕刻器ID、雕刻器的内联格式，一个雕刻器ID的列表或其内联格式的列表。 - [图:NBT列表/JSON数组]*features：（可以为空）可以在该生物群系放置的地物。此列表应有且仅有11个元素，详见下文§ 地物生成。 - [图:字符串][图:NBT列表/JSON数组]：这一地物生成阶段可以放置的地物。可以为以 ``` # ``` 开头的已放置的地物标签、一个已放置的地物ID、一个已放置的地物列表或一个已放置的地物内联格式的列表。 - [图:单精度浮点数]*creature_spawn_probability：（0≤值≤0.9999999，默认为0.1）世界生成时生成初始动物的概率。 - [图:NBT复合标签/JSON对象]*spawners：（可以为空）生物生成设置。 - [图:NBT列表/JSON数组]<生成类别>：此项生成类别的生成，可用类别及意义见生成 § 生成类别。 - [图:NBT复合标签/JSON对象]：此类别下的一项生成设置。 - [图:字符串]*type：实体类型ID。若指定的实体的生成类别为“其他”，则游戏只会生成猪。 - [图:整型]*weight：该生物的生成权重。 - [图:整型]*minCount：（值>0）成群生成时的最低数量。 - [图:整型]*maxCount：（值>0）成群生成时的最高数量。 - [图:NBT复合标签/JSON对象]*spawn_costs：（可以为空）生成势，只有在此列出的生物使用。以一套类似于模拟真空中的点电荷系统的机制控制该生物群系内生成生物的数量与密度，详见生成 § 生成势。 - [图:NBT复合标签/JSON对象]<实体ID> - [图:双精度浮点数]*energyBudget：电势预算。生成此实体时能消耗最大能量。在宏观意义上看，此值越小生成的越少。 - [图:双精度浮点数]*charge：此次生成放置的点电荷的电荷量。每次生成都在之前放置的点电荷的基础上试图将一个点电荷从无穷远处移动到目标点，计算电势能并比较以决定是否生成。在宏观意义上看，此值越大生成的越少。
+## Feature Generation
 
-## 环境效果
+The `features` list maps to the 11 decoration stages used by structure generation too:
 
-环境效果为生物群系的氛围提供了多种效果。生物群系的水体、植物的颜色等由下列标签决定。其中多项颜色会受到视频设置中的“生物群系过渡距离”选项影响。
+1. `RAW_GENERATION` (End floating islands) 2. `LAKES` (lava lakes) 3. `LOCAL_MODIFICATIONS` (geodes, icebergs, basalt pillars) 4. `UNDERGROUND_STRUCTURES` (dungeons, fossils) 5. `SURFACE_STRUCTURES` (desert wells, blue ice, ice spikes) 6. `STRONGHOLDS` (unused) 7. `UNDERGROUND_ORES` (ore blobs) 8. `UNDERGROUND_DECORATION` (non-ore clusters, Nether ores) 9. `FLUID_SPRINGS` 10. `VEGETAL_DECORATION` (plants) 11. `TOP_LAYER_MODIFICATION` (frozen top layer).
 
-植物颜色若未指定则默认使用[图:单精度浮点数]*downfall和[图:单精度浮点数]*temperature与对应的颜色图计算，计算方式见生物群系 § 植物颜色。
+Features beyond the 11 stages still place. **Critical ordering rule**: for all biomes in one dimension, each stage's features must have the SAME relative order (lists order by list order; tags by their `values` order; inline/IDs have no order). Violations crash the game at decoration with `Feature order cycle found` — the game does not pre-check, so verify manually.
 
-- [图:NBT复合标签/JSON对象]*effects 生物群系环境效果 - [图:字符串][图:整型][图:NBT列表/JSON数组]*water_color：水体颜色。需为一个RGB颜色，下列颜色的格式与此相同。 - - RGB颜色，见Template:Nbt inherit/string rgb color/source - [图:字符串][图:整型][图:NBT列表/JSON数组]dry_foliage_color：枯叶颜色。用于枯叶堆的着色。 - - RGB颜色，见Template:Nbt inherit/string rgb color/source - [图:字符串][图:整型][图:NBT列表/JSON数组]foliage_color：树叶颜色。用于部分树叶和藤蔓的着色。 - - RGB颜色，见Template:Nbt inherit/string rgb color/source - [图:字符串][图:整型][图:NBT列表/JSON数组]grass_color：草地颜色。用于草方块、矮草丛、高草丛、蕨、大型蕨、蕨盆栽中的蕨、灌木丛、甘蔗、粉红色花簇的茎和野花簇的茎的着色。 - - RGB颜色，见Template:Nbt inherit/string rgb color/source - [图:字符串]grass_color_modifier：（默认为 ``` none ``` ）草地颜色修饰器，取值可以为 ``` none ``` （无调整）、 ``` dark_forest ``` （将草地颜色与十六进制值FEFEFE按位与计算并和2634762相加后再取平均值）或 ``` swamp ``` （根据噪声值从5011004和6975545两值随机选取）。
+Bone meal on grass in a biome can spawn any feature in the `#can_spawn_from_bone_meal` placed-feature tag whose placement succeeds there (vanilla uses this for biome-specific flowers).
 
-正在加载互动小工具。如果加载失败，请您刷新本页面并检查JavaScript是否已启用。
+## Legacy Effects
 
-# 定义行为
-
-生物群系定义数据仅在服务端启动时加载一次，使用
-```
-/
-reload
-```
-
-命令不可以重新加载生物群系定义，而必须重启服务端。
-
-每个生物群系都定义了自己独特的气候、环境效果、地物、雕刻器、生成生物等，将维度划分出了若干独特的区域。
-
-在单一生物群系世界预设中，可以选择所有已注册的生物群系，生物群系的文本默认为命名空间ID
-```
-<
-命名空间
->:<
-路径
->
-```
-
-，但可以通过
-```
-biome.<
-命名空间
->.<
-路径
->
-```
-
-本地化键名指定名称。
-
-如果
-```
-BIOME
-```
-
-注册表中没有元素
-```
-plains
-```
-
-，则游戏会拒绝加载世界。
-
-# 地物生成
-
-在世界生成的放置地物阶段，游戏会读取生物群系的地物信息并进行放置。地物放置是有序的：第一是游戏将地物生成划分为了若干生成阶段，生成阶段之间是有序的；第二是在每个生成阶段内，地物的放置顺序是有序的。
-
-地物的某一个生成阶段可直接对应[图:NBT列表/JSON数组]features中的某个元素。原版游戏共使用了11个生成阶段，依次对应[图:NBT列表/JSON数组]features的前11个元素。这11个阶段也被用于结构生成，分别是：
-
-- ``` RAW_GENERATION ``` ：原始生成，原版用于放置末地浮岛。
-- ``` LAKES ``` ：湖，原版用于放置熔岩湖。
-- ``` LOCAL_MODIFICATIONS ``` ：本地修改，原版用于放置紫晶洞、冰山和玄武岩柱等。
-- ``` UNDERGROUND_STRUCTURES ``` ：地下结构，原版用于放置刷怪房和化石。
-- ``` SURFACE_STRUCTURES ``` ：地表结构，原版用于放置沙漠水井、蓝冰和冰刺等。
-- ``` STRONGHOLDS ``` ：要塞，原版游戏未使用此阶段。
-- ``` UNDERGROUND_ORES ``` ：地下矿物，原版用于放置各种矿石的团簇。
-- ``` UNDERGROUND_DECORATION ``` ：地下装饰，原版用于放置非矿石团簇、下界矿石等。
-- ``` FLUID_SPRINGS ``` ：涌泉，原版用于放置涌泉。
-- ``` VEGETAL_DECORATION ``` ：植被装饰，原版用于放置各种植物类地物。
-- ``` TOP_LAYER_MODIFICATION ``` ：顶层修改，原版用于放置冰冻顶层。
-
-游戏会按照生成阶段的顺序依次生成地物。虽然原版游戏只使用了11个生成阶段，但超出第11个生成阶段定义的地物依旧可以被游戏正常放置。
-
-对于可生成于同一维度的所有生物群系而言，生物群系的每个生成阶段中的地物的相对顺序必须相同。例如平原生物群系的地下矿物阶段为
-```
-ore_dirt
-```
-
-在
-```
-ore_gravel
-```
-
-之前，则其他所有的主世界生物群系若地下矿物阶段存在这两个地物放置，其相对顺序也一定是
-```
-ore_dirt
-```
-
-在
-```
-ore_gravel
-```
-
-之前。
-
-如果某维度内的两个生物群系任一生成阶段内的地物相对顺序不同，则游戏会在放置地物阶段报错
-```
-Feature order cycle found
-```
-
-。游戏并不会对地物顺序预先检查，只会在世界生成阶段检测出错误并中止游戏进程，因此必须手动检查地物顺序。
-
-对于可生成于同一维度的所有生物群系的所有地物生成阶段而言，应按下列方法检查地物顺序：
-
-- 如果是内联格式的列表或一个命名空间ID，则无顺序可言，无需检查。
-- 如果是命名空间ID的列表，则依照列表顺序判定地物顺序。
-- 如果是一个标签，则依照标签内[图:NBT列表/JSON数组]*values的顺序判定地物顺序。 - 以上述平原为例，则不允许内容为 ``` {"values":["ore_gravel","ore_dirt"]} ``` 的标签出现在其他主世界生物群系的地下矿物阶段。
-
-此外，游戏会记录所有属于已配置的地物标签
-```
-#can_spawn_from_bone_meal
-```
-
-的地物，当玩家对此生物群系内的草方块使用骨粉时，若草方块上的位置符合这些地物的放置要求则游戏会尝试生成此类地物而不只是生成草丛。原版游戏用来实现在特定的生物群系使用骨粉后会生成特定的花。
-
-# 历史
-
-## 生物群系分类
-
-在1.19前，生物群系分类决定了生物群系的若干性质。
-
-## 旧版环境效果
-
-- [图:NBT复合标签/JSON对象]*effects 生物群系环境效果 - 省略[图:整型]*water_color、[图:整型]*dry_foliage_color、[图:整型]*foliage_color、[图:整型]*grass_color和[图:字符串]grass_color_modifier。 - [图:整型]*fog_color：迷雾颜色。格式为十六进制转十进制RGB颜色值，下列颜色格式与此相同。 - [图:整型]*sky_color：天空颜色。 - [图:整型]*water_fog_color：水下迷雾颜色。 - [图:NBT复合标签/JSON对象]particle：生物群系的粒子效果。 - [图:NBT复合标签/JSON对象]*options：要使用的粒子。 - 见粒子数据格式。 - [图:单精度浮点数]*probability：粒子产生的频率。高于1的值相当于1，低于0的值相当于0。 - [图:字符串][图:NBT复合标签/JSON对象]ambient_sound：循环音效使用的声音事件。 - - 声音事件，见Template:Nbt inherit/sound event/source - [图:NBT复合标签/JSON对象]additions_sound：附加音效。 - [图:字符串][图:NBT复合标签/JSON对象]*sound：附加音效使用的声音事件。 - - 声音事件，见Template:Nbt inherit/sound event/source - [图:双精度浮点数]*tick_chance：每一游戏刻中开始播放的概率。高于1的值相当于1，低于0的值相当于0。 - [图:NBT复合标签/JSON对象]mood_sound：氛围音效。 - [图:字符串][图:NBT复合标签/JSON对象]*sound：氛围音效使用的声音事件。 - - 声音事件，见Template:Nbt inherit/sound event/source - [图:整型]*tick_delay：两次播放间的最小延迟。 - [图:整型]*block_search_extent：决定了氛围音效播放位置的正方体范围的大小。此正方体范围以玩家为中心，棱长为此值的2倍。 - [图:双精度浮点数]*offset：值越大，声源距离玩家越远。 - [图:NBT列表/JSON数组]music：生物群系的音乐。此列表为空时则不播放音乐。 - [图:NBT复合标签/JSON对象]：一项音乐。 - [图:NBT复合标签/JSON对象]*data：音乐具体数据。 - [图:字符串][图:NBT复合标签/JSON对象]*sound：音乐使用的声音事件。 - - 声音事件，见Template:Nbt inherit/sound event/source - [图:整型]*min_delay：两次播放间最小延迟。会受到音乐播放频率选项的限制，因此实际最小延迟不会超过24000游戏刻（20分）。 - [图:整型]*max_delay：两次播放间最大延迟。会受到音乐播放频率选项的限制，因此实际最大延迟不会超过24000游戏刻（20分）。 - [图:布尔型]*replace_current_music：是否立即替换正在播放的音乐。 - [图:整型]*weight：选择该音乐的权重。 - [图:单精度浮点数]music_volume：（默认为1）音乐的音量，游戏会在切换生物群系时平滑过渡音量。高于1的值相当于1，低于0的值相当于0。
-
-# 参考
-
-1. ↑ MC-258911（评论#1220828） — 漏洞状态为“无效”。
-
-# 外部链接
-
-- misode.github.io上的生物群系生成器
-
-# 导航
+Pre-1.19 effects (now replaced by environment attributes): `fog_color`, `sky_color`, `water_fog_color`, `particle` (options + probability), `ambient_sound`, `additions_sound`, `mood_sound` (tick_delay, block_search_extent, offset), `music` (weighted list of `{data (sound, min_delay, max_delay, replace_current_music), weight}`; empty = no music), `music_volume` (default 1).

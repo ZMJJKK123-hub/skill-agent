@@ -1,23 +1,7 @@
 ---
 name: forge-datagen-client
-description: |
-  Forge 客户端资源 Data Generation：模型/语言/声音提供器（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】Language Generation
-  
-  【涵盖内容】
-  - Existing Model Files
-  - Unchecked Model Files
-  - `BlockModelBuilder`
-  - `ItemModelBuilder`
-  - `BlockModelProvider`
-  - `ItemModelProvider`
-  - `VariantBlockStateBuilder`
-  - `MultiPartBlockStateBuilder`
-  - `SoundDefinition`
-  - `SoundDefinition$Sound`
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge 客户端资源 Data Generation：模型/语言/声音提供器 的完整规范时
+description: Forge client asset data generation: model/language/sound providers (BlockModelProvider etc.).
+whenToUse: Use when data generating client assets (models, language, sounds).
 ---
 
 Language Generation

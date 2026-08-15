@@ -1,76 +1,31 @@
 ---
 name: minecraft-cat-variant
-description: |
-  猫变种定义格式（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】猫变种定义文件是用于定义猫变种及其生成规则的数据驱动定义文件。
-  
-  【涵盖内容】
-  - 变种生成
-  
-  【关键定义】
-  - 注册表：CAT_VARIANT
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 猫变种定义格式 的完整规范时
+description: Cat variant definition JSON: CAT_VARIANT registry, adult/baby textures, spawn conditions.
+whenToUse: Use when writing datapack cat_variant definitions or custom cat variants.
 ---
 
-本条目所述内容仅适用于Java版。
-猫变种定义文件是用于定义猫变种及其生成规则的数据驱动定义文件。
+# Cat Variants
 
-# 定义格式
+This content applies only to Java Edition.
 
-猫变种在游戏内使用
-```
-CAT_VARIANT
-```
+Cat variant definition files define cat variants and their spawn rules.
 
-注册表，数据包路径为
-```
-cat_variant
-```
+## Definition format
 
-，即所有猫变种自定义文件都需要在
-```
-data/<
-命名空间
->/cat_variant
-```
+Cat variants use the `CAT_VARIANT` registry; the datapack path is `cat_variant` (definitions in `data/<namespace>/cat_variant`, tags in `data/<namespace>/tags/cat_variant`).
 
-目录中定义，猫变种标签则需要在
-```
-data/<
-命名空间
->/tags/cat_variant
-```
+Definition files use JSON with the following structure:
 
-目录中定义。
+- JSON file root object
+  - `asset_id` (string, required): (namespace ID) cat texture; resolved to `assets/<namespace>/textures/<path>.png`.
+  - `baby_asset_id` (string, required): (namespace ID) baby cat texture; resolved the same way.
+  - `spawn_conditions` (list, required): variant spawn selectors.
+    - One selector (compound):
+      - `condition` (compound): `type` (string, required): `biome` (`biomes` string/list: tag `#`, ID, or list), `moon_brightness` (`range` min-max bounds; full moon 1, new moon 0), or `structure` (`structures` string/list: tag `#`, ID, or list).
+      - `priority` (int, required): selection priority; ties resolved randomly.
 
-猫变种定义文件使用JSON格式，并具有下列结构：
+## Definition behavior
 
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:字符串]*asset_id：（命名空间ID）猫的纹理。游戏在渲染时将此值解析为 ``` assets/< 命名空间 >/textures/< 路径 >.png ``` 。 - [图:字符串]*baby_asset_id：（命名空间ID）幼年猫的纹理。游戏在渲染时将此值解析为 ``` assets/< 命名空间 >/textures/< 路径 >.png ``` 。 - [图:NBT列表/JSON数组]*spawn_conditions：变种生成选择器，控制变种的生成条件与优先级。 - [图:NBT复合标签/JSON对象]：一个变种生成选择器。 - [图:NBT复合标签/JSON对象]condition：此生成选择器可以生效的条件。不指定时默认为任何条件下都可以选择此生成选择器。 - [图:字符串]*type：生成选择器条件类型。 - - 如果[图:字符串]*type为 ``` biome ``` ，则检查当前生成点的生物群系。 - [图:字符串][图:NBT列表/JSON数组]*biomes：检查生成点是否为给定的生物群系，是则选择器有效。可以为以 ``` # ``` 开头的生物群系标签、一个生物群系ID的字符串、或以多个生物群系ID组成的字符串列表。 - - 如果[图:字符串]*type为 ``` moon_brightness ``` ，则检查当前月亮亮度。 - [图:双精度浮点数][图:NBT复合标签/JSON对象]*range：月亮亮度的范围，当前亮度在给定范围内时选择器有效。满月时为1而新月时为0，具体值见月亮 § 月亮亮度。 - - 浮点数界限范围，见Template:Nbt inherit/minmax bounds doubles/source - - 如果[图:字符串]*type为 ``` structure ``` ，则检查当前生成点是否在指定的结构片段内。 - [图:字符串][图:NBT列表/JSON数组]*structures：检查生成点是否在指定结构的结构片段内，是则选择器有效。可以为以 ``` # ``` 开头的结构标签、一个结构ID的字符串、或以多个结构ID组成的字符串列表。 - [图:整型]*priority：选择此生成选择器的优先级。游戏会挑选所有变种中所有有效的生成选择器，在优先级并列最高的选择器中随机挑选其一并使用对应的变种进行生成。
+Cat variant data is loaded only once at server startup; `/reload` does not reload it — a server restart is required. The `CAT_VARIANT` registry must have at least one element, or the game errors during sync and blocks world loading.
 
-# 定义行为
-
-猫变种定义数据仅在服务端启动时被加载一次，使用
-```
-/
-reload
-```
-
-命令不可以使猫变种定义被重新加载，而必须重启服务端。
-
-```
-CAT_VARIANT
-```
-
-注册表中必须至少有一个元素，否则游戏会在同步时报错并阻止世界加载。
-
-## 变种生成
-
-生成猫时，游戏根据[图:NBT列表/JSON数组]spawn_conditions指定的通用变种选择器选择生成何种变种。
-
-通用变种选择器包含了生成变种的各种条件，以及条件满足时的生成优先级。尝试生成时，游戏会在所有变种的选择器中找出条件成立且优先级最大的选择器，并生成拥有该选择器的变种；如有多个选择器的优先级同为最大，则会随机选取一个选择器，并生成其对应的变种。
-
-# 历史
-
-# 导航
+When spawning a cat, the game evaluates all variant selectors and spawns the variant of a highest-priority valid selector (random among ties).

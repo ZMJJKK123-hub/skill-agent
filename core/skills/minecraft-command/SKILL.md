@@ -1,471 +1,83 @@
 ---
 name: minecraft-command
-description: |
-  命令（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】关于愚人节快照26w14a中的实体，请见“活化方块命令”。
-  
-  【涵盖内容】
-  - 语法表示
-  - 限制条件
-  - 作弊
-  - 参数类型
-  - 解析与执行
-  - 输出
-  - 结果
-  - Java版
-  - 调试命令
-  - 基岩版和教育版
-  - 隐藏命令
-  - 已移除的命令
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 命令 的完整规范时
+description: Commands — usage, syntax notation, restrictions, parsing/execution, output, results.
+whenToUse: Use when writing or debugging commands, command blocks, or functions.
 ---
 
-关于愚人节快照26w14a中的实体，请见“活化方块命令”。
+# Command
 
-“> 您知道吗？Minecraft 有一套神奇的咒语，使用这些咒语，您便可传送到世界各地，定位生物群系和建筑，生成物品、生物、方块，设置天气和时间等等？
-> 
-> 没错，纯粹的魔法！使用“命令”（有时也叫做“斜杠命令”），您可以改变 Minecraft 的游戏体验，从召唤生物到改变世界的天气状况，无所不能。
-
-”——Duncan Geere
-命令（Command）是通过输入特定文本字符串使用的高级功能。
+Commands are advanced features invoked by typing text strings (chat, command blocks, server console, functions, clickable text components). Java Edition unless noted.
 
-# 使用
+## Usage
 
-在客户端中，命令通过Minecraft的聊天窗口输入。按下T键、/键（默认）、或[图:D-pad right]可以唤出聊天窗口。使用/键会同时输入命令必需的前缀斜杠（
-```
-/
-```
+- Chat: press T or `/` (default) — `/` also types the leading slash. ↑/↓ browse history; Tab cycles suggestions/arguments (also fills block coordinates under the crosshair, or an entity's UUID when pointing at it); a value list shows above the input for the current argument.
+- Command blocks and minecarts: the leading `/` is optional.
+- Dedicated server console: no leading `/`.
+- Execution sources: player chat, command block / command block minecart, server console, functions (data packs), script/animation controllers/block & entity events (Bedrock), `run_command` text component clicks (Java), WebSocket server (Bedrock), NPC dialogs (Bedrock).
 
-），因此是个实用的快捷键。↑和↓键可浏览之前输入的文本，包含所有之前执行的命令。在输入命令时按下Tab ↹键会循环显示当前可用的命令或参数，也可以快速输入准星当前指向方块的坐标（在Java版中输入实体参数时，如果准星指向某个实体，则可以直接输入其UUID）。当光标在某些参数（比如一个ID）的对应位置时，在文本框上方会展示一个可用值的列表。若该命令或参数已经输入了前面的部分内容，这个列表则只会展示包含当前输入内容的值。
+## Syntax Notation
 
-在命令方块中，命令可以以前缀斜杠开头，但不是必须的。
+- Java: `[<size>]` = optional argument; `[size]` = optional literal; `(grant|revoke)` = choose one literal; `<targets>` = required argument.
+- Bedrock: `<size: int>` = required argument; bare words = required literals.
+- Both: `[b]`/`[c]` optional parts only at the end; `a [b] [c]` allows `a`, `a b`, `a b c`.
 
-命令也可以在多人服务器的控制台中输入，但是不该加入前缀
-```
-/
-```
+## Restrictions
 
-。
+Most commands need sufficient permission level (in single-player: cheats enabled; multiplayer: operator). Command blocks always execute regardless of cheats. Additional restrictions: none; "cheats enabled" (Bedrock: command blocks/console/scripts ignore the setting, others need it); dedicated-server-only; not-on-dedicated-server.
 
-命令可通过以下方式执行：
+### Cheats
 
-- 玩家直接通过聊天框输入命令。
-- 通过命令方块或者命令方块矿车。
-- 在专用服务器中，通过控制台键入命令。
-- 在函数中，作为数据包或行为包的一部分。
-- 在基岩版中，在行为包的脚本中。
-- 在基岩版中，在行为包的动画控制器中。
-- 在基岩版中，在行为包的方块事件响应中。
-- 在基岩版中，在行为包的实体事件响应中。
-- 在Java版中，点击具有 ``` run_command ``` 行为的文本组件。
-- 在基岩版中，由连接到客户端的WebSocket服务器请求执行。
-- 在基岩版中，通过NPC对话框执行。
+- Java: "Allow Commands" at world creation only affects offline single-player and LAN owners; opening to LAN can temporarily enable commands; permanent enabling requires editing `level.dat`.
+- Bedrock: toggled in settings (except hardcore-like cases); enabling cheats permanently disables achievements for that world.
 
-# 命令指引
+## Parameter Types
 
-## 语法表示
+Arguments use formats like coordinates, target selectors, SNBT, and text components — see the parameter-types skill.
 
-每条命令都由若干以空格隔开的片段组成。以下格式用以辅助表示命令语法中各片段的含义。关于某条命令的具体语法，请点击命令列表中的链接。
-
-Java版：
+## Parsing and Execution
 
-例如，
-```
-[<size>]
-```
-
-是可选的参数，而
-```
-[size]
-```
-
-是可选的字面量。
+Commands are parsed (identify command, validate completeness/arguments) then executed. Client-side parsing (chat/command blocks) provides suggestions and early errors — client-parseable does not guarantee server-parseable.
 
-以
-```
-advancement (grant|revoke) <targets> only <advancement> [<criterion>]
-```
+- Java: an unparseable argument turns it and everything after it red with a syntax message above the chat bar; multiple spaces between arguments get collapsed to one on execution/history.
+- Bedrock: next suggestion turns white; command block input only autocompletes; closing a command block GUI parses immediately server-side and writes errors to the output box.
+- Unparseable commands show an error (`<--[here]` marker in Java; "Unknown command" / "Syntax error" in Bedrock).
+- Function commands are all parsed when the function loads — one bad line blocks the whole function. Java macro lines parse at run time with their arguments.
+- Bedrock scripts throw when executing unparseable commands.
 
-为例，其中
-```
-advancement
-```
+### Output
 
-和
-```
-only
-```
+Commands produce output values:
 
-是需要原样输入的字面量，
-```
-(grant|revoke)
-```
+- **Success count** — the value passed to command blocks (readable by a comparator behind the block; retained until the next execution). Java: usually 0 or 1 (exception: `/execute`); commands not executable in command blocks have no success count. Bedrock: 0..2147483647 depending on the command.
+- **Stored values** — Java: `/execute store` can store `success` (0 or 1) and `result` (integer, floored) from the executed command. Every command has both except `/execute` itself (without `if`/`unless`) and `/function` in certain cases.
 
-是需要从
-```
-grant
-```
+### Results
 
-和
-```
-revoke
-```
+After attempting a command, the result is one of:
 
-中选择一个输入的字面量，
-```
-<targets>
-```
+- **Unparseable** — restrictions not met, incomplete input, or unparseable arguments.
+- **Error** — the command threw a non-`CommandSyntaxException` exception: "An unexpected error occurred trying to execute that command", possible side effects (crashes), `/execute` branches may stop midway.
+- **Void** — only `/function` (without `if`/`unless`): no `result`/`success` values to store.
+- **Interrupted** — only `/execute`: the number of execution branches became 0 before the trailing subcommand (e.g. `/execute as @s run ...` in a command block, which is not an entity).
+- **Success / failure** — otherwise: success count 0 = failure, > 0 = success. (Unparseable/error/void/interrupted are NOT "failure" even though their success count is 0; a "successful" command need not change the world, and a "failed" one may still have done something.)
 
-和
-```
-<advancement>
-```
+## Command List
 
-是必需的以合适值替换的参数，
-```
-[<criterion>]
-```
+The complete list of Java commands (including upcoming ones) with per-command syntax: see the Minecraft Wiki "Commands" page. Java-specific notes: the wiki marks commands by game state (Java only, Bedrock only, Education only, etc.).
 
-是可选的以合适值替换的参数。
+### Debug Commands (Java)
 
-基岩版：
+Debug tooling should not be enabled during normal play (may crash or irreversibly damage saves). Some commands only exist with the `MC_DEBUG_DEV_COMMANDS` debug tool enabled; others with `MC_DEBUG_CHASE_COMMAND`.
 
-其中尖括号修饰符（
-```
-<输入项>
-```
+### Hidden Commands (Bedrock/Education)
 
-）通用不修饰
-```
-字面量
-```
+Usually executable only via a WebSocket server, not in-game.
 
-，必选的字面量不需添加修饰符。例如，
-```
-set
-```
+## Removed Commands
 
-和
-```
-<set>
-```
+- **Bedrock developer commands** — for development/testing; normally invisible to players.
+- **Agent commands (Education)** — `/attack`, `/collect`, `/createagent`, `/destroy`, `/detectredstone`, `/detect`, `/dropall`, `/drop`, `/getitemcount`, `/getitemdetail`, `/getitemspace`, `/inspectdata`, `/inspect`, `/move`, `/place`, `/till`, `/tpagent`, `/transfer`, `/turn` — replaced by `/agent`.
 
-都表示必选的字面量，但后者不会在游戏中出现。而
-```
-<size: int>
-```
+## April Fools Commands (Java)
 
-是必选的参数。
-
-在Java版和基岩版中，方括号都表示可选。被方括号修饰的输入项只能位于命令末尾，不会出现在命令中间。命令结尾允许并列出现多个方括号，如位于命令结尾的
-```
-a [b] [c]
-```
-
-表示只有
-```
-a
-```
-
-、
-```
-a b
-```
-
-和
-```
-a b c
-```
-
-三者是合法的。
-
-## 限制条件
-
-绝大部分命令要求执行上下文要有足够的权限等级，这就意味着在单人游戏中，大部分命令在启用作弊的情况下可以被使用，并且在多人游戏服务器中需要玩家是管理员时才能使用。详见权限等级。
-
-一些命令对当前的游戏和世界有限制。
-
-- 无：无限制条件。
-- 启用作弊：仅适用于基岩版。当由服务端或脚本（控制台、计划执行的函数、tick.json中的函数）、命令方块或命令方块矿车执行时，无论是否启用作弊均可执行相应命令。当以其他方式执行时，相应命令仅在存档启用作弊时才可用。禁用作弊后，除非由服务端或脚本、命令方块或命令方块矿车执行，否则即使执行者具有较高的权限等级也无法使用相应命令。 - 在Java版中，作弊影响玩家的权限等级。权限等级还受其他因素的影响，只要拥有足够高的权限等级，无论此存档是否开启作弊，玩家都可以使用相应命令。
-- 仅专用服务器：此命令只能在专用服务器中执行。
-- 非专用服务器：此命令不能在专用服务器中执行。
-
-### 作弊
-
-创建新的世界时，可以通过“允许命令”或“无敌模式”选项启用作弊。
-
-在Java版中，创建新的世界时的“允许命令”选项仅影响离线单人世界的玩家或局域网世界的所有者。对局域网开放时的“允许命令”选项会影响局域网世界中的所有玩家。
-
-在Java版中，若当前的离线单人游戏未开启作弊，可在公开目前的游戏至局域网时将“允许命令”设为开而暂时开启作弊。若要永久开启作弊，必须修改level.dat文件。
-
-在基岩版中，若世界不处于极限模式等情况下，作弊便可以使用设置菜单中的选项切换。开启作弊会导致玩家在该世界永远无法获得成就，即使后来再关闭作弊也一样。
-
-## 参数类型
-
-主条目：参数类型
-命令的参数有不同的参数类型。坐标、目标选择器、SNBT、文本组件等是参数中常用的格式。
-
-## 解析与执行
-
-游戏服务端处理命令的过程分为解析（Parsing）和执行（Execution）两个阶段。在解析阶段，游戏将字符串识别为某个命令，并检查命令是否完整以及参数被是否正确地指定。在执行阶段，命令发挥其功能。
-
-当玩家在聊天框、命令方块或者命令方块矿车中输入命令时，命令也会先在客户端解析，以提供自动补全并帮助玩家提前发现错误。
-
-- 当在聊天栏输入参数时，若一个参数无法被客户端解析，则会向玩家发出提示。然而，能被客户端解析，并不能保证此参数能被服务端解析。 - 在Java版中，若某一个参数无法被客户端解析，该参数及之后的所有部分都将被标记为红色，聊天栏上方会显示语法错误信息。 - 在基岩版中，若某一个参数无法被客户端解析，则语法提示中的下一个参数将从灰色变为白色。若已输入所有参数（包括可选参数），那么整个语法提示都将从白色变为灰色。
-- 在Java版中，在命令方块中输入命令也有如上的行为。在基岩版中，在命令方块中输入命令只会提供自动补全而无语法提示。
-- 在Java版中，在聊天框输入命令时，若某两个参数之间存在多个空格，行为同上，但会在执行时和命令历史中将其修正为单个空格。
-
-在基岩版中，当在一个命令方块中输入命令，并在关闭命令方块界面后，命令立即在服务端进行解析。若无法解析，会把一个错误信息输出到命令方块的输出框中。
-
-当尝试执行一个无法解析的命令时，游戏将显示错误信息。
-
-- 在Java版中，提示信息的末尾为“<--[此处]”。
-- 在基岩版中，提示信息为“未知的命令”或“语法错误：意外的“错误”：出现在“错误所在位置””。
-
-函数中的命令会在加载函数时全部解析，如有任一行命令无法解析，则此函数将无法被加载到游戏中。在Java版中，宏行则是在函数尝试运行时再根据提供的参数进行解析，详见Java版函数 § 宏和Java版函数 § 加载与解析。
-
-在基岩版中，如果脚本中存在无法解析的命令，则在尝试执行该命令时会抛出错误。
-
-### 输出
-
-命令在尝试执行时会产生输出值（Output）。输出值包括成功次数（Success Count）和储存值（Stored Values）。
-
-成功次数是指命令在命令方块或脚本中执行时传出的值。传给命令方块后，成功次数可以由背对命令方块的红石比较器检测（两者可间隔一个红石导体方块），比较器的输入信号强度等于最后一次执行的命令的成功次数。即便命令方块取消激活，成功次数依旧保留，直到再次执行命令，因此比较器能够持续接收同一信号强度的输入。在Java版中，无法在命令方块中执行的命令没有成功次数。在基岩版中，即使该命令无法被命令方块或脚本执行，它依旧存在成功次数，只不过无法获取。在Java版中，命令的成功次数通常是0或1，唯一例外是
-```
-/
-execute
-```
-
-命令。在基岩版中，成功次数为0到2,147,483,647（含）之间的整数，与所执行的命令有关（例如，被命令所影响的玩家数、改变的方块数等）。
-
-在Java版中，储存值有两个：
-```
-success
-```
-
-值和
-```
-result
-```
-
-值，是
-```
-/
-execute
-```
-
-命令在执行其他命令的过程中，其他命令传给
-```
-/
-execute
-```
-
-命令的值。这两个值可以由
-```
-/
-execute
-```
-
-命令中的
-```
-store
-```
-
-子命令储存到指定位置。
-```
-success
-```
-
-值只能为0或1。
-```
-result
-```
-
-则是一个整数（若不是，则会被向下取整）。所有命令在执行后都有这两个储存值，除了两个例外：
-```
-/
-execute
-```
-
-本身在不包含
-```
-if
-```
-
-或
-```
-unless
-```
-
-子命令时没有这两个储存值；
-```
-/
-function
-```
-
-命令在特定情况下没有这两个储存值。
-
-### 结果
-
-尝试执行命令后会产生不同的结果，包括无法解析、执行失败、执行成功、Void、执行中断、执行出错。
-
-无法解析
-在服务端解析命令时，当前游戏、世界或执行上下文不满足命令的限制条件，或输入的命令不完整，或存在无法解析的参数，此命令就无法解析。
-执行出错
-若一个命令执行出错，则意味着该命令存在明显的漏洞。此时会输出“试图执行该命令时出现意外错误”，并可能会出现其他的副作用（如崩溃），
-```
-/
-execute
-```
-
-命令也会被中途打断，导致分支未能全部执行。
-从技术上来说，执行出错即该命令在执行时抛出了除brigadier.exceptions.CommandSyntaxException以外的异常。
-Void
-仅存在于
-```
-/
-function
-```
-
-命令。命令没有
-```
-result
-```
-
-值和
-```
-success
-```
-
-值可供
-```
-/
-execute
- store
-```
-
-命令存储时，称该命令执行结果为Void（无返回值）。
-执行中断
-仅存在于
-```
-/
-execute
-```
-
-命令。即在执行一个
-```
-/
-execute
-```
-
-命令的过程中，执行分支数量变成了0，在执行末尾的子命令前就已经停止，称为执行中断。
-比如在命令方块中执行
-```
-/
-execute
- as @s run ...
-```
-
-，由于命令方块不是实体，无法被目标选择器选中，因此该命令中断于
-```
-as @s
-```
-
-。
-执行失败和执行成功
-若命令不是无法解析、执行错误、Void或执行中断，则该命令的结果可分为执行失败或执行成功。若此时该命令的成功次数为0，则命令执行失败。否则，命令执行成功。
-
-- 在Java版中，如果该命令无法被命令方块执行，则当 ``` / execute store success ... run ... ``` 储存 ``` 0 ``` 时命令失败，当 ``` / execute store success ... run ... ``` 储存 ``` 1 ``` 时命令成功。
-- 在基岩版中，即使该命令无法被命令方块或脚本执行，它依旧存在成功次数，只不过无法获取。
-
-请注意：
-
-- 只有在命令不是无法解析、执行错误、Void或执行中断时，才存在执行失败和执行成功。尽管当无法解析、执行出错、Void或执行中断时，命令的成功次数为0，但它不被视为执行失败，也不是执行成功。
-- 并非所有的“执行成功”的命令都会使世界有所改变，“执行失败”的命令也不意味着命令什么也没有做。
-
-# 命令列表及其概述
-
-下表列出了所有可用命令，包括即将到来的命令。点击表头可以排序。
-
-点击每一行第一格中的链接可以查看命令的具体用法。
-
-## Java版
-
-### 调试命令
-
-调试工具仅应作调试用途使用，而不应在正常游戏过程中开启。开启调试工具可能会崩溃或对存档产生不可逆的损害。
-
-以下命令仅当启用调试工具 MC_DEBUG_DEV_COMMANDS时可用。
-
-以下命令仅当启用调试工具 MC_DEBUG_CHASE_COMMAND时可用。
-
-## 基岩版和教育版
-
-### 隐藏命令
-
-这类命令通常需要使用WebSocket服务器代为执行，在游戏界面中无法被执行。
-
-## 已移除的命令
-
-### 基岩版开发者命令
-
-主条目：基岩版开发者命令
-基岩版开发者命令是供游戏的开发和测试使用的，在正式版本中玩家通常无法看见并执行这些命令。
-
-### 智能体命令
-
-此段落描述的是教育版相关特性。
-该特性仅在教育版和开启了“Education Edition”选项的基岩版世界中可用。
-
-以下命令已由
-```
-/
-agent
-```
-
-取代：
-
-- ``` / attack ```
-- ``` / collect ```
-- ``` / createagent ```
-- ``` / destroy ```
-- ``` / detectredstone ```
-- ``` / detect ```
-- ``` / dropall ```
-- ``` / drop ```
-- ``` / getitemcount ```
-- ``` / getitemdetail ```
-- ``` / getitemspace ```
-- ``` / inspectdata ```
-- ``` / inspect ```
-- ``` / move ```
-- ``` / place ```
-- ``` / till ```
-- ``` / tpagent ```
-- ``` / transfer ```
-- ``` / turn ```
-
-## 愚人节命令
-
-本段落所述内容仅适用于Java版。
-以下命令仅存在于部分愚人节版本中。
-
-- ``` / debugdim ```
-- ``` / transform ```
-- ``` / vote ```
-- ``` / warp ```
-
-# 历史
-
-# 参见
-
-- 格式化代码
-- 实体数据格式
-
-# 参考
-
-1. ↑ How to use commands in Minecraft — Minecraft.net，2023年9月22日。
-
-# 导航
+Exist only in some April Fools versions: `/debugdim`, `/transform`, `/vote`, `/warp`. (26w14a's living block entity commands: see "Block entity commands".)

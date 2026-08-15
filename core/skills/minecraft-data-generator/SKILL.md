@@ -1,365 +1,48 @@
 ---
 name: minecraft-data-generator
-description: |
-  数据生成器（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】数据生成器（Data Generator）是导出游戏数据驱动文件和转换数据的工具程序。
-  
-  【涵盖内容】
-  - NBT-SNBT转换工具
-  - SNBT-NBT转换工具
-  - 服务端数据包导出工具
-  - 客户端资源包导出工具
-  - 报告工具
-  - 方块报告
-  - 命令报告
-  - 数据包报告
-  - JSON-RPC API模式报告
-  - 协议报告
-  - 注册表报告
-  - 生物群系参数报告
-  
-  【关键定义】
-  - 注册表：BLOCK_TYPE
-  - 数据包路径：data/./generated、data/minecraft/datapacks、data/reports/blocks.json、data/reports/commands.json、data/reports/datapacks.json、data/reports/json-rpc-api-schema.json
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 数据生成器 的完整规范时
+description: Data generator — running it, NBT↔SNBT conversion, exports, report tools.
+whenToUse: Use when exporting Minecraft's data-driven files, converting NBT/SNBT, or generating internal reports (blocks, commands, registries, packets).
 ---
 
-本条目所述内容仅适用于Java版。
-数据生成器（Data Generator）是导出游戏数据驱动文件和转换数据的工具程序。
+# Data Generator
 
-# 文件结构
+The data generator exports data-driven files and converts data. Java Edition only. It exists as a runnable main class inside the client and server jars:
 
-数据生成器位于客户端核心文件和服务端核心文件内，作为可运行主类存在于两种文件的代码中。
+- Server data generator (both jars): `net.minecraft.data.Main`.
+- Client data generator (client jar only): `net.minecraft.client.data.Main`.
 
-数据生成器分为两种：服务端数据生成器和客户端数据生成器。
+## Launch Arguments
 
-- 服务端数据生成器在客户端和服务端核心文件中都存在，类名为 ``` net.minecraft.data.Main ``` 。
-- 客户端数据生成器只存在于客户端核心文件中，类名为 ``` net.minecraft.client.data.Main ``` 。
+Run via classpath (`java -cp "...;client.jar" net.minecraft.data.Main <args>`) or via bundler (`java -DbundlerMainClass=net.minecraft.data.Main -jar server.jar <args>`).
 
-# 启动参数
+Server data generator arguments:
 
-因为核心文件清单文件中定义的主类并非数据生成器类，所以必须指定JVM参数运行数据生成器。
+- `--help` — help (highest priority).
+- `--dev` — NBT→SNBT conversion tool.
+- `--reports` — report tool.
+- `--server` — SNBT→NBT conversion + server datapack export.
+- `--all` — `--dev --reports --server`.
+- `--input <dir>` — SNBT/NBT input (repeatable).
+- `--output <dir>` — output directory (default `./generated`).
+- `--validate` — no real effect (argument validity check).
 
-如果要运行服务端数据生成器，需要下列命令：
+Client data generator arguments: `--help`, `--client` (= `--all`), `--output <dir>`.
 
-```
-java
- 
--cp
- 
-"...;client.jar"
- 
-net.minecraft.data.Main
- 
-<启动参数>
-               
-# 客户端核心文件运行方式（省略号代表需要额外指定类路径，参见 <版本号>.json 中的"libraries"字段）
+## Export Tools
 
-java
- 
--DbundlerMainClass
-=
-net.minecraft.data.Main
- 
--jar
- 
-server.jar
- 
-<启动参数>
- 
-# 服务端核心文件运行方式
-```
+- **NBT→SNBT** (`--dev` + `--input`): converts `.nbt` files (GZip-compressed only; invalid files are skipped with a log error, path structure preserved). Structure template files convert to their special SNBT form.
+- **SNBT→NBT** (`--server` + `--input`): converts `.snbt` files (invalid files skipped, paths preserved; structure SNBT converts back).
+- **Server datapack export** (`--server`): writes writable registry entries (worldgen, variants, etc.), advancements, loot tables, recipes, and partial registry tags (blocks, items, biomes, banner patterns, structure types, damage types, entity types, flat world presets, fluids, game events, goat horn instruments, painting variants, POI types, world presets, enchantments, dialogs, timelines, mob effects, villager trades). Built-in datapacks are written under `data/minecraft/datapacks/`.
+- **Client resource pack export** (`--client`): texture atlases, equipment models, blockstate mappings, item model definitions, item/block models, waypoint styles.
 
-如果要运行客户端数据生成器，需要下列命令：
+## Reports (`reports/` directory, `--reports`)
 
-```
-java
- 
--cp
- 
-"...;client.jar"
- 
-net.minecraft.client.data.Main
- 
-<启动参数>
- 
-# 需要额外指定类路径
-```
-
-下列为服务端数据生成器启动参数：
-
-- ``` --help ``` ：输出服务端数据生成器命令帮助。此参数具有最高优先级，其他参数会被此项参数忽略。
-- ``` --dev ``` ：提供NBT转换SNBT工具程序。
-- ``` --reports ``` ：提供生成报告工具程序。
-- ``` --server ``` ：提供SNBT转换NBT工具程序和服务端数据包导出工具程序。
-- ``` --all ``` ：包含上述3个工具程序，即 ``` --dev --reports --server ``` 三个参数的简写。
-- ``` --input < 目录 > ``` ：指定SNBT或NBT输入，此参数可以多次出现。
-- ``` --output < 目录 > ``` ：指定生成数据保存的目录。默认为 ``` ./generated ``` 。
-- ``` --validate ``` ：没有实际作用，本质是为了检测启动参数的有效性。
-
-下列为客户端数据生成器启动参数：
-
-- ``` --help ``` ：输出服务端数据生成器命令帮助。此参数具有最高优先级，其他参数会被此项参数忽略。
-- ``` --client ``` ：提供客户端资源包导出工具程序。
-- ``` --all ``` ：与 ``` --client ``` 等价。
-- ``` --output < 目录 > ``` ：指定生成数据保存的目录。默认为 ``` ./generated ``` 。
-
-# 导出数据
-
-根据启动参数的不同，数据生成器会提供指定的工具程序并生成对应的数据。
-
-## NBT-SNBT转换工具
-
-使用
-```
---dev
-```
-
-启动参数并指定
-```
---input
-```
-
-可以使数据生成器输出NBT文件的对应的SNBT格式。
-
-数据生成器只会识别后缀名为
-```
-.nbt
-```
-
-的文件进行SNBT转换，其他文件则被忽略。在输出文件时，游戏会保持原文件的相对目录路径进行输出。
-
-数据生成器只能转换以GZip压缩的NBT文件。如果文件无效，程序将在日志中输出错误信息，但不会中止程序，而是跳过此文件。
-
-特别地，如果该NBT文件是结构存储文件，则输出SNBT与原始NBT有差异，详见结构存储格式#SNBT格式。
-
-## SNBT-NBT转换工具
-
-使用
-```
---server
-```
-
-启动参数并指定
-```
---input
-```
-
-可以使数据生成器输出SNBT文件的对应的NBT格式。
-
-数据生成器只会识别后缀名为
-```
-.snbt
-```
-
-的文件进行NBT转换，其他文件则被忽略。在输出文件时，游戏会保持原文件的相对目录路径进行输出。
-
-对于所有被数据生成器识别的SNBT文件，如果文件无效，程序将在日志中输出错误信息，但不会中止程序，而是跳过此文件。
-
-特别地，由结构存储文件输出的SNBT会被转回原始形式。
-
-## 服务端数据包导出工具
-
-使用
-```
---server
-```
-
-启动参数时数据生成器将自动导出服务端数据包。此工具与SNBT-NBT转换工具使用同一个启动参数，所以在SNBT-NBT转换工具启动的同时也会导出服务端数据包。
-
-导出服务端数据包时，数据生成器会在输出目录中按照数据包的目录格式进行输出。数据生成器不会输出所有数据包内数据，只会输出下列数据：
-
-- 所有可写注册表的注册项数据（如世界生成、变种等注册表）。
-- 进度（ ``` advancement ``` ）。
-- 战利品表（ ``` loot_table ``` ）。
-- 配方（ ``` recipe ``` ）。
-- 部分注册表标签数据，包括：方块、物品、生物群系、旗帜图案、生成结构、伤害类型、实体类型、超平坦世界预设、流体、游戏事件、山羊角乐器、画变种、兴趣点、世界预设、魔咒、对话框、时间线、药水效果、村民交易。
-
-同时，游戏也会输出内置数据包的数据，这些内置数据包会被放置在
-```
-data/minecraft/datapacks
-```
-
-下，其内部结构与上文所述类似，但具体信息由具体的数据包定义，因此可能不包含上述绝大多数信息。
-
-## 客户端资源包导出工具
-
-对于客户端数据生成器，使用
-```
---client
-```
-
-启动参数时数据生成器将自动导出客户端资源包数据。
-
-导出客户端资源包时，数据生成器会在输出目录中按照资源包的目录格式进行输出。数据生成器只会生成下列资源包数据：
-
-- 纹理图集。
-- 装备模型。
-- 方块状态映射.
-- 物品模型映射。
-- 物品模型、方块模型。
-- 路径点样式。
-
-## 报告工具
-
-使用
-```
---report
-```
-
-启动参数时可以让数据生成器生成一些游戏内部数据。这些数据会被导出到
-```
-reports
-```
-
-目录下。
-
-数据生成器可以生成下列报告：
-
-### 方块报告
-
-方块报告位于
-```
-reports/blocks.json
-```
-
-，包含了方块状态相关数据。具有下列JSON结构：
-
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:NBT复合标签/JSON对象]<方块注册名>：一个方块及其方块状态的具体数据。 - [图:NBT复合标签/JSON对象]*definition：方块的基本定义数据。 - [图:NBT复合标签/JSON对象]*properties：方块基本属性信息。目前此数据不被导出，因此此项固定为空对象。 - [图:字符串]*type：方块类型。此值为 ``` BLOCK_TYPE ``` 注册表中定义的注册项。 - 其他元素由[图:字符串]*type决定。 - [图:NBT复合标签/JSON对象]*properties：方块具有的方块属性。 - [图:NBT列表/JSON数组]<方块属性>：一项方块属性及其可选值。 - [图:字符串]：一个对应方块属性的可选值。 - [图:NBT列表/JSON数组]*states：方块对应的所有方块状态。 - [图:NBT复合标签/JSON对象]：一项方块状态。 - [图:布尔型]default：此方块状态是否是此方块的默认方块状态。此值为 ``` true ``` 时才存在。 - [图:整型]*id：方块状态的数字ID。此ID仅用于网络同步，不用于世界生成、存档持久化等文件操作。 - [图:NBT复合标签/JSON对象]*properties：此方块状态对应的各个方块属性值。 - [图:字符串]<方块属性>：此方块状态对应方块属性的值。此处定义的所有方块属性都与外层[图:NBT复合标签/JSON对象]*properties中定义的方块属性和可选值保持一致。
-
-### 命令报告
-
-命令报告位于
-```
-reports/commands.json
-```
-
-，包含了命令的结构与参数数据。
-
-命令报告JSON格式是一个递归的树，每个节点的格式如下：
-
-- [图:NBT复合标签/JSON对象] 当前树节点 - [图:字符串]*type：此节点的类型。可以为 ``` root ``` （根节点）、 ``` literal ``` （字面量节点）、 ``` argument ``` （参数节点）和 ``` unknown ``` （未知节点，此值不应出现）。 - [图:NBT复合标签/JSON对象]children：此节点的子节点。当[图:NBT列表/JSON数组]redirect和此项都不存在时，此节点成为叶子节点，命令解析到此节点中止。 - [图:NBT复合标签/JSON对象]<节点名称>：子节点。递归此树节点结构。 - [图:NBT列表/JSON数组]redirect：命令解析到此节点时，将解析流重定向到另一节点，以实现命令别名或递归命令。 - [图:字符串]：重定向到的节点名称。从此名称查找节点时，需要从根节点深度优先查找到第一个具有此名称的节点作为重定向节点。 - [图:布尔型]executable：此节点是否可以被执行，即被接受为有效命令。此值为 ``` true ``` 时存在。 - [图:字符串]parser：（[图:字符串]*type为 ``` argument ``` 时存在）此参数节点的解析器，用于解析字符串为有效的数据。 - [图:NBT复合标签/JSON对象]properties：参数节点解析器的额外参数，如果解析器没有任何额外参数或所有额外参数都为默认值时此项不存在。 - - 当[图:字符串]parser为 ``` brigadier:double ``` 、 ``` brigadier:float ``` 、 ``` brigadier:integer ``` 、 ``` brigadier:long ``` 时： - [图:任意类型]max：此参数的最大值。类型与[图:字符串]parser中写出的数字类型一致。 - [图:任意类型]min：此参数的最小值。类型与[图:字符串]parser中写出的数字类型一致。 - - 当[图:字符串]parser为 ``` brigadier:string ``` 时： - [图:字符串]*type：此字符串解析的方式。可以为 ``` word ``` （接受不使用引号包括的字符串，按空格分割）、 ``` phrase ``` （接受有效的字符串）、 ``` greedy ``` （命令后续所有字符串原始文本直接解析）。 - - 当[图:字符串]parser为 ``` minecraft:resource ``` 、 ``` minecraft:resource_key ``` 、 ``` minecraft:resource_selector ``` 、 ``` minecraft:resource_or_tag ``` 、 ``` minecraft:resource_or_tag_key ``` 时： - [图:字符串]*registry：此注册表类参数读取的注册表。 - - 当[图:字符串]parser为 ``` minecraft:entity ``` 时： - [图:字符串]*amount：能选择的实体数量。可以为 ``` single ``` （单个实体）或 ``` multiple ``` （多个实体）。 - [图:字符串]*type：能选择的实体类型。可以为 ``` player ``` （玩家）或 ``` entities ``` （所有实体类型）。 - - 当[图:字符串]parser为 ``` minecraft:score_holder ``` 时： - [图:字符串]*amount：能选择的实体数量。可以为 ``` single ``` （单个实体）或 ``` multiple ``` （多个实体）。 - - 当[图:字符串]parser为 ``` minecraft:time ``` 时： - [图:整型]min：此时间参数的最短时间，按游戏刻计。 - [图:NBT复合标签/JSON对象]permissions：此节点执行的权限要求。 - [图:字符串]*type：权限检查类型。取值只能为 ``` always_pass ``` （总是通过，默认值）或 ``` require ``` （需要权限）。 - - 当[图:字符串]*type为 ``` always_pass ``` 时，没有附加字段。 - - 当[图:字符串]*type为 ``` require ``` 时：附加字段如下： - [图:NBT复合标签/JSON对象]*permission：权限要求。 - [图:字符串]*type：权限类型。取值只能为 ``` command_level ``` （命令等级）或 ``` atom ``` （单项权限，只用于目标选择器、客户端命令提示和聊天行为限制，此值不应出现）。 - - 当[图:字符串]*type为 ``` command_level ``` 时：附加字段如下： - [图:字符串]*level：所需的权限等级。取值只能为 ``` all ``` （0）、 ``` moderators ``` （1）、 ``` gamemasters ``` （2）、 ``` admins ``` （3）或 ``` owners ``` （4）。 - - 当[图:字符串]*type为 ``` atom ``` 时，附加字段如下： - [图:字符串]*id：一个命名空间ID。
-
-在命令报告文件内，第一个节点永远是根节点，根节点的直接子节点组成游戏中可用的所有命令。
-
-### 数据包报告
-
-数据包报告位于
-```
-reports/datapacks.json
-```
-
-，包含了数据包结构数据。具有下列结构：
-
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:NBT复合标签/JSON对象]*others：非注册项数据包数据。 - [图:NBT复合标签/JSON对象]<非注册项结构>：数据包内非注册项结构的数据。 - [图:字符串]*format：此非注册项结构的格式。可以为 ``` structure ``` （结构文件格式）和 ``` mcfunction ``` （函数文件格式）。 - [图:布尔型]*elements：此项是否可以使用数据包添加数据。 - [图:布尔型]*stable：此项是否是稳定的，即修改此项后存档能保证正常加载并运行。 - [图:布尔型]*tags：此项是否可以使用数据包添加标签。 - [图:NBT复合标签/JSON对象]*registries：注册项数据包数据。 - [图:NBT复合标签/JSON对象]<注册项结构>：数据包内注册项结构的数据。 - [图:布尔型]*elements：此项是否可以使用数据包添加注册项。 - [图:布尔型]*stable：此项是否是稳定的，即修改此项后存档能保证正常加载并运行。 - [图:布尔型]*tags：此项是否可以使用数据包添加标签。
-
-下列是注册表与三个布尔值的大致关系：
-
-### JSON-RPC API模式报告
-
-JSON-RPC API模式报告位于
-```
-reports/json-rpc-api-schema.json
-```
-
-，包含了服务端管理协议使用的JSON-RPC信息。具有下列JSON结构：
-
-- - [图:字符串]$ref：（若存在，则[图:字符串]type等字段不应出现）引用一个模式组件。内容为 ``` #/components/schemas/< 模式组件名 > ``` 。 - [图:字符串]type：（若存在，则[图:字符串]$ref不应出现）此节点的数据类型。可以为 ``` boolean ``` （布尔值）、 ``` integer ``` （整型）、 ``` string ``` （字符串）、 ``` number ``` （浮点数）、 ``` object ``` （对象）或 ``` array ``` （数组）。 - [图:NBT列表/JSON数组]enum：（仅在[图:字符串]type为 ``` string ``` 时存在）若存在，则此节点只能接受此数组内的字符串。 - [图:字符串]：一个字符串。 - [图:NBT复合标签/JSON对象]items：（仅在[图:字符串]type为 ``` array ``` 时存在）组成此数组的元素类型。 - 与此结构相同，但不可能是 ``` object ``` 类型，且此结构内的数组元素不可能为数组，递归定义。 - [图:NBT复合标签/JSON对象]properties：（仅在[图:字符串]type为 ``` object ``` 时存在）此元素的属性。 - [图:字符串]<属性名>：一项属性。 - 与此结构相同，但不可能是 ``` object ``` 类型，递归定义。
-
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:NBT复合标签/JSON对象]*components：模式组件信息。 - [图:NBT复合标签/JSON对象]*schemas - [图:NBT复合标签/JSON对象]*<模式组件名>：一项模式组件信息。 - - Schema - [图:NBT复合标签/JSON对象]*info：服务端管理协议的发现信息。 - [图:字符串]*title：协议名称，此值总是为“Minecraft Server JSON-RPC”。 - [图:字符串]*version：服务端管理协议的版本号。 - [图:NBT列表/JSON数组]*methods：所有可用的方法，不包括 ``` rpc.discover ``` 。 - [图:NBT复合标签/JSON对象]：一项方法。 - [图:字符串]*description：此方法的描述。 - [图:字符串]*name：此方法的命名空间ID。在原版定义下，ID带 ``` notification/ ``` 前缀的为通知方法，否则为请求方法。 - [图:NBT列表/JSON数组]*params：此方法的负载，若无负载则为空数组。 - [图:NBT复合标签/JSON对象]：一个参数。 - [图:字符串]*name：此参数的名称。 - [图:布尔型]*required：此参数是否必需。 - [图:NBT复合标签/JSON对象]*schema：此参数的模式，也即所需的数据类型。 - - Schema - [图:NBT复合标签/JSON对象]result：（仅请求方法存在）此方法的响应。 - [图:字符串]*name：此参数的名称。 - [图:NBT复合标签/JSON对象]*schema：此参数的模式，也即所需的数据类型。 - - Schema - [图:字符串]*openrpc：OpenRPC规范版本。
-
-### 协议报告
-
-协议报告位于
-```
-reports/packets.json
-```
-
-，包含了网络数据包信息。具有下列JSON结构：
-
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:NBT复合标签/JSON对象]<网络阶段名>：在指定网络阶段的协议数据。当前网络阶段包括 ``` handshake ``` （握手阶段）、 ``` login ``` （登录阶段）、 ``` configuration ``` （配置阶段）、 ``` play ``` （游戏中阶段）和 ``` status ``` （服务器列表查询阶段）。 - [图:NBT复合标签/JSON对象]<逻辑端类型>：发向指定逻辑端的有效网络数据包信息。逻辑端类型分为 ``` clientbound ``` （下行）和 ``` serverbound ``` （上行）。 - [图:NBT复合标签/JSON对象]<网络数据包注册名>：一项有效的网络数据包类型。 - [图:整型]*protocol_id：此网络数据包类型的网络序列化ID。
-
-### 注册表报告
-
-注册表报告位于
-```
-reports/registries.json
-```
-
-，包含了注册表及其网络序列化ID数据。具有下列JSON结构：
-
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:NBT复合标签/JSON对象]<注册表注册名>：一个注册表及其相关数据。 - [图:字符串]default：注册表的默认注册项，当注册项反序列化失败时自动使用此注册项。 - [图:NBT复合标签/JSON对象]*entries：注册表内的所有注册项。 - [图:NBT复合标签/JSON对象]<注册项>：注册表内注册项的信息。 - [图:整型]*protocol_id：此注册项的网络序列化ID。 - [图:整型]*protocol_id：此注册表的网络序列化ID。
-
-### 生物群系参数报告
-
-生物群系参数报告位于
-```
-reports/biome_parameters
-```
-
-目录内，按照命名空间ID的路径保存各文件。每个文件都具有下列JSON结构：
-
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:NBT列表/JSON数组]*biomes：维度内的生物群系参数数据。 - [图:NBT复合标签/JSON对象]：一项放置参数数据。 - [图:字符串]*biome：此数据将要放置的生物群系。 - [图:NBT复合标签/JSON对象]*parameters：放置的密度函数参数区间。 - [图:单精度浮点数][图:NBT列表/JSON数组]*continentalness：放置的大陆性密度函数参数区间。可以为精确值或两个浮点数构成的区间数组，所有浮点数均在 ``` [-2, 2] ``` 闭区间内。 - [图:单精度浮点数][图:NBT列表/JSON数组]*depth：放置的深度密度函数参数区间。可以为精确值或两个浮点数构成的区间数组，所有浮点数均在 ``` [-2, 2] ``` 闭区间内。 - [图:单精度浮点数][图:NBT列表/JSON数组]*erosion：放置的侵蚀度密度函数参数区间。可以为精确值或两个浮点数构成的区间数组，所有浮点数均在 ``` [-2, 2] ``` 闭区间内。 - [图:单精度浮点数][图:NBT列表/JSON数组]*humidity：放置的湿度密度函数参数区间。可以为精确值或两个浮点数构成的区间数组，所有浮点数均在 ``` [-2, 2] ``` 闭区间内。 - [图:单精度浮点数][图:NBT列表/JSON数组]*temperature：放置的温度密度函数参数区间。可以为精确值或两个浮点数构成的区间数组，所有浮点数均在 ``` [-2, 2] ``` 闭区间内。 - [图:单精度浮点数][图:NBT列表/JSON数组]*weirdness：放置的奇异性密度函数参数区间。可以为精确值或两个浮点数构成的区间数组，所有浮点数均在 ``` [-2, 2] ``` 闭区间内。 - [图:单精度浮点数]*offset：放置的偏移值。取值为 ``` [0, 1] ``` 的闭区间内。
-
-### 默认组件报告
-
-默认组件报告位于
-```
-reports
-```
-
-目录内，假设某元素以命名空间ID
-```
-<
-N
->:<
-I
->
-```
-
-注册到了数据包路径为
-```
-<
-P
->
-```
-
-的注册表中，则此报告工具会将它生成到
-```
-reports/components/<
-N
->/<
-P
->/<
-I
->.json
-```
-
-中。每个文件都具有下列JSON结构：
-
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:NBT复合标签/JSON对象]*components：此注册项的默认组件信息。 - [图:任意类型]<组件ID>：此注册项具有的一项组件及其信息。 - [图:NBT复合标签/JSON对象]!<组件ID>：此注册项不具有的一项组件及其信息。
-
-此报告工具不会生成进度、配方、战利品表、物品修饰器和谓词的默认组件。
-
-在原版游戏中，只有下列注册表真正注册了默认组件，其他注册表的元素不会生成文件。
-
-- 物品注册表，内容是物品的默认组件。
-
-# 历史
-
-## 过时数据
-
-### 物品报告
-
-物品报告位于
-```
-reports/items.json
-```
-
-，包含了物品及其组件信息。具有下列JSON结构：
-
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:NBT复合标签/JSON对象]<物品注册名>：一个物品及其具体信息。 - [图:NBT复合标签/JSON对象]*components：物品默认数据组件信息。 - [图:任意类型]<物品堆叠组件>：物品具有的一项默认物品堆叠组件及其具体信息。
-
-# 导航
+- `blocks.json` — block states: per block `definition` (with `type` from the `BLOCK_TYPE` registry; `properties` currently always empty) and `properties` (state properties + values) and `states` (list of `{default (when default), id (network serialization ID, not used for worldgen/save), properties}`).
+- `commands.json` — the command tree: recursive nodes with `type` (`root`/`literal`/`argument`/`unknown`), `children`, `redirect` (alias/recursion; resolves by name from the root, depth-first), `executable`, `parser` (for arguments; with `properties` per parser: `brigadier:double/float/integer/long` → `min`/`max`; `brigadier:string` → `type` (`word`/`phrase`/`greedy`); `minecraft:resource*` → `registry`; `minecraft:entity` → `amount` (`single`/`multiple`) + `type` (`player`/`entities`); `minecraft:score_holder` → `amount`; `minecraft:time` → `min` ticks), and `permissions` (`always_pass` or `require` with a `permission` of `command_level`/atom types). The first node is the root; its children are all commands.
+- `datapacks.json` — datapack structure: `others` (non-registry structures: `format` = `structure`/`mcfunction`, `elements`, `stable`, `tags`) and `registries` (same flags for registry entries).
+- `json-rpc-api-schema.json` — the server administration JSON-RPC schema (OpenRPC): `components.schemas` (schema nodes with `$ref`/`type`/`enum`/`items`/`properties`), `info` (title "Minecraft Server JSON-RPC", version), `methods` (name, description, params with `name`/`required`/`schema`, `result` for request methods; `notification/`-prefixed names are notifications; `rpc.discover` excluded).
+- `packets.json` — network packets: per network phase (`handshake`, `login`, `configuration`, `play`, `status`) and logical side (`clientbound`, `serverbound`): packet name → `protocol_id`.
+- `registries.json` — registries: per registry: `default` (fallback entry), `entries` (entry → `protocol_id`), and the registry's own `protocol_id`.
+- `biome_parameters/` — per-dimension files: `biomes` list of `{biome, parameters: {continentalness, depth, erosion, humidity, temperature, weirdness (exact or [min,max] ranges in [-2,2]), offset ([0,1])}}`.
+- `components/` — default components of registry entries: for entry `<N>:<I>` in registry path `<P>` → `reports/components/<N>/<P>/<I>.json` with a `components` patch (`id` = value, `!id` = removed). Advancements/recipes/loot tables/item modifiers/predicates are excluded; in vanilla only the item registry has default components.
+- Obsolete: `items.json` — item registry entries with their default `components` (replaced by the components report).

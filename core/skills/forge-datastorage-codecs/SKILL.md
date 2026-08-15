@@ -1,25 +1,7 @@
----
+﻿---
 name: forge-datastorage-codecs
-description: |
-  Forge Codec 序列化系统指南（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】Codecs are a serialization tool from Mojang's [DataFixerUpper] used to describe how objects can be transformed between d…
-  
-  【涵盖内容】
-  - Using Codecs
-  - DynamicOps
-  - DataResult
-  - Existing Codecs
-  - Primitives
-  - Vanilla and Forge
-  - Creating Codecs
-  - Records
-  - Transformers
-  - Defaults
-  - Unit
-  - List
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge Codec 序列化系统指南 的完整规范时
+description: Forge Codecs: DynamicOps, DataResult, custom codecs (Records, Dispatch...).
+whenToUse: Use when writing or understanding Forge data serialization (codec encode/decode, NBT/JSON data storage, registry codecs).
 ---
 
 # Codecs

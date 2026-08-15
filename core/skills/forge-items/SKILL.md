@@ -1,41 +1,55 @@
 ---
 name: forge-items
-description: |
-  Forge 物品（Item）完整指南（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】BlockEntityWithoutLevelRenderer
-  
-  【涵盖内容】
-  - Basic Items
-  - Advanced Items
-  - Creative Tabs
-  - Custom Creative Tabs
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge 物品（Item）完整指南 的完整规范时
+description: Forge items: Item.Properties, registration, creative tabs, BEWLR dynamic rendering.
+whenToUse: Use when creating Forge items or custom item rendering.
 ---
 
-BlockEntityWithoutLevelRenderer
-=======================
-`BlockEntityWithoutLevelRenderer` is a method to handle dynamic rendering on items. This system is much simpler than the old `ItemStack` system, which required a `BlockEntity`, and did not allow access to the `ItemStack`.
+# Items
 
-Using BlockEntityWithoutLevelRenderer
---------------------------
+Items exist within inventories (blocks make up the world).
 
-BlockEntityWithoutLevelRenderer allows you to render your item using `public void renderByItem(ItemStack itemStack, ItemDisplayContext ctx, PoseStack poseStack, MultiBufferSource bufferSource, int combinedLight, int combinedOverlay)`.
+## Creating an item
 
-In order to use an BEWLR, the `Item` must first satisfy the condition that its model returns true for `BakedModel#isCustomRenderer`. If it does not have one, it will use the default `ItemRenderer#getBlockEntityRenderer`. Once that returns true, the Item's BEWLR will be accessed for rendering. 
+### Basic items
 
-!!! note
-    `Block`s also render using a BEWLR if `Block#getRenderShape` is set to `RenderShape#ENTITYBLOCK_ANIMATED`.
+Instantiate `Item` with an `Item$Properties` (chainable):
 
-To set the BEWLR for an Item, an anonymous instance of `IClientItemExtensions` must be consumed within `Item#initializeClient`. Within the anonymous instance, `IClientItemExtensions#getCustomRenderer` should be overridden to return the instance of your BEWLR:
+| Method | Description |
+|---|---|
+| `requiredFeatures` | Required `FeatureFlag`s to see the item in its creative tab. |
+| `durability` | Max damage; >0 adds "damaged"/"damage" item properties. |
+| `stacksTo` | Max stack size; an item cannot be both damageable and stackable. |
+| `setNoRepair` | Item cannot be repaired even if damageable. |
+| `craftRemainder` | Container item returned after crafting (e.g. lava bucket → empty bucket). |
+
+### Advanced items
+
+Subclass `Item` and override methods for custom behavior.
+
+## Creative tabs
+
+Add items via `BuildCreativeModeTabContentsEvent` (mod event bus) with `#accept(ItemLike)`; gate with `FeatureFlag`s or operator permissions.
+
+Custom tabs: register a `CreativeModeTab` built with `CreativeModeTab#builder()` — title (`Component.translatable("item_group.<modid>.example")`), icon, `displayItems` output, plus Forge extras for image/label/slot colors and ordering.
+
+## Registering
+
+Items must be registered (see registries).
+
+# BlockEntityWithoutLevelRenderer (BEWLR)
+
+BEWLR handles dynamic item rendering — simpler than the old `ItemStack` system. Render via `renderByItem(ItemStack, ItemDisplayContext, PoseStack, MultiBufferSource, int combinedLight, int combinedOverlay)`.
+
+Requirements:
+
+- The item's model must return `true` from `BakedModel#isCustomRenderer` (otherwise the default `ItemRenderer#getBlockEntityRenderer` is used).
+- Blocks also use a BEWLR when `Block#getRenderShape` is `RenderShape#ENTITYBLOCK_ANIMATED`.
+- Set the BEWLR in `Item#initializeClient` by overriding `IClientItemExtensions#getCustomRenderer`:
 
 ```java
-// In your item class
 @Override
 public void initializeClient(Consumer<IClientItemExtensions> consumer) {
   consumer.accept(new IClientItemExtensions() {
-
     @Override
     public BlockEntityWithoutLevelRenderer getCustomRenderer() {
       return myBEWLRInstance;
@@ -44,83 +58,4 @@ public void initializeClient(Consumer<IClientItemExtensions> consumer) {
 }
 ```
 
-!!! important
-    Each mod should only have one instance of a custom BEWLR.
-
-That is it, no additional setup is necessary to use a BEWLR.
-
----
-
-Items
-=====
-
-Along with blocks, items are a key component of most mods. While blocks make up the level around you, items exist within inventories.
-
-Creating an Item
-----------------
-
-### Basic Items
-
-Basic items that need no special functionality (think sticks or sugar) do not need custom classes. You can create an item by instantiating the `Item` class with an `Item$Properties` object. This `Item$Properties` object can be made via the constructor and customized by calling its methods. For instance:
-
-|      Method        |                  Description                  |
-|:------------------:|:----------------------------------------------|
-| `requiredFeatures` | Sets the required `FeatureFlag`s needed to see this item in the `CreativeModeTab` it is added to. |
-| `durability`       | Sets the maximum damage value for this item. If it is over `0`, two item properties "damaged" and "damage" are added. |
-| `stacksTo`         | Sets the maximum stack size. You cannot have an item that is both damageable and stackable. |
-| `setNoRepair`      | Makes this item impossible to repair, even if it is damageable. |
-| `craftRemainder`   | Sets this item's container item, the way that lava buckets give you back an empty bucket when they are used. |
-
-The above methods are chainable, meaning they `return this` to facilitate calling them in series.
-
-### Advanced Items
-
-Setting the properties of an item as above only works for simple items. If you want more complicated items, you should subclass `Item` and override its methods.
-
-## Creative Tabs
-
-An item can be added to a `CreativeModeTab` via `BuildCreativeModeTabContentsEvent` on the [mod event bus][modbus]. An item(s) can be added without any additional configurations via `#accept`.
-
-```java
-// Registered on the MOD event bus
-// Assume we have RegistryObject<Item> and RegistryObject<Block> called ITEM and BLOCK
-@SubscribeEvent
-public void buildContents(BuildCreativeModeTabContentsEvent event) {
-  // Add to ingredients tab
-  if (event.getTabKey() == CreativeModeTabs.INGREDIENTS) {
-    event.accept(ITEM);
-    event.accept(BLOCK); // Takes in an ItemLike, assumes block has registered item
-  }
-}
-```
-
-You can also enable or disable items being added through a `FeatureFlag` in the `FeatureFlagSet` or a boolean determining whether the player has permissions to see operator creative tabs.
-
-### Custom Creative Tabs
-
-A custom `CreativeModeTab` must be [registered][registering]. The builder can be created via `CreativeModeTab#builder`. The tab can set the title, icon, default items, and a number of other properties. In addition, Forge provides additional methods to customize the tab's image, label and slot colors, where the tab should be ordered, etc.
-
-```java
-// Assume we have a DeferredRegister<CreativeModeTab> called REGISTRAR
-// Assume we have RegistryObject<Item> and RegistryObject<Block> called ITEM and BLOCK
-public static final RegistryObject<CreativeModeTab> EXAMPLE_TAB = REGISTRAR.register("example", () -> CreativeModeTab.builder()
-  // Set name of tab to display
-  .title(Component.translatable("item_group." + MOD_ID + ".example"))
-  // Set icon of creative tab
-  .icon(() -> new ItemStack(ITEM.get()))
-  // Add default items to tab
-  .displayItems((params, output) -> {
-    output.accept(ITEM.get());
-    output.accept(BLOCK.get());
-  })
-  .build()
-);
-```
-
-Registering an Item
--------------------
-
-Items must be [registered][registering] to function.
-
-[modbus]: ../concepts/events.md#mod-event-bus
-[registering]: ../concepts/registries.md#methods-for-registering
+> Each mod should have only **one** custom BEWLR instance.

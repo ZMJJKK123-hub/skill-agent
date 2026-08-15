@@ -1,625 +1,87 @@
 ---
 name: minecraft-game-event
-description: |
-  游戏事件（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】理由：需要确认基岩版的上下文是否包括方块。
-  
-  【涵盖内容】
-  - 非振动系统
-  - 振动系统
-  - block_activate
-  - block_attach
-  - block_change
-  - block_close
-  - block_deactivate
-  - block_destroy
-  - block_detach
-  - block_open
-  - block_place
-  - bounce
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 游戏事件 的完整规范时
+description: Game events — vibration system, listeners, detection rules, event list.
+whenToUse: Use when working with game events, sculk sensors, or vibration-based mechanics.
 ---
 
-此条目需要更新。
-理由：需要确认基岩版的上下文是否包括方块。
-
-游戏事件（Game Event）由世界的一系列行为活动产生，其产生的振动（Vibration）大多可由幽匿感测体检测。
-
-# 游戏事件
-
-当世界内发生某项活动时，就可能产生一个游戏事件。游戏事件会记录自身的产生坐标和参与此游戏事件的上下文实体（也可称为来源实体）及上下文方块（也可称为来源方块），其中上下文实体和上下文方块可能不存在，例如门被红石信号打开的事件就不存在上下文实体。
-
-游戏事件产生的同时也会创造一个振动。振动会记录产生此振动的游戏事件并使用游戏事件的产生坐标为振动源，同时会检查游戏事件的来源实体，若存在且为弹射物则会将发射此弹射物的实体作为振动的来源实体。
-
-每个游戏事件都定义了自己的振动频率（Vibration Frequency），振动频率的值可体现在幽匿感测体与红石比较器互动时产生的红石信号强度。
-
-除紫水晶块的共振外，游戏事件与振动频率的大致关系如下：
-
-# 监测
-
-游戏事件的检测方式可以分为振动系统和非振动系统两种。
-
-## 非振动系统
-
-非振动系统的检测数据不会保存到区块数据中，当区块被卸载时立刻丢失。
-
-幽匿催发体会检测自身半径8/10格内的
-```
-entity_die
-```
-
-游戏事件，用来计算蔓延幽匿类方块的经验。
-
-在Java版中，悦灵会检测自身半径10格内的
-```
-jukebox_play
-```
-
-和
-```
-jukebox_stop_play
-```
-
-游戏事件，用来计算悦灵是否可以跳舞。
-
-## 振动系统
-
-振动系统的检测数据会被保存到区块数据中，并且视觉上会渲染振动粒子以“显示”振动的接收情况。当振动可以被接收时，振动接收者会在同一游戏刻内选择一个振动接收。优先选取距离最近的振动，若相同则选择振动频率最大的振动。
-
-振动系统由振动监听器（Vibration Listener）管理。每一个振动监听器都有自己的检测半径和“可监听的游戏事件”来限制可检测的振动，振动接收者也会添加一定的限制以限制可检测的振动。
-
-目前游戏内共有下列振动接收者：
-
-- 幽匿感测体：检测半径8，可监听几乎所有游戏事件。额外条件如下： - 如果幽匿感测体被除监守者以外的实体踩踏，那么这个幽匿感测体会强制接收由此实体触发的 ``` step ``` / ``` sculk_patch ``` 游戏事件，无视常规规则。 - 不会检测自身被放置或破坏时产生的 ``` block_place ``` 或 ``` block_destroy ``` 游戏事件。
-- 校频幽匿感测体：与幽匿感测体相比，检测半径为16，且受到输入红石信号的限制。
-- 幽匿尖啸体：检测半径8，可监听游戏事件 ``` sculk_sensor_tendrils_clicking ``` 。额外条件参见幽匿尖啸体 § 用途。
-- 悦灵：检测半径16，可监听游戏事件 ``` note_block_play ``` 。
-- 监守者：检测半径16，可监听几乎所有游戏事件。
-
-能被振动监听器检测的振动需满足如下条件：
-
-- 振动源与此振动监听器的距离在此振动监听器的检测半径内。
-- 产生此振动的游戏事件属于此振动监听器可监听的游戏事件。
-- 若此振动存在来源实体： - 此实体不能是监守者。 - 此实体不能是进入旁观模式的玩家。 - 此实体潜行时，游戏事件类型不能是 ``` hit_ground ``` 、 ``` projectile_shoot ``` 、 ``` step ``` 、 ``` swim ``` 、 ``` item_interact_start ``` 或 ``` item_interact_finish ``` 。 - 此实体为物品实体时，其包含的物品不能是羊毛或地毯。
-- 若此振动存在来源方块： - 此方块不能是羊毛或地毯。
-- 振动源与振动监听器的位置之间不能有羊毛阻挡。
-
-当有符合上述条件的振动发生时，振动监听器会记录此振动发生时的游戏时间，以及此振动的振动源、此振动与振动监听器的距离、产生此振动的游戏事件。若此游戏事件由实体产生，则还会记录来源实体。
-
-振动监听器一次只能接收一个振动，但同一刻内可能有多个振动满足检测条件。为了确定本次接收的振动，振动数据会暂时保存到振动选择器（Vibration Selector）内，待决定本次接收的振动后才会正式移出。游戏会优先选择同一刻内距离振动监听器最近的振动，若有多个距离相同的振动，则优先选择振动频率最大的振动。
-
-振动监听器决定本次接收的振动后，振动数据还需要一段延迟时间才能真正用于游戏计算后续行为。延迟时间的数值为振动到振动监听器的距离向下取整得到。同时游戏会渲染振动粒子，粒子的起始位置为振动源，目标位置为振动监听器的坐标，运动时间为延迟时间。由于延迟时间和粒子渲染时间相同，因此振动粒子到达振动监听器的时候振动监听器也正好接收到了振动。
-
-# 游戏事件列表
-
-此章节缺失以下信息：基岩版上下文
-请协助补充相关内容的描述，讨论页可能有更多细节。
-
-在Java版中，当振动源为方块时，其坐标为方块的中心坐标；振动源为实体时，其坐标通常为实体脚部的坐标。
-
-在基岩版中，振动源总是位于方块坐标的中心坐标。如果振动由实体引起，则选取此实体当前所在的方块坐标。例如玩家进食时，其振动源为玩家头部所在的方块坐标；而行走时则为玩家脚部所在的方块坐标。
-
-下文中，对于可能不存在的上下文，表格将以特殊样式标记。这些上下文不存在通常是因为被发射器或其他红石元件执行，或者风爆引起导致没有实体参与。
-
-对于共振事件而言：
-
-对于非共振事件而言：
-
-## block_activate
-
-此事件由方块的激活行为产生，振动频率为10。
-
-Java版：
-
-基岩版：
-
-## block_attach
-
-此事件由方块的连接行为产生，振动频率为10。
-
-Java版：
-
-基岩版：
-
-## block_change
-
-此事件由方块变化行为产生，振动频率为11。
-
-Java版：
-
-若对大型铜箱子涂蜡、脱蜡，此事件会在每半块铜箱子上产生一次。
-
-由于物品展示框不是方块，且炼药锅类方块的转化行为较复杂，因此单独列出：
-
-基岩版：
-
-## block_close
-
-此事件由方块的关闭行为产生，振动频率为9。
-
-Java版：
-
-基岩版：
-
-## block_deactivate
-
-此事件由方块的取消激活行为产生，振动频率为9。
-
-Java版：
-
-基岩版：
-
-## block_destroy
-
-此事件由方块的破坏行为产生，振动频率为12。
-
-由水流冲毁的方块不会触发此事件。
-
-需要附着方块的方块，例如红石线、红石比较器和铁轨等，因附着方块不存在而被破坏不会触发此事件。
-
-Java版：
-
-基岩版：
-
-## block_detach
-
-此事件由方块的断开连接行为产生，振动频率为9。
-
-Java版：
-
-基岩版：
-
-## block_open
-
-此事件由方块的打开行为产生，振动频率为10。
-
-Java版：
-
-基岩版：
-
-## block_place
-
-此事件由方块的放置行为产生，振动频率为13。
-
-Java版：
-
-基岩版：
-
-## bounce
-
-此事件由实体和方块或可碰撞实体碰撞后未完全损失速度产生，振动频率为2。
-
-## container_close
-
-此事件由容器的关闭行为产生，振动频率为9。
-
-Java版：
-
-基岩版：
-
-## container_open
-
-此事件由容器的打开行为产生，振动频率为10。
-
-Java版：
-
-基岩版：
-
-## dispense_fail
-
-本段落所述内容仅适用于基岩版。
-此事件由发射器发射失败产生，振动频率为10。
-
-## drink
-
-此事件由实体的饮用动作产生，振动频率为8。
-
-在Java版中，使用任何
-```
-consumable
-```
-
-组件指定物品使用动画为
-```
-drink
-```
-
-的物品都可以触发此事件。
-
-Java版：
-
-基岩版：
-
-## eat
-
-此事件由实体的食用动作产生，振动频率为8。
-
-在Java版中，使用任何
-```
-consumable
-```
-
-组件指定使用动画不为
-```
-drink
-```
-
-的物品都可以触发此事件。
-
-Java版：
-
-基岩版：
-
-## elytra_glide
-
-此事件由实体的滑翔动作产生，振动频率为4。
-
-Java版：
-
-基岩版：
-
-## entity_act
-
-本段落所述内容仅适用于基岩版。
-此事件由生物的各种动作产生，振动频率为6。
-
-## entity_action
-
-本段落所述内容仅适用于Java版。
-此事件由生物的各种动作产生，振动频率为6。
-
-## entity_damage
-
-此事件由实体受到伤害产生，振动频率为7。
-
-Java版：
-
-基岩版：
-
-## entity_die
-
-此事件由实体死亡产生，振动频率为15。
-
-Java版：
-
-基岩版：
-
-## entity_dismount
-
-此事件由实体离开坐骑产生，振动频率为5。
-
-Java版：
-
-基岩版：
-
-## entity_interact
-
-此事件由玩家与实体之间的交互动作产生，振动频率为6。
-
-交互动作包括：给予或收回悦灵手中的物品；喂食动物；使用水桶收集鱼类等获得生物桶；使用铁锭修复铁傀儡；对虚弱的僵尸村民使用金苹果；尝试与村民或流浪商人交易；修剪生物；通过交互给生物装上装备；玩家乘上马等坐骑；命令狼或猫坐下或起身；使用命名牌命名生物等。
-
-Java版：
-
-基岩版：
-
-## entity_mount
-
-此事件由实体乘上坐骑产生，振动频率为6。
-
-Java版：
-
-基岩版：
-
-## entity_move
-
-本段落所述内容仅适用于基岩版。
-此事件由实体在某个平面上移动产生，振动频率为1。
-
-## entity_place
-
-此事件由实体的放置行为产生，振动频率为14。
-
-Java版：
-
-基岩版：
-
-## entity_roar
-
-本段落所述内容仅适用于基岩版。
-此事件由劫掠兽咆哮产生，振动频率为6。
-
-## equip
-
-此事件由实体装备物品产生，振动频率为5。
-
-游戏不会检测玩家的主手副手的物品变化。除装备盔甲可触发外，还包括：
-
-- 村民交易展示、替换、收回物品
-- 女巫拿出的药水
-- 流浪商人拿出的药水、奶桶
-- 悦灵手持的物品
-- 熊猫捡起的竹子和蛋糕
-- 狐狸叼起的物品
-- 猪灵端详的物品
-- 海豚在水中撞开物品
-
-在Java版中， “穿上装备”检查的是装备槽位是否被替换为具有
-```
-equippable
-```
-
-组件的物品。即使生物装备了没有
-```
-equippable
-```
-
-组件的物品从动作上属于穿上装备，游戏也只触发卸下装备（unequip）事件。
-
-在基岩版中，即使生物收回物品也会触发此事件。
-
-Java版：
-
-基岩版：
-
-## explode
-
-此事件由爆炸产生，振动频率为15。
-
-Java版：
-
-基岩版：
-
-## flap
-
-此事件由实体在空气中移动产生，振动频率为1。
-
-可触发此事件的实体包括鸡、悦灵、鹦鹉、幻翼、末影龙、蜜蜂、蝙蝠和恼鬼。
-
-Java版：
-
-基岩版：
-
-## fluid_pickup
-
-此事件由流体的收集行为产生，振动频率为12。
-
-Java版：
-
-基岩版：
-
-## fluid_place
-
-此事件由流体的放置行为产生，振动频率为13。
-
-Java版：
-
-基岩版：
-
-## hit_ground
-
-此事件由实体落到某个平面上时产生，振动频率为2。
-
-Java版：
-
-基岩版：
-
-## instrument_play
-
-本段落所述内容仅适用于Java版。
-此事件由玩家吹奏山羊角产生，振动频率为3。
-
-## item_interact_finish
-
-此事件由实体结束使用物品的动作产生，振动频率为3。
-
-在Java版中，物品是否能产生此事件取决于
-```
-use_effects
-```
-
-组件，在原版定义下矛不会产生此事件。
-
-在Java版中，任何玩家持有的具有
-```
-death_protection
-```
-
-组件的物品生效都可以触发此事件。
-
-Java版：
-
-基岩版：
-
-## item_interact_start
-
-此事件由实体开始使用物品的动作产生。
-
-在Java版中，物品是否能产生此事件取决于
-```
-use_effects
-```
-
-组件，在原版定义下矛不会产生此事件。
-
-Java版：
-
-基岩版：
-
-## jukebox_play
-
-本段落所述内容仅适用于Java版。
-此事件由唱片机播放音乐唱片产生。唱片机播放时，每游戏刻发出一次此事件。
-
-## jukebox_stop_play
-
-本段落所述内容仅适用于Java版。
-此事件由唱片机停止播放音乐唱片产生。
-
-## lightning_strike
-
-此事件由雷击产生，振动频率为14。
-
-Java版：
-
-基岩版：
-
-## multi_item_swap
-
-本段落所述内容仅适用于基岩版。
-此事件由玩家将物品栏中物品与展示架的物品交换时产生，振动频率为6。
-
-## note_block_play
-
-此事件由音符盒奏响产生，振动频率为10。
-
-Java版：
-
-基岩版：
-
-## piston_contract
-
-本段落所述内容仅适用于基岩版。
-此事件由活塞收回产生，振动频率为9。
-
-## piston_extend
-
-本段落所述内容仅适用于基岩版。
-此事件由活塞伸出产生，振动频率为10。
-
-## prime_fuse
-
-此事件由引爆动作产生，振动频率为10。
-
-Java版：
-
-基岩版：
-
-## projectile_land
-
-此事件由弹射物击中某物产生，振动频率为2。
-
-Java版：
-
-基岩版：
-
-## projectile_shoot
-
-此事件由弹射物发射产生，振动频率为3。
-
-Java版：
-
-基岩版：
-
-## sculk_patch
-
-本段落所述内容仅适用于基岩版。
-此事件由实体踩踏幽匿感测体产生，振动频率为1。默认仅能被被踩踏的幽匿感测体检测。
-
-## sculk_sensor_tendrils_clicking
-
-此事件由幽匿感测体激活产生。默认仅能被幽匿尖啸体检测。
-
-Java版：
-
-基岩版：
-
-## shear
-
-此事件由修剪动作产生，振动频率为6。
-
-Java版：
-
-基岩版：
-
-## shriek
-
-此事件由幽匿尖啸体激活产生。在Java版中默认仅能被监守者检测。
-
-Java版：
-
-基岩版：
-
-## single_item_swap
-
-本段落所述内容仅适用于基岩版。
-此事件由玩家与展示架之间仅交换单个物品产生，振动频率为3。
-
-## splash
-
-此事件由实体从空气移动到水中时产生，振动频率为2。
-
-Java版：
-
-基岩版：
-
-## step
-
-本段落所述内容仅适用于Java版。
-此事件由实体踩踏动作产生，振动频率为1。
-
-## swim
-
-此事件由实体在水中游泳产生，振动频率为1。
-
-Java版：
-
-基岩版：
-
-## teleport
-
-此事件由实体传送产生，振动频率为14。
-
-```
-/
-tp
-```
-
-或末影珍珠造成的传送不会产生此事件。
-
-Java版：
-
-基岩版：
-
-## unequip
-
-此事件由实体卸下物品产生，振动频率为4。
-
-在Java版中，检测机制同equip。在基岩版中，只有卸下盔甲等装备才可触发。
-
-Java版：
-
-基岩版：
-
-# 数据值
-
-Java版：
-
-基岩版：
-
-# 成就
-
-主条目：成就
-
-# 进度
-
-主条目：进度
-
-# 历史
-
-## 1.20的更改
-
-在Java版23w12a中，振动频率分布被完全重置，以避免更多干扰。
-
-# 注释
-
-1. ↑ 例如，若船的上表面在空气中，则落到船上时则视为空气
-
-# 参考
-
-1. ↑ MC-207410
-1. ↑ MC-207411
-1. ↑ 此名称来自Windows基岩版文件.rdata。
-
-# 导航
+# Game Event
+
+Game events are produced by world activities; their vibrations can mostly be detected by sculk sensors.
+
+## Game Events and Vibrations
+
+A game event records its position plus context entity (source entity) and context block (source block) — either may be absent (e.g. doors opened by redstone have no context entity). Each event creates a **vibration** with the event position as the source; if the source entity is a projectile, the vibration's source entity becomes the projectile's shooter.
+
+Every game event has a **vibration frequency**, visible as the redstone signal strength of a sculk sensor hooked to a comparator (the table below gives the frequencies).
+
+## Monitoring
+
+- **Non-vibration systems** (not saved to chunks; lost on unload): sculk catalysts detect `entity_die` within 8/10 blocks to spread sculk; allays detect `jukebox_play` / `jukebox_stop_play` within 10 blocks (Java) for dancing.
+- **Vibration system** (saved to chunk data; renders vibration particles): managed by **vibration listeners**, each with a detection radius and listenable game events; receivers add further restrictions. Receivers:
+  - **Sculk sensor** — radius 8, almost all events. Stepping on it (by a non-Warden entity) forces it to receive the `step`/`sculk_patch` event; it ignores `block_place`/`block_destroy` of itself.
+  - **Calibrated sculk sensor** — radius 16, restricted by its redstone input signal.
+  - **Sculk shrieker** — radius 8, listens to `sculk_sensor_tendrils_clicking`.
+  - **Allay** — radius 16, listens to `note_block_play`.
+  - **Warden** — radius 16, almost all events.
+
+A vibration is detectable when: the source is within the listener's radius; the event is listenable; the source entity is not a Warden, not a spectator player, not sneaking (for `hit_ground`, `projectile_shoot`, `step`, `swim`, `item_interact_start`, `item_interact_finish`), and not an item entity containing wool/carpet; the source block is not wool/carpet; and no wool blocks the line between source and listener.
+
+When a listener receives, it records the game time, source, distance, event, and source entity. One vibration per listener; simultaneous candidates are resolved by a vibration selector: nearest distance first, then highest frequency. The received vibration has a delay of ⌊distance⌋ ticks before taking effect, matching the particle travel time.
+
+## Game Event List
+
+(Java: block sources at block center; entity sources usually at the feet. Bedrock: sources always at block coordinates of the entity's current block — head block while eating, foot block while walking. Contexts may be absent when executed by dispensers/redstone or wind bursts. Frequencies were fully reset in 23w12a.)
+
+- `block_activate` (10) — block activation.
+- `block_attach` (10) — block attachment.
+- `block_change` (11) — block change (waxing/unwaxing a large copper chest fires once per half).
+- `block_close` (9) — block closing.
+- `block_deactivate` (9) — block deactivation.
+- `block_destroy` (12) — block destroyed (not by water flow; support-requiring blocks like redstone wire destroyed by support removal don't fire).
+- `block_detach` (9) — block detachment.
+- `block_open` (10) — block opening.
+- `block_place` (13) — block placed.
+- `bounce` (2) — entity collides with a block/collidable entity without losing all velocity.
+- `container_close` (9) / `container_open` (10) — container closing/opening.
+- `dispense_fail` (10, Bedrock) — dispenser failure.
+- `drink` (8) — drinking (any item with a `consumable` component using the drink animation, Java).
+- `eat` (8) — eating (consumable with non-drink animation).
+- `elytra_glide` (4) — gliding.
+- `entity_act` (6, Bedrock) / `entity_action` (6, Java) — mob actions.
+- `entity_damage` (7) — entity damaged.
+- `entity_die` (15) — entity death.
+- `entity_dismount` (5) — dismounting.
+- `entity_interact` (6) — player-entity interactions (allay item give/take, feeding, mob buckets, iron golem repair, golden apples on zombie villagers, trading, shearing, equipping, mounting, commanding wolves/cats, name tags).
+- `entity_mount` (6) — mounting.
+- `entity_move` (1, Bedrock) — entity movement on a surface.
+- `entity_place` (14) — entity placed.
+- `entity_roar` (6, Bedrock) — ravager roar.
+- `equip` (5) — equipping (Java: only slots replaced by items with the `equippable` component; other equips fire only unequip; includes villager trade display, witch potions, wandering trader potions/milk, allay held items, panda bamboo/cake, fox held items, piglin examining, dolphin pushing items; Bedrock: also fires on retrieving).
+- `explode` (15) — explosion.
+- `flap` (1) — airborne movement (chickens, allays, parrots, phantoms, the Ender Dragon, bees, bats, vexes).
+- `fluid_pickup` (12) — fluid collected.
+- `fluid_place` (13) — fluid placed.
+- `hit_ground` (2) — landing on a surface.
+- `instrument_play` (3, Java) — goat horn playing.
+- `item_interact_finish` (3) — finishing item use (depends on the `use_effects` component; tridents don't; totem `death_protection` also fires it).
+- `item_interact_start` (3) — starting item use (same `use_effects` rule).
+- `jukebox_play` (—, Java) — jukebox playing (fires every tick).
+- `jukebox_stop_play` (—, Java) — jukebox stops.
+- `lightning_strike` (14) — lightning strike.
+- `multi_item_swap` (6, Bedrock) — swapping inventory items with a shelf.
+- `note_block_play` (10) — note block plays.
+- `piston_contract` (9, Bedrock) — piston retracts.
+- `piston_extend` (10, Bedrock) — piston extends.
+- `prime_fuse` (10) — priming (TNT).
+- `projectile_land` (2) — projectile hits something.
+- `projectile_shoot` (3) — projectile fired.
+- `sculk_patch` (1, Bedrock) — stepping on a sculk sensor (default only detectable by the stepped sensor).
+- `sculk_sensor_tendrils_clicking` (—) — sensor activation (default only by shriekers).
+- `shear` (6) — shearing.
+- `shriek` (—) — shrieker activation (Java default only by Wardens).
+- `single_item_swap` (3, Bedrock) — single item swap with a shelf.
+- `splash` (2) — moving from air into water.
+- `step` (1, Java) — stepping.
+- `swim` (1) — swimming.
+- `teleport` (14) — teleporting (`/tp` and ender pearls do NOT fire it).
+- `unequip` (4) — unequipping (Java: same detection as `equip`; Bedrock: armor only).

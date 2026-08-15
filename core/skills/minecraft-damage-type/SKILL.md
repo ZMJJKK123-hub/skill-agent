@@ -1,105 +1,61 @@
 ---
 name: minecraft-damage-type
-description: |
-  伤害类型定义格式（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】伤害类型定义文件是伤害类型在数据包中的数据驱动定义文件。
-  
-  【涵盖内容】
-  - 死亡消息
-  - 伤害值调整
-  - 伤害音效
-  
-  【关键定义】
-  - 注册表：DAMAGE_TYPE
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 伤害类型定义格式 的完整规范时
+description: Damage type definition JSON: DAMAGE_TYPE registry, death messages, scaling, sounds.
+whenToUse: Use when writing datapack damage_type definitions or custom death messages and damage scaling.
 ---
 
-本条目所述内容仅适用于Java版。
-伤害类型定义文件是伤害类型在数据包中的数据驱动定义文件。
+# Damage Types
 
-# 定义格式
+This content applies only to Java Edition.
 
-伤害类型在游戏内使用
-```
-DAMAGE_TYPE
-```
+Damage type definition files are the data-driven definitions of damage types in datapacks.
 
-注册表，数据包路径为
-```
-damage_type
-```
+## Definition format
 
-，即所有伤害类型定义文件都需要在
-```
-data/<
-命名空间
->/damage_type
-```
+Damage types use the `DAMAGE_TYPE` registry; the datapack path is `damage_type` (definitions in `data/<namespace>/damage_type`, tags in `data/<namespace>/tags/damage_type`).
 
-目录内定义，伤害类型标签则需要在
-```
-data/<
-命名空间
->/tags/damage_type
-```
+Definition files use JSON with the following structure:
 
-目录内定义。
+- JSON file root object
+  - `death_message_type` (string, default `default`): death message behavior (see below).
+  - `effects` (string, default `hurt`): sound played when a player takes this damage (see below).
+  - `exhaustion` (float, required): hunger exhaustion added to players who actually lose health.
+  - `message_id` (string, required): death message translation key (see below).
+  - `scaling` (string, required): difficulty scaling behavior (see below).
 
-伤害类型定义文件使用JSON格式，并具有下列结构：
+## Definition behavior
 
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:字符串]death_message_type：（默认为 ``` default ``` ）用于定义生物受此伤害类型的伤害而死亡时的死亡消息，见下文§ 死亡消息。 - [图:字符串]effects：（默认为 ``` hurt ``` ）玩家受到此伤害类型的伤害后播放的音效，具体取值见下文§ 伤害音效。 - [图:单精度浮点数]*exhaustion：受到此伤害类型的伤害且实际造成生命值下降的玩家增加的饥饿消耗度。 - [图:字符串]*message_id：用于定义生物受此伤害类型的伤害而死亡时的死亡消息，见下文§ 死亡消息。 - [图:字符串]*scaling：此伤害类型的伤害在不同难度下的调整行为，见下文§ 伤害值调整。
+Damage type data is loaded only once at server startup; `/reload` does not reload it — a server restart is required. Built-in `DAMAGE_TYPE` entries cannot be removed, or the game crashes.
 
-# 定义行为
+### Death messages
 
-伤害类型定义数据仅在服务端启动时被加载一次，使用
-```
-/
-reload
-```
+With `death_message_type: default` (the default):
 
-命令不可以使伤害类型定义被重新加载，而必须重启服务端。
+- With an entity source (e.g. mob attack or its arrow): check whether the mob's main hand holds a named item (with `custom_name`).
+  - If the source is not a mob, or the mob holds no named item: `death.attack.<msgId>` with parameters [victim name, direct damage dealer name].
+  - Otherwise: `death.attack.<msgId>.item` with a third parameter [item name].
+- Without an entity source, but the victim was hurt by a mob within 100 ticks (5 s): `death.attack.<msgId>.player` with [victim name, last attacker name].
+- Otherwise: `death.attack.<msgId>` with [victim name].
 
-```
-DAMAGE_TYPE
-```
+With `fall_variants`: fall death messages are used, independent of `msgId`.
 
-注册表中所有原版游戏内置的元素均不能被移除，否则游戏会崩溃。
+With `intentional_game_design`: `death.attack.<msgId>.message` with [victim name, `death.attack.<msgId>.link` styled as a link].
 
-## 死亡消息
+### Damage scaling
 
-伤害类型可以决定受到其类型伤害而死亡的实体的死亡消息。根据[图:字符串]death_message_type的不同，游戏会使用不同的翻译键以适配不同的情况。在下文中，[图:字符串]*message_id的值被简写为msgId：
+`scaling` values:
 
-- 当[图:字符串]death_message_type为 ``` default ``` （同时此值也为缺省值）时： - 如果伤害具有实体来源（例如来自生物的直接攻击或被生物射出的箭击中，这两种条件下生物作为实体来源），则检查生物的主手是否具有被命名的物品（即物品具有 ``` custom_name ``` 组件）： - 如果实体来源不为生物，则使用 ``` death.attack.< msgId > ``` 作为死亡消息，其中翻译的第一个参数为死亡实体的显示名称，第二个参数为直接执行伤害的实体的显示名称。如果直接执行伤害的实体没有显示名称，则使用实体来源的显示名称。 - 如果实体来源为生物，但主手没有物品或物品没有被命名，则与上一种条件相同。 - 其他情况下，使用 ``` death.attack.< msgId >.item ``` 作为死亡消息，除上述两个参数外，翻译的第三个参数使用物品的名称。 - 如果伤害没有实体来源，但死亡实体在100游戏刻（5秒）内受到过生物的伤害，则使用 ``` death.attack.< msgId >.player ``` 作为死亡消息，其中翻译的第一个参数为死亡实体的显示名称，第二个参数为最后伤害生物的显示名称。 - 如果伤害没有实体来源，且100游戏刻（5秒）内也没有受到生物的伤害，则使用 ``` death.attack.< msgId > ``` 作为死亡消息，其中翻译的唯一参数为死亡实体的显示名称。
-- 当[图:字符串]death_message_type为 ``` fall_variants ``` 时，使用摔落死亡消息，此时死亡消息与msgId无关。
-- 当[图:字符串]death_message_type为 ``` intentional_game_design ``` 时，游戏会使用翻译键 ``` death.attack.< msgId >.message ``` 作为死亡消息，翻译的第一个参数是死亡实体名称，第二个参数为翻译键 ``` death.attack.< msgId >.link ``` ，且游戏自动为这个参数的文本组件增加相应样式和悬浮行为。
+- `always`: damage is always affected by difficulty.
+- `never`: damage is never affected by difficulty.
+- `when_caused_by_living_non_player`: affected only when the source is a mob.
 
-## 伤害值调整
+When affected (base damage d):
 
-当玩家受到伤害时，游戏会检查伤害的伤害类型的[图:字符串]*scaling和当前游戏难度，以调整初始伤害值。
+- Peaceful: 0.
+- Easy: min{0.5d+1, d}.
+- Normal: d.
+- Hard: 1.5d.
 
-[图:字符串]*scaling有三种取值：
+### Hurt sounds
 
-- ``` always ``` ：伤害值总受到游戏难度影响。
-- ``` never ``` ：伤害值不会受到游戏难度影响。
-- ``` when_caused_by_living_non_player ``` ：当伤害实体来源为生物时受难度影响，其他情况下伤害值不发生变化。
-
-当伤害值受到难度影响时，假设此伤害攻击其他实体的伤害值为d，则根据难度，玩家受到的伤害值按下列算法调整：
-
-- 和平难度下，伤害值直接设置为0，与原始伤害值d无关。
-- 简单难度下，伤害值调整为min{0.5d+1,d}。
-- 普通难度下，伤害值不会调整，直接为d。
-- 困难难度下，伤害值调整为1.5d。
-
-## 伤害音效
-
-当玩家受到伤害，且伤害没有触发受击后伤害免疫时，游戏会在玩家位置播放对应的伤害音效。伤害音效由[图:字符串]effects值控制。
-
-# 历史
-
-# 参考
-
-1. ↑ MC-273171 — 漏洞状态为“不予修复”。
-
-# 导航
+When a player takes damage without post-hit immunity, the sound determined by `effects` plays at the player's position.

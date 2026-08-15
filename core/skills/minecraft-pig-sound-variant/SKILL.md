@@ -1,76 +1,32 @@
 ---
 name: minecraft-pig-sound-variant
-description: |
-  猪音效变种定义格式（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】猪音效变种定义文件是猪音效变种（Pig Sound Variant）在数据包中的数据驱动定义文件。
-  
-  【涵盖内容】
-  - （自动提取章节）
-  
-  【关键定义】
-  - 注册表：PIG_SOUND_VARIANT
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 猪音效变种定义格式 的完整规范时
+description: Pig sound variant definition JSON: PIG_SOUND_VARIANT registry, sound events.
+whenToUse: Use when writing datapack pig_sound_variant definitions or custom pig sounds.
 ---
 
-本条目所述内容仅适用于Java版。
-猪音效变种定义文件是猪音效变种（Pig Sound Variant）在数据包中的数据驱动定义文件。
+# Pig Sound Variants
 
-# 定义格式
+This content applies only to Java Edition.
 
-猪音效变种在游戏内使用
-```
-PIG_SOUND_VARIANT
-```
+Pig sound variant definition files are the data-driven definitions of pig sound variants in datapacks.
 
-注册表，数据包路径为
-```
-pig_sound_variant
-```
+## Definition format
 
-，即所有猪音效变种自定义文件都需要在
-```
-data/<
-命名空间
->/pig_sound_variant
-```
+Pig sound variants use the `PIG_SOUND_VARIANT` registry; the datapack path is `pig_sound_variant` (definitions in `data/<namespace>/pig_sound_variant`).
 
-目录中定义。
+Definition files use JSON with the following structure:
 
-猪音效变种定义文件使用JSON格式，并具有下列结构：
+- JSON file root object
+  - `adult_sounds` (compound, required): sounds used by adult pigs.
+    - `ambient_sound` (string/compound): idle sound event (registry name or inline; same format for all below).
+    - `death_sound` (string/compound): death sound event.
+    - `hurt_sound` (string/compound): hurt sound event.
+    - `step_sound` (string/compound): step sound event.
+    - `eat_sound` (string/compound): eating sound event.
+  - `baby_sounds` (compound, required): sounds used by baby pigs; same format as `adult_sounds`.
 
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:NBT复合标签/JSON对象]*adult_sounds：成年猪使用的音效。 - [图:字符串][图:NBT复合标签/JSON对象]*ambient_sound：猪空闲音效使用的声音事件。可以为一个声音事件的命名空间ID，也可以直接定义一个新的声音事件。下方字段格式与此相同。 - - 声音事件，见Template:Nbt inherit/sound event/source - [图:字符串][图:NBT复合标签/JSON对象]*death_sound：猪死亡音效使用的声音事件。 - - 声音事件，见Template:Nbt inherit/sound event/source - [图:字符串][图:NBT复合标签/JSON对象]*hurt_sound：猪受伤音效使用的声音事件。 - - 声音事件，见Template:Nbt inherit/sound event/source - [图:字符串][图:NBT复合标签/JSON对象]*step_sound：猪行走音效使用的声音事件。 - - 声音事件，见Template:Nbt inherit/sound event/source - [图:字符串][图:NBT复合标签/JSON对象]*eat_sound：猪进食音效使用的声音事件。 - - 声音事件，见Template:Nbt inherit/sound event/source - [图:NBT复合标签/JSON对象]*baby_sounds：幼年猪使用的音效。 - 格式同[图:NBT复合标签/JSON对象]adult_sounds。
+## Definition behavior
 
-# 定义行为
+Pig sound variant data is loaded only once at server startup; `/reload` does not reload it — a server restart is required. The `PIG_SOUND_VARIANT` registry must have at least one element, or the game errors during sync and blocks world loading.
 
-猪音效变种定义数据仅在服务端启动时被加载一次，使用
-```
-/
-reload
-```
-
-命令不可以使猪音效变种定义被重新加载，而必须重启服务端。
-
-```
-PIG_SOUND_VARIANT
-```
-
-注册表中必须至少有一个元素，否则游戏会在同步时报错并阻止世界加载。
-
-猪音效变种与猪变种相互独立，猪生成后会从世界内已注册的所有猪音效变种数据内随机选择一项作为自己的音效。这些音效会在猪的不同状态下播放。
-
-满足条件时立刻播放的音效：
-
-- ``` hurt_sound ``` ：猪受伤时播放。
-- ``` death_sound ``` ：猪死亡时播放。
-- ``` step_sound ``` ：猪行走时播放。
-- ``` eat_sound ``` ：猪进食时播放。
-
-满足条件时随机播放的音效：
-
-- ``` ambient_sound ``` ：猪空闲时播放。
-
-# 历史
-
-# 导航
+Pig sound variants are independent of pig variants; each spawned pig randomly picks one registered sound variant. Immediate sounds: `hurt_sound` (hurt), `death_sound` (death), `step_sound` (walking), `eat_sound` (eating). Random sounds: `ambient_sound` (idle).

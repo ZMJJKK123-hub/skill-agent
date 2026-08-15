@@ -1,169 +1,55 @@
 ---
 name: minecraft-test-instance
-description: |
-  测试实例定义格式（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】“测试实例”重定向至此。关于运行测试实例的方块，请见“测试实例方块”。
-  
-  【涵盖内容】
-  - 单次测试
-  - 基于方块的测试
-  - 内置函数测试
-  - 运行测试实例
-  
-  【关键定义】
-  - 注册表：TEST_INSTANCE、TEST_FUNCTION
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 测试实例定义格式 的完整规范时
+description: Test instance definition format — environments, test flow, multi-run.
+whenToUse: Use when authoring test instance JSON files for automated game tests.
 ---
 
-“测试实例”重定向至此。关于运行测试实例的方块，请见“测试实例方块”。
+# Test Instance Definition
 
-本条目所述内容仅适用于Java版。
-测试实例（Test Instance）是游戏可运行的测试示例，定义了单个测试的基本信息。测试实例定义文件是测试实例在数据包中的数据驱动定义文件。
+Test instances are runnable tests defining a single test's basic info (the block that runs them is the test instance block). Java Edition only.
 
-# 定义格式
+## Definition Format
 
-测试实例在游戏内使用
-```
-TEST_INSTANCE
-```
+Registry `TEST_INSTANCE`, data pack path `test_instance` (files in `data/<namespace>/test_instance/`; tags in `tags/test_instance/`).
 
-注册表，数据包路径为
-```
-test_instance
-```
+- `environment` (required) — the test environment (a definition or inline): `type` one of:
+  - `all_of` — runs all `definitions` (recursive) on enter/exit in order.
+  - `clock_time` — sets a world `clock` to `time` (≥0) on enter, restores on exit.
+  - `difficulty` — sets the world `difficulty` (`peaceful`/`easy`/`normal`/`hard`) on enter, restores on exit (works even when locked).
+  - `function` — runs `setup` and `teardown` functions (IDs).
+  - `game_rules` — sets `rules` (game rule ID → value) on enter, restores on exit.
+  - `timeline_attributes` — adds `timelines` (IDs) to the server environment attributes on enter, removes on exit (other timeline properties ignored).
+  - `weather` — sets `weather` (`clear`/`rain`/`thunder`, each 100000 ticks) on enter, restores the weather cycle on exit.
+- `manual_only` (default false) — manual tests can't run in the test server.
+- `max_attempts` (>0, default 1) — max single-test runs (see multi-run behavior).
+- `max_ticks` (required, >0) — per-run timeout (fails on exceeding).
+- `padding` (0–128, default 0) — structure placement offset (test block origin at `[padding, padding+1, padding+1]`).
+- `required` (default true) — whether the whole test suite must pass this instance.
+- `required_successes` (>0, default 1) — passes required for the instance to pass.
+- `rotation` (default `none`) — structure rotation (`none`/`clockwise_90`/`180`/`counterclockwise_90`).
+- `setup_ticks` (≥0, default 0) — ticks to wait after structure placement before the test starts.
+- `sky_access` (default false) — if false, a barrier ceiling covers the structure.
+- `structure` (required) — the structure template used (re-placed before every run).
+- `type` (required) — `block_based` (test with the structure's test blocks) or `function` (calls a built-in test function; `function` field = TEST_FUNCTION registry ID; vanilla ships only `always_pass`, which passes immediately).
 
-，即所有测试实例定义文件都需要在
-```
-data/<
-命名空间
->/test_instance
-```
+## Behavior
 
-目录内定义，测试实例标签则需要在
-```
-data/<
-命名空间
->/tags/test_instance
-```
+Definitions load once at server startup (restart required).
 
-目录内定义。
+### Single Test
 
-测试实例定义文件使用JSON格式，并具有下列结构：
+From structure placement to result: place the test instance block, force-load the area, clear all entities in the structure bounds, place the structure in strict mode, wrap it in barriers (unless sky_access), clear scheduled ticks/block events, then verify the environment. Wait `setup_ticks`, then run: exceeding `max_ticks` → timeout failure; any exception → failure without further actions; clean completion → pass (non-player entities in the bounds are removed).
 
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:字符串][图:NBT复合标签/JSON对象]*environment：运行此测试实例时的测试环境。 - - 测试环境定义
+### Block-Based Tests
 
-- - [图:字符串]*type：测试环境行为的类型。 - - 如果[图:字符串]type为 ``` all_of ``` ，则执行所有子测试环境中的行为。 - [图:NBT列表/JSON数组]*definitions：所有子测试环境。游戏将按照此列表顺序从上到下依次执行其进入和退出时的行为。 - [图:字符串][图:NBT复合标签/JSON对象]：（命名空间ID或直接定义）与此结构相同，递归定义。 - - 如果[图:字符串]type为 ``` clock_time ``` ，此测试环境会在进入时设置指定的世界时钟为指定时间，退出时重置为原来的时间。 - [图:字符串]*clock：（命名空间ID）要设置的世界时钟。 - [图:整型]*time：（值≥0）设置当前世界时钟为指定时间。 - - 如果[图:字符串]type为 ``` difficulty ``` ，此测试环境会在进入时设置世界难度，退出时重置世界难度，即使世界难度被锁定也正常修改。 - [图:字符串]difficulty：要设置的难度。取值只能为 ``` peaceful ``` 、​ ``` easy ``` 、​ ``` normal ``` 和​ ``` hard ``` 。 - - 如果[图:字符串]type为 ``` function ``` ，此测试环境会在进入和退出时运行指定的函数。 - [图:字符串]setup：（命名空间ID）进入此测试环境时调用的函数。 - [图:字符串]teardown：（命名空间ID）退出此测试环境时调用的函数。 - - 如果[图:字符串]type为 ``` game_rules ``` ，此测试环境会在进入时设置指定的游戏规则，退出时重置指定的游戏规则为旧值。 - [图:NBT复合标签/JSON对象]*rules：设置游戏规则的值。 - [图:任意类型]<游戏规则命名空间ID>：一项游戏规则及其对应的值。 - - 如果[图:字符串]type为 ``` timeline_attributes ``` ，此测试环境会在进入时在服务端环境属性中增加时间线，退出时移除这些时间线。时间线的其他属性不起作用。 - [图:NBT列表/JSON数组]*timelines：要加入的时间线，列表的内容应为时间线的命名空间ID。 - - 如果[图:字符串]type为 ``` weather ``` ，此测试环境会在进入时设置指定的天气，退出时重置天气循环。 - [图:字符串]*weather：设置为指定的天气。可以为 ``` clear ``` （晴天100000游戏刻（5,000秒））、 ``` rain ``` （下雨100000游戏刻（5,000秒））和 ``` thunder ``` （雷暴100000游戏刻（5,000秒））。
+Exactly one start-mode test block is required (else immediate failure). On start it fires a first-order NC update core and logs. Each tick, in order: (1) an accept-mode test block triggered → pass; (2) any fail-mode test block triggered → fail with its error message; (3) log-mode test blocks triggered → log their messages.
 
-- - [图:布尔型]manual_only：（默认为 ``` false ``` ）此测试实例是否需要手动测试而不属于自动测试实例。非自动测试实例无法在测试服务端内测试。 - [图:整型]max_attempts：（值>0，默认为1）此测试实例最多运行次数，游戏会不断运行此实例直到达到指定通过次数通过测试或运行次数超过此次数而失败。 - [图:整型]*max_ticks：（值>0）运行此测试实例时允许持续运行的最大游戏刻数。当运行时间超出此限制时，测试实例单次测试超时失败。 - [图:整型]padding：（0≤值≤128，默认为0）测试结构放置的偏移量，测试实例方块将以相对坐标 ``` [padding, padding + 1, padding + 1] ``` 为原点放置测试结构。 - [图:布尔型]required：（默认为 ``` true ``` ）整体测试套件是否必须需要此测试实例测试通过才能测试通过。 - [图:整型]required_successes：（值>0，默认为1）此测试实例在多次运行中必须通过的次数，如果通过次数达不到此次数则此测试实例测试失败。 - [图:字符串]rotation：（默认为 ``` none ``` ）放置方块结构时进行的旋转。可以为 ``` none ``` （不旋转）、 ``` clockwise_90 ``` （顺时针旋转90度）、 ``` 180 ``` （旋转180度）或 ``` counterclockwise_90 ``` （逆时针旋转90度）。 - [图:整型]setup_ticks：（值≥0，默认为0）每次运行此测试实例需要在放置方块结构后指定游戏刻后才可运行。 - [图:布尔型]sky_access：（默认为 ``` false ``` ）此测试实例是否需要天空。如果不需要天空，则方块结构上方存在屏障天花板。 - [图:字符串]*structure：（命名空间ID）运行此测试实例时使用的方块结构。每次运行前游戏都会重新放置此方块结构。 - [图:字符串]*type：测试实例的类型。 - - 如果[图:字符串]*type为 ``` block_based ``` ，则使用指定方块结构并利用其中的测试方块进行测试。 - - 如果[图:字符串]*type为 ``` function ``` ，则调用指定的内置测试函数。 - [图:字符串]*function：内置测试函数的命名空间ID。
+### Function Tests
 
-# 定义行为
+Behavior fully defined by code (`success`/`fail`).
 
-测试实例定义数据仅在服务端启动时被加载一次，使用
-```
-/
-reload
-```
+## Multi-Run Behavior
 
-命令不可以使测试实例定义被重新加载，而必须重启服务端。
+With `max_attempts` A and `required_successes` S: the instance passes as soon as s reaches S within A runs; otherwise it fails after A runs. A < S → always fails; A == S → every run must pass.
 
-## 单次测试
-
-游戏从放置方块结构开始，到得出测试结果结束称为单次测试。
-
-游戏在开始单次测试时，会先获取这次测试所需要的方块结构和旋转。结构的旋转由两种旋转组合而成，一部分来自于测试实例内定义的[图:字符串]rotation，另一部分则来自于
-```
-/
-test
-```
-
-或测试服务端运行测试实例产生的旋转。获取后，游戏会在测试位置放置一个测试实例方块，然后强制加载测试位置、清除测试位置方块结构范围内的所有实体、并以严格放置模式放置方块结构，然后将整个方块结构以屏障包装起来（天花板是否存在由测试实例中的[图:布尔型]sky_access决定）。放置后，游戏再次清除测试位置方块结构范围内的所有计划刻和方块事件以防止测试方块结构意外接收方块更新，并检查当前的测试环境，以确认进入了正确的测试环境。
-
-之后，单次测试会等待[图:整型]setup_ticks游戏刻。如果此值为0，那么下一游戏刻这个单次测试就会正式开始运行。单次测试运行后有多种情况会停止运行并产生测试结果：
-
-- 如果单次测试运行时间（不计算[图:整型]setup_ticks）超过了测试实例中定义的[图:整型]max_ticks，单次测试以超时失败停止。
-- 运行测试过程中出现任何一处异常，单次测试就会因为异常停止，且不会进行后续操作；相反，如果整个测试过程中没有任何异常并触发结束，则单次测试通过，且游戏会自动将测试结构范围内的非玩家实体清除。
-
-运行测试的具体流程、如何决定异常和结束由测试实例类型控制。
-
-### 基于方块的测试
-
-基于方块的测试完全根据方块结构内的测试方块状态决定测试结果。这类测试要求方块结构中启动模式的测试方块有且仅有一个，否则测试立刻以失败结束。
-
-当测试开始时，游戏会触发启动模式测试方块，将测试方块方块实体标记为已触发，使其发出一次以此方块为中心的一阶NC更新核的更新，并在日志中记录一条信息。之后，游戏每游戏刻都会监听方块结构内的测试方块，按照下列顺序检查：
-
-1. 先检查接受模式测试方块是否被触发。如果被触发，此测试以通过结束。
-1. 检查所有失败模式测试方块是否被触发。如果被触发，读取测试方块内的错误信息，并以此错误将测试以失败结束。
-1. 检查所有日志模式测试方块是否被触发。如果被触发，读取测试方块内的信息并记录到日志内。
-
-### 内置函数测试
-
-内置函数测试依赖于硬编码的函数进行测试。这些函数需要使用额外的Java代码编译并注册到游戏的
-```
-TEST_FUNCTION
-```
-
-注册表内才可以被使用。
-
-这类测试的行为完全由编写的代码决定。根据代码内执行
-```
-success
-```
-
-或
-```
-fail
-```
-
-的情况，决定测试的最终结果。
-
-原版游戏内只包含了一种内置函数
-```
-always_pass
-```
-
-，此测试永远立刻通过。
-
-## 运行测试实例
-
-测试实例可以只运行一次单次测试，但也可以运行多次测试。
-
-测试实例定义中，[图:整型]max_attempts和[图:整型]required_successes决定了测试实例的多次测试行为。前者决定了测试实例可以包含多少次单次测试（下文记为A），后者决定了测试实例整体通过或失败的条件，并影响真正运行多少次单次测试（下文记为S）。假设当前单次测试通过了s次，一共运行了a次单次测试，当a小于等于A时，s就已经达到了S，那么测试结束，不需要继续运行至A次，且测试结果为通过；否则游戏在运行A次后测试失败。从执行流程中可以看出，如果A小于S，则测试实例将永远失败；如果A等于S，那么测试实例的每次单次测试都必须通过，否则测试失败。
-
-如果使用
-```
-/
-test
-```
-
-运行测试实例，且设置了
-```
-[<numberOfTimes>]
-```
-
-参数不为1，那么游戏将不再使用[图:整型]max_attempts和[图:整型]required_successes决定运行次数，而是使用
-```
-[<numberOfTimes>]
-```
-
-参数值N和
-```
-[<untilFailed>]
-```
-
-参数。如果
-```
-[<untilFailed>]
-```
-
-为false，那么测试就会执行N次，如果N为0，则代表此测试会运行无限次；如果
-```
-[<untilFailed>]
-```
-
-为true，那么测试要么以单次测试失败结束，或执行N次后结束，如果N为0，则代表测试只有在失败后才会停止。
-
-# 历史
-
-# 导航
+When run via `/test` with `[<numberOfTimes>]` ≠ 1, that N replaces max_attempts/required_successes: with `[<untilFailed>]` false, run N times (N=0 = infinite); true — stop on the first failure or after N runs (N=0 = only failure stops it).

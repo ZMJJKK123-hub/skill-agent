@@ -1,68 +1,27 @@
 ---
 name: minecraft-test-environment
-description: |
-  测试环境定义格式（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】测试环境（Test Environment）是游戏运行各个测试实例的世界测试环境。测试环境定义文件是测试环境在数据包中的数据驱动定义文件。
-  
-  【涵盖内容】
-  - （自动提取章节）
-  
-  【关键定义】
-  - 注册表：TEST_ENVIRONMENT
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 测试环境定义格式 的完整规范时
+description: Test environment definition format — environment types and batch behavior.
+whenToUse: Use when authoring test environment JSON files for game tests.
 ---
 
-本条目所述内容仅适用于Java版。
-测试环境（Test Environment）是游戏运行各个测试实例的世界测试环境。测试环境定义文件是测试环境在数据包中的数据驱动定义文件。
+# Test Environment
 
-# 定义格式
+Test environments are the world test environments in which test instances run. Java Edition only.
 
-测试环境在游戏内使用
-```
-TEST_ENVIRONMENT
-```
+## Definition Format
 
-注册表，数据包路径为
-```
-test_environment
-```
+Registry `TEST_ENVIRONMENT`, data pack path `test_environment` (files in `data/<namespace>/test_environment/`; tags in `tags/test_environment/`).
 
-，即所有测试环境定义文件都需要在
-```
-data/<
-命名空间
->/test_environment
-```
+`type` one of:
 
-目录内定义，测试环境标签则需要在
-```
-data/<
-命名空间
->/tags/test_environment
-```
+- `all_of` — runs all `definitions` (recursive list, by ID or inline) on enter/exit in order.
+- `clock_time` — sets a world `clock` to `time` (≥0) on enter, restores on exit.
+- `difficulty` — sets the world `difficulty` (`peaceful`/`easy`/`normal`/`hard`) on enter, restores on exit (even when locked).
+- `function` — runs `setup` / `teardown` functions on enter/exit.
+- `game_rules` — sets `rules` (game rule ID → value) on enter, restores on exit.
+- `timeline_attributes` — adds `timelines` (IDs) to the server environment attributes on enter, removes on exit.
+- `weather` — sets `weather` (`clear`/`rain`/`thunder`, each 100000 ticks) on enter, restores the cycle on exit.
 
-目录内定义。
+## Behavior
 
-测试环境定义文件使用JSON格式，并具有下列结构：
-
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:字符串]*type：测试环境行为的类型。 - - 如果[图:字符串]type为 ``` all_of ``` ，则执行所有子测试环境中的行为。 - [图:NBT列表/JSON数组]*definitions：所有子测试环境。游戏将按照此列表顺序从上到下依次执行其进入和退出时的行为。 - [图:字符串][图:NBT复合标签/JSON对象]：（命名空间ID或直接定义）与此结构相同，递归定义。 - - 如果[图:字符串]type为 ``` clock_time ``` ，此测试环境会在进入时设置指定的世界时钟为指定时间，退出时重置为原来的时间。 - [图:字符串]*clock：（命名空间ID）要设置的世界时钟。 - [图:整型]*time：（值≥0）设置当前世界时钟为指定时间。 - - 如果[图:字符串]type为 ``` difficulty ``` ，此测试环境会在进入时设置世界难度，退出时重置世界难度，即使世界难度被锁定也正常修改。 - [图:字符串]difficulty：要设置的难度。取值只能为 ``` peaceful ``` 、​ ``` easy ``` 、​ ``` normal ``` 和​ ``` hard ``` 。 - - 如果[图:字符串]type为 ``` function ``` ，此测试环境会在进入和退出时运行指定的函数。 - [图:字符串]setup：（命名空间ID）进入此测试环境时调用的函数。 - [图:字符串]teardown：（命名空间ID）退出此测试环境时调用的函数。 - - 如果[图:字符串]type为 ``` game_rules ``` ，此测试环境会在进入时设置指定的游戏规则，退出时重置指定的游戏规则为旧值。 - [图:NBT复合标签/JSON对象]*rules：设置游戏规则的值。 - [图:任意类型]<游戏规则命名空间ID>：一项游戏规则及其对应的值。 - - 如果[图:字符串]type为 ``` timeline_attributes ``` ，此测试环境会在进入时在服务端环境属性中增加时间线，退出时移除这些时间线。时间线的其他属性不起作用。 - [图:NBT列表/JSON数组]*timelines：要加入的时间线，列表的内容应为时间线的命名空间ID。 - - 如果[图:字符串]type为 ``` weather ``` ，此测试环境会在进入时设置指定的天气，退出时重置天气循环。 - [图:字符串]*weather：设置为指定的天气。可以为 ``` clear ``` （晴天100000游戏刻（5,000秒））、 ``` rain ``` （下雨100000游戏刻（5,000秒））和 ``` thunder ``` （雷暴100000游戏刻（5,000秒））。
-
-# 定义行为
-
-测试环境定义数据仅在服务端启动时被加载一次，使用
-```
-/
-reload
-```
-
-命令不可以使测试环境定义被重新加载，而必须重启服务端。
-
-测试环境是所有测试实例运行前进行检查的流程，所有测试实例必须在测试环境进入后才能进行测试。
-
-游戏以批次运行测试实例，一个批次内的所有测试实例都会使用同一个测试环境。当游戏开始执行测试批次时，会读取当前批次要求的测试环境，并进入此测试环境；当此批次结束，准备运行下一批次前，游戏会检查下一批次的测试环境是否与结束批次的测试环境相一致（检查测试环境对象是否一致而非信息是否一致），如果不一致则退出上一个测试环境并进入下一个测试环境，否则不会退出当前测试环境而继续下一批次测试；当所有批次结束后，游戏退出最后一次进入的测试环境，测试结束。
-
-# 历史
-
-# 导航
+Definitions load once at server startup (restart required). Every test instance must run inside its environment. Tests run in batches; a batch shares one environment. When a batch finishes, the game checks whether the next batch's environment is identical (same environment object, not equal contents): if not, it exits the old and enters the new; if identical, it continues without switching. After the last batch, the game exits the last-entered environment.

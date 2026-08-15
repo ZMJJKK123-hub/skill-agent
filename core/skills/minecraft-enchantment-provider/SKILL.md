@@ -1,75 +1,41 @@
 ---
 name: minecraft-enchantment-provider
-description: |
-  魔咒提供器定义格式（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】魔咒提供器（Enchantment Provider）是游戏为物品添加魔咒的一种方式。魔咒提供器定义文件是魔咒提供器在数据包中的数据驱动定义文件。
-  
-  【涵盖内容】
-  - （自动提取章节）
-  
-  【关键定义】
-  - 注册表：ENCHANTMENT_PROVIDER
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 魔咒提供器定义格式 的完整规范时
+description: Enchantment provider definition JSON: the three types and built-in behavior.
+whenToUse: Use when writing datapack enchantment_provider definitions or understanding the enchanting source mechanism.
 ---
 
-本条目所述内容仅适用于Java版。
-魔咒提供器（Enchantment Provider）是游戏为物品添加魔咒的一种方式。魔咒提供器定义文件是魔咒提供器在数据包中的数据驱动定义文件。
+# Enchantment Providers
 
-# 定义格式
+This content applies only to Java Edition.
 
-魔咒提供器在游戏内使用
-```
-ENCHANTMENT_PROVIDER
-```
+An enchantment provider is a way for the game to add enchantments to items. Enchantment provider definition files are their data-driven definitions in datapacks.
 
-注册表，数据包路径为
-```
-enchantment_provider
-```
+## Definition format
 
-，即所有魔咒提供器定义文件都需要在
-```
-data/<
-命名空间
->/enchantment_provider
-```
+Enchantment providers use the `ENCHANTMENT_PROVIDER` registry; the datapack path is `enchantment_provider`, so all definitions must be in `data/<namespace>/enchantment_provider`, and tags in `data/<namespace>/tags/enchantment_provider`.
 
-目录内定义，魔咒提供器标签则需要在
-```
-data/<
-命名空间
->/tags/enchantment_provider
-```
+Definition files use JSON with the following structure:
 
-目录内定义。
+- JSON file root object
+  - `type` (string): the enchantment provider type.
+    - If `type` is `by_cost`, enchantments are added based on an enchantment cost.
+      - `enchantments` (string or string array): enchantments selectable in this process — a namespace ID, an enchantment tag, or an array of enchantment IDs.
+      - `cost` (integer or compound tag): the enchantment cost used — an integer provider.
+    - If `type` is `by_cost_with_difficulty`, the enchantment cost is computed from the difficulty.
+      - `enchantments` (string or string array): same as above.
+      - `max_cost_span` (integer): (0≤value≤10000) difficulty-influenced enchantment cost adjustment.
+      - `min_cost` (integer): (1≤value≤10000) minimum enchantment cost. With `min_cost` = n, current regional difficulty = d, and `max_cost_span` = m, the maximum cost is n + md.
+    - If `type` is `single`, the specified enchantment is added directly with a random level.
+      - `enchantment` (namespace ID): the enchantment to add.
+      - `level` (integer or compound tag): the enchantment level — an integer provider.
 
-魔咒提供器定义文件使用JSON格式，并具有下列结构：
+## Definition behavior
 
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:字符串]*type：魔咒提供器类型。 - - 如果[图:字符串]type为 ``` by_cost ``` ，则根据附魔等级进行附魔。 - [图:字符串][图:NBT列表/JSON数组]*enchantments：这次附魔过程中可选的魔咒。可以为一个魔咒的命名空间ID或一个魔咒标签，或一个魔咒ID的数组。 - [图:整型][图:NBT复合标签/JSON对象]*cost：这次附魔过程使用的附魔等级。 - - 整数提供器，见Template:Nbt inherit/int provider/source - - 如果[图:字符串]type为 ``` by_cost_with_difficulty ``` ，则根据难度计算附魔等级进行附魔。 - [图:字符串][图:NBT列表/JSON数组]*enchantments：这次附魔过程中可选的魔咒。可以为一个魔咒的命名空间ID或一个魔咒标签，或一个魔咒ID的数组。 - [图:整型]*max_cost_span：（0≤值≤10000）由难度影响的附魔等级调节值。 - [图:整型]*min_cost：（1≤值≤10000）最小附魔等级。设 ``` min_cost ``` 为n，当前副区域难度为d， ``` max_cost_span ``` 为m，则最大附魔等级为n+md。 - - 如果[图:字符串]type为 ``` single ``` ，则直接添加指定魔咒，等级随机。 - [图:字符串]*enchantment：（命名空间ID）要添加的魔咒。 - [图:整型][图:NBT复合标签/JSON对象]*level：魔咒的等级。 - - 整数提供器，见Template:Nbt inherit/int provider/source
+Enchantment provider data is loaded only once at server startup; `/reload` does not reload it — a server restart is required.
 
-# 定义行为
+The game picks enchantments for items in certain situations through enchantment providers. Provider invocation is hardcoded: the game only uses the following built-in providers; datapack-defined providers are never used. Some providers apply only probabilistically:
 
-魔咒提供器定义数据仅在服务端启动时被加载一次，使用
-```
-/
-reload
-```
-
-命令不可以使魔咒提供器定义被重新加载，而必须重启服务端。
-
-魔咒提供器是游戏选取魔咒附加到物品上的一种方式。在某些游戏场合，游戏会使用魔咒提供器为物品附魔。
-
-魔咒提供器的调用是硬编码的，游戏只会使用下列内置魔咒提供器，由数据包定义的其他魔咒提供器没有任何用处：
-
-部分魔咒提供器并不总是生效，游戏会额外增加一层概率限制：
-
-- ``` enderman_loot_drop ``` ：总是生效。
-- ``` mob_spawn_equipment ``` ：作用于骷髅陷阱时总是生效，作用于自然生成的生物时概率生效。
-- ``` pillager_spawn_crossbow ``` ：概率生效。
-- ``` raids/* ``` ：概率生效，与袭击之兆等级相关。
-
-# 历史
-
-# 导航
+- `enderman_loot_drop`: always applies.
+- `mob_spawn_equipment`: always applies to skeleton traps; applies probabilistically to naturally spawned mobs.
+- `pillager_spawn_crossbow`: applies probabilistically.
+- `raids/*`: applies probabilistically, scaled with the Bad Omen level.

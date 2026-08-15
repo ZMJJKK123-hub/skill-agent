@@ -1,25 +1,7 @@
 ---
 name: forge-misc
-description: |
-  Forge 杂项功能指南（配置 / 按键绑定 / 游戏测试 / 更新检查 / 调试）（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】Configuration
-  
-  【涵盖内容】
-  - ConfigValue
-  - Using the Debug Profiler
-  - Reading a Profiling result
-  - Profiling your own code
-  - The Test Method
-  - Generated Test Methods
-  - Batching
-  - GameTestHolder
-  - RegisterGameTestsEvent
-  - Enabling Other Namespaces
-  - Game Test Server Run Configuration
-  - Enabling Game Tests in Other Run Configurations
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge 杂项功能指南（配置 / 按键绑定 / 游戏测试 / 更新检查 / 调试） 的完整规范时
+description: Forge miscellaneous: configuration (ConfigValue), key bindings, game tests, update checks.
+whenToUse: Use when adding configs, key bindings, game tests, or debugging Forge mods.
 ---
 
 Configuration

@@ -1,33 +1,35 @@
 ---
 name: minecraft-tag-painting-variant
-description: |
-  Java版标签/画变种（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】画变种标签（Painting Variant Tags）是画变种的组合。
-  
-  【涵盖内容】
-  - placeable
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Java版标签/画变种 的完整规范时
+description: The placeable painting variant tag and its members.
+whenToUse: Use when writing datapacks or custom paintings that reference the placeable painting variant tag.
 ---
 
-本条目所述内容仅适用于Java版。
-画变种标签（Painting Variant Tags）是画变种的组合。
+# Painting Variant Tags
 
-# 使用
+This content applies only to Java Edition.
 
-画变种标签不可被主动调用，它们被游戏用来控制创造模式物品栏中提供的画变种。
+Painting variant tags are groups of painting variants.
 
-# 标签列表
+## Usage
 
-## placeable
+Painting variant tags cannot be invoked directly; the game uses them to control which painting variants are offered in the creative inventory.
 
-- 可由未在其物品堆叠组件中指定特定画变种的画物品随机放置出的画变种。
-- 已注册且会在创造模式物品栏的“功能方块”标签页中出现的画变种。
-- 已注册但不在创造模式物品栏的“管理员用品”标签页中出现的画变种。
+## Tag list
 
-- #placeable（47项） - ``` kebab ``` （Kebab med tre pepperoni） - ``` aztec ``` （de_aztec） - ``` alban ``` （Albanian） - ``` aztec2 ``` （de_aztec） - ``` bomb ``` （Target Successfully Bombed） - ``` plant ``` （Paradisträd） - ``` wasteland ``` （Wasteland） - ``` pool ``` （The Pool） - ``` courbet ``` （Bonjour Monsieur Courbet） - ``` sea ``` （Seaside） - ``` sunset ``` （sunset_dense） - ``` creebet ``` （Creebet） - ``` wanderer ``` （Wanderer） - ``` graham ``` （Graham） - ``` match ``` （Match） - ``` bust ``` （Bust） - ``` stage ``` （The Stage Is Set） - ``` void ``` （The void） - ``` skull_and_roses ``` （Skull and Roses） - ``` wither ``` （Wither） - ``` fighters ``` （Fighters） - ``` pointer ``` （Pointer） - ``` pigscene ``` （Pigscene） - ``` burning_skull ``` （Skull On Fire） - ``` skeleton ``` （Mortal Coil） - ``` donkey_kong ``` （Kong） - ``` baroque ``` （Baroque） - ``` humble ``` （Humble） - ``` meditative ``` （Meditative） - ``` prairie_ride ``` （Prairie Ride） - ``` unpacked ``` （Unpacked） - ``` backyard ``` （Backyard） - ``` bouquet ``` （Bouquet） - ``` cavebird ``` （Cavebird） - ``` changing ``` （Changing） - ``` cotan ``` （Cotán） - ``` endboss ``` （Endboss） - ``` fern ``` （Fern） - ``` finding ``` （Finding） - ``` lowmist ``` （Lowmist） - ``` orb ``` （Orb） - ``` owlemons ``` （Owlemons） - ``` passage ``` （Passage） - ``` pond ``` （Pond） - ``` sunflowers ``` （Sunflowers） - ``` tides ``` （Tides） - ``` dennis ``` （Dennis）
+### `#placeable` (47 entries)
 
-# 历史
+Painting variants offered in the creative inventory:
 
-# 导航
+- Variants that can be placed randomly by a painting item whose item stack component does not specify a variant.
+- Registered variants that appear in the "Functional Blocks" creative tab.
+- Registered variants that do not appear in the "Operator Utilities" creative tab.
+
+Representative members:
+
+- `kebab` (Kebab med tre pepperoni)
+- `aztec` (de_aztec)
+- `wanderer` (Wanderer)
+- `burning_skull` (Skull On Fire)
+- `prairie_ride` (Prairie Ride)
+
+For the complete member list, see the tag definition under `data/minecraft/tags/` in mc_java_sources/, or Minecraft Wiki.

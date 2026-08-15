@@ -1,94 +1,27 @@
 ---
 name: minecraft-superflat-preset
-description: |
-  超平坦世界生成预设（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】本条目介绍的是数据包内容。关于游戏内的预设，请见“超平坦世界 § 原版中的预设”。
-  
-  【涵盖内容】
-  - 使用
-  - 标签
-  - 文本
-  
-  【关键定义】
-  - 注册表：FLAT_LEVEL_GENERATOR_PRESET
-  - 数据包路径：data/worldgen/flat_level_generator_preset
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 超平坦世界生成预设 的完整规范时
+description: Flat level generator preset JSON: FLAT_LEVEL_GENERATOR_PRESET registry.
+whenToUse: Use when writing datapack flat_level_generator_preset definitions.
 ---
 
-本条目介绍的是数据包内容。关于游戏内的预设，请见“超平坦世界 § 原版中的预设”。
+# Flat Level Generator Presets
 
-本条目所述内容仅适用于Java版。
-超平坦世界生成预设（Flat Level Generator Preset/Flat World Preset）是单项可在超平坦预设屏幕中可选的预设。超平坦世界生成预设定义文件是超平坦世界生成预设在数据包中的数据驱动定义文件。
+This content applies only to Java Edition. This article covers datapack presets (for in-game presets, see superflat worlds).
 
-# 定义格式
+Flat world presets are selectable presets on the superflat screen. Definition files are their data-driven definitions in datapacks.
 
-超平坦世界生成预设在游戏中使用
-```
-FLAT_LEVEL_GENERATOR_PRESET
-```
+## Definition format
 
-注册表，数据包路径为
-```
-worldgen/flat_level_generator_preset
-```
+Presets use the `FLAT_LEVEL_GENERATOR_PRESET` registry; the datapack path is `worldgen/flat_level_generator_preset` (definitions in `data/<namespace>/worldgen/flat_level_generator_preset`, tags in `data/<namespace>/tags/worldgen/flat_level_generator_preset`).
 
-，即所有超平坦世界生成预设定义文件都需要在
-```
-data/<
-命名空间
->/worldgen/flat_level_generator_preset
-```
+Definition files use JSON with the following structure:
 
-目录下定义，超平坦世界生成预设标签则需要在
-```
-data/<
-命名空间
->/tags/worldgen/flat_level_generator_preset
-```
+- JSON file root object
+  - `display` (string, required): preset icon as an item namespace ID.
+  - `settings` (compound, required): the Overworld flat generator settings (flat generator settings format).
 
-目录下定义。
+## Definition behavior
 
-超平坦世界生成预设定义文件使用JSON格式，并具有下列结构：
+Preset data is loaded only once at server startup; `/reload` does not reload it — a server restart is required. Like world presets, flat presets are only effective before world creation.
 
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:字符串]*display：超平坦世界生成预设的图标，需为一个物品的命名空间ID。 - [图:NBT复合标签/JSON对象]*settings：主世界的超平坦生成器设置。 - - 超平坦生成设置，见Template:nbt inherit/flat generator settings/source
-
-# 定义行为
-
-超平坦世界生成预设定义数据仅在服务端启动时加载一次，使用
-```
-/
-reload
-```
-
-命令不可以使超平坦世界生成预设定义被重新加载，而必须重启服务端。
-
-与世界预设类似，超平坦世界生成预设用于提供预先配置好的超平坦世界生成设置，只在世界创建前才真正有效。
-
-## 使用
-
-超平坦世界生成预设可以在超平坦自定义的“选择一种预设”屏幕使用。游戏会读取预设内容展示预设图标、超平坦预设码，也会在“自定义超平坦世界”屏幕展示各层方块。由于游戏以物品形式展示图标，因此没有方块物品的方块会显示为空气，除非存在能放出其方块的物品。
-
-## 标签
-
-超平坦世界生成预设文件只能注册新的超平坦世界生成预设，而不能将其直接展示在屏幕上以供选择。游戏定义了下列标签以控制是否可以在屏幕上选择世界预设：
-
-- ``` #visible ``` ：可以在“选择一种预设”屏幕选择的超平坦世界生成预设。
-
-## 文本
-
-超平坦世界生成预设的翻译键名为
-```
-flat_world_preset.<
-命名空间
->.<
-名称
->
-```
-
-，在“选择一种预设”屏幕中显示。
-
-# 历史
-
-# 导航
+Presets can be used on the superflat "Choose a preset" screen, showing the icon, preset code, and layer blocks (blocks without items show as air). To appear on the screen, a preset must be in the `#visible` tag. The translation key is `flat_world_preset.<namespace>.<name>`.

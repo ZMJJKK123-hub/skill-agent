@@ -1,25 +1,7 @@
 ---
 name: forge-datagen-server
-description: |
-  Forge 服务端数据 Data Generation：配方/战利品/进度/标签/全局战利品修改器（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】Advancement Generation
-  
-  【涵盖内容】
-  - Datapack Registry Object Lookup
-  - `BlockLootSubProvider` and `EntityLootSubProvider` Subclasses
-  - LootTable
-  - LootPool
-  - LootPoolEntryContainer
-  - LootItemCondition
-  - LootItemFunction
-  - NumberProvider
-  - ShapedRecipeBuilder
-  - ShapelessRecipeBuilder
-  - SimpleCookingRecipeBuilder
-  - SingleItemRecipeBuilder
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge 服务端数据 Data Generation：配方/战利品/进度/标签/全局战利品修改器 的完整规范时
+description: Forge server data generation: recipes, loot tables, advancements, tags, and global loot modifiers.
+whenToUse: Use when data generating server data (recipes, loot, advancements, tags).
 ---
 
 Advancement Generation

@@ -1,63 +1,40 @@
 ---
 name: minecraft-command-storage
-description: |
-  命令存储存储格式（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】命令存储存储文件是存档用于存储命令存储所使用的文件。
-  
-  【涵盖内容】
-  - （自动提取章节）
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 命令存储存储格式 的完整规范时
+description: Command storage save format: command_storage.dat, NBT structure, access methods.
+whenToUse: Use when understanding or accessing command storage (storage <target>) from commands, datapacks, or saves.
 ---
 
-本条目所述内容仅适用于Java版。
-命令存储存储文件是存档用于存储命令存储所使用的文件。
+# Command Storage Format
 
-# 存储格式
+This content applies only to Java Edition.
 
-命令存储存储文件位于
-```
-<
-存档根目录
->/data/<
-命名空间
->/command_storage.dat
-```
+Command storage files store the data of command storage.
 
-。
+## Storage format
 
-命令存储存储文件使用GZip压缩的NBT文件格式保存，其内部有下列NBT结构：
+Files are located at `<save root>/data/<namespace>/command_storage.dat`, in GZip-compressed NBT format:
 
-- [图:NBT复合标签/JSON对象] 根标签 - [图:NBT复合标签/JSON对象]* *data：命令存储数据。 - [图:NBT复合标签/JSON对象]* *contents：命令存储的内容。 - [图:NBT复合标签/JSON对象]<名称>：对于指定命名空间ID，命令存储中保存的数据。 - [图:整型]*DataVersion：保存此命令存储存储文件的游戏的数据版本。如果此项不存在则游戏认为此项是1343（Java版1.12.2）。
+- Root tag
+  - `data` (compound, required): command storage data.
+    - `contents` (compound, required): the storage contents; `<name>` (compound) per namespace ID.
+  - `DataVersion` (int, required): game data version; absent = 1343 (Java 1.12.2).
 
-# 存储行为
+## Storage behavior
 
-命令存储是一种方便的存储数据的方式。命令和数据包可以通过命令存储直接使用命名空间ID保存数据，而不需要物品、方块实体或实体间接保存数据。
+Command storage lets commands and datapacks save data under namespace IDs directly, without items, block entities, or entities.
 
-下列方式可以将数据写入到命令存储中：
+Writing:
 
-- ``` / execute ``` 使用 ``` store ``` 子命令且指定写入 ``` storage ``` 。
-- ``` / data ``` 在指定数据源为某一命令存储项（ ``` storage <target> ``` ）时使用 ``` merge ``` 、 ``` modify ``` 和 ``` remove ``` 子命令。
+- `/execute ... store` with target `storage`
+- `/data merge|modify|remove` with source `storage <target>`
 
-下列方式可以读取命令存储中的数据：
+Reading:
 
-- 文本组件中使用类型为 ``` nbt ``` 并指定[图:字符串]storage的文本组件内容。
-- ``` / execute ``` 使用条件子命令 ``` (if|unless) data ``` 且指定数据源为 ``` storage ``` 。
-- ``` / function ``` 使用子命令 ``` with ``` 并使用数据源 ``` storage ``` 传入参数。
-- ``` / data ``` 在指定数据源为某一命令存储项（ ``` storage <target> ``` ）时使用 ``` get ``` 子命令。
-- 使用 ``` copy_custom_data ``` 类型的物品修饰器并指定 ``` storage ``` 类型的数据源。
-- 使用 ``` storage ``` 类型的数值提供器。
+- Text components with type `nbt` and `storage` specified
+- `/execute (if|unless) data` with source `storage`
+- `/function ... with` with source `storage`
+- `/data get` with source `storage <target>`
+- Item modifiers of type `copy_custom_data` with `storage` source
+- Number providers of type `storage`
 
-命令存储中的数据被设置为空标签
-```
-{}
-```
-
-时，会被删除。
-
-如果没有任何使用命令存储的命令，那么存档中就不存在命令存储存储文件。当有命令将数据写入命令存储中时，游戏才会创建对应命名空间的命令存储存储文件。当游戏读取或写入命令存储时，命令存储存储文件会按需加载，之后保存在内存中，以节省内存使用。
-
-# 历史
-
-# 导航
+Setting storage data to `{}` deletes it. The file is created only when a command writes to storage; files load on demand and stay in memory.

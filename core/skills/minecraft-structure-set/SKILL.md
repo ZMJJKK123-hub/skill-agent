@@ -1,99 +1,46 @@
 ---
 name: minecraft-structure-set
-description: |
-  结构集（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】基岩版结构集请参见官方文档
-  
-  【涵盖内容】
-  - 结构放置类型
-  - concentric_rings
-  - random_spread
-  - dimension_origin
-  
-  【关键定义】
-  - 注册表：STRUCTURE_SET
-  - 数据包路径：data/worldgen/structure_set
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 结构集 的完整规范时
+description: Structure set definition JSON: STRUCTURE_SET registry, placement types.
+whenToUse: Use when writing datapack worldgen structure_set definitions.
 ---
 
-本条目所述内容仅适用于Java版。
-基岩版结构集请参见官方文档
+# Structure Sets
 
-结构集（Structure Set）是游戏在世界生成期间决定如何生成结构的技术性概念。结构集定义文件是结构集在数据包中的数据驱动定义文件。
+This content applies only to Java Edition.
 
-# 定义格式
+Structure sets determine how structures generate during world generation. Definition files are their data-driven definitions in datapacks.
 
-结构集在游戏中使用
-```
-STRUCTURE_SET
-```
+## Definition format
 
-注册表，数据包路径为
-```
-worldgen/structure_set
-```
+Structure sets use the `STRUCTURE_SET` registry; the datapack path is `worldgen/structure_set` (definitions in `data/<namespace>/worldgen/structure_set`, tags in `data/<namespace>/tags/worldgen/structure_set`).
 
-，即所有的结构集定义文件都需要在
-```
-data/<
-命名空间
->/worldgen/structure_set
-```
+Definition files use JSON with the following structure:
 
-目录下定义，结构集标签则需要在
-```
-data/<
-命名空间
->/tags/worldgen/structure_set
-```
+- JSON file root object
+  - `structures` (list, may be empty): placeable structure features.
+    - `structure` (string/compound, required): a structure; inline definitions fail chunk saving (no namespace ID).
+    - `weight` (int, required): (≥1) selection weight.
+  - `placement` (compound, required): placement behavior.
+    - `salt` (int, required): random seed salt (non-negative).
+    - `frequency` (float, default 1.0): (0.0≤v≤1.0) attempt probability when other conditions hold.
+    - `frequency_reduction_method` (string, default `default`): `default` (world seed + coords + salt), `legacy_type_1` (seed + coords only), `legacy_type_2` (like default with fixed salt 10387320), `legacy_type_3` (seed + coords only).
+    - `exclusion_zone` (compound): structures of this set cannot generate near another set; `chunk_count` (int, required, 1–16) + `other_set` (string, required).
+    - `locate_offset` (list, default [0,0,0]): `/locate structure` offset in chunks; each −16..16.
+    - `type` (string, required): placement type (below).
 
-目录下定义。
+### Placement types
 
-结构集定义文件使用JSON格式，并具有下列结构：
+- `concentric_rings` (vanilla strongholds): fixed count per dimension in concentric rings around the world center.
+  - `distance` (int, required): (0≤v≤1023) ring width + gap, in 6-chunk units.
+  - `count` (int, required): (1≤v≤4095) total attempts in the dimension.
+  - `spread` (int, required): (0≤v≤1023) attempts in the central ring.
+  - `preferred_biomes` (string/list, required): biomes the structure prefers.
+- `random_spread` (vanilla ocean monuments, swamp huts): the dimension is divided into `spacing`-chunk cells, each attempting once; structures generate only inside a `separation`-chunk inner area (extra strips never generate).
+  - `spread_type` (string, default `linear`): `linear` or `triangular` (fewer extremes).
+  - `spacing` (int, required): (1≤v≤4096) average distance in chunks.
+  - `separation` (int, required): (0≤v<spacing) minimum distance; max distance = 2×spacing − separation.
+- `dimension_origin` (upcoming, Java 26.3): places at the dimension origin — for noise generators, preferably from `spawn_target`; otherwise chunk (0,0).
 
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:NBT列表/JSON数组]*structures：（可以为空）可以放置的结构地物列表。 - [图:NBT复合标签/JSON对象] - [图:字符串][图:NBT复合标签/JSON对象]*structure：一个可以放置的结构。虽然游戏支持内联定义但会因为无法获取结构的命名空间ID导致区块数据无法保存。 - [图:整型]*weight：（值≥1）选中此项的权重。 - [图:NBT复合标签/JSON对象]*placement：结构地物的放置方式。 - [图:整型]*salt：影响随机数的数字；见盐 (密码学)。取值为非负整数。 - [图:单精度浮点数]frequency：（0.0≤值≤1.0，默认为1.0）在满足其他条件的情况下尝试生成的概率。 - [图:字符串]frequency_reduction_method：（默认为 ``` default ``` ）为[图:单精度浮点数]frequency提供随机数算法。必须为 ``` default ``` （取决于世界种子、坐标和盐）、 ``` legacy_type_1 ``` （仅取决于世界种子和坐标，且仅在坐标差异较大时才表现出随机性）、 ``` legacy_type_2 ``` （与 ``` default ``` 相同，但使用固定的盐：10387320）或 ``` legacy_type_3 ``` （仅取决于世界种子和坐标）。 - [图:NBT复合标签/JSON对象]exclusion_zone：指定此结构集的结构不能放置在哪个结构集附近。 - [图:整型]*chunk_count：（1≤值≤16）在这个结构地物附近不能放置的区块范围。 - [图:字符串]*other_set：（命名空间ID）一个结构集。 - [图:NBT列表/JSON数组]locate_offset：（默认为[0,0,0]）使用 ``` / locate structure ``` 时的偏移量（单位为区块）。 - [图:整型]：（-16≤值≤16）X。 - [图:整型]：（-16≤值≤16）Y。 - [图:整型]：（-16≤值≤16）Z。 - [图:字符串]*type：结构放置类型。 - 依结构放置类型而不同的额外字段，见下文。
+## Definition behavior
 
-## 结构放置类型
-
-结构放置类型决定了结构的放置方式，游戏共有下列放置类型。
-
-### concentric_rings
-
-同心圆环放置，原版游戏用于要塞。每个维度只生成固定数量的结构，以世界中心为原点按同心圆环的方式放置结构。
-
-- - [图:字符串]*type： ``` concentric_rings ``` - [图:整型]*distance：（0≤值≤1023）每一环的宽度加上每环间的间隙宽度，单位为6区块。 - [图:整型]*count：（1≤值≤4095）该维度尝试生成的总次数。 - [图:整型]*spread：（0≤值≤1023）最中心一环的结构尝试生成次数。 - [图:字符串][图:NBT列表/JSON数组]*preferred_biomes：此结构更倾向于生成的生物群系。
-
-当[图:整型]spread为0时，无论[图:整型]distance大小，除第一次尝试外，所有的尝试生成点均在世界中心；否则，设[图:整型]spread为s，则第n环中的尝试生成次数为⌊14⌊2s3⌋n2+12(⌊s+23⌋+⌊2s+13⌋)n+⌊s+13⌋⌋，直到次数达到总次数[图:整型]count。
-
-### random_spread
-
-随机扩散放置，原版游戏用于海底神殿和沼泽小屋等结构。游戏会将维度分割为以[图:整型]*spacing个区块为边长的若干分块，每个分块只能尝试生成一次结构。而为了避免两个结构的距离过近，游戏只会在每个分块内以[图:整型]*separation个区块为边长的小分块内生成，多出的XZ正方向的狭长区域永远不会生成结构。
-
-- - [图:字符串]*type： ``` random_spread ``` - [图:字符串]spread_type：（默认为 ``` linear ``` ）扩散类型。可以为 ``` linear ``` 或 ``` triangular ``` 。区别在于 ``` triangular ``` 不容易比 ``` linear ``` 出现极端值。 - [图:整型]*spacing：（1≤值≤4096）两个结构之间的平均距离（单位为区块）。 - [图:整型]*separation：（0≤值<spacing）两个结构之间的最小距离（单位为区块）。两次结构之间的最大距离则为 ``` 2*spacing - separation ``` 。
-
-### dimension_origin
-
-本段落包含会在下一次更新中出现的内容。
-这些特性在Java版26.3的开发版本中加入。
-
-在维度的原点放置。维度的原点对于噪声生成器而言优先从[图:NBT列表/JSON数组]spawn_target获取位置，如果该字段为空或不存在，或维度的生成器不是噪声生成器，则维度的原点为区块坐标（0，0）。
-
-- - [图:字符串]*type： ``` dimension_origin ```
-
-# 定义行为
-
-结构集定义数据仅在服务端启动时加载一次，使用
-```
-/
-reload
-```
-
-命令不可以重新加载结构集定义，而必须重启服务端。
-
-结构集用于让结构“自然生成”于世界。在世界生成阶段，每个维度都会尝试计算所有可用的结构集，在结构集计算的坐标上挑选可能的结构。如果当前位置的概率不通过，或不符合生物群系要求，或诸如地形限制等其他因素导致计算失败，则此处不会放置结构；否则，游戏会在区块内记录将要生成的结构片段，待区块加载时生成结构。
-
-# 历史
-
-# 导航
+Structure set data is loaded only once at server startup; `/reload` does not reload it — a server restart is required. During generation each dimension evaluates available sets; a structure is placed only if the probability, biome, and terrain checks pass, recording structure pieces to generate on chunk load.

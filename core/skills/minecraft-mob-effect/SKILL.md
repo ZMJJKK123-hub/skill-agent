@@ -1,44 +1,19 @@
 ---
 name: minecraft-mob-effect
-description: |
-  药水效果（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】提示：本条目的主题不是状态效果。
-  
-  【涵盖内容】
-  - （自动提取章节）
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 药水效果 的完整规范时
+description: Potion effects: base data for potions, splash/lingering, tipped arrows, clouds.
+whenToUse: Use when understanding potion effect data, potion colors, names, and their linked status effects.
 ---
 
-提示：本条目的主题不是状态效果。
+# Potion Effects
 
-药水效果（Potion Effect）是药水、喷溅药水、滞留药水、药箭和区域效果云使用的基本数据。
+This content applies only to Java Edition.
 
-# 机制
+Potion effects are the base data used by potions, splash potions, lingering potions, tipped arrows, and area effect clouds. Potion items and the splash potion / lingering potion / arrow / area effect cloud entities store a potion effect in their data. If no potion effect is specified, or the ID is unrecognized, the uncraftable potion or water bottle effect is used.
 
-药水、喷溅药水、滞留药水、药箭物品，以及喷溅药水、滞留药水、箭、区域效果云实体在它们的数据中储存了药水效果。如果上述物品或实体没有指定药水效果，或指定了游戏无法识别的药水效果ID，那么不可合成的药水或水瓶药水效果就会被使用。
+A potion effect determines the potion's name, color, the status effects it applies (with level and duration), and other behaviors. Some effect names differ from their status effect names; a few potion effects have no status effect (e.g. the Turtle Master potion applies several).
 
-药水效果决定了药水的名称，药水的颜色，引发的状态效果及其等级和持续时间。一部分药水效果的名称与其引发的状态效果的名称是不同的。
+## Potion effect list
 
-少数药水效果没有对应的状态效果；神龟药水引发了多种状态效果。
+Duration notes: splash potions apply duration scaled down with distance from the break point; lingering potions and area effect clouds apply 1⁄4 duration; tipped arrows apply 1⁄8 duration. The "potion color" column is computed by the Java mixing algorithm, not predefined. Bedrock numeric IDs are the data values of potions (arrows +1 each).
 
-有一些药水效果还控制了其他的行为，如药水效果为水瓶的喷溅药水。
-
-# 药水效果列表
-
-下表中的引发的状态效果的持续时间使用了药水的数据。对于喷溅药水，其造成的状态效果的持续时间会随受影响生物到喷溅药水破裂位置的距离的增加而降低；对于滞留药水和区域效果云，其造成的状态效果的持续时间是⁄4；对于药箭，其造成的状态效果的持续时间是⁄8。
-
-下表中“药水名称”为具有这些药水效果的药水的物品名称；“药水效果ID”列的值省略了
-```
-minecraft:
-```
-
-前缀；基岩版数字ID为药水、喷溅药水和滞留药水的数据值，对于药箭每个数据都应增加1；“药水颜色”列的值是根据Java版混合药水颜色算法得出的，游戏并非预设了这些值。
-
-基岩版所有种类的神龟药水的颜色均为
- #8B80E3，以下不再指出。
-
-# 历史
-
-# 导航
+For the full effect list (name, ID, color, linked status effects), see Minecraft Wiki.

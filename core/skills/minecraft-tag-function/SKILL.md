@@ -1,96 +1,38 @@
 ---
 name: minecraft-tag-function
-description: |
-  Java版标签/函数（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】函数标签（Function Tags）是函数的组合。
-  
-  【涵盖内容】
-  - （自动提取章节）
-  
-  【关键定义】
-  - 数据包路径：data/minecraft/tags/function/load.json
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Java版标签/函数 的完整规范时
+description: Function tags (#load, #tick) usage and a JSON example, for organizing datapack functions.
+whenToUse: Use when organizing datapack functions with function tags (#load, #tick).
 ---
 
-本条目所述内容仅适用于Java版。
-函数标签（Function Tags）是函数的组合。
+# Function Tags
 
-# 使用
+This content applies only to Java Edition.
 
- 参见：Java版函数 § 通过函数标签 
-函数标签可以在
-```
-/
-function
-```
+Function tags are groups of functions.
 
-命令中使用，该命令会按标签中首次出现的顺序运行标签中指定的所有函数。如果一个函数在标签及其子标签中被多次引用，它只会运行一次。
+## Usage
 
-游戏内部提供了两个特殊标签：
+Function tags can be used with the `/function` command, which runs all functions in the tag in the order they first appear. If a function is referenced multiple times in a tag and its subtags, it runs only once.
 
-- 在 ``` #load ``` 标签中列出的函数将在世界加载时或者服务器被启动时执行。每当数据包重载时，这些函数也将被执行。
+The game provides two special tags:
 
-- 在 ``` #tick ``` 标签中列出的函数将在每一刻开始时执行。随着游戏刻递增，这些函数持续反复执行。
+- Functions listed in `#load` run when the world loads or the server starts. They also run on every datapack reload.
+- Functions listed in `#tick` run at the start of every game tick, repeating continuously.
 
-原版数据包中没有使用这些函数标签。
+Vanilla datapacks do not use these tags.
 
-# 示例
+## Example
 
-以下示例在
-```
-minecraft
-```
+The following example defines the `#load` tag in the `minecraft` namespace and adds the `example:test` function.
 
-命名空间下定义了
-```
-#load
-```
+`data/minecraft/tags/function/load.json`:
 
-标签，并加入
-```
-example:test
-```
-
-函数。
-
-[图:File file.png：Minecraft中file的精灵图] 
-```
-data/minecraft/tags/function/load.json
-```
-
-json
-
-```
+```json
 {
-
-  
-"values"
-:
- 
-[
-
-    
-"example:test"
-
-  
-]
-
+  "values": [
+    "example:test"
+  ]
 }
 ```
 
-游戏将会在数据包加载时运行一次
-```
-example:test
-```
-
-函数。
-
-# 历史
-
-# 参考
-
-1. ↑ MC-187539 — 漏洞状态为“已修复”。
-
-# 导航
+The game runs `example:test` once when the datapack loads.

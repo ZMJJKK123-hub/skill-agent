@@ -1,444 +1,91 @@
 ---
 name: minecraft-wolf
-description: |
-  狼（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】关于其他用法，请见“狼（消歧义）”。
-  
-  【涵盖内容】
-  - 音效变种
-  - 攻击
-  - 受伤害行为
-  - 移动
-  - 传送
-  - 驯服
-  - 喂食
-  - 繁殖
-  - 成年
-  - 共通音效
-  - 变种音效
-  - 幼年
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 狼 的完整规范时
+description: Wolf — variants, sound variants, taming, breeding, teleporting, armor, NBT.
+whenToUse: Use when working with wolves (taming, breeding, wolf armor, variant/sound-variant data).
 ---
 
-关于其他用法，请见“狼（消歧义）”。
+# Wolf
 
- “Dog”重定向至此。关于曲目，请见“Dog（音乐）”。
+Wolves are tameable friendly mobs. ("Dog" redirects here.)
 
-此页面还需添加更多图像。
-请在添加后将此信息移除。
+## Spawning
 
-狼
+Untamed wolves spawn with biome-dependent variants (on grass/dirt/podzol/snow blocks):
 
-成年
+- Jungle, bamboo jungle, sparse jungle → **rusty wolf**
+- Savanna, savanna plateau, windswept savanna → **spotted wolf**
+- Badlands, wooded badlands, eroded badlands → **striped wolf**
+- Forest, wooded forest (mangrove?) → **woods wolf**
+- Snowy taiga → **ashen wolf**
+- Old growth pine taiga → **black wolf**
+- Old growth spruce taiga → **chestnut wolf**
+- Snowy slopes? / grove → **snowy wolf**
+- All other biomes → **pale wolf**
 
-幼年
+10% of wolves spawn as babies. Spawn eggs and `/summon` also pick variants by biome.
 
-成年
+### Sound Variants
 
-幼年
+7 sound variants: Big Dog, Classic, Cute, Puglin, Angry, Grumpy, Sad — personality-flavored, no behavioral effect. Assigned independently of biome variant, 14.2% each; used for barking, panting, whining, howling, death and hurt sounds.
 
-成年
+## Drops
 
-幼年
+1–3 XP when killed by a player or tamed wolf (babies drop none). Bedrock: tamed wolves drop XP only when killed by a player (not the owner) or another tamed wolf.
 
-成年
+## Behavior
 
-幼年
+Three states:
 
-成年
+- **Wild** — one white + one black pixel per eye; tail up 36°. (Bedrock: babies can ride wild wolves.)
+- **Angry** — wild wolves with a target; red eyes, angry howling; tail up 88.2°, not wagging; cannot be leashed (leashes don't break when a leashed wolf turns angry); cannot be tamed with bones, but meat still heals/ages it.
+- **Tamed** — gentle eyes, collar; tail angle 99° − (hmax−hcur)/hmax × 72° (full health → 99°).
 
-幼年
+Babies have big heads; they don't follow adults unless a wolf nearby is fighting. Holding meat/bones within 8 blocks makes wolves tilt their heads (begging). Wolves shake off water with splash particles after leaving water/rain (Java: darkened texture while wet).
 
-成年
+### Attacks
 
-幼年
+- Wild wolves hunt skeletons, wither skeletons, strays, bogged, charred, the Wither, rabbits, foxes, sheep, baby turtles. Tamed wolves standing also hunt the skeletal types + Wither. Sitting tamed wolves don't attack.
+- Skeletons/strays/etc., foxes, rabbits, baby turtles flee wolves; the skeletal mobs fight back. Killer rabbits attack wolves (Java). Llamas/wandering traders spit at wild wolves; wolves always flee from Strength 4–5 llamas.
+- Wolves never attack creepers or ghasts. Tamed wolves never attack their owner, owner's team, same-owner wolves, tamed cats/parrots/horses/donkeys/mules/skeleton horses/zombie horses/llamas/traders/nautiluses/zonbies and item-holding allays (Bedrock exception: retaliate when the owner is attacked by tamed llamas).
+- Wolves anger at attackers (tamed wolves also anger at attackers of their owner); nearby wolves (33×21×33 box) join unless the victim was one-shot. Tamed wolves anger at anything the owner attacks (if attackable). Damage: wild 3 (×5.5 hearts?), tamed 4; only player-inflicted damage scales with difficulty (Java).
+- Mobs killed by tamed wolves drop XP/rare drops even without player involvement.
 
-成年
+### Damage Behavior
 
-幼年
+Wolf armor absorbs most damage as durability (ceil), showing cracking textures. `#bypasses_wolf_armor` damage passes through: magic, cramming, drowning, dehydration, freezing, suffocation, out-of-world, starvation, thorns, wither, void, `/kill`, mace smash attacks.
 
-成年
+### Movement and Sitting
 
-幼年
+Interacting (not feeding) makes a tamed wolf sit/stand. Sitting wolves stand when pushed into water or hurt (Java: stay sitting forever if the owner leaves the server). Standing tamed wolves wander-follow the owner; within 10 blocks they walk directly; beyond 12 they teleport.
 
-成年
+### Teleporting
 
-幼年
+Tamed wolves teleport to the owner when >12 blocks away. Teleporting resets their attack — a wolf teleporting mid-fight resumes following. Wolves may teleport into a bad position and suffocate. No teleport when: sitting (but standing from being hurt can trigger it), attacking an entity (Java; teleports after the target dies), riding in a minecart/boat, leashed to a fence, chunk unloaded, no valid spot in the 5×3×5 area around the player, or the owner is in another dimension (Bedrock: wolves do follow through portals).
 
-[[|]][图:Invicon Wolf Spawn Egg.png：Minecraft中Wolf Spawn Egg的精灵图，描述：狼刷怪蛋]
+### Taming
 
-“> Jens花了大半个星期制作一种新的生物：狼！你可以驯服它并带在身边，它还可以当宠物。它们相当罕见，但驯服后它们不会消失。
+Bones: each use has 1/3 chance to tame (≈3 bones average). Tamed wolves get a red collar and ignore further bones; unlimited tames. Dyes recolor the collar. Wolf armor gives 11 armor points; armadillo scutes repair it; shears remove it. Tamed wolves with ≥20 HP pant; below 20 HP they whine. Tamed wolf death shows a death message to the owner/all players.
 
-”——Notch
-狼（Wolf）是一种能够被玩家驯服的友好生物。
+### Feeding
 
-# 生成
+Meat restores twice its hunger value as health; no side effects (rotten flesh/raw chicken don't poison). Java: rabbit stew returns a bowl.
 
-未驯服的狼会在不同的生物群系中的草方块、砂土、灰化土、雪块或雪上生成不同的变种，具体如下表所示：
+### Breeding
 
-使用刷怪蛋及命令
-```
-/
-summon
-```
+Feed two full-health tamed adult wolves any food except pufferfish, tropical fish, raw/cooked cod and salmon, and rabbit stew → love mode (hearts) when both are standing; 1–7 XP; 5-minute (1-minute in newer versions?) cooldown. Java: feeding wild wolves shows hearts but no love mode. Baby inherits a random coat color of the parents, collar = a valid mix of the parents' collar colors (else random parent), and the owner is chosen by the rules (same owner; different owners → the later-loaded wolf's owner unless one was sitting/lost its owner → the other's). Feed babies (same exclusions) to grow ~10% faster per feed. Golden dandelions halt baby growth (toggle; growth-stopped babies accept only golden dandelions).
 
-召唤的狼的种类也根据生物群系决定：
+## Sounds
 
-- 在丛林、竹林和稀疏丛林召唤的狼为[图:EntitySprite rusty-wolf.png：Minecraft中rusty-wolf的精灵图]赭红狼；
-- 在热带草原、热带高原和风袭热带草原召唤的狼为[图:EntitySprite spotted-wolf.png：Minecraft中spotted-wolf的精灵图]斑点狼；
-- 在恶地、疏林恶地和风蚀恶地召唤的狼为[图:EntitySprite striped-wolf.png：Minecraft中striped-wolf的精灵图]条纹狼；
-- 在森林和斑驳森林召唤的狼为[图:EntitySprite woods-wolf.png：Minecraft中woods-wolf的精灵图]森林狼；
-- 在积雪针叶林召唤的狼为[图:EntitySprite ashen-wolf.png：Minecraft中ashen-wolf的精灵图]灰狼；
-- 在原始松木针叶林召唤的狼为[图:EntitySprite black-wolf.png：Minecraft中black-wolf的精灵图]黑狼；
-- 在原始云杉针叶林召唤的狼为[图:EntitySprite chestnut-wolf.png：Minecraft中chestnut-wolf的精灵图]栗色狼；
-- 在雪林召唤的狼为[图:EntitySprite snowy-wolf.png：Minecraft中snowy-wolf的精灵图]雪狼；
-- 在其他生物群系召唤的狼均为[图:EntitySprite pale-wolf.png：Minecraft中pale-wolf的精灵图]苍狼。
+Common sounds exist for adults/babies plus per-variant sounds for angry/big/classic/cute/grumpy/puglin/sad (Java & Bedrock tables on the wiki).
 
-有10％的狼会生成为幼年个体。
+## Data Values
 
-## 音效变种
+- ID: `minecraft:wolf`.
+- NBT: entity/living/mob/breedable/animal/tameable/angerable common tags plus:
+  - `CollarColor` (0–15, default 14 red; out of range → 0 white; wild wolves have it but no collar rendered; → component `wolf/collar`).
+  - `sound_variant` (namespace ID; invalid → `classic`; → component `wolf/sound_variant`).
+  - `variant` (namespace ID; invalid → `pale`; → component `wolf/variant`).
 
-狼有7种音效变种：大型犬、普通、可爱、小八哥犬、愤怒、不爽、悲伤。这些变种旨在反映狼的性格，但对狼的行为没有影响。
+## Trivia
 
-狼的音效变种会独立于狼的生物群系生成进行分配，每种音效变种有14.2%的生成概率。狼在发出吠叫、喘息、呜咽、嚎叫、死亡或受伤的音效时，会发出与其变种相关联的音效。音效变种与其品种变种和状态无关。
-
-关于所有狼的音效，详见§ 音效。
-
-# 掉落物
-
-狼被玩家或其他驯服的狼杀死时，会掉落1–3 经验值。
-
-与其他幼年动物类似，杀死幼年狼不会掉落经验。
-
-在基岩版中，驯服的狼仅当被玩家且不是该狼的主人或其他驯服的狼杀死时才会掉落经验。
-
-# 行为
-
-狼有3种状态：
-
-- [图:EntitySprite wolf.png：Minecraft中wolf的精灵图]野生的狼： - 每一只眼有一个白色和一个黑色的像素。 - 尾巴向上抬起36°（竖直向下为0°）。 - 在基岩版中，野生的狼可以被幼年僵尸骑乘。
-
-- [图:EntitySprite angry-wolf.png：Minecraft中angry-wolf的精灵图]愤怒的狼： - 野生的狼有攻击目标时变为愤怒的狼。 - 紧皱眉头，双眼发红，嘴角上扬，并且不断发出愤怒的嚎叫。 - 尾巴向上抬起88.2°，行走时不会摇动。 - 愤怒的狼不能被拴绳拴住，但被拴着的野生的狼变得愤怒时拴绳不会解开。 - 在基岩版中，若玩家手持拴绳时被拴着的野生的狼在愤怒期间死亡，则不会掉落拴绳。 - 此时无法使用骨头驯服，但仍可以喂食肉使其恢复生命值或加快成长速度。
-
-- [图:EntitySprite tamed-wolf.png：Minecraft中tamed-wolf的精灵图]驯服的狼： - 野生的狼被玩家驯服后变为驯服的狼，详见下文的§ 驯服、§ 喂食章节。 - 眼神温顺，脖子周围有项圈。 - 按生命值比例尾巴向上抬起27°至99°之间，生命值越满抬得越高。 - 公式为99∘−hmax−hcurhmax×72∘，其中hcur为生命值、hmax为最大生命值。
-
-幼年狼的身体较小、头部较大，与其他动物的幼年形态相似。幼年狼的行为与成年狼相同。
-
-幼年狼不会主动跟随成年狼，除非附近有狼攻击生物时跟随并参与其中。
-
-玩家在距狼8格内的位置手持肉类或骨头时，狼会侧着头，像在乞求食物。
-
-狼离开水或雨中后会甩动身体，甩出水花粒子。在Java版中，狼浸在水或雨中时纹理会加深。
-
-- 一只驯服的狼正在乞求食物
-- 一只驯服的狼正在甩干身上的水
-
-## 攻击
-
-狼以玩家行走的速度接近目标，并会像蜘蛛一样扑向目标，但它在空中并不会造成伤害。
-
-野生的狼会主动攻击骷髅、凋灵骷髅、流浪者、沼骸、焦骸、凋灵、兔子、狐狸、绵羊、幼年海龟。驯服的狼站立时只会主动攻击骷髅、凋灵骷髅、流浪者、沼骸、焦骸和凋灵。驯服的狼坐下时不会主动攻击，正在进行攻击的狼被要求坐下后会停止对目标的攻击。
-
-骷髅、凋灵骷髅、流浪者、沼骸、焦骸、狐狸、兔子和幼年海龟会主动避开狼，但骷髅、凋灵骷髅、流浪者、沼骸和焦骸被狼攻击后会尝试反击。绵羊在未受到攻击时会忽视狼，但被狼攻击后仍然会四处逃窜。在Java版中，杀手兔不但不会逃离，还会主动攻击狼。
-
-羊驼和行商羊驼会对野生的狼吐唾沫。遇到强度（
-```
-Strength
-```
-
-）为4或5的羊驼或行商羊驼，狼总会逃离；对于强度更低的羊驼或行商羊驼，狼则会时不时相应地逃离。在Java版中，狼被羊驼或行商羊驼攻击后会尝试反击和逃离；在基岩版中，狼被羊驼或行商羊驼攻击后会进行反击，但不会逃离。
-
-狼永远不会攻击苦力怕和恶魂。驯服的狼永远不会攻击自己的主人、与主人同队的生物、拥有相同主人的狼，以及驯服的猫、鹦鹉、马、驴、骡、骷髅马、僵尸马、羊驼、行商羊驼、鹦鹉螺、僵尸鹦鹉螺和被给予物品的悦灵，但在基岩版中，主人受到驯服的羊驼和行商羊驼的攻击时，驯服的狼仍会反击它们。
-
-野生的狼会对攻击它的生物产生敌意，而驯服的狼会对攻击它的生物或攻击它主人的生物产生敌意，无论是否一击杀死主人或造成伤害，除非攻击者是狼不能攻击的目标。如果一只狼被攻击并对攻击者产生了敌意，附近（以被攻击的狼为中心的33×21×33区域）其他野生的狼和站着的驯服的狼也会对攻击者产生敌意，除非这只狼被攻击者一击杀死。如果攻击者超出渲染距离，或攻击者未在狼所在的区块加载，它们就无法追踪到攻击者。狼只有对玩家造成的伤害会根据游戏难度调整，野生的狼对其他生物默认造成3（[图:♥][图:♥]）伤害，驯服的狼默认造成4（[图:♥][图:♥]）伤害。
-
-在基岩版中，当野生的狼发现目标时，即使目标再次获得隐身效果，狼仍然会继续攻击目标并锁定其位置，无论狼是否受伤。
-
-驯服的狼站立时，若其主人攻击了某一生物，狼会对该生物产生敌意，除非该生物是狼不能攻击的目标。
-
-在基岩版中，幼年狼被攻击时会逃跑；成年狼受到火焰、冰冻或闪电造成的伤害会逃跑。
-
-被驯服的狼杀死的生物，即使没有被玩家伤害过，也会掉落通常需要玩家参与击杀才会掉落的经验值和稀有掉落物。
-
-## 受伤害行为
-
-驯服的狼装备狼铠时，受到大多数类型的伤害时不减少生命值，改为使狼铠减少与所受伤害值（向上取整）相等的耐久度。狼铠会根据剩余耐久度呈现不同程度的开裂纹理。
-
-狼铠无法抵消下列类型的伤害（在Java版中它们带有伤害类型标签
-```
-#bypasses_wolf_armor
-```
-
-）：
-
-- 魔法伤害
-- 挤压
-- 溺水
-- 脱水
-- 冰冻
-- 窒息
-- 出界
-- 饥饿
-- 荆棘
-- 凋零
-- 虚空
-- ``` / kill ```
-- 重锤下落攻击伤害
-
-## 移动
-
-与驯服的狼交互且不进行喂食操作，狼会坐下。再次与之交互时，它会站立。
-
-坐着的狼被推入水中或受伤时会站起来。在Java版中，如果主人退出了多人游戏，其驯服的狼将一直坐着。
-
-站立时，驯服的狼会以游荡的方式跟随玩家，在10格外时会直接走向玩家，在12格外时会传送到玩家附近。坐着时，它们不会跟随玩家。
-
-## 传送
-
-驯服的狼会在12格外传送至其主人附近的方块上（若有）。
-
-传送会重置狼的攻击行为，因此，如果狼在攻击生物时传送到玩家身边，它将继续跟随玩家。
-
-驯服的狼有可能传送到一个无法进入的位置（例如冰面下）并因窒息而受伤或死亡。
-
-狼不会传送的情况：
-
-- 狼被要求坐下。 - 狼被推入水中或受伤时会起身，这可能导致传送。 - 如果狼在一个已加载的区块中，且距离较远的玩家被生物伤害时，狼有可能起身并导致传送，接着攻击该生物，然后又坐下。
-- 在Java版中，狼正在对生物造成伤害。一旦该生物死亡，狼就会尝试传送。
-- 狼坐在矿车或船上。
-- 狼被拴绳拴在栅栏上。
-- 狼所在位置未被加载。
-- 以玩家为中心的5×3×5的区域内所有位置都不满足以下条件的任何一个： - 位置可以被寻路。 - 位置上不存在其他实体可以与狼产生碰撞。
-- 玩家在其他维度；狼将待在所在维度直到玩家回来。然而，可以事先把狼推入传送门将其先传送至其他维度。 - 在基岩版中，狼能在玩家进入下界传送门或末地传送门后传送至玩家身边。
-
-狼的传送过程不会发出声音。
-
-## 驯服
-
-玩家可对野生的狼使用骨头以尝试驯服。成功驯服所需的骨头数量是随机的，每次使用骨头都有⁄3的概率驯服狼，也就是说，驯服一只狼平均需要3个骨头。狼被驯服后，其纹理上会出现一个红色的项圈，并且不再接受骨头。玩家可以驯服的狼的数量没有限制。
-
-玩家可对自己驯服的狼使用染料来改变其项圈的颜色。
-
-玩家还可对自己驯服的成年狼使用狼铠，使其获得11（ × 5.5）护甲值；使用犰狳鳞甲可以修复其装备的狼铠；使用剪刀可以卸下其装备的狼铠。
-
-驯服的狼的生命值不低于20（[图:♥] × 10）时，空闲音效会出现哈气声；驯服的狼的生命值低于20（[图:♥] × 10）时，空闲音效会出现哀鸣声。
-
-与其他可驯服生物一样，驯服的狼死亡时会给其主人/世界中的所有玩家显示一条死亡消息。
-
-## 喂食
-
-驯服的狼的生命值可以通过喂食肉类来恢复。这些食物给狼恢复的生命值是它们给玩家恢复的饥饿值的两倍。
-
-所有的食物都不会有任何恢复生命值以外的效果，如喂食腐肉和生鸡肉不会给予狼饥饿效果。
-
-在Java版中，使用兔肉煲喂食狼时会返还一个碗。
-
-## 繁殖
-
-主条目：繁殖
-
-对两只生命值已满的驯服的成年狼使用除河豚、热带鱼、生鳕鱼、熟鳕鱼、生鲑鱼、熟鲑鱼和兔肉煲以外的任意食物可以使其进入“求爱模式”，产生爱心粒子，并且两只狼都站立时才能繁殖出一只幼年狼。狼成功繁殖时掉落1–7 经验值，且在5分钟/1分钟内无法再次繁殖，生命值已满的双亲也无法再次被喂食。
-
-在Java版中，喂食野生的狼时也会产生爱心粒子，但它们不会进入“求爱模式”；在基岩版中，玩家无法喂食野生的狼。
-
-繁殖出的幼年狼会出生在其中一只狼的碰撞箱内，并选择该狼的主人作为自己的主人。
-
-- 如果两只狼属于同一个玩家，那么其繁殖出的幼年狼也会属于这个玩家。
-- 两只狼所属的玩家不同时，如果繁殖过程中其中一只狼被命令坐下或无法找到它的主人，那么繁殖出的幼年狼属于另一只狼的主人；否则繁殖出的幼年狼属于更早被加载的狼的主人。
-
-繁殖出的幼年狼是已驯服的，会随机遗传两只被喂食的狼的毛色，项圈的颜色为双亲项圈颜色的有效混色，如果有效混色不存在则随机遗传一方的项圈颜色。幼年驯服狼比起成年有更高的频率随机走动，显得更加活泼好动。
-
-对幼年狼使用除河豚、热带鱼、生鳕鱼、熟鳕鱼、生鲑鱼、熟鲑鱼和兔肉煲以外的任意食物可以加快其生长，每次喂食可以减少约剩余成长时间的10%。
-
-对不愤怒的幼年狼使用金蒲公英可以阻止其成长为成年狼，再次对其使用金蒲公英将使其重新开始成长。被阻止成长的幼年狼无法被喂食除金蒲公英外的其他物品。
-
-# 音效
-
-狼的部分音效随其音效变种而改变，但部分音效总是一致。
-
-## 成年
-
-### 共通音效
-
-Java版：
-
-基岩版：
-
-### 变种音效
-
-愤怒（Angry）
-Java版：
-
-基岩版：
-
-大型犬（Big）
-Java版：
-
-基岩版：
-
-普通（Classic）
-Java版：
-
-基岩版：
-
-可爱（Cute）
-Java版：
-
-基岩版：
-
-不爽（Grumpy）
-Java版：
-
-基岩版：
-
-小巴哥犬（Puglin）
-Java版：
-
-基岩版：
-
-悲伤（Sad）
-Java版：
-
-基岩版：
-
-## 幼年
-
-Java版：
-
-基岩版：
-
-# 数据值
-
-## ID
-
-Java版：
-
-基岩版：
-
-## 实体数据
-
-Java版：
-
-主条目：实体数据格式
-狼有与之相联系的包含许多该生物属性的存档数据。
-
-- [图:NBT复合标签/JSON对象] 实体数据 - - 实体共通标签，见Template:Nbt inherit/entity/source - - 生物共通标签，见Template:Nbt inherit/living entity/source - - AI生物共通标签，见Template:Nbt inherit/mob/source - - 可成长生物共通标签，见Template:Nbt inherit/breedable/source - - 动物共通标签，见Template:Nbt inherit/animal/source - - 可驯服动物共通标签，见Template:Nbt inherit/tameable/source - - 中立的生物共通标签，见Template:Nbt inherit/angerable/source - [图:字节型]*CollarColor：（0≤值≤15，默认为14（红色））狼项圈的颜色，颜色取对应染料序号的颜色。即使是野生的狼也仍然存在此标签，但项圈不会渲染。如果设置值超出值域则设置为0（白色）。此项实体数据会被视为数据组件wolf/collar。 - [图:字符串]* *sound_variant：（命名空间ID）狼的音效变种。如果设置值无效则设置为 ``` classic ``` 。此项实体数据会被视为数据组件wolf/sound_variant。 - [图:字符串]* *variant：（命名空间ID）狼的变种。如果设置值无效则设置为 ``` pale ``` 。此项实体数据会被视为数据组件wolf/variant。
-
-基岩版：
-
- 参见：基岩版存档格式/实体格式和基岩版存档格式/实体格式/组件 
-
-### 项圈颜色
-
-主条目：狼/DV
-
-### 狼变种
-
-主条目：狼/DV2
-
-### 狼音效变种
-
-主条目：狼/DV3
-
-# 成就
-
-主条目：成就
-以下成就适用于所有生物：
-
-# 进度
-
-主条目：进度
-以下进度适用于所有生物：
-
-# 历史
-
-该段落需要添加等轴渲染图。
-请在将需要的等轴渲染图添加到该段落后移除此模板。
-具体说明：基岩版小鬼当家前的幼年狼；染色项圈的狼的渲染图项圈颜色有错误，需参照游戏颜色代码的更改历史进行补充。
-
-# 你知道吗
-
-- 狼可传送到碰撞箱不完整方块上。
-- 在Java版中，若玩家攻击了一只狼，接着移动了很大一段距离（例如70格），狼仍然处在愤怒状态，但不会再攻击玩家。
-- 尽管难以击中，狼以蝙蝠、幻翼等除恶魂外的其他飞行生物为攻击目标时仍会尝试追逐。
-- 狼可以食用鱼类恢复生命值的设定可能参考了现实，现实中阿拉斯加半岛的野生狼群因长期缺乏肉类，鲑鱼在摄取的肉类占了约20％。
-- 对着已驯服的狼使用狼刷怪蛋，生成的幼年狼也是已驯服的。
-- 由于已驯服的狼具有极高的生命值，监守者的近战攻击需要两次才能杀死一只已驯服的狼。
-- 下列狼的外观可能参考了现实中的一些犬科或鬣狗科动物： - 灰狼与现实中的哈士奇相似。 - 黑狼与现实中的黑化灰狼或黑化红狼相似。 - 赭红狼与现实中的埃塞俄比亚狼和豺相似。 - 斑点狼与现实中的非洲野犬相似。 - 条纹狼与现实中的土狼和条纹鬣狗相似。 - 雪狼与现实中的北极狼相似。
-- 狼新的音效变种是来自Mojang Studios的音效师Sandra Karlsson在一家狗狗日托中心所录下的狗的叫声。
-- 幼年狼的呜咽音效修改自成年悲伤变种的呜咽音效。
-
-# 画廊
-
-- 狼的第一张照片
-- 狼的第二张照片。此时Jeb加入了坐下功能
-- 一只狼在游泳后甩掉它身上的水
-- 一只愤怒的狼在游泳后甩水
-- 带有染色项圈的狼
-- 12w03a里的幼年狼
-- 一只野生的幼年狼（小鬼当家前）
-- 三只驯服的狼被传送至土径中，只能看见它们的耳朵
-- 一只成年狼正在攻击一只幼年狼（小鬼当家前）
-- 一只正在攻击绵羊的狼
-- 一只盯着并跑向玩家的愤怒的狼
-- 驯服的狼和猫坐在地毯上
-- 两只驯服的狼和一只幼年狼（小鬼当家前）
-- 将旧版狼项圈纹理的所有像素透明度设为0后出现的隐藏部分
-- 驯服了很多只狼的Alex
-
-## 渲染图
-
-### 驯服
-
-- 苍狼
-- 森林狼
-- 灰狼
-- 黑狼
-- 栗色狼
-- 赭红狼
-- 斑点狼
-- 条纹狼
-- 雪狼
-
-## 艺术作品
-
-- 狼的官方艺术作品
-- 狼的官方艺术动图
-- 装备着染色狼铠的狼的官方艺术作品
-- 幼年狼的官方艺术作品
-
-# 参考
-
-1. ↑ https://web.archive.org/web/20150309060957/https://n0tch.tumblr.com/post/4231192252/the-state-of-minecraft
-1. ↑ Test new egg-citing features，来自Linn Viberg。Minecraft.net，2025年2月19日。
-1. ↑ MCPE-182200
-1. ↑ MC-107643 — 漏洞状态为“有意为之”。
-1. ↑ MCPE-186731
-1. ↑ https://twitter.com/jeb_/status/52996089921548288
-1. ↑ MC-166291 — 漏洞状态为“无效”。
-1. ↑ https://twitter.com/jeb_/status/48752041044090880
-1. ↑ https://twitter.com/jeb_/status/48752134958747649
-1. ↑ MCPE-184073
-1. ↑ https://twitter.com/jeb_/status/53757304130113536
-1. ↑ https://twitter.com/Dinnerbone/status/236530180737335296
-1. ↑ MC-145021 — 漏洞状态为“已修复”。
-1. ↑ MC-105248 — 漏洞状态为“已修复”。
-1. ↑ MC-72151 — 漏洞状态为“已修复”。
-1. ↑ MC-172047 — 漏洞状态为“已修复”。
-1. ↑ MC-177522 — 漏洞状态为“已修复”。
-1. ↑ MC-297537 — 漏洞状态为“已修复”。
-1. ↑ MC-305545 — 漏洞状态为“已修复”。
-1. ↑ MC-305501 — 漏洞状态为“已修复”。
-1. ↑ MC-306315 — 漏洞状态为“已修复”。
-1. ↑ MCPE-178351 — 漏洞状态为“已修复”。
-1. ↑ MCPE-151765 — 漏洞状态为“已修复”。
-1. ↑ MCPE-178947 — 漏洞状态为“无效”。
-1. ↑ MC-9925 — 漏洞状态为“有意为之”。
-1. ↑ https://www.audubon.org/news/studies-show-wolves-eat-seafood
-1. ↑ MC-250237 — 漏洞状态为“有意为之”。
-1. ↑ https://twitter.com/jeb_/status/47650984125665280
-1. ↑ https://twitter.com/jeb_/status/48037113270251520
-
-# 导航
+Wolves can teleport onto incomplete blocks; anger can persist after the player moves far away (Java, without pursuit); they chase flying mobs (except ghasts); tamed wolves take two Warden melee hits to kill; wolf variants resemble real canids (ashen = husky-like, black = melanistic, rusty = Ethiopian wolf/jackal, spotted = African wild dog, striped = coyote/striped hyena, snowy = Arctic wolf); sound variants were recorded at a dog daycare.

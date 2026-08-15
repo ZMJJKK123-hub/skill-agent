@@ -1,270 +1,63 @@
 ---
 name: minecraft-nbt-format
-description: |
-  NBT格式（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】本条目介绍的是NBT网络传输和文件格式。关于用文本表示的NBT结构，请见“SNBT格式”；关于在命令中检索特定NBT标签的方法，请见“NBT路径”。
-  
-  【涵盖内容】
-  - 常见游戏对象NBT
-  - 标签类型
-  - 存储格式
-  - 传输格式
-  - 程序对象
-  - SNBT
-  - JSON
-  - 基于NBT修改对象
-  - 测试NBT标签
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 NBT格式 的完整规范时
+description: NBT format — tag types, storage/network formats, SNBT/JSON conversion.
+whenToUse: Use when working with NBT at the binary level, /data commands, or NBT matching in selectors.
 ---
 
-本条目介绍的是NBT网络传输和文件格式。关于用文本表示的NBT结构，请见“SNBT格式”；关于在命令中检索特定NBT标签的方法，请见“NBT路径”。
+# NBT Format
 
-NBT（Named Binary Tag，又称“二进制命名标签”）是一种用带名称的二进制标签表示的树状数据结构。
+NBT (Named Binary Tag) is a tree data structure of named binary tags used to store and transfer game data. Java Edition unless noted.
 
-# 概述
+## Structure
 
-NBT将游戏中的数据结构转换成通用的二进制数据包，以便存储或传输。游戏的大量数据文件都使用NBT书写；游戏在网络通讯时也常会传输NBT标签而非直接传输程序对象。
+Each tag (except End) = tag ID byte + tag name (unsigned/signed short length + Modified UTF-8 bytes) + payload. The End tag is a single ID byte.
 
-玩家在游戏中不会直接查看或修改NBT数据，而是在命令中通过SNBT这一文本形式的中介间接修改相应NBT数据。在游戏外，也可以用特制的程序直接查看或编辑NBT文件。
+### Tag Types
 
-## 常见游戏对象NBT
+13 types (counting End): `End` (0), `Byte` (1), `Short` (2), `Int` (3), `Long` (4), `Float` (5), `Double` (6), `Byte Array` (7), `String` (8), `List` (9, homogeneous element type), `Compound` (10), `Int Array` (11), `Long Array` (12).
 
-这里列出了游戏中可通过SNBT描述或允许被存储为NBT的常见游戏对象页面：
+### Storage Format
 
-- 方块实体数据格式
-- 实体数据格式
-- 物品格式
+An NBT file is one root Compound (or List) holding a single child; may be uncompressed, GZip, or Zlib. Java: big-endian, fixed-width. Bedrock: little-endian, fixed-width, strings as raw UTF-8; `level.dat` has an 8-byte header (4-byte little-endian version + 4-byte NBT byte count) before the uncompressed root.
 
-# 结构
+### Transfer Format
 
-NBT的基本结构是带名称的标签。标签可以大致分为数值标签和结构标签；前者表示单个值，后者则容纳其他标签，通过嵌套构建树状数据结构。
+Streamed, uncompressed. Java: the root compound's name (length + string) is omitted — the root tag ID is followed directly by the payload. Bedrock: same tag structure as storage but with varint encodings: Int and Long use zigzag VarInt (1–5 / 1–10 bytes); Byte/Short/Float/Double unchanged; String length is an unsigned VarInt followed by raw UTF-8; ByteArray/IntArray/List length fields are zigzag VarInts, IntArray elements too. Compound internals are identical in both formats (each value encoded per the rules above).
 
-除了结束标签以外，每个标签都由标签ID、标签名称和负载组成。ID是表示该标签类型的字节；名称是一个带长字符串，包含一个按大端序/小端序存储的无符号短整型/有符号短整型长度，以及按Java使用的变种UTF-8（Modified UTF-8）编码书写的名称；负载表示该标签所承载的数据，具体布局因标签而异。
+## Conversion
 
-带名称标签的布局如下：
+### Program Objects
 
-结束标签不含名称与负载，仅由单字节ID构成。
+Runtime data lives in program objects, not NBT; conversion happens when saving/loading/transferring or when commands modify data. Conversion rules are type-specific (some data is intentionally not written to NBT).
 
-## 标签类型
+### SNBT
 
-NBT共有13或12种标签类型（计入结束标签）。详见下表。
+SNBT is the text intermediary between NBT and players (see the snbt-format skill). SNBT→NBT: SNBT has extra tag forms (e.g. `true`/`false`, `1ub`, quoted/typed forms) that convert to NBT tags. NBT→SNBT: each tag picks a fixed representation. Chat output further converts to syntax-colored text components, truncating long lists/arrays/compounds with `<...>`.
 
-在基岩版中，下表所列字节布局对应存储格式。传输格式中[图:整型]整型、[图:长整型]长整型、各类长度字段以及[图:整型数组]整型数组的元素采用变长编码，详见“传输格式”一节。
+### JSON
 
-## 存储格式
+JSON is incompatible with NBT (different syntax/base types); embedding JSON in NBT usually means storing the JSON text in a string. Where game data is stored as JSON but needs NBT (e.g. biomes), the game converts with information loss. JSON→NBT may fail (`null` values, heterogeneous lists); NBT→JSON loses numeric type info.
 
-NBT文件包含单个[图:NBT复合标签/JSON对象]复合标签或[图:NBT列表/JSON数组]列表（“根标签”），其包含单个子标签。该文件所存储的数据结构即在该子标签中。在NBT文件中，根标签可能未压缩、用GZip压缩或用Zlib压缩。具体采用何种压缩方式与数据类型有关，于相应数据类型的页面中注明。
+## Modifying Objects via NBT (Java)
 
-在基岩版中，所有以本格式存储的数值（包括标签ID/长度/数值标签的负载）均按小端序、定宽存储；字符串标签的长度为2字节有符号小端短整型，字符串本体为原始UTF-8字节序列（不进行Modified UTF-8转码）。
+Before modifying an entity/block entity, the game converts the passed SNBT/JSON to NBT, then applies only usable properties (e.g. block entity coordinates can't be changed). Unknown properties are dropped (`nonExist` on an entity). Type coercion for properties:
 
-在基岩版中，
-```
-level.dat
-```
+- Namespace IDs: bare strings convert per string→ID rules.
+- Booleans: numeric values floor to a byte (non-zero → `1b`); other types → `0b`.
+- Numeric properties: mismatched numeric types convert (floats floor for integer properties); non-numeric → 0.
+- Strings: non-strings → empty string.
+- Lists/arrays: wrong types → empty list/array.
+- Compounds: non-compounds → empty compound.
 
-文件并非直接由NBT构成，而是在文件起始处先有8字节头：4字节小端整型表示存储版本号，紧接着4字节小端整型表示之后NBT数据的字节数；再之后才是未压缩的NBT根复合标签。
+## Testing NBT Tags (Java)
 
-## 传输格式
+When testing (e.g. `@e[nbt={...}]`), the provided NBT is checked against a re-derived NBT object of the target: **partial matching** — the target passes if it contains the provided tags; list matching ignores order and count (elements must all exist; an empty list only matches an empty list); **arrays require exact match** (same length/order). Tag names and data types must match exactly (`1d` ≠ `1`, `[L;1L,3L]` ≠ `[L;3L]`).
 
-在网络上传输时，NBT以流式传输而不被压缩。传输的NBT数据形式上是单个NBT标签（“根标签”），为一个仅含单个子标签的[图:NBT复合标签/JSON对象]复合标签。
+Examples with `Pos: [1d,2d,3d], data:{tag1:{name:test}}`:
 
-在Java版中，传输格式的NBT中，根标签的名称（包含长度和字符串）将被省略，也就是根标签的标签ID后直接跟负载。
+- `{data:{}}` ✓ (the compound `data.tag1` exists)
+- `{Pos:[2d,3d,1d]}` ✓ (list order ignored)
+- `{Pos:[1d]}` ✓ (element exists)
+- `{Pos:[]}` ✗ (empty list ≠ non-empty)
 
-在基岩版中，传输格式的NBT与存储格式共用相同的标签结构与ID，但部分数值的物理编码不同。具体而言：
-
-- [图:字节型]字节型：1字节，与存储格式相同。
-- [图:短整型]短整型：2字节有符号小端，与存储格式相同（不使用Varint）。
-- [图:整型]整型：使用变长整型（VarInt）编码，并以zigzag编码映射有符号整数，长1–5字节。
-- [图:长整型]长整型：同上，使用变长64位整型（VarInt64）配合zigzag编码，长1–10字节。
-- [图:单精度浮点数]单精度浮点型/[图:双精度浮点数]双精度浮点型：4/8字节小端IEEE-754，与存储格式相同（不使用VarInt）。
-- [图:字符串]字符串标签：使用无符号VarInt表示长度，后跟原始UTF-8字节（无zigzag）。
-- [图:字节型数组]字节数组、[图:整型数组]整型数组、[图:NBT列表/JSON数组]列表的长度字段均为有符号32位整型，因此在传输格式下也走zigzag VarInt编码；[图:整型数组]整型数组内的每个元素同样按zigzag VarInt编码。
-
-[图:NBT复合标签/JSON对象]复合标签的内部结构（子标签ID、名称、负载，以End标签结尾）在两种格式下完全一致；具体每一项数值/长度/字符串按上述规则各自编码。
-
-# 转换
-
-## 程序对象
-
-游戏在运行时，有关数据直接存储在程序对象中，而非NBT结构中。在需要传输或存储时，以及玩家用命令修改时，游戏会根据相应数据的编码格式选择性地从程序对象生成相应的NBT结构，或从NBT重新构建相应程序对象。这种转换有复杂的规则，例如某些数据有意不写入NBT，或者在NBT中采用其他表示方法；这些规则因数据类型而异，在相应数据格式的页面下有所介绍。
-
-## SNBT
-
-SNBT作为一种基于文本的数据结构，是NBT与玩家的中介。在使用部分命令修改、查看数据，或使用客户端核心文件中的数据生成器时，都涉及NBT与SNBT的转换。
-
-结构模板有特殊转换规则，见结构存储格式。
-
-SNBT转NBT
-
-SNBT包含了NBT的各种标签类型，但还包含了一些不直接属于NBT的标签类型。下面给出各种标签的转换规则。
-
-NBT转SNBT
-
-NBT标签在SNBT中几乎都有对应物。在同一标签的多种表示形式中，转换得到的SNBT通常会选择固定的一种。
-
-在聊天栏输出中，上述SNBT会进一步转换为带语法着色的文本组件，且会用
-```
-<...>
-```
-
-截断过长的列表、数组和复合标签。
-
-## JSON
-
-JSON格式与NBT和SNBT完全不同；由于语法和基本类型不同，JSON与NBT并不兼容。要精确地在NBT中嵌入JSON对象，通常需要将JSON文本放在字符串里传入。
-
-游戏的部分数据，例如生物群系数据格式，以JSON格式存储，却需要转换为NBT格式。此时，游戏会试图在NBT与JSON之间转换，但这一过程会损失部分信息。
-
-JSON转NBT
-
-由于存在
-```
-null
-```
-
-值以及元素类型不同的列表，JSON转NBT不一定能够成功。
-
-NBT转JSON
-
-NBT所支持的类型基本都可转换到JSON。但由于JSON的数字类型单一，转换过程会丢失NBT的数字类型信息。
-
-# NBT程序对象
-
-游戏在运行时其数据以程序对象而非NBT格式存在，通常游戏只会在构建程序对象或保存程序对象时进行转换，例如存档的读写，刷怪笼生成实体等。
-
-在Java版中，可以通过命令等方式在游戏内主动进行程序对象与NBT格式的转换，例如命令
-```
-/
-data
-```
-
-和目标选择器等。
-
-## 基于NBT修改对象
-
-本段落所述内容仅适用于Java版。
-在修改方块实体或实体等对象之前，游戏将传入的SNBT或JSON等转换为NBT实例后再进行修改。只有某些特定属性可以被传入的NBT修改，例如方块实体的坐标不可修改。传入不被程序对象使用的NBT属性会被丢弃，例如实体不会保存
-```
-nonExist
-```
-
-标签。向具有特定编码格式要求的NBT属性传入错误的数据会报错，例如实体自定义名称需要文本组件，尽管它以复合标签存储传输，但传入空标签会报错。
-
-若某属性需要一个命名空间ID，但传入了一个不带命名空间前缀的字符串，则该值将按照字符串到命名空间ID的转换规则进行转换。
-
-若某属性需要一个布尔值，但传入了数值类型的值，那么该值将则向下取整转换为字节型数字，若不是
-```
-0b
-```
-
-则为
-```
-1b
-```
-
-。
-
-若某属性需要一个布尔值，但传入了非数值也非布尔类型的值，那么此属性值为
-```
-0b
-```
-
-。
-
-若某属性需要某数值类型的数字作为其值，但传入了一个与之所需类型不符的数值类型标签，那么需要转换为所需要的类型。如果属性需要整型，则先向下取整后再转换。
-
-若某属性需要某数值类型的值，但传入了一个非数值类型的值，那么该属性将被赋值为0（具体数据类型与属性而异）。
-
-若某属性需要一个字符串，但传入了一个非字符串，那么该属性值将会是一个空字符串。
-
-若某属性需要一个列表或是某类型的数组，但传入的标签类型与需要的类型不符，则该属性值将为一个空列表或空数组。
-
-若某属性需要一个复合标签，但传入了一个非复合标签，则该属性值最终为一个空复合标签。
-
-## 测试NBT标签
-
-本段落所述内容仅适用于Java版。
-当游戏需要测试NBT标签，例如在目标选择器中使用NBT标签筛选实体时，游戏会将传入的SNBT等转换为NBT对象，再从待测试的目标对象还原出另一个NBT对象，然后测试目标对象的NBT标签中是否具有提供的NBT标签。
-
-只要提供的标签确实存在于目标对象中，测试就会成功，也即无需真正完整提供目标对象所有的NBT属性。对于列表的测试也如此，只要提供的列表元素全部存在于目标对象的列表中，即使提供的列表中的元素顺序和元素数量不符合，游戏也会测试成功。
-
-例如，对于拥有NBT标签
-```
-Pos: [1d, 2d, 3d], data: {tag1: {name: test}}
-```
-
-的实体而言：
-
-- ``` @e[nbt={data: {}}] ``` 可以选中，因为目标实体存在复合标签 ``` data.tag1 ``` 。
-- ``` @e[nbt={Pos: [2d, 3d, 1d]}] ``` 可以选中，因为列表匹配不考虑元素顺序。
-- ``` @e[nbt={Pos: [1d]}] ``` 可以选中，因为目标实体的此列表中存在元素 ``` 1d ``` 。
-- ``` @e[nbt={Pos: []}] ``` 无法选中，因为空列表只能匹配空列表。
-
-在测试NBT标签的具体值时，提供的标签名称及数据类型必须与目标对象的相应标签及数据类型完全匹配，否则此测试无效。数组也在此范畴内，因此不能像列表一样忽略内部元素的个数和顺序。例如
-```
-1d
-```
-
-不会被
-```
-1
-```
-
-匹配，因为双精度浮点数无法与整数匹配；
-```
-[L; 1L, 3L]
-```
-
-不会被
-```
-[L; 3L]
-```
-
-或
-```
-[L; 3L, 1L]
-```
-
-匹配，因为数组要求完全匹配。
-
-SNBT向NBT的§ 转换依然会进行。这意味着若测试值是否是
-```
-1b
-```
-
-，在命令中提供
-```
-true
-```
-
-或
-```
-1ub
-```
-
-都会测试成功。但由于游戏会各自整理提供的NBT对象和目标对象的NBT对象，因此并不会执行上述§ 基于NBT修改对象的转换，因为这些转换需要目标对象的编码格式。一个典型的例子是测试命名空间ID，即使目标对象的命名空间ID使用
-```
-minecraft
-```
-
-命名空间，也必须在命令中提供此命名空间，因为游戏不会自动将字符串转换为符合命名空间ID格式的字符串，例如石头的物品实体不会被
-```
-@e[nbt={Item: {id: stone}}]
-```
-
-选中而会被
-```
-@e[nbt={Item: {id: "minecraft:stone"}}]
-```
-
-选中。
-
-# 历史
-
-# 参考
-
-1. ↑ MC-200070
-
-# 导航
+SNBT→NBT conversion still applies to the provided test value (`true`/`1ub` test as `1b`), but object-modification conversions do NOT (e.g. `{Item:{id:stone}}` won't match an item entity; you must write `"minecraft:stone"`).

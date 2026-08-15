@@ -1,120 +1,37 @@
 ---
 name: minecraft-world-preset
-description: |
-  世界预设定义格式（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】世界预设定义文件是世界预设（World Preset）在数据包中的数据驱动定义文件。
-  
-  【涵盖内容】
-  - 使用
-  - 标签
-  - 文本
-  
-  【关键定义】
-  - 注册表：WORLD_PRESET
-  - 数据包路径：data/worldgen/world_preset
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 世界预设定义格式 的完整规范时
+description: World preset definition JSON: WORLD_PRESET registry, dimension sets, tags.
+whenToUse: Use when writing datapack worldgen world_preset definitions.
 ---
 
-本条目所述内容仅适用于Java版。
-世界预设定义文件是世界预设（World Preset）在数据包中的数据驱动定义文件。
+# World Presets
 
-# 定义格式
+This content applies only to Java Edition.
 
-世界预设在游戏中使用
-```
-WORLD_PRESET
-```
+World preset definition files are the data-driven definitions of world presets in datapacks.
 
-注册表，数据包路径为
-```
-worldgen/world_preset
-```
+## Definition format
 
-，即所有世界预设定义文件都需要在
-```
-data/<
-命名空间
->/worldgen/world_preset
-```
+World presets use the `WORLD_PRESET` registry; the datapack path is `worldgen/world_preset` (definitions in `data/<namespace>/worldgen/world_preset`, tags in `data/<namespace>/tags/worldgen/world_preset`).
 
-目录下定义，世界预设标签则需要在
-```
-data/<
-命名空间
->/tags/worldgen/world_preset
-```
+Definition files use JSON with the following structure:
 
-目录下定义。
+- JSON file root object
+  - `dimensions` (compound, required): the preset's dimension set; must include the Overworld (`overworld`). Each value is a dimension (see the dimension definition format).
 
-世界预设定义文件使用JSON格式，并具有下列结构：
+## Definition behavior
 
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:NBT复合标签/JSON对象]*dimensions：此世界预设的维度集合。必须包含主世界维度 ``` overworld ``` 。 - [图:NBT复合标签/JSON对象]<维度命名空间ID>：一个维度。 - 见维度定义格式。
+World preset data is loaded only once at server startup; `/reload` does not reload it — a server restart is required. Presets provide preconfigured dimension sets for the menu screen; they are only effective before world creation. The dimension set is written into `level.dat`; dimension definition files with the same IDs override preset settings.
 
-# 定义行为
+Two hardcoded presets allow modifying the Overworld: `flat` (superflat generator + settings) and `single_biome_surface` (single biome); dimension files still take precedence.
 
-世界预设定义数据只在服务端启动时加载一次，使用
-```
-/
-reload
-```
+## Tags
 
-命令不可以使世界预设定义被重新加载，而必须重启服务端。
+- `#extended`: selectable while holding Alt.
+- `#normal`: selectable without Alt.
 
-世界预设的主要作用是提供一个预先配置好的维度集合以直接在菜单屏幕上选择，因此只在创建世界前才真正有效。一旦世界被创建后即使通过数据包修改世界预设定义文件对于世界生成而言也已没有任何作用。
+If the preset tag is empty, all registered presets appear on the "World" screen.
 
-## 使用
+## Text
 
-世界预设可以在“世界”屏幕使用。游戏会将世界预设定义的维度集合加载到
-```
-level.dat
-```
-
-中，如果数据包同时提供了维度定义文件，则维度定义文件定义的同命名空间ID的维度会覆盖世界预设内的设置。
-
-世界预设通常已定义了世界可用的所有维度的信息，但游戏硬编码了两个世界预设以允许对主世界进行再次修改，分别是超平坦（
-```
-flat
-```
-
-）和单一生物群系（
-```
-single_biome_surface
-```
-
-）。此修改的优先级依旧低于维度定义文件。
-
-- 在超平坦的“自定义超平坦世界”和“选择一种预设”屏幕，可以指定主世界使用超平坦生成器，以及超平坦的设置。
-- 在单一生物群系的“自定义单一生物群系”屏幕，可以指定主世界的生物群系。
-
-## 标签
-
-世界预设文件只能注册新的世界预设，而不能将其直接展示在世界选择屏幕上以供选择。游戏定义了下列标签以控制是否可以在屏幕上选择世界预设：
-
-- ``` #extended ``` ：按住Alt键后可选择的世界预设。
-- ``` #normal ``` ：无需按住Alt键即可选择的世界预设。
-
-如果世界预设标签为空，则所有已注册的世界预设都会显示在“世界”屏幕上。
-
-## 文本
-
-世界预设的翻译键名为
-```
-generator.<
-命名空间
->.<
-路径
->
-```
-
-，选择预设的按钮会以此显示为“世界类型：generator.<命名空间>.<路径>”。
-
-# 历史
-
-# 参见
-
-- 维度定义格式
-- 世界生成设置存储格式
-
-# 导航
+Translation key: `generator.<namespace>.<path>`; the button shows "World type: generator.<namespace>.<path>".

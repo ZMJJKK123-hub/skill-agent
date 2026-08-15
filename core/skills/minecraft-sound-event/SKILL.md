@@ -1,180 +1,89 @@
 ---
 name: minecraft-sound-event
-description: |
-  Java版声音事件（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】关于基岩版中的声音事件，请见“基岩版声音事件”。
-  
-  【涵盖内容】
-  - 定义格式
-  - 信息解析
-  - 空声音事件引用
-  - 逻辑端
-  - 声音分类
-  - 实例类型
-  - 实例播放
-  
-  【关键定义】
-  - 注册表：SOUND_EVENT
-  - 数据包路径：data//playsound
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Java版声音事件 的完整规范时
+description: Sound event — registry usage, sounds.json format, merging, playback.
+whenToUse: Use when defining or referencing sound events in data packs/resource packs (sounds.json, playable events).
 ---
 
-关于基岩版中的声音事件，请见“基岩版声音事件”。
+# Sound Event (Java Edition)
 
-本条目所述内容仅适用于Java版。
-声音事件（Sound Event）是游戏播放声音使用的基础数据对象。
+Sound events are the base objects the game plays. (Bedrock has its own sound events.)
 
-# 声音事件
+## Sound Events
 
-声音事件在游戏内使用
-```
-SOUND_EVENT
-```
+Registry `SOUND_EVENT`, data pack path `sound_event` — a built-in registry, yet undefined IDs can be used. Playing creates a **sound event instance** (event + position + initial pitch/volume). A sound event has:
 
-注册表，数据包路径为
-```
-sound_event
-```
+- a **sound event reference** (namespace ID; for built-in events the registration name equals the reference), and
+- a **play range**: server→client send distance for the instance.
 
-，为固有注册表。虽然它属于固有注册表，但实际上游戏可以使用没有定义在注册表内的声音事件。当游戏需要播放声音时，会使用一个声音事件，并将它实例化为一个声音事件实例（Sound Event Instance），附加声音的发生位置、初始音高音量信息。
+Inline format (usable anywhere in data packs):
 
-声音事件有包含两个数据：
-
-- 声音事件引用：用于引用将要播放的声音信息，是一个命名空间ID。对于所有固有注册表内定义的声音事件，其注册名与引用完全一致。
-- 播放范围：服务端向声音发生源位置周围的玩家客户端发送此声音事件实例的最远距离，超出此距离的玩家无法接收到这一次的声音事件实例。
-
-声音事件可以使用下列的格式在数据包的各处使用：
-
-- [图:NBT复合标签/JSON对象] 根对象 - [图:单精度浮点数]range：声音事件实例最远可以传播发送给玩家客户端的距离。如果此值不存在，将使用16倍初始音量作为传播距离。 - [图:字符串]* *sound_id：此声音事件使用的声音事件引用。对于所有原版定义在固有注册表内的声音事件，此项与声音事件的注册名一致。
-
-# 声音事件定义
-
-要让使用指定声音事件引用的声音事件实例可以被正常播放，那么这个声音事件引用就需要绑定一个声音事件定义（Sound Event Registration），用于指定可以播放的声音信息和相关参数。
-
-## 定义格式
-
-声音事件定义文件需要位于资源包的
-```
-assets/<
-命名空间
->/sounds.json
+```json
+{ "sound_id": "<event ID>", "range": 16.0 }
 ```
 
-路径下，而原版的声音事件定义文件属于散列资源文件。所有声音事件定义文件都是JSON文件，并具有下列格式:
+`range` — max distance sent to players (absent → 16 × initial volume). `sound_id` (required) — the event reference.
 
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:NBT复合标签/JSON对象]<声音事件名称>：定义与指定声音事件引用相绑定的声音事件名称（例如： ``` entity.enderman.stare ``` ）及所对应的声音事件信息。游戏使用此声音事件引用的命名空间ID即 ``` < 命名空间 >:< 声音事件名称 > ``` 。 - [图:布尔型]replace：（默认为 ``` false ``` ）此声音信息是否替换低优先级的资源包中为此声音事件引用定义的信息，而非将它们的声音信息合并。见下文§ 信息解析。 - [图:NBT列表/JSON数组]sounds：此声音事件引用中会使用的声音信息及其权重。 - [图:字符串]：（命名空间ID）引用一个声音文件，所有参数均为另一种形式中的默认值。 - [图:NBT复合标签/JSON对象]：一个声音信息。 - [图:字符串]*name：（命名空间ID）引用的声音文件或另一个声音事件引用。当引用声音文件时，命名空间ID会被解析为 ``` assets/< 命名空间 >/sounds/< 路径 >.ogg ``` 。 - [图:字符串]type：（默认为 ``` file ``` ）命名空间ID的目标类型。可以为 ``` file ``` （一个声音文件）和 ``` event ``` （另一个声音事件引用）。 - [图:整型]weight：（值>0，默认为1，[图:字符串]type为event时无效）游戏在播放使用此声音事件引用的声音事件实例时，随机挑选到这个声音信息的权重。当[图:字符串]type为event时，游戏会使用引用的声音事件引用自身权重之和，而不使用此值。 - [图:整型]attenuation_distance：（默认为16）声音线性衰减传播模型中声音最远能传播到的距离，仅对单声道（Mono）音频有效。部分声音事件实例设置此值无效，见下文§ 声音播放。 - [图:单精度浮点数]pitch：（值>0，默认为1）声音播放时的音高。最终播放的音高计算见下文§ 声音播放。 - [图:布尔型]preload：（默认为 ``` false ``` ，[图:字符串]type为event时无效）声音文件是否预载，即在加载所有声音事件定义信息后立刻载入内存加快第一次播放速度。 - [图:布尔型]stream：（默认为 ``` false ``` ）是否流式播放声音，即不需要完全加载声音文件，而是按照播放进度逐渐解码播放。如果设置了流式播放，那么这个声音就不会循环播放，且预载无效。 - [图:单精度浮点数]volume：（值>0，默认为1）声音播放时的音量。最终播放的音量计算见下文§ 声音播放。 - [图:字符串]subtitle：游戏使用此声音事件引用的声音事件实例时，游戏使用的字幕的本地化键名。
+## Definition Format (sounds.json)
 
-## 信息解析
+Sound event definitions live in `assets/<namespace>/sounds.json` (vanilla's is a hashed resource file). Root object mapping event names (e.g. `entity.enderman.stare` → ID `<ns>:<name>`) to:
 
-在同一命名空间下，多个资源包可能会重复定义声音事件定义文件。游戏按照下列的解析方式将声音事件引用及其信息加载到内存内：
+- `replace` (default false) — replace lower-priority packs' data instead of merging.
+- `sounds` — the playable sound entries (string = name with defaults, or object):
+  - `name` (required) — a sound file (`assets/<ns>/sounds/<path>.ogg`) or another event reference.
+  - `type` (default `file`) — `file` or `event`.
+  - `weight` (>0, default 1; ignored for `event`) — random selection weight (events use the referenced event's own weights).
+  - `attenuation_distance` (default 16) — linear attenuation max distance (mono audio only; ignored by some instance types).
+  - `pitch` (>0, default 1), `volume` (>0, default 1).
+  - `preload` (default false; ignored for `event`) — load into memory right after all definitions load.
+  - `stream` (default false) — stream-decode progressively (then no looping and preload is moot).
+  - `subtitle` — localization key for the subtitle when this event plays.
 
-1. 按照资源包从下层到上层的顺序，依次加载声音事件定义文件： - 如果一个声音事件引用没有和其他资源包产生冲突，则直接使用对应的声音信息。 - 如果产生了冲突，且更上层的资源包中定义的声音事件引用的[图:布尔型]replace设置为true，则丢弃下层所有资源包的声音数据。 - 如果产生了冲突，但更上层的资源包中定义的声音事件引用的[图:布尔型]replace设置为false，则合并下层和上层的声音数据。 - 无论声音数据是否被丢弃，游戏都会尝试解析，如果这些声音数据中产生了错误，则游戏会直接忽略加载对应的整个资源包。 - 如果一个声音事件引用中，直接或间接地引用了自身（[图:字符串]type为event且依赖的声音事件引用中包含了自身），游戏会发生非致命性的栈溢出错误，并直接卸载所有资源包。
-1. 在整理了所有未被丢弃的声音数据后，游戏会预载[图:字符串]type为file且[图:布尔型]preload为true的所有声音数据。
+### Merging
 
-对于声音事件的合并与丢弃，下方是一个实例，按照资源包从上到下的顺序，假设：
+Packs load bottom-up: non-conflicting events load directly; on conflict, `replace: true` in the upper pack discards all lower data; `replace: false` merges. Parse errors in any sound data discard that whole resource pack. Direct/indirect self-references (type `event` cycles) cause a non-fatal stack overflow and unload ALL resource packs. After merging, `preload: true` files load.
 
-- 声音事件引用A：声音A、声音B，[图:布尔型]replace为false。
-- 声音事件引用A：声音C、声音D，[图:布尔型]replace为true；声音事件引用B：声音E、声音F，[图:布尔型]replace为false。
-- 声音事件引用A：声音G、声音H，[图:布尔型]replace为false；声音事件引用B：声音I、声音J，[图:布尔型]replace为true。
+Example merge (top to bottom): A: sounds AB (replace false) → C,D (replace true) → G,H (replace false) ⇒ final A = ABCD; B: E,F (false) → I,J (true) ⇒ final B = EFIJ.
 
-那么游戏最终加载的声音事件引用A为声音ABCD，引用B为声音EFIJ。
+### Empty References
 
-## 空声音事件引用
+- `minecraft:intentionally_empty` — un-replaceable; plays nothing, no warnings.
+- `minecraft:empty` — placeholder for events with empty `sounds`; warns on first play.
 
-命名空间ID为
-```
-minecraft:intentionally_empty
-```
+## Sound Playback
 
-的声音事件引用是一个不能被替换的声音事件引用，在游戏中此引用不播放任何声音也不产生任何警告。
+### Logical Sides
 
-与其类似的声音事件引用还有
-```
-minecraft:empty
-```
+- **Server sounds** — created server-side, sent over the network to nearby players (blocks, entities, commands like `/playsound`). Radius: `range` if present, else max{16v, 16} from initial volume v (players within 16 blocks always receive it).
+- **Client sounds** — created client-side, only on one client (e.g. biome ambient music).
 
-，它作为声音事件引用中[图:NBT列表/JSON数组]sounds为空时的占位符。游戏在第一次播放对应的声音事件引用时会在日志中产生警告。
+### Categories
 
-# 声音播放
+`master` (base for all), `music`, `record` (note blocks/jukeboxes), `weather`, `block`, `hostile`, `neutral`, `player`, `ambient` (fireworks, XP orbs, item entities), `voice` (narrator), `ui`.
 
-如上文所提及，游戏使用的是声音事件实例用于播放声音。声音事件实例内的信息决定了声音如何播放。
+### Instance Types
 
-## 逻辑端
+- **Normal** — instant, non-looping, linear falloff; most sounds.
+- **Bee flying** — client sound on world join; `entity.bee.loop`/`loop_aggressive`; volume/pitch scale with horizontal speed.
+- **Elytra flying** — client sound while gliding (`item.elytra.flying`); loops; volume 0 for the first second, ramps up over the next second and with speed; louder = higher pitch.
+- **Entity-bound** — follows the entity's position; non-looping.
+- **Guardian attack** — `entity.guardian.attack`; loops, no attenuation; volume ∝ attack progress², pitch linear.
+- **Biome ambient** — client, loops, follows the player, fades across biome borders.
+- **Minecart** — `entity.minecart.riding` on join; loops; volume/pitch linear with speed.
+- **Minecart riding** — `entity.minecart.inside` / `inside.underwater`; loops, no attenuation; louder with speed.
+- **Sniffer digging** — `entity.sniffer.digging`; non-looping, follows the sniffer.
+- **Underwater ambient** — client on entering water (`ambient.underwater.loop`); loops, follows player; volume ramps up over 2 s, fades over 1 s after leaving.
+- **Underwater ambient additions** — client on entering water; 0.01% ultra_rare / 0.09% rare / 0.9% normal `ambient.underwater.loop.additions*`, else nothing; non-looping, stops on leaving water.
+- **End flash** — `weather.end_flash`; position = 10 blocks along the flash's pitch/yaw direction.
 
-按照声音事件实例创建时的逻辑端，声音可被分为服务端声音和客户端声音。
+### Playback Steps
 
-服务端声音是由服务端创建，通过网络或内存连接发送到客户端播放的声音。这类声音通常是因为方块、实体等服务端计算的数据发出的，或者是使用命令创建的。例如，使用
-```
-/
-playsound
-```
+1. Skip if a related entity has `Silent: true`.
+2. Pick a sound entry by weight (volume v0, pitch p0, attenuation d0). Event references multiply their referenced entry's volume/pitch into their own (v0 = v·v'); attenuation always comes from the current entry only.
+3. Empty reference → don't play.
+4. Final volume: normal instances = category × instance × entry volumes, clamped 0–1; other types ignore the entry volume.
+5. Final pitch: normal instances = instance × entry pitch, clamped 0.5–2; others use instance pitch only.
+6. Volume 0 → don't play.
+7. Attenuation distance = final volume × entry attenuation (ignored for no-attenuation models).
+8. Static buffering (whole file; allows looping) vs streaming (no looping even if requested).
 
-就是创建了服务端声音。这类声音通常不会发送给全体玩家，而只是发送给声音发生位置附近的玩家，具体距离由声音事件实例内的声音事件的[图:单精度浮点数]range决定。如果[图:单精度浮点数]range存在，则游戏以此值为半径将声音事件实例发送附近的玩家；如果不存在，则计算声音事件实例内的初始音量v，并以max{16v,16}为半径发送到附近的玩家。换言之，如果[图:单精度浮点数]range不存在，距离声音事件实例发生位置16格内的玩家一定会接收到这次声音事件实例的数据。
-
-客户端声音则是由客户端创建，只在一个玩家客户端中存在这个数据，其他玩家无法接收这个数据。这些声音是基本不需要服务端进行计算的数据发出的，例如生物群系的环境音乐。
-
-## 声音分类
-
-游戏中有很多事件都会发出声音，而这些声音可根据播放的内容和播放的情况分类。游戏可以单独为一种分类的声音调整音量。当前游戏内有下列声音分类：
-
-- ``` master ``` （主音量）：控制游戏所有声音的基础音量，其他分类的音量本质上都是自身音量乘以此音量得到最终分类音量。
-- ``` music ``` （音乐）：各种背景音乐处于此分类中。
-- ``` record ``` （唱片机/音符盒）：音符盒、唱片机的音乐处于此分类中。
-- ``` weather ``` （天气）：雨声，雷鸣声处于此分类中。
-- ``` block ``` （方块）：各种方块相关的声音处于此分类中。
-- ``` hostile ``` （敌对生物）：各种敌对生物相关的声音处于此分类中。
-- ``` neutral ``` （友好生物）：各种友好生物相关的声音处于此分类中。
-- ``` player ``` （玩家）：玩家做出的操作产生的声音处于此分类中。
-- ``` ambient ``` （环境）：烟花火箭、经验球、物品实体产生的声音，环境音效处于此分类中。
-- ``` voice ``` （复述功能/语音）：复述功能的声音。
-- ``` ui ``` （用户界面）：各类UI的声音，如各类按钮的声音和弹窗声音。
-
-## 实例类型
-
-声音事件实例不止一种，有些实例可以被循环播放，有些实例则会跟随玩家播放。当前游戏内共有下列类型：
-
-- 常规声音：声音立刻在指定位置播放，不循环，线性传播模型。绝大多数声音使用此类型播放，音量为实例音量乘以声音事件选择的声音信息的音量。
-- 蜜蜂飞行声音：在蜜蜂加入世界时创建客户端声音，按照当前的敌对状态使用 ``` entity.bee.loop ``` 或者 ``` entity.bee.loop_aggressive ``` 声音事件，声音分类为 ``` neutral ``` 。声音会立刻播放，不循环，线性传播模型，但初始音量和音高会根据蜜蜂水平速度调整。
-- 鞘翅飞行声音：玩家在滑翔时创建客户端声音，使用 ``` item.elytra.flying ``` 声音事件，声音分类为 ``` player ``` 。声音会立刻播放，且会循环播放，线性传播模型。在声音播放的前20游戏刻（1秒）中音量为0，之后20游戏刻（1秒）音量逐渐增加，当玩家速度加快时音量也会增加。同时，音量越大音高也会随之变高。
-- 实体绑定声音：声音由实体发出时使用此类型的实例。声音立刻播放，不循环，线性传播模型，实例位置会跟随实体位置变化。
-- 守卫者攻击声音：守卫者激光攻击时产生此声音事件实例，使用 ``` entity.guardian.attack ``` 声音事件，声音分类为 ``` hostile ``` 。声音立刻播放，循环播放，无衰减模型。音量与当前攻击进度成二次方关系，音高与攻击进度成线性关系。
-- 生物群系环境声音：所有生物群系的环境声音，为客户端声音，使用 ``` ambient ``` 声音分类。声音立刻播放，循环播放，声音跟随当前玩家播放，音量会在玩家跨越生物群系时淡入淡出。
-- 矿车声音：在矿车加入世界时创建客户端声音，使用 ``` entity.minecart.riding ``` 声音事件， ``` neutral ``` 声音分类。声音立刻播放，循环播放，线性传播模型。根据矿车的速度，音量和音高呈线性关系。
-- 矿车骑乘声音：当玩家骑乘矿车时创建客户端声音，按照当前矿车是否在水中使用 ``` entity.minecart.inside.underwater ``` 或者 ``` entity.minecart.inside ``` 声音事件，声音分类为 ``` neutral ``` 。声音立刻播放，循环播放，无衰减模型。音量会随着矿车速度变大而增加。
-- 嗅探兽挖掘声音：嗅探兽挖掘时创建此声音事件实例，使用 ``` entity.sniffer.digging ``` 声音事件， ``` neutral ``` 声音分类。声音立刻播放，不循环，线性传播模型，位置随嗅探兽位置变化。
-- 水下环境声音：玩家入水创建客户端声音，使用 ``` ambient.underwater.loop ``` 声音事件， ``` ambient ``` 声音分类。声音立刻播放，循环播放，跟随玩家播放。入水后40游戏刻（2秒）内音量逐渐升高，出水后20游戏刻（1秒）内音量逐渐降低。
-- 水下环境子声音：玩家入水创建客户端声音，使用 ``` ambient ``` 声音分类，0.01%使用 ``` ambient.underwater.loop.additions.ultra_rare ``` 声音事件，0.09%使用 ``` ambient.underwater.loop.additions.rare ``` 声音事件，0.9%使用 ``` ambient.underwater.loop.additions ``` 声音事件，99%不播放此声音事件实例。声音立刻播放，不循环，跟随玩家播放，出水时立刻停止播放。
-- 末地闪光声音：玩家在末地时创建客户端声音，使用 ``` weather.end_flash ``` 声音事件， ``` weather ``` 声音分类。声音播放位置取决于末地闪光的俯仰角和偏航角，具体为俯仰角和偏航角组成的单位向量的方向外10格的位置。
-
-## 实例播放
-
-无论哪一种实例最终都会由游戏声音引擎播放。游戏按照下列步骤，设置声音的各种属性并使用OpenAL播放声音：
-
-1. 判断声音事件实例是否可被播放。此处只会判断与实体相关的声音事件实例，如果相关的实体的[图:布尔型]Slient为true就不会播放此实例。
-1. 解析声音事件实例中的声音事件引用，按照权重随机挑选一个声音信息，获得声音信息音量v0，声音信息音高p0，衰减距离为d0。 - 如果声音信息引用了另一个声音事件引用，那么音量和音高计算是引用的声音事件获取到的声音信息音量或音高乘以本身设置的声音信息的音量或音高。例如声音信息A（音量为v）引用声音事件a，游戏选中了a中的信息B（音量为v'），则声音信息音量为v0=vv′。 - 无论声音信息引用了其他的声音事件还是直接使用声音文件，都只会读取当前声音信息的衰减距离，而不会去查找引用的声音信息的衰减距离。
-1. 如果获得的声音信息为空声音事件引用，则不播放此实例。
-1. 计算最终音量v：对于常规声音事件实例，使用声音分类音量vc、实例音量vi、声音信息音量v0相乘；对于其他类型的实例，则为声音分类音量vc、实例音量vi相乘，不读取声音信息音量v0。相乘后，将此值钳制在0到1闭区间内作为最终音量。
-1. 计算最终音高p：对于常规声音事件实例，使用实例音高pi、声音信息音高p0相乘；对于其他类型的实例，直接使用实例音高pi，不读取声音信息音高p0。将前文计算的值钳制在0.5到2闭区间内作为最终音高。
-1. 如果最终音量为0，则不播放此实例。
-1. 计算衰减距离d：如果实例使用无衰减模型，那么此项不计算，因为所有位置听到的声音都为一个音量；否则，衰减距离为最终音量与声音信息衰减距离之积。衰减距离外的声音玩家无法听到，在衰减距离内随距离增大音量线性减小。
-1. 设置所有参数后，判断是否进行流式播放： - 如果不是流式播放，那么游戏直接读取整个声音文件并将所有缓冲推入音频设备播放，使用静态缓冲。这种声音允许循环播放。 - 如果是流式播放，那么游戏会逐渐读取声音文件，将缓冲逐渐推入音频设备，使用流式缓冲。这种声音不允许循环播放，即使实例要求了循环播放。
-
-# 历史
-
-# 你知道吗
-
-- ``` music.nether.warped_forest ``` 在原版中存在定义， ``` /playsound ``` 显示可用，但实际上没有声音。
-
-# 参见
-
-- Sounds.json/Java版数据值 —— 原版的声音事件定义文件。
-
-# 参考
-
-1. ↑ OpenAL中不允许使用双声道（Stereo）音频进行线性衰减，详见OpenAL文档第21页备注：“包含超过一个通道的音频缓冲将不受3D空间化播放”。
-1. ↑ https://twitter.com/Dinnerbone/status/852212485855862784
-1. ↑ MC-177819 — 漏洞状态为“有意为之”。
-
-# 导航
+Trivia: `music.nether.warped_forest` is defined and `/playsound`-selectable but has no actual sound; stereo audio cannot use linear attenuation in OpenAL.

@@ -1,78 +1,31 @@
 ---
 name: minecraft-jukebox-song
-description: |
-  唱片机曲目定义格式（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】唱片机曲目（Jukebox Song）决定了物品插入唱片机后播放音乐的行为。唱片机曲目定义文件是唱片机曲目在数据包中的数据驱动定义文件。
-  
-  【涵盖内容】
-  - （自动提取章节）
-  
-  【关键定义】
-  - 注册表：JUKEBOX_SONG
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 唱片机曲目定义格式 的完整规范时
+description: Jukebox song definition JSON fields and playback behavior for datapack-custom music discs.
+whenToUse: Use when writing jukebox_song definitions or understanding jukebox playback.
 ---
 
-本条目所述内容仅适用于Java版。
-唱片机曲目（Jukebox Song）决定了物品插入唱片机后播放音乐的行为。唱片机曲目定义文件是唱片机曲目在数据包中的数据驱动定义文件。
+# Jukebox Songs
 
-# 定义格式
+This content applies only to Java Edition.
 
-唱片机曲目在游戏内使用
-```
-JUKEBOX_SONG
-```
+A jukebox song determines the music played when an item is inserted into a jukebox. Jukebox song definition files are their data-driven definitions in datapacks.
 
-注册表，数据包路径为
-```
-jukebox_song
-```
+## Definition format
 
-，即所有唱片机曲目定义文件都需要在
-```
-data/<
-命名空间
->/jukebox_song
-```
+Jukebox songs use the `JUKEBOX_SONG` registry; the datapack path is `jukebox_song`, so all definitions must be in `data/<namespace>/jukebox_song`, and tags in `data/<namespace>/tags/jukebox_song`.
 
-目录内定义，唱片机曲目标签则需要在
-```
-data/<
-命名空间
->/tags/jukebox_song
-```
+Definition files use JSON with the following structure:
 
-目录内定义。
+- JSON file root object
+  - `comparator_output` (integer): (0≤value≤15) the redstone comparator signal strength emitted while the jukebox plays this song.
+  - `description` (string or compound tag or array): (text component) the song name shown in tooltips.
+  - `length_in_seconds` (single-precision float): (value>0) the song duration in seconds. The game converts this at TPS 20 into game ticks and adds 20 extra ticks as the final duration. This value may differ from the sound event's length; only this value controls when the jukebox stops.
+  - `sound_event` (string or compound tag or array): the sound event played. This sound ignores client-side propagation distance.
 
-唱片机曲目定义文件使用JSON格式，并具有下列结构：
+## Definition behavior
 
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:整型]*comparator_output: （0≤值≤15）唱片机播放该曲目时，通过红石比较器输出的红石信号强度。 - [图:字符串][图:NBT复合标签/JSON对象][图:NBT列表/JSON数组]*description：（文本组件），用于在提示框中显示曲目名称。 - [图:单精度浮点数]*length_in_seconds：（值>0）歌曲的播放时长，以秒为单位。游戏实际使用时将此值按TPS为20转换为游戏刻，并额外增加20游戏刻作为最终时长。此值可以与声音事件内的声音长度不同，游戏只使用此值控制唱片机的停止时间。 - [图:字符串][图:NBT复合标签/JSON对象]*sound_event：唱片机曲目播放的声音事件。此声音播放无视客户端传播距离。 - - 声音事件，见Template:Nbt inherit/sound event/source
+Jukebox song data is loaded only once at server startup; `/reload` does not reload it — a server restart is required.
 
-# 定义行为
+When a jukebox receives an item stack with the `jukebox_playable` item stack component, the game reads the jukebox song from the component and plays it. If the referenced song does not exist, nothing happens.
 
-唱片机曲目定义数据仅在服务端启动时被加载一次，使用
-```
-/
-reload
-```
-
-命令不可以使唱片机曲目定义被重新加载，而必须重启服务端。
-
-当唱片机内插入带有
-```
-jukebox_playable
-```
-
-物品堆叠组件的物品堆叠时，游戏会读取组件内的唱片机曲目信息，并进行播放。如果组件内的唱片机曲目不存在则什么也不会发生。
-
-唱片机播放的音乐归属
-```
-record
-```
-
-（唱片机/音符盒）分类，声音实例音量为4，实例音高为1，立刻播放，音量线性衰减。玩家能听到音乐唱片音乐的最远距离为声音事件引用[图:字符串]sound_id定义的[图:整型]attenuation_distance值乘上音量4，即默认为64格；而声音事件内的[图:单精度浮点数]range在此不参与声音计算，游戏以世界事件发送唱片机播放信息，因此无视声音事件传播距离。
-
-# 历史
-
-# 导航
+The music belongs to the `record` (jukebox/note block) sound category: volume 4, pitch 1, plays immediately with linear volume attenuation. The furthest distance a player can hear a music disc is the referenced `sound_id`'s `attenuation_distance` multiplied by the volume of 4 (64 blocks by default); the sound event's `range` does not participate in sound calculation. The jukebox sends playback as a world event, so sound event propagation distance is ignored.

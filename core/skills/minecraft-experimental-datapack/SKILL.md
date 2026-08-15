@@ -1,157 +1,36 @@
 ---
 name: minecraft-experimental-datapack
-description: |
-  实验性内容（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】本条目介绍的是Java版创建世界时可选的实验性功能。关于基岩版中的类似功能，请见“实验性玩法”；关于Java版1.17-1.18的外置数据包，请见“洞穴与山崖预览数据包”。
-  
-  【涵盖内容】
-  - 正式版
-  - 快照
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 实验性内容 的完整规范时
+description: Java experimental content: built-in datapacks, feature flags, their effects.
+whenToUse: Use when understanding or enabling experimental content and feature flags in Java Edition.
 ---
 
-本条目介绍的是Java版创建世界时可选的实验性功能。关于基岩版中的类似功能，请见“实验性玩法”；关于Java版1.17-1.18的外置数据包，请见“洞穴与山崖预览数据包”。
+# Experimental Content
 
-本条目所述内容仅适用于Java版。
-实验性内容（Experiments）是Java版独有的游戏内置数据包，开启后玩家可以在世界中试用未完成开发或正在开发的实验性功能，这些功能最终可能会在未来版本中实现。
+This content applies only to Java Edition.
 
-# 启用
+Experiments are built-in datapacks unique to Java Edition. Enabling them lets players try unfinished or in-development features that may ship in future versions.
 
-实验性内容的子选项可以在创建新的世界界面的“实验性内容”选项或“数据包”选项中启用，在创建世界后该选项将会无法关闭。已创建的世界也不能再次启用实验性内容。
+## Enabling
 
-启用内置数据包将会启用功能开关所控制的硬编码游戏元素和数据包
-```
-data/<
-命名空间
->/datapacks/<
-实验性内容ID
->/
-```
+Experimental options can be enabled at world creation under "Experimental" or "Datapacks"; they cannot be disabled afterwards, and existing worlds cannot enable them. Enabling a built-in datapack activates the hardcoded game elements controlled by feature flags plus the datapack content under `data/<namespace>/datapacks/<experiment ID>/`. On servers, set `initial-enabled-packs` and `initial-disabled-packs` in `server.properties`.
 
-目录中的功能。
+## Warning
 
-在服务端中启用实验性内容需要修改
-```
-server.properties
-```
+Experimental features may be incompatible with future versions, potentially crashing, corrupting, or preventing loading of the world; a warning is shown in both menus.
 
-中的
-```
-initial-enabled-packs
-```
+## Options (as of 26.2)
 
-和​
-```
-initial-disabled-packs
-```
+- **Minecart improvements**: game rule `max_minecart_speed` (default 8, max 1000 blocks/s); "synchronize minecart rotation" accessibility option (default off); minecarts have inertia (keep vertical momentum and tilt off slopes), and align to rails.
+- **Redstone experiments**: changes to redstone dust update order.
+- **Villager trade rebalancing**: rebalanced armorer and librarian trades.
 
-。
+## Feature flags
 
-# 警告
+Feature flags enable/disable groups of feature elements per world. They filter items, blocks, entities, screen types, potions, and mob effects across registries:
 
-开启实验性内容后会启用一些尚未完成开发的实验性功能，这些功能可能会不适应未来版本，从而导致该世界在未来版本中崩溃、损坏或无法加载。因此，在实验性内容选项和数据包选项界面都会出现一则警告。
+- Filtered blocks: unrecognized by `/setblock`/`/fill`; cannot be used or picked; their properties don't load with entities; block entities don't generate in structures/features.
+- Filtered entities: unrecognized by `/summon`; don't spawn/load; spawn eggs (including dispenser use) and spawners don't work.
+- Filtered items: unrecognized by `/give`/`/item`/`/clear`; hidden in creative; tooltip shows red "Disabled Item"; unusable; recipes/loot don't produce them (item entities can still exist).
+- Filtered game rules: unrecognized by `/gamerule`. Effects: not assignable via `/effect`. Enchantments: not via `/enchant`. GUIs not loaded; stats not shown; commands not parsed. Mechanism-modifying elements only apply when the flag is on.
 
-# 选项
-
-实验性功能需求界面有以下子选项：
-
-- 矿车改进 - 改进了矿车的运动
-- 红石实验性内容 - 实验性红石更改
-- 村民交易的平衡性调整 - 新版村民交易
-
-## 正式版
-
-截至26.2，“矿车改进”包含以下功能：
-
-游戏规则
-
-- “矿车最大速度”（ ``` max_minecart_speed ``` ） - 用于更改矿车的单坐标轴最大速度，默认为8，上限为1000，单位为格/秒
-
-选项
-
-- “同步矿车转动”辅助功能选项 - 允许玩家随矿车的轨道转动视角，默认为关
-
-所有矿车
-
-- 矿车现在具有惯性，在离开以上下坡为末端的轨道时会保留垂直动量，并在空中保持倾斜姿态
-- 矿车现在会与铁轨对齐
-
-截至26.2，“红石实验性内容”包含以下功能：
-
-常规
-
-- 关于红石线更新顺序的更改
-
-截至26.2，“村民交易的平衡性调整”包含以下功能：
-
-游戏内容
-
-- 对盔甲匠和图书管理员的交易的平衡性调整
-
-## 快照
-
-快照的实验性内容可能会在正式版基础之上有所改动。
-
-# 功能开关
-
-功能开关（Feature Flag）用于启用或禁用世界中特定组别的功能元素（Feature Element）。
-
-功能开关在物品、方块、实体、屏幕类型、药水和生物效果等多个注册表中过滤功能元素。具体而言，功能开关会产生以下影响：
-
-- 被过滤的方块不会被 ``` / setblock ``` 、 ``` / fill ``` 等命令识别，玩家不能直接对其使用物品或选取方块，其方块属性不会作为实体的一部分加载，其方块实体不会在结构或地物中生成。
-- 被过滤的实体不会被 ``` / summon ``` 等命令识别，不会在世界中生成或加载，对应的刷怪蛋（包括通过发射器使用刷怪蛋）、刷怪笼不起作用。
-- 被过滤的物品不会被 ``` / give ``` 、 ``` / item ``` 和 ``` / clear ``` 等命令识别，在创造模式物品栏中被隐藏，在物品提示框中显示“已禁用物品”红色文字，不能用于攻击、与实体或方块交互，配方和战利品表不会产生被禁用的物品。 - 然而，被过滤的物品可以通过生成对应的物品实体获取。
-- 被过滤的游戏规则不会被 ``` / gamerule ``` 识别。
-- 被过滤的状态效果不能由 ``` / effect ``` 赋予。
-- 被过滤的魔咒不能由 ``` / enchant ``` 赋予。
-- 被过滤的GUI界面不会被加载。
-- 被过滤的统计信息不会在统计屏幕中显示。
-- 被过滤的命令不会被解析。
-- 会修改原有机制的功能元素只会在功能开关开启时应用，否则运行旧版功能。
-
-一个功能开关组中最多包含64个功能开关。目前游戏中存在的功能开关有
-```
-vanilla
-```
-
-、
-```
-trade_rebalance
-```
-
-、​
-```
-redstone_experiments
-```
-
-和​
-```
-minecart_improvements
-```
-
-，其中
-```
-vanilla
-```
-
-被默认启用。
-
-启用了实验性内容的存档的
-```
-level.dat
-```
-
-会有[图:NBT列表/JSON数组]enabled_features一项记录启用的功能开关。若存档未启用实验性内容，则不会有[图:NBT列表/JSON数组]enabled_features这一项。
-
-# 数据值
-
-# 历史
-
-# 参考
-
-1. ↑ 测试新版Minecraft功能-在Java版中切换功能，来自Staff。Minecraft.net，2022年10月24日。
-1. ↑ “Java版洞穴与山崖预览数据包”，feedback.minecraft.net。
-
-# 导航
+A feature flag set holds at most 64 flags. Current flags: `vanilla` (default on), `trade_rebalance`, `redstone_experiments`, `minecart_improvements`. Saves with experiments record `enabled_features` in `level.dat`; without experiments the tag is absent.

@@ -1,271 +1,47 @@
 ---
 name: minecraft-formatting-code
-description: |
-  格式化代码（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】本条目介绍的是较早的基于§的格式化系统。关于较新的组件系统，请见“文本组件”。
-  
-  【涵盖内容】
-  - 颜色代码
-  - 格式代码
-  - 输入
-  - 兼容性
-  - 示例
-  - 编辑器
-  - server.properties 和 pack.mcmeta
-  - 自定义语言与文字文件
-  - 世界名称
-  - 服务器名称
-  - Java版Alpha v1.0.12 前的格式化代码表
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 格式化代码 的完整规范时
+description: Legacy § formatting codes: colors, formats, input, usage in motd and names.
+whenToUse: Use when applying legacy § formatting to text, motd, world names, or language files (deprecated in favor of text components).
 ---
 
-本条目介绍的是较早的基于§的格式化系统。关于较新的组件系统，请见“文本组件”。
+# Formatting Codes
 
-此条目所介绍的内容已在Minecraft中弃用，可能会在未来版本移除。
-这些特性在游戏中已被弃用，目前依旧可用，但不推荐使用。
-附加说明：Java版中较新的文本系统和基岩版中的Ore UI不再为格式化代码提供支持。
+This article covers the older §-based formatting system (see text components for the newer system). It is deprecated in Minecraft — still usable, but not recommended; the Java text system and Bedrock Ore UI no longer support formatting codes.
 
-格式化代码（Formatting code），又称颜色代码（Color code），能为文本提供样式信息。
+Formatting codes (color codes) add style (color, bold, italic, underline, etc.) to text via the section sign `§`. In Bedrock, `§` can be typed into signs, world names, rename fields, and chat.
 
-在Minecraft中，可使用分节符号（
-```
-§
-```
+## Usage
 
-）更改文字样式（如颜色、粗体、斜体和下横线等）。
+Append a character after `§` to format text; hexadecimal digits switch colors. In Java, a color code resets prior format codes — `§cX§nY` shows XY underlined, `§nX§cY` shows plain XY. Use color first and repeat format codes after color changes. In Bedrock, format codes after color codes remain effective. `§r` resets the style (e.g. `§nXXX§rYYY` → XXXYYY).
 
-在基岩版中，分节符号能被输入进告示牌、世界名称、重命名栏及聊天栏。
+### Color codes
 
-# 用法
+`§0`–`§f` (black, dark blue, dark green, dark aqua, dark red, dark purple, gold, gray, dark gray, blue, green, aqua, red, light purple, yellow, white), plus `§g` (Minecoin gold; renders incorrectly on PlayStation).
 
-可以在分节符（§）后加某个字符来格式化文本。如果字符是十六进制数字，在客户端里可用于显示文本时切换颜色。
+### Format codes
 
-在Java版中，若在格式代码后使用颜色代码，则格式代码的作用范围只能持续到颜色代码之前。例如，
-```
-§cX§nY
-```
+- `§k` obfuscated (random characters keep the original character width)
+- `§l` bold, `§m` strikethrough, `§n` underline, `§o` italic, `§r` reset
 
-会显示为XY，而
-```
-§nX§cY
-```
+## Input
 
-会显示为XY。因此，当使用颜色代码与格式代码一起使用时，确保首先使用颜色代码，并在更改颜色时重用格式代码。
+- Windows: Alt+Numpad 21 (CP437) or Alt+Numpad 0167; with `EnableHexNumpad`: Alt+Numpad+A7.
+- Mac: ⌥ Option+6 (US); other layouts ⌥ Option+00a7.
+- Linux: Compose `s` `o` or Ctrl+Shift+U 00a7.
+- Mobile/consoles: various keypad paths to the `§` symbol (see wiki).
+- In text components write `\u00A7` (or `\u00a7`).
 
-在基岩版中，在颜色代码后面的格式代码仍然生效。此外，若使用了混淆代码而没有在行尾使用重置代码，客户端GUI会继续模糊MOTD传过来的文字和版本号显示：
+Compatibility: In Java the only in-game place to enter `§` is signs, via pasting — the filter deletes `§`+one character unless the `§§` trick is used (paste `§§` then the code so `§§-a` becomes `§a` after filtering). In Bedrock, codes work in nearly all non-Ore UI text inputs.
 
-```
-§r
-```
+## Usage in files
 
-可以用于重置文字样式。例如：
-```
-§nXXX§rYYY
-```
+- `server.properties` `motd` and `pack.mcmeta`: use `\u00A7` instead of `§` (e.g. `\u00A75`); raw `§` gets converted to `\u00C2\u00A7` (Â§) which displays as an error.
+- Language files: format codes apply to any string, e.g. `{"item.minecraft.diamond":"§dDiamond§r"}`.
+- World names: edit `level.dat` `LevelName` tag (e.g. `§1R§2e§3d...`), or use a resource pack.
+- Server names: edit `Name` in `servers.dat` (e.g. `§4§lMinecraft §6§l Server`).
 
-会显示为XXXYYY。
+## Trivia
 
-## 颜色代码
-
-## 格式代码
-
-使用
-```
-§k
-```
-
-循环出现的随机字符会与原有字符的宽度相同。例如，如果是“m”则随机字符都是宽字符，而如果是“i”则都是窄字符。
-
-## 输入
-
- 参见：Unicode输入法 
-
-- 在Windows上，大多数美式/英式英语键盘可以用Alt + NUMPAD2NUMPAD1（在代码页437上为Alt码）或Alt + NUMPAD7NUMPAD8NUMPAD9输入“§”。如果是其他键盘，通常可以用Alt + NUMPAD0NUMPAD1NUMPAD6NUMPAD7输入，或按⊞ Win + .并切换至符号栏输入。
-- 如果在Windows注册表中启用了 ``` EnableHexNumpad ``` ，也可以用Alt + NUMPAD+ANUMPAD7（“A”是主键盘上的）。因为分节符在Unicode内，所以任何语言下这种方式都可用。
-- 在Mac美式键盘上可以按⌥ Option + 6（也可以按⌥ Option + 5来调出扩展符号），其他键盘则要换成⌥ Option + 00a7。
-- 在Linux上，可以按组合键Composeso或使用Unicode快捷键Control + ⇧ Shift + u00a7。
-- 在Nintendo Switch上，选择语言（地球图标），滑至底部找到“符号”一栏，“§”在第2页最后一行右侧。
-- 在Android上： - Gboard：“§”在“更多符号”中，先点击数字和符号按钮 (?123)，然后点击更多符号按钮 (=\<)。需要注意的是，在早期版本中，“§”在段落符号“¶”下方，需要先按住“¶”再滑动到“§”上。 - 三星：“§”在“s”下方，需要先按住“s”再滑动到“§”上。
-- 在iOS/iPadOS上： - 在iPad上，“§”在“%”下方，需要点击数字/符号按钮，然后向下滑动“%”。 - 在iPhone上，“§”在“&”下方，需要点击数字/符号按钮，然后按住“&”并滑动到“§”上。
-- 在Xbox上： - 在Xbox One上，“§”位于“¶”下方，用[图:Left trigger]选中¶时，按住[图:A button]直到出现其他选项，将光标移至“§”并用[图:A button]选择。 - 也可以选中标准字母数字键盘上的S键，然后按住[图:A button]显示若干个包括“§”的“替代”字符。此方法也适用于Windows 10。
-
-在文本组件中使用时，分节符可以写成
-```
-\u00A7
-```
-
-或
-```
-\u00a7
-```
-
-。
-
-或者也可以从这里复制这个符号（
-```
-§
-```
-
-），并按Ctrl + V（Windows）或⌘ Cmd + V（macOS）粘贴到任何地方。如果不能粘贴，则只能使用文本组件或采用其他方式。
-
-在早期的Java版Classic版本中，用于格式化的符号曾经是
-```
-&
-```
-
-而非
-```
-§
-```
-
-。
-
-### 兼容性
-
-在基岩版中，分节符可以输入或粘贴在任何能输入文字的地方，且格式化代码可以在几乎所有非Ore UI界面中生效。
-
-在Java版中，目前游戏内唯一能够输入分节符的地方是在告示牌中，必须通过粘贴来输入。
-
-- 在告示牌中在粘贴文本或点击“完成”时，会对要粘贴的文本或告示牌中的文本进行过滤：若文本中含有分节符且不在文本的末尾，则会将分节符连带着其后的一个字符一同删去。这导致即使在编辑告示牌时成功添加了格式化代码，在编辑完成后其通常也会被删去。 - 但是，该过滤规则有一个漏洞：若文本中多个分节符连在一起，则只有最后一个分节符会受到影响。因此，可以在告示牌中以 ``` §§+任意字符+格式化代码的字符 ``` 的形式添加格式化代码并最终使其生效（如 ``` §§-a ``` 会在过滤后变成 ``` §a ``` ，注意两个分节符需分两次单独粘贴）。
-- 然而，借助辅助程序与编辑器，同样可以把分节符和格式化代码添加到绝大多数文本中。
-
-## 示例
-
-在Java版1.14以前，以下这些文字可以直接复制粘贴至书与笔中，效果如图所示：
-
-```
-§nMinecraft Formatting
-
-§r§00 §11 §22 §33
-§44 §55 §66 §77
-§88 §99 §aa §bb
-§cc §dd §ee §ff
-
-§r§0k §kMinecraft
-§rl §lMinecraft
-§rm §mMinecraft
-§rn §nMinecraft
-§ro §oMinecraft
-§rr §rMinecraft
-```
-
-## 编辑器
-
-正在加载互动小工具。如果加载失败，请您刷新本页面并检查JavaScript是否已启用。
-
-# 用途
-
-## server.properties 和 pack.mcmeta
-
-如果要得到彩色告示牌，或者格式化文本，需输入
-```
-\u00A7
-```
-
-代替§。例如，§5会变成
-```
-\u00A75
-```
-
-。颜色与格式可以结合使用，注意必须在添加颜色之后添加格式。
-
-旧版本兼容性
-
-格式化代码可以在
-```
-motd
-```
-
-```
-server.properties
-```
-
-文件里使用, 但分节符必须被转换为
-```
-\u00A7
-```
-
-。如果直接输入分节符，服务器会自动将其转换为
-```
-\u00C2\u00A7
-```
-
-（
-```
-Â§
-```
-
-），客户端则会显示为
-```
-\u00C2
-```
-
-错误标记。删除在Motd里的
-```
-\u00C2
-```
-
-代码会引发一连串的问题，这些问题会在一些不兼容的版本上发生。
-
-## 自定义语言与文字文件
-
-格式化代码可用于语言描述文件中的任意字符前，使得物品名称或界面文本等具有自定义样式。这也被用于end.txt和credits.txt等文字文件中。例如，
-```
-{"item.minecraft.diamond":"§dDiamond§r"}
-```
-
-可以使钻石的名称显示为Diamond。
-
-## 世界名称
-
-使用外部工具（如NBTExplorer）可以自定义在游戏中世界名称显示的颜色和格式。要修改名称，可以选择level.dat中的LevelName标签。在这个例子中，LevelName设置为：
-
-```
-§1R§2e§3d§4s§5t§6o§7n§8e §9C§ar§be§ca§dt§ei§fo§1n§2s
-```
-
-除此之外，也可以在存档的文件夹里更改世界名称。然后在选择世界的时候就可以看见指定的颜色效果是否生效。
-
-还可以使用资源包和
-```
-§
-```
-
-来改变世界的名称的颜色，而在创建世界的时候创建者只需要用
-```
-§
-```
-
-设置世界的名称的颜色的标记。
-
-## 服务器名称
-
-随着如NBTExplorer的第三方工具的使用，服务器名称可以自定义颜色。利用这个功能，可以使用第三方工具编辑Minecraft目录的servers.dat文件来修改Name属性。下面是一个编辑好的例子：
-
-```
-§4§lMinecraft §6§l Server
-```
-
-# 历史
-
-## Java版Alpha v1.0.12 前的格式化代码表
-
-# 你知道吗
-
-- 颜色代码在游戏中几乎完全匹配1981年发布的彩色图形适配器（CGA）的16种颜色，只有颜色6不同 – #FFAA00 – 不同于CGA – #AA5500。
-- Minecoin金（§g）在PlayStation上无法正常显示，会显示为无格式或透明。
-- 在基岩版中，如果使用除Mojangles之外的任何字体，随机字符（§k）会显示为点。
-
-# 参考
-
-1. ↑ MCPE-41729
-1. ↑ IRC logs on Archive.org; #minecraft.20090619.log. "P7:43:58 <Notch> Quatroking: want to know a secret?" [...] "P7:44:44 <Notch> /say He&1llo&f, world! &bHOW ARE YOU!?" [...] "P7:45:52 <Notch> it's the ega palette, almost" (June 20, 2009, 00:43:58 UTC)
-1. ↑ MC-296316
-1. ↑ MC-122 — 漏洞状态为“已修复”。
-1. ↑ MC-132664 — 漏洞状态为“已修复”。
-1. ↑ MC-133260 — 漏洞状态为“已修复”。
-1. ↑ MC-137571 — 漏洞状态为“已修复”。
-
-# 导航
+- The 16 color codes nearly match the 1981 CGA palette (color 6 differs: #FFAA00 vs #AA5500).
+- With fonts other than Mojangles on Bedrock, obfuscated `§k` shows as dots.
+- In Classic, the format symbol was `&` instead of `§`.

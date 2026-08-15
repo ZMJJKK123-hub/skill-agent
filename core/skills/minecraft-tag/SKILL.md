@@ -1,22 +1,17 @@
 ---
 name: minecraft-tag
-description: |
-  标签（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】标签（Tag）可以指：
-  
-  【涵盖内容】
-  - （自动提取章节）
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 标签 的完整规范时
+description: Disambiguation of 'tag': datapack tags, scoreboard tags, NBT tags, chunk tags.
+whenToUse: Use when clarifying which "tag" concept applies in Java Edition contexts.
 ---
 
-标签（Tag）可以指：
+# Tag (disambiguation)
 
-- 标签 - 给游戏资源分组的技术性机制。 - Java版标签 - 基岩版标签
-- 记分板标签 - 标记特定实体使用的字符串。 - ``` / tag ``` - 管理单个实体的记分板标签。 - ``` / scoreboard ``` - Java版1.13前用于控制记分板标签的命令。
-- 各种数据结构中的标签： - NBT格式 - 一种命名二进制标签格式。 - SNBT格式 - Java版中一种表示NBT数据结构的文本。
-- 加载标签 - Java版的区块加载机制。
-- 标签 - 愚人节快照23w13a_or_b中的物品。
+"Tag" in Minecraft can refer to:
 
- 这是一个消歧义页面，列出了有相同或相近的标题，但内容不同的条目。如果您是通过某条目的内部链接而转到本页，并且该条目所指的是本页面中的个别内容而非全部内容，希望您能协助修正该处的内部链接，将它指向正确的条目。
+- **Tags** — the technical mechanism grouping game resources (block/item/fluid/etc. tags). See Java Edition tags and Bedrock Edition tags.
+- **Scoreboard tags** — strings marking specific entities. Managed with `/tag`; before Java 1.13 also via `/scoreboard`.
+- **Tags in data structures** — the NBT format (binary named tag format) and the SNBT format (textual representation of NBT).
+- **Chunk loading tag** — Java Edition's chunk loading mechanism.
+- **Tag** — an item from the April Fools snapshot 23w13a_or_b.
+
+This is a disambiguation page; follow the internal links to the specific articles.

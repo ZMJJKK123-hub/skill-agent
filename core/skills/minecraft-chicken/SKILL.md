@@ -1,264 +1,50 @@
 ---
 name: minecraft-chicken
-description: |
-  鸡（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】关于其他含义，请见“鸡（消歧义）”。
-  
-  【涵盖内容】
-  - 自然生成
-  - 鸡骑士
-  - 人为生成
-  - 音效变种
-  - 繁殖
-  - 成年
-  - Classic
-  - Picky
-  - 幼年
-  - ID
-  - 实体数据
-  - 鸡变种
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 鸡 的完整规范时
+description: Chicken — spawning, chicken jockeys, drops, egg laying, breeding, sound variants, variants, NBT.
+whenToUse: Use when working with chickens (breeding, egg farms, jockeys, variants).
 ---
 
-关于其他含义，请见“鸡（消歧义）”。
-鸡
+# Chicken
 
-成年
+Chickens are common friendly mobs — sources of chicken meat, feathers, and eggs.
 
-幼年
+## Spawning
 
-成年
+Chickens have biome-based variants (temperate, cold, warm...). Natural spawning (Java): periodic + pack spawns on grass blocks with 2 blocks of air above and light level ≥ 9 (Bedrock: light ≥ 7). They spawn in forest-type biomes (except pale garden), dry biomes (except desert), plains, sunflower plains, swamp, windswept hills/forest/gravelly hills. 5% of periodic spawns are babies.
 
-幼年
+### Chicken Jockeys
 
-成年
+Baby zombies, baby drowned, baby husks, baby zombie villagers, and baby zombified piglins can spawn riding chickens; the chicken's spawn conditions follow the passenger's.
 
-幼年
+### Egg Spawning
 
-[[|]][图:Invicon Chicken Spawn Egg.png：Minecraft中Chicken Spawn Egg的精灵图，描述：鸡刷怪蛋]
+Thrown eggs that break have a 1/8 chance to spawn 1 baby chicken; if successful, a further 1/32 chance spawns 4 more. Babies can spawn inside walls (suffocation).
 
- Wiki上有与该主题相关的教程！
-见教程:家畜养殖与教程:刷蛋。
+## Sound Variants
 
- Wiki上有与该主题相关的教程！
-见教程:家畜养殖与教程:刷蛋。
+**Classic** and **Picky** (50% each, independent of the biome variant) — affect idle, death, and hurt sounds.
 
- 
-“> 一种似乎总在观察的简单农场动物。鸡的脑袋里在想什么呢？它们在踱步的时候酝酿着什么计划呢？
+## Drops
 
-”——Minecraft Earth内描述
-鸡（Chicken）是一种常见友好生物。它们是鸡肉、羽毛和鸡蛋的来源。
+Adult chickens drop chicken meat (raw; cooked only when killed while on fire), and feathers (Java: not when killed on fire with a non-Fire Aspect weapon). 1–3 XP when killed by a player or tamed wolf (10 XP in Java if spawned as part of a chicken jockey). Babies drop nothing.
 
-# 生成
+## Behavior
 
-鸡会生成为不同的变种，具体如下表所示：
+Chickens wander, swim, and flap their wings to slow falls (still avoid cliffs). In loaded chunks, adults lay 1 egg every 5–10 minutes (6000–12000 ticks); jockey chickens never lay; dying chickens can still lay; babies can't. Shared "livestock" behavior: flee when hurt, swim (visible flapping), follow players holding wheat seeds, beetroot seeds, melon seeds, pumpkin seeds, torchflower seeds, or pitcher pods within 10/16 blocks, and breed with those seeds. Babies follow adults. Attacked by ocelots and foxes (Java: also player-trusted foxes after rejoin). Swimming requires 2 air blocks above or the chicken drowns. Chickens jump up stairs instead of walking around them.
 
-## 自然生成
+### Breeding
 
-在Java版中，鸡会在上方有2格空间且亮度等级为9或以上的草方块上周期生成与伴随生成。
+Feed two adults (wheat/beetroot/melon/pumpkin seeds, torchflower seeds, pitcher pods) → love mode → 1 baby (1–7 XP; 5-min/1-min cooldown). The baby's variant is a random parent's (biome-independent). Babies grow in 20 minutes; each feed reduces remaining growth ~10%. Golden dandelions halt/restart growth (halted babies accept only golden dandelions).
 
-在基岩版中，鸡会在亮度为7或以上的方块上周期生成与伴随生成。
+## Data Values
 
-尽管在所有生物群系中生成的鸡都有对应变种，但它们只会在平原、向日葵平原、沼泽、风袭丘陵、风袭森林、风袭沙砾丘陵以及苍白之园以外的森林类生物群系、沙漠以外的干旱类生物群系中自然生成。
+- ID: `minecraft:chicken`.
+- NBT: entity/living/mob/breedable/animal common tags plus:
+  - `EggLayTime` — ticks until the next egg (lays at 0, resets to 6000–12000; absent → reset on load).
+  - `IsChickenJockey` — true for jockey mounts: can be naturally despawned, never lays eggs, drops 10 XP; the baby zombie controls the chicken regardless.
+  - `sound_variant` (invalid → `classic`; → component `chicken/sound_variant`).
+  - `variant` (invalid → `temperate`; → component `chicken/variant`).
 
-周期生成的鸡有5%概率是幼年鸡。
+## Trivia
 
-### 鸡骑士
-
-主条目：鸡骑士 § 生成
-幼年僵尸、幼年溺尸、幼年尸壳、幼年僵尸村民或幼年僵尸猪灵有概率生成为鸡骑士。因此，与普通的鸡不同，作为鸡骑士的一部分生成的鸡，其生成条件与其乘客一致。
-
-## 人为生成
-
-掷出的鸡蛋击中物体并破裂后，有⁄8的概率生成1只幼年鸡。如果尝试生成1只幼年鸡成功，又将会有⁄32的概率生成4只幼年鸡。如果向空中一定角度投掷鸡蛋，幼年鸡可能会生成在墙内，并造成窒息。
-
-## 音效变种
-
-鸡有2种音效变种：Classic和Picky。
-
-鸡的音效变种会独立于鸡的生物群系生成进行分配，每种音效变种有50%的生成概率。鸡在发出空闲、死亡或受伤的音效时，会发出与其变种相关联的音效。音效变种与其品种变种和状态无关。
-
-关于所有鸡的音效，详见§ 音效。
-
-# 掉落物
-
-成年鸡被杀死时会掉落：
-
-Java版：
-
-1. ↑ 仅当不在着火下死亡且武器不附魔火焰附加时。
-1. ↑ 仅当着火状态下死亡或武器附魔火焰附加时。
-
-基岩版：
-
-1. ↑ 仅当不在着火下死亡时。
-1. ↑ 仅当着火状态下死亡时。
-
-- 如被玩家或驯服的狼杀死则会掉落1–3 经验值（在Java版中若作为鸡骑士一部分生成则掉落10 经验值）。
-
-与其他幼年动物一样，杀死幼年鸡不会掉落任何经验和物品。
-
-# 行为
-
-鸡会漫无目的地游荡，且经常在水里游泳。当鸡从高处掉落时会迅速扇动翅膀来减慢下落速度以避免摔伤。尽管如此，它们仍然会尽力避免从悬崖上掉落。
-
-当在一个已加载的区块里时，成年鸡会每隔5-10分钟（6000-12000刻）下1个鸡蛋。组成鸡骑士的鸡不会下蛋，即使其上的幼年僵尸已经死亡或脱离骑乘。鸡濒死时也能下蛋。幼年鸡不能下蛋。
-
-鸡与“家畜”共享一些行为：
-
-- 当受到伤害时，它们都会盲目而快速地逃跑。
-- 它们可以游泳，游泳时能清楚地看到它们的翅膀在快速扇动。
-- 它们可以被10格内/16格内手持小麦种子、甜菜种子、西瓜种子、南瓜种子、火把花种子或瓶子草荚果的玩家吸引，也能使用这些种子让它们进行繁殖。
-- 幼年鸡会尽可能跟随附近的成年鸡。
-
-鸡会被豹猫和未信任玩家的狐狸攻击，但在Java版中，在玩家重新进入游戏后，鸡也会被信任玩家的狐狸攻击。
-
-鸡游泳时上方需要有2格空气，否则它们在浮上来时会受到溺水伤害，并很可能因此死亡。
-
-不像其他大多数生物，鸡会试图跳上楼梯而不是走上去。
-
-## 繁殖
-
- 参见：繁殖 
-
-给两只成年鸡喂食小麦种子、甜菜种子、西瓜种子、南瓜种子、火把花种子或瓶子草荚果后会使其进入求爱模式，成功繁殖后会产下一只幼年鸡，同时掉落1–7 经验值。在繁殖后，双亲在5分钟/1分钟内不能再次喂食和繁殖。繁殖出的幼年鸡的变种从双亲的变种中随机选择，与所在生物群系无关。
-
-幼年鸡会在20分钟内长大，可以使用小麦种子、甜菜种子、西瓜种子、南瓜种子、火把花种子或瓶子草荚果加速成长过程；每次使用种子都会减少约剩余成长时间的10%。
-
-对幼年鸡使用金蒲公英可以阻止其成长为成年鸡，再次对其使用金蒲公英将使其重新开始成长。被阻止成长的幼年鸡无法被喂食除金蒲公英外的其他物品。
-
-# 音效
-
-## 成年
-
-### Classic
-
-Java版：
-
-基岩版：
-
-### Picky
-
-Java版：
-
-基岩版：
-
-## 幼年
-
-Java版：
-
-基岩版：
-
-# 数据值
-
-## ID
-
-Java版：
-
-基岩版：
-
-## 实体数据
-
-Java版：
-
-主条目：实体数据格式
-鸡有与之相联系的包含许多该生物属性的存档数据。
-
-- [图:NBT复合标签/JSON对象] 实体数据 - - 实体共通标签，见Template:Nbt inherit/entity/source - - 生物共通标签，见Template:Nbt inherit/living entity/source - - AI生物共通标签，见Template:Nbt inherit/mob/source - - 可成长生物共通标签，见Template:Nbt inherit/breedable/source - - 动物共通标签，见Template:Nbt inherit/animal/source - [图:整型]*EggLayTime：距离鸡下一次下蛋的时间。鸡会在此值为0的时候下蛋，然后该值会被随机重置到6000游戏刻（5分）到12000游戏刻（10分）之间。此值不存在时游戏读取时立刻重置此值。 - [图:布尔型]* *IsChickenJockey：表示这只鸡是否为幼年僵尸、幼年尸壳、幼年僵尸村民、幼年溺尸或幼年僵尸猪灵的载具。如果为true，这只鸡可以被自然清除且不再下蛋，在被玩家击杀时会掉落10经验，而不是平时的1-3经验。无论此值为何，骑乘鸡的幼年僵尸依然可以控制这只鸡。 - [图:字符串]* *sound_variant：（命名空间ID）鸡的音效变种。如果设置值无效则设置为 ``` classic ``` 。此项实体数据会被视为数据组件chicken/sound_variant。 - [图:字符串]* *variant：（命名空间ID）鸡的变种。如果设置值无效则设置为 ``` temperate ``` 。此项实体数据会被视为数据组件chicken/variant。
-
-基岩版：
-
- 参见：基岩版存档格式/实体格式和基岩版存档格式/实体格式/组件 
-
-### 鸡变种
-
-主条目：鸡/DV
-
-### 鸡音效变种
-
-主条目：鸡/DV2
-
-# 成就
-
-主条目：成就
-以下成就适用于所有生物：
-
-# 进度
-
-主条目：进度
-以下进度适用于所有生物：
-
-# 视频
-
-注意：该视频对鸡不会自然生成于恶地的描述已于春意盎然失效。
-
-# 历史
-
-# 你知道吗
-
-- 寒带鸡的灵感来自于现实中的波兰鸡。
-- 玩家无法与坐在矿车中的鸡交互，因为矿车的判定箱覆盖了鸡的判定箱。
-- 当鸡在空中被杀死时，它的“尸体”会比其他生物下落得慢，并且仍然能看到翅膀扇动的动画。
-- 因为鸡的尺寸很小，所以鸡能够“藏”在漏斗或炼药锅里，这可保护它们不受这些方块上面的熔岩或水的影响。
-- Notch在Twitter中说他将在Beta版本结束前几个星期把鸡改成鸭子，这在Twitter上引起了热议。几天后，Jeb仍接受到关于这条消息的反馈，他证实这条消息只是一个玩笑。
-- 当你在原主机版加载/创建/退出一个世界时，会出现一条消息“Is it a Chicken, or a duck?”。同时，生物头像的描述的最后一行写道“... and a chicken... Or is it a duck?”。 - 携带版0.3.0的更新日志里把鸡当成了鸭。 - Notch在后来的博客中把鸡称为“the chicken/duck/whatevers”（鸡或鸭或其他什么），说明了在那个时候鸡还没有官方名称。
-- 在现实中，鸡是卵生动物，但在游戏中鸡可以直接生下幼年鸡。
-- 在愚人节版本Java版2.0中，加入了下钻石和青金石的钻石鸡。
-- 在Java版中，鸡在稀疏丛林的生成频率比在其他生物群系中高。
-
-# 画廊
-
-- 一只鸡
-- 濒死的鸡
-- 一个容纳了超过100只鸡的管状养鸡场
-- 一个养鸡场
-- 由240只成年鸡组成的一个圆圈
-- 一只鸡和一个鸡蛋
-- 一只鸡和一只在自燃的幼年僵尸
-- 一只看着玩家的鸡
-- 一只坐着矿车的鸡
-- 鸡与小型史莱姆尺寸的对比
-- 一只着火的鸡
-- 一只游泳的鸡
-- 一组跟着玩家的鸡
-- 一只被豹猫攻击的鸡
-- 一只在扇动翅膀从高处掉下的鸡
-- 一只鸡与一只幼年绵羊的对比
-- 鸡的三种变种和对应的鸡蛋
-
-## 渲染图
-
-- 鸡在游泳和飞行时的动画
-
-## 纹理
-
-- 成年温带鸡的纹理
-
-## 艺术作品
-
-- 鸡的官方艺术作品
-- 另一幅鸡的官方艺术作品
-- 幼年鸡的官方艺术作品
-- 一幅官方艺术作品，其中展示了幼年温带鸡和寒带鸡
-
-# 参见
-
-- Tutorial:刷蛋
-
-# 参考
-
-1. ↑ MC-4773 — 漏洞状态为“有意为之”。
-1. ↑ MC-185178
-1. ↑ MC-95818
-1. ↑ MC-2153 — 漏洞状态为“已修复”。
-1. ↑ MC-260035 — 漏洞状态为“已修复”。
-1. ↑ MCPE-9125 — 漏洞状态为“已修复”。
-1. ↑ MCPE-190750 — 漏洞状态为“已修复”。
-1. ↑ Also, the chicken is now a duck.，来自@notch。X（曾名Twitter），2011年10月28日。
-1. ↑ @NationalStupid1 It was a joke，来自@jeb_。X（曾名Twitter），2011年11月2日。
-1. ↑ http://www.mojang.com/2012/04/minecraft-pocket-edition-now-with-crafting/
-1. ↑ Gender in Minecraft（存档） — The Word of Notch，2012年7月28日。
-
-# 导航
+Cold chickens are based on Polish chickens; chickens can hide in hoppers/cauldrons; Notch's "chicken → duck" tweet was a joke; April Fools Java 2.0 had diamond/lapis chickens; chickens spawn more often in sparse jungles (Java).

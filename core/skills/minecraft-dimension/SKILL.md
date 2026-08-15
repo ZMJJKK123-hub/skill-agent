@@ -1,151 +1,49 @@
 ---
 name: minecraft-dimension
-description: |
-  维度定义格式（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】维度定义文件是维度（Dimension）在数据包中的数据驱动定义文件。
-  
-  【涵盖内容】
-  - 区块生成器
-  - debug
-  - flat
-  - noise
-  - 生物群系源
-  - checkerboard
-  - fixed
-  - multi_noise
-  - the_end
-  
-  【关键定义】
-  - 注册表：LEVEL_STEM
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 维度定义格式 的完整规范时
+description: Dimension definition JSON: LEVEL_STEM registry, chunk generators, biome sources.
+whenToUse: Use when writing datapack dimension definitions or custom world generation dimensions.
 ---
 
-本条目所述内容仅适用于Java版。
-维度定义文件是维度（Dimension）在数据包中的数据驱动定义文件。
+# Dimension Definitions
 
-# 定义格式
+This content applies only to Java Edition.
 
-维度在游戏内使用
-```
-LEVEL_STEM
-```
+Dimension definition files are the data-driven definitions of dimensions in datapacks.
 
-注册表，数据包路径为
-```
-dimension
-```
+## Definition format
 
-，即所有维度定义文件都需要在
-```
-data/<
-命名空间
->/dimension
-```
+Dimensions use the `LEVEL_STEM` registry; the datapack path is `dimension` (definitions in `data/<namespace>/dimension`, tags in `data/<namespace>/tags/dimension`).
 
-目录内定义，维度标签则需要在
-```
-data/<
-命名空间
->/tags/dimension
-```
+Definition files use JSON with the following structure:
 
-目录内定义。
+- JSON file root object
+  - `type` (string/compound, required): dimension type; inline definitions are parsed but fail datapack verification (no namespace ID) and interrupt connection.
+  - `generator` (compound, required): chunk generator.
+    - `type` (string, required): chunk generator type; extra fields per type (below).
 
-维度定义文件使用JSON格式，并具有下列结构：
+### Chunk generators
 
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:字符串][图:NBT复合标签/JSON对象]* *type：维度类型，决定了维度除世界生成外的基础特征。虽然游戏支持内联定义但会因为无法获取维度类型的命名空间ID导致无法验证数据包从而中断游戏连接。 - [图:NBT复合标签/JSON对象]* *generator：区块生成器，决定了维度世界生成的基础特征。 - [图:字符串]* *type：区块生成器类型。 - 依区块生成器类型的额外字段，见§ 区块生成器。
+The chunk generator decides how terrain generates, plus the dimension's sea level, min build height, and total height. Noise generators read these from noise settings; the other two hardcode min height 0 and height 384 (flat sea level −64, debug 63).
 
-## 区块生成器
+- `debug`: generates the debug mode grid of blocks; no other terrain; fixed plains biome.
+- `flat`: generates superflat worlds. `settings` (compound, required): flat generator settings.
+- `noise`: generates complex terrain with a noise generator. Fields:
+  - `biome_source` (compound, required): biome distribution (below).
+  - `settings` (string/compound, required): noise settings.
 
-区块生成器（Chunk Generator）决定了维度应该如何生成地形。
+### Biome sources
 
-除地形生成本身外，区块生成器还决定了本维度的海平面、允许生成地形的最低高度和总高度。对于噪声型区块生成器而言，这些值从噪声设置中读取；而另外两种区块生成器硬编码允许生成地形的最低高度和总高度分别为0和384，平坦型区块生成器海平面为-64，调试型为63。这些值影响了维度的各种行为。
+Only noise generators can set a biome source; others use a fixed source.
 
-### debug
+- `checkerboard`: places biomes in a checkerboard. `biomes` (string/list, required: ID, tag, or list), `scale` (int, 0≤v≤62, default 2; each increment doubles the cell size; 0 = one chunk per cell).
+- `fixed`: always uses one biome. `biome` (string, required).
+- `multi_noise`: places biomes by biome noise; used by the Overworld and Nether. Either `preset` (string/compound, required) referencing a parameter list, or a non-empty `biomes` list of parameter points, each `biome` (string, required) + `parameters` (compound, required).
+- `the_end`: used by the End dimension.
 
-调试型区块生成器，生成调试模式世界的网格状方块集合。不会生成任何其他地形，固定使用平原生物群系。
+## Multi-noise parameter lists
 
-- [图:NBT复合标签/JSON对象] 区块生成器 - [图:字符串]* *type： ``` debug ```
+Stored in `data/<namespace>/worldgen/multi_noise_biome_source_parameter_list`; root object: `preset` (string, required): a biome parameter (vanilla provides `overworld` and `nether`). These lists only reference hardcoded parameters; vanilla uses them to temporarily modify Overworld biome distribution for experimental biomes.
 
-### flat
+## Definition behavior
 
-平坦型区块生成器，生成超平坦世界。超平坦生成设置决定了本维度的地形生成、固定使用的生物群系、生成结构以及部分地物生成。
-
-- [图:NBT复合标签/JSON对象] 区块生成器 - [图:字符串]* *type： ``` flat ``` - [图:NBT复合标签/JSON对象]* *settings：超平坦世界生成设置。 - - 超平坦生成设置，见Template:nbt inherit/flat generator settings/source
-
-### noise
-
-噪声型区块生成器，使用噪声生成器生成更复杂的地形。
-
-噪声设置决定了维度的地形生成，生物群系源决定了维度的生物群系分布，区块生成的所有阶段都会进行。玩家在此区块生成器的维度中时调试屏幕会显示部分世界生成信息。
-
-- [图:NBT复合标签/JSON对象] 区块生成器 - [图:字符串]* *type： ``` noise ``` - [图:NBT复合标签/JSON对象]* *biome_source：生物群系源，决定生物群系如何分布。 - [图:字符串]* *type：（命名空间ID）生物群系源类型。 - 依生物群系源类型的额外字段，见§ 生物群系源。 - [图:字符串][图:NBT复合标签/JSON对象]* *settings：噪声设置，决定了本维度的地形生成和生物群系分布等。 - 见噪声设置。
-
-## 生物群系源
-
- 参见：世界生成 § 生物群系产生源 
-生物群系源决定了世界生成中游戏如何放置生物群系。只有噪声生成器可以设置生物群系源，其余两种区块生成器均使用固定型。
-
-### checkerboard
-
-棋盘型生物群系源，以棋盘样式放置生物群系。
-
-- [图:NBT复合标签/JSON对象] 生物群系源 - [图:字符串]* *type： ``` checkerboard ``` - [图:字符串][图:NBT列表/JSON数组]*biomes：要生成的生物群系。可以为一个生物群系ID、一个生物群系标签或一个生物群系ID的列表。 - [图:整型]scale：（0≤值≤62，默认为2）棋盘格的大小。设定为0表示每个格子都是一个区块宽。每次[图:整型]scale增加时都会加倍。
-
-### fixed
-
-固定型生物群系源，固定使用一个特定的生物群系。也被单一生物群系所用。
-
-- [图:NBT复合标签/JSON对象] 生物群系源 - [图:字符串]* *type： ``` fixed ``` - [图:字符串]* *biome：（命名空间ID）生物群系。
-
-### multi_noise
-
-多噪声型生物群系源，将根据生物群系噪声放置生物群系。被主世界和下界所用。
-
-- [图:NBT复合标签/JSON对象] 生物群系源 - [图:字符串]* *type： ``` multi_noise ``` - - 若引用多噪声型生物群系源参数列表： - [图:字符串][图:NBT复合标签/JSON对象]* *preset：多噪声参数列表，命名空间ID或内联定义均可。 - - 若直接指定生物群系参数列表： - [图:NBT列表/JSON数组]* *biomes：（不能为空）生物群系参数特征列表。生物群系可以在多个参数特征中出现。 - [图:NBT复合标签/JSON对象]：一个参数特征。 - [图:字符串]* *biome：一个生物群系ID。 - [图:NBT复合标签/JSON对象]* *parameters：代表应该放置生物群系的最理想条件。 - - 生物群系噪声值参数，见Template:Nbt inherit/parameter point/source
-
-### the_end
-
-末地型生物群系源。被用于末地维度。
-
-- [图:NBT复合标签/JSON对象] 生物群系源 - [图:字符串]* *type： ``` the_end ```
-
-# 多噪声参数列表
-
-多噪声参数列表，全称多噪声型生物群系源参数列表（Multi Noise Biome Source Parameter List），用于引用一个内置的生物群系参数。其以JSON文件的形式存储于数据包的
-```
-data/<
-命名空间
->/worldgen/multi_noise_biome_source_parameter_list
-```
-
-目录下。
-
-- [图:NBT复合标签/JSON对象] JSON文件根对象 - [图:字符串]* *preset：（命名空间ID）一个生物群系参数。原版默认存在 ``` overworld ``` 和 ``` nether ``` 两个生物群系参数。
-
-多噪声参数列表只能引用硬编码的生物群系参数，被原版游戏用于临时修改主世界生物群系分布的世界。当游戏添加了新的实验性生物群系从而需要修改实验性世界引用的生物群系参数时，只需修改多噪声参数列表引用的生物群系参数以间接修改维度，而无需直接修改维度数据。
-
-# 定义行为
-
-维度定义数据仅在服务端启动时加载一次，使用
-```
-/
-reload
-```
-
-命令不可以使维度定义被重新加载，而必须重启服务端。
-
-游戏加载存档时，会将所有可用的维度动态加载到世界中，如果修改了维度的数据包被禁用，则游戏不会加载数据包提供的维度。因此不推荐在存档创建后对维度进行添加或删除操作，这可能导致存档损坏或载入无效的区块数据。
-
-原版游戏不存在维度定义文件，而是全部使用世界预设文件定义的维度集来注册维度。但游戏依旧允许通过维度定义文件修改维度，且维度文件对维度定义的优先级高于世界预设文件。
-
-# 历史
-
-# 参见
-
-- 世界预设定义格式
-- 世界生成设置存储格式
-
-# 导航
+Dimension data is loaded only once at server startup; `/reload` does not reload it — a server restart is required. All available dimensions load dynamically when the save loads; disabling the providing datapack removes the dimension (adding/removing dimensions after world creation is discouraged — it may corrupt saves). Vanilla defines no dimension files; it registers dimensions via world presets, but dimension files override world preset definitions.

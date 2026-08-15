@@ -1,24 +1,7 @@
 ---
 name: forge-rendering-modelloaders
-description: |
-  Forge 自定义模型加载器（Model Loaders）指南（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】`BakedModel`
-  
-  【涵盖内容】
-  - `getOverrides`
-  - `useAmbientOcclusion`
-  - `isGui3d`
-  - `isCustomRenderer`
-  - `getParticleIcon`
-  - <s>`getTransforms`</s>
-  - `applyTransform`
-  - `getQuads`
-  - `ItemOverrides()`
-  - `resolve`
-  - `BakedOverride`
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Forge 自定义模型加载器（Model Loaders）指南 的完整规范时
+description: Forge custom model loaders: BakedModel — getOverrides, AO, gui3d, custom renderer, particle icon.
+whenToUse: Use when implementing custom model loaders or BakedModel logic.
 ---
 
 `BakedModel`

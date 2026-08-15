@@ -1,46 +1,42 @@
 ---
 name: minecraft-tag-goat-horn
-description: |
-  Java版标签/山羊角乐器（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】山羊角乐器标签（Instrument Tags）是山羊角乐器的组合。
-  
-  【涵盖内容】
-  - goat_horns
-  - regular_goat_horns
-  - screaming_goat_horns
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 Java版标签/山羊角乐器 的完整规范时
+description: Goat horn instrument tags for referencing instruments in packs.
+whenToUse: Use when querying or writing goat horn instrument tags (goat_horns etc.).
 ---
 
-本条目所述内容仅适用于Java版。
-山羊角乐器标签（Instrument Tags）是山羊角乐器的组合。
+# Goat Horn Instrument Tags
 
-# 使用
+This content applies only to Java Edition.
 
-山羊角乐器标签用于控制生成的山羊角的种类。
+Goat horn instrument tags are groups of goat horn instruments.
 
-# 标签列表
+## Usage
 
-## goat_horns
+Goat horn instrument tags control which instrument a goat horn has when it is dropped.
 
-- 在创造模式物品栏中显示的所有不同乐器的山羊角。
+## Tag list
 
-- #goat_horns（2项） - ``` #regular_goat_horns ``` - ``` #screaming_goat_horns ```
+### `#goat_horns` (2 entries)
 
-## regular_goat_horns
+All goat horns of different instruments shown in the creative inventory:
 
-- 普通山羊掉落的山羊角。
-- 可从掠夺者前哨站战利品箱子中获取的山羊角。
+- `#regular_goat_horns`
+- `#screaming_goat_horns`
 
-- #regular_goat_horns（4项） - ``` ponder_goat_horn ``` （沉思） - ``` sing_goat_horn ``` （歌颂） - ``` seek_goat_horn ``` （寻觅） - ``` feel_goat_horn ``` （感受）
+### `#regular_goat_horns` (4 entries)
 
-## screaming_goat_horns
+Goat horns dropped by regular goats and obtainable from pillager outpost loot chests:
 
-- 尖叫山羊掉落的山羊角。
+- `ponder_goat_horn` (Ponder)
+- `sing_goat_horn` (Sing)
+- `seek_goat_horn` (Seek)
+- `feel_goat_horn` (Feel)
 
-- #screaming_goat_horns（4项） - ``` admire_goat_horn ``` （仰慕） - ``` call_goat_horn ``` （呼唤） - ``` yearn_goat_horn ``` （憧憬） - ``` dream_goat_horn ``` （想象）
+### `#screaming_goat_horns` (4 entries)
 
-# 历史
+Goat horns dropped by screaming goats:
 
-# 导航
+- `admire_goat_horn` (Admire)
+- `call_goat_horn` (Call)
+- `yearn_goat_horn` (Yearn)
+- `dream_goat_horn` (Dream)

@@ -1,390 +1,52 @@
 ---
 name: minecraft-snbt-format
-description: |
-  SNBT格式（Minecraft Wiki 中文版全量正文）。
-  
-  【概述】本条目介绍的是用文本表示的NBT结构。关于NBT网络传输和文件格式，请见“NBT格式”；关于在命令中检索特定NBT标签的方法，请见“NBT路径”。
-  
-  【涵盖内容】
-  - 数值
-  - 浮点数
-  - 整数
-  - 布尔值
-  - 类型后缀
-  - 字符串
-  - 转义序列
-  - 数组
-  - 列表
-  - 复合标签
-  
-  【适用场景】编写数据包 / 资源包 / Java 版自定义内容，需要 SNBT格式 的完整规范时
+description: SNBT format — numbers, suffixes, strings, arrays, lists, compounds, operations.
+whenToUse: Use when writing SNBT in commands, NBT components, or .snbt files.
 ---
 
-本条目介绍的是用文本表示的NBT结构。关于NBT网络传输和文件格式，请见“NBT格式”；关于在命令中检索特定NBT标签的方法，请见“NBT路径”。
-
-本条目所述内容仅适用于Java版。
-SNBT（Stringified Named Binary Tag）是一种用文本表示的树状数据结构。
+# SNBT Format
 
-# 概述
-
-SNBT将游戏中的数据结构转换为适合阅读的文本，以供玩家检索和操作。其常用于获取和修改数据的各种命令中。客户端核心文件中的数据生成器也可以以SNBT形式输出数据。SNBT格式的文件本质是以UTF-8编码且文件后缀名为
-```
-.snbt
-```
+SNBT (Stringified Named Binary Tag) is the text form of NBT, used in data-modifying commands and `.snbt` files (UTF-8). It resembles NBT but is not identical to it. `/data get` prints syntax-highlighted SNBT ("pretty-printed"); the `nbt` text component type can also output highlighted SNBT.
 
-的文本文件。
-
-SNBT也可以看作是NBT的一种文本表示，但二者格式并不完全一致。
-
-一串完整的SNBT中一般包含若干嵌套的花括号，每个花括号中包含若干个以逗号隔开的键值对。在整体上，SNBT呈树状结构。
-
-当玩家在游戏中使用
-```
-/
-data
- get
-```
+## Data Types
 
-成功获取数据时，游戏会将数据转换为SNBT文本并进行语法高亮，使玩家在聊天栏中看到经过了语法渲染的SNBT结构。这种语法高亮处理也被官方形容为“pretty-printed”（排版印刷）。可以由
-```
-nbt
-```
-
-类型的文本组件主动输出经语法高亮的SNBT。
+### Numbers
 
-示例：
+Underscores may separate digits (`0b10_01`, `0xAB_CD`, `1_2.3_4__5f`, `1_2e3_4`) but not at the start/end.
 
-```
-{
-  
-key1
-: 
-123
-,
-  '
-key2
-': '
-somevalue1
-',
-  "
-key3
-": {
-    
-subkey1
-: 
-0
-x
-1
-C
-8
-,
-    "
-subkey2
-": "
-somevalue2
-"
-  }
-}
-```
+- **Floats** (IEEE 754): no-suffix decimals are doubles (`1.2`). Fractional or integer parts may be omitted (`.1`, `1.`). Scientific notation allowed (`1.2e3`, `12000e-1` → 1200.0). Out-of-range (→ infinity) values like `1e1000` are invalid. NaN/Inf/hex floats unsupported.
+- **Integers**: no-suffix integers are ints (`123`). Hex `0x` and binary `0b` prefixes allowed (`0xCAFE`, `0b101`). Integers (except 0) must not start with `0` (octal ambiguity).
+- **Booleans**: SNBT booleans are bytes limited to 0/1; `true`/`false` (case-insensitive) → 1b/0b.
 
-# 数据类型
+### Type Suffixes
 
-## 数值
+First letters, case-insensitive: `b` byte, `s` short, `i` int, `l` long (floats: `f`, `d`). Optionally prefixed with `s`/`S` (signed) or `u`/`U` (unsigned) — e.g. `123sb` = signed byte 123. Signed values store as two's complement; the prefix only affects parse ranges (`240sb` fails; `240ub` == `-16sb`). Decimal numbers default to signed; hex/binary default to unsigned. Because `b` is a valid hex digit, hex bytes need the explicit prefix (`0x11ub`, `0x11sb`).
 
-所有数值都可以使用
-```
-_
-```
+### Strings
 
-来分隔数位（类似于1,000中的“,”），
-```
-_
-```
+- Quoted: `"test"` or `'test'`; the same quote inside must be escaped (`"\"test"` valid, `""test"` invalid).
+- Unquoted: `test` — only `0-9`, `a-zA-Z`, `.`, `_`, `+`, `-`; must not start with a digit, `.`, `+`, or `-` (numeric conflicts); `true`/`false` parse as booleans.
+- Escape sequences in quoted strings: `\"`, `\'`, `\\`, `\/`, `\b`, `\f`, `\n`, `\r`, `\t`, `\uXXXX` (Unicode escapes).
 
-不能出现在数值的开头或结尾。
+### Arrays
 
-- 示例： ``` 0b10_01 ``` 、​ ``` 0xAB_CD ``` 、​ ``` 1_2.3_4__5f ``` 和​ ``` 1_2e3_4 ```
+`[B;...]`, `[I;...]`, `[L;...]`: values without suffixes take the array's type (`[B;1,2]` == `[B;1b,2b]`); smaller types are widened (`[I;1b,2s,3]` == `[I;1i,2i,3i]`).
 
-### 浮点数
+### Lists
 
-浮点数根据数据范围不同分为[图:单精度浮点数]单精度浮点数与[图:双精度浮点数]双精度浮点数两种类型，它们均遵循IEEE754标准。
+Heterogeneous elements allowed (`['', {text:"hello"}, 123]`; some contexts still require homogeneity). One trailing comma allowed after a valid element (`[1,2,]`; `[,]`, `[1,,]` invalid). Nesting ≤ 512 levels.
 
-无类型后缀的小数点数值默认被识别为[图:双精度浮点数]双精度浮点数。例如
-```
-1.2
-```
+### Compounds
 
-。
+Key-value maps (`{a:b}`). One trailing comma allowed (`{a:b,}`; `{,}`, `{a:b,,}` invalid). Nesting ≤ 512 levels.
 
-所有类型的浮点数数值的整数或小数部分可以省略。
+## SNBT Operations
 
-- 比如，允许写为 ``` .1 ``` 或 ``` 1. ``` 。
+Function-like syntax `<name>(<arg1>, ...)` evaluated at parse time (cannot be preserved or syntax-highlighted):
 
-所有类型的浮点数数值允许使用“E”来表示科学计数法：
+- `bool(arg)` — exactly one numeric or boolean argument: booleans pass through; numbers → true if non-zero. `bool(true)` → true; `bool(0)` → false; `bool("foo")` → error.
+- `uuid(str)` — one dash-formatted UUID hex string → int array: `uuid("f81d4fae-7dec-11d0-a765-00a0c91e6bf6")` → `[I; -132296786, 2112623056, -1486552928, -920753162]`.
 
-- 例如 ``` 1.2e3 ``` 、​ ``` 1.2E3 ``` 、​ ``` 1.2E+3 ``` 和​ ``` 12000e-1 ``` 都可以用来表示 ``` 1200.0 ```
+## Conversion
 
-不允许超出数据范围（将被转换为无穷值）的数值，如
-```
-1e1000
-```
-
-。
-
-不支持
-```
-NaN
-```
-
-、
-```
-Inf
-```
-
-以及十六进制浮点数写法。
-
-### 整数
-
-无类型后缀的整数数值默认被识别为[图:整型]整型。例如
-```
-123
-```
-
-。
-
-所有类型的整数数值都可以使用
-```
-0x
-```
-
-前缀来表示为十六进制数，或者使用
-```
-0b
-```
-
-前缀来表示二进制数。
-
-- 示例： ``` 0xbad ``` （等于 ``` 2989 ``` ）， ``` 0xCAFE ``` （等于 ``` 51966 ``` ）， ``` 0b101 ``` （等于5）。
-
-除了0之外，任何整数数值都不能以
-```
-0
-```
-
-开头：因为以0开头的整数一般表示它是一个8进制数，这种规定有助于防止其他意外用法出现。
-
-### 布尔值
-
-SNBT的[图:布尔型]布尔值实际上是一个取值只能为0或1的特殊[图:字节型]字节型数据。
-
-- 当值为0时，表示“假”，可以使用 ``` false ``` （字母不区分大小写）来表示。
-- 当值为1时，表示“真”，可以使用 ``` true ``` （字母不区分大小写）来表示。
-
-### 类型后缀
-
-每种数值类型的英文首字母都可以作为类型后缀，大小写均可。
-
-整数数值的类型后缀 （
-```
-b
-```
-
-或
-```
-B
-```
-
- - 字节型，
-```
-s
-```
-
-或
-```
-S
-```
-
- - 短整型，
-```
-i
-```
-
-或
-```
-I
-```
-
- - 整型, 
-```
-l
-```
-
-或
-```
-L
-```
-
- - 长整型）之前可以再添加一个
-```
-s
-```
-
-或
-```
-S
-```
-
-以表示有符号（Signed）或添加一个
-```
-U
-```
-
-或
-```
-u
-```
-
-以表示无符号（Unsigned）。
-
-- 示例： ``` 123sb ``` 表示“值为123的Signed Byte（有符号字节型）”。
-- 数值的有符号形式以二进制补码格式存储。
-- 有符号或无符号后缀只影响解析时的范围，它们最终都将被存储为有符号型整数。比如： ``` 240sb ``` 将解析失败（因为它的后缀代表它应该按照有符号字节型解析，但它的值超出了有符号字节型的范围）； ``` 240ub ``` 与 ``` -16sb ``` 相等。
-
-如果类型后缀不带
-```
-s
-```
-
-、
-```
-S
-```
-
-、
-```
-u
-```
-
-或
-```
-U
-```
-
-，则对于十进制数来说，它被默认视为有符号数；对于十六进制或二进制数来说，它被默认视为无符号数。
-
-特殊地，由于
-```
-b
-```
-
-也是一个合法的十六进制数字，所以字节型大小的十六进制数值只能使用带符号后缀表示。比如
-```
-0x11ub
-```
-
-或
-```
-0x11sb
-```
-
-。
-
-## 字符串
-
-[图:字符串]字符串是若干Unicode字符构成的序列：
-
-- 引号字符串（Quoted Strings） - 示例： ``` "test" ``` 或 ``` 'test' ``` 。 - 将相应类型的引号作为字符串内容时需要进行转义。例如 ``` "\"test" ``` 是合法的，而 ``` ""test" ``` 将出错。
-- 无引号字符串（Unquoted strings） - 示例： ``` test ``` 。 - 只能包含数字 ``` 0-9 ``` 、字母 ``` a-zA-Z ``` 、小数点 ``` . ``` 、下划线 ``` _ ``` 、正负号 ``` + ``` 和​ ``` - ``` 。 - 不能以 ``` 0-9 ``` 、​ ``` . ``` 、​ ``` + ``` 和​ ``` - ``` 开头。这是为了防止与数值写法发生冲突。 - 特殊地，对于 ``` true ``` 和 ``` false ``` ，它们将被解析为SNBT布尔值，而非无引号字符串。
-
-### 转义序列
-
-在引号字符串中，通过转义序列（Escape sequences）可表示更多字符：
-
-## 数组
-
-[图:字节型数组][图:整型数组][图:长整型数组]数组（
-```
-[B;]
-```
-
-、​
-```
-[I;]
-```
-
-和​
-```
-[L;]
-```
-
-）中的值如果不带类型后缀，则其类型后缀会被假设为与数组类型相匹配的后缀。
-
-- 示例： ``` [B;1,2] ``` 等价于 ``` [B; 1b, 2b] ```
-
-数组也允许比其自身类型更小的数。
-
-- 示例： ``` [I;1b,2s,3] ``` 是合法的，并且等价于 ``` [I;1i,2i,3i] ``` 。
-
-## 列表
-
-[图:NBT列表/JSON数组]列表是多个元素构成的序列。
-
-列表可以包含多个不同类型的元素。
-
-- 示例： ``` ['', {text:"hello"}, 123] ``` 。
-- 在某些使用环境下，列表依然仅允许同一种元素，这与其所在的上级数据结构的要求有关。
-
-列表允许结尾逗号：
-
-- 示例： ``` [1,2,] ``` 是合法的，并且等价于 ``` [1,2] ``` 。
-- 仅允许一个在一个合法的元素之后的结尾逗号。 ``` [,] ``` 和​ ``` [1,,] ``` 均不允许。
-
-列表可以相互嵌套，但嵌套层数不能超过512层。
-
-## 复合标签
-
-[图:NBT复合标签/JSON对象]复合标签是一个键值对构成的映射表（Map）。
-
-允许结尾逗号：
-
-- 示例： ``` {a:b,} ``` （将一个无引号字符串a映射为无符号字符串b）
-- 仅允许一个在一个合法的元素之后的结尾逗号。 ``` {,}和{a:b,,} ``` 均不允许。
-
-复合标签可以相互嵌套，但嵌套层数不能超过512层。
-
-# 操作
-
-SNBT操作是一种特殊的SNBT语法，它接受若干输入参数以返回计算结果，而游戏会将其结果作为操作的值。因而SNBT操作被游戏处理后无法被原样保留，游戏内也不存在SNBT操作的语法渲染。
-
-SNBT操作的格式为：
-```
-<
-操作名
->(<
-参数1
->, <
-参数2
->, ...)
-```
-
-。
-
-当前支持2种SNBT操作：
-
-- ``` bool(arg) ``` ：将参数 ``` arg ``` 转换为[图:布尔型]布尔值。 - 必须有且只有一个参数，且此参数必须是数字或布尔值，否则操作解析失败。 - 如果参数为一个布尔值，则直接返回该参数。 - 如果参数为一个数值，且它不为0，则返回 ``` true ``` ，否则返回 ``` false ``` 。 - 示例： - ``` bool(true) ``` → ``` true ``` - ``` bool(5) ``` → ``` true ``` - ``` bool(0) ``` → ``` false ``` - ``` bool("foo") ``` →错误
-- ``` uuid(str) ``` ：将参数 ``` str ``` 转换为[图:整型数组]整型数组。 - 必须有且只有一个参数，且此参数必须是一个符合带连字符的十六进制格式的UUID字符串，否则操作解析失败。 - 游戏会将此UUID字符串转换为对应的UUID整型数组。 - 示例： - ``` uuid("f81d4fae-7dec-11d0-a765-00a0c91e6bf6") ``` → ``` [I; -132296786, 2112623056, -1486552928, -920753162] ```
-
-# 转换
-
-主条目：NBT格式 § 转换
-游戏并不会直接存储SNBT。最终，SNBT需要被转换为程序对象，但这一步并非直接完成，而是以NBT作为中介。这些内容在NBT格式的页面有所介绍。
-
-# 历史
-
-# 参考
-
-1. ↑ Minecraft 26.1 Snapshot 5 — Minecraft.net，2026年1月27日。
-1. ↑ MC-280439 — 漏洞状态为“已修复”。
-1. ↑ Allow single quote in strings by boq · Pull Request #52 — Mojang/brigadier – GitHub。
-
-# 导航
+SNBT is never stored directly — it converts to NBT, then to program objects (see the nbt-format skill).
