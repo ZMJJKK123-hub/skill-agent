@@ -148,6 +148,179 @@ def finalize_known_issues(session_dir: Path) -> None:
     )
 
 
+def _reset_round_state() -> None:
+    """daemon 每轮开始前重置进程内存级状态，防止跨轮污染。
+
+    agent_loop 使用模块级全局单例（task_manager / todo_manager /
+    teammate_manager / bg_manager / coordinator），一轮跑完后这些状态
+    会残留到下一轮（例如上一轮建的 .tasks/ 任务、队友名册、协议请求）。
+    每轮开始前把它们清回初始状态——与"每任务一个全新进程"的语义对齐。
+    """
+    try:
+        from core.tools import (
+            task_manager, todo_manager, teammate_manager, bg_manager,
+        )
+        from core.protocol import coordinator
+        task_manager.clear()
+        todo_manager.todos = []
+        teammate_manager.team.clear()
+        teammate_manager.threads.clear()
+        teammate_manager._save_team_config()
+        teammate_manager.bus.clear_all()
+        coordinator.reset()
+        # 后台任务残留：清空注册表与通知队列（线程本身 daemon=True 不阻塞退出）
+        try:
+            bg_manager.tasks.clear()
+            q = bg_manager.notification_queue
+            while not q.empty():
+                try:
+                    q.get_nowait()
+                except Exception:
+                    break
+        except Exception:
+            pass
+    except Exception as e:
+        print(f"[run_task] 重置内存状态失败（继续）: {e}", flush=True)
+
+
+def _run_one_round(messages: list, session_dir: Path,
+                   session_root_path: Path, mode: str) -> str:
+    """跑一轮 agent_loop 并完成收尾：清断点、写回复历史、收集错误信号。"""
+    from core.agent import agent_loop
+    final = agent_loop(messages)
+    print(f"[run_task] 完成，最终回复:\n{final}", flush=True)
+
+    # 正常完成：清掉断点文件（一轮真正结束，不再需要断点恢复）
+    try:
+        from core.conversation import clear_working
+        clear_working(session_root_path)
+    except Exception as e:
+        print(f"[run_task] 清断点失败: {e}", flush=True)
+
+    # 把最终回复追加进对话历史（chat 和 mod 模式都写，供历史会话展示）
+    if mode in ("chat", "mod"):
+        try:
+            from core.conversation import append_assistant as _append_assistant
+            _append_assistant(session_root_path, final or "")
+        except Exception as e:
+            print(f"[run_task] 保存回复到历史失败: {e}", flush=True)
+
+    # 收尾：收集本次运行错误信号 → 去重追加 mod/KNOWN_ISSUES.md
+    #    （agent 对 KNOWN_ISSUES.md 只读，新坑统一在这里落账，旧条目永不清除）
+    #    仅 mod 模式（chat 模式没有模板 KNOWN_ISSUES.md，函数内部会跳过）
+    try:
+        finalize_known_issues(session_dir)
+    except Exception as e:
+        print(f"[run_task] finalize_known_issues 失败: {e}", flush=True)
+    return final
+
+
+def daemon_loop(session_dir: Path, session_root_path: Path, mode: str) -> None:
+    """chat 模式常驻循环（M-opt1：消除每轮冷启动）。
+
+    首轮跑完后不退出进程：每 0.5s 轮询 .chat/pending.jsonl，
+    有新消息就（drain 消费队列 → 重置内存状态 → 组装历史上下文 →
+    agent_loop → 收尾），再回到等待。第二轮起零 import / 零技能扫描开销。
+
+    空闲超时（env DSH_DAEMON_IDLE_TIMEOUT，默认 600s）后自动退出，
+    由 server 下次请求时重新拉起（长时间不用时释放进程资源）。
+
+    兼容性（已核对 server.py 逻辑）：
+    - 运行中插话：server 在进程存活时把新消息 enqueue_pending 并同步写历史，
+      daemon 每 0.5s 消费 → 与"排队等当前轮跑完"语义一致；
+    - pause：server kill 进程，断点 working.jsonl 保留，resume 新进程照常恢复；
+    - 会话删除/reset：server kill 进程 + 清历史，daemon 随之消亡；
+    - 多会话并发：每会话一个 daemon 进程，与现状一致。
+    - server 重启：_restore_sessions 读 .chat/daemon.pid kill 遗留 daemon，
+      防止新旧进程同时消费同一队列。
+    """
+    import time as _time
+    from core.conversation import (
+        pending_count, drain_pending, load_recent_history,
+    )
+
+    idle_timeout = float(os.environ.get("DSH_DAEMON_IDLE_TIMEOUT", "600"))
+    last_activity = _time.time()
+
+    # 状态文件（.chat/daemon.state：waiting | working）：
+    # server 据此把"daemon 空闲"识别为 finished（进程存活但上一轮已完成，
+    # 前端应显示"完成"而不是一直转圈）。用状态文件而非 run.log 打印——
+    # 避免污染日志尾部，导致前端按"最终回复:"提取回复时带上标记行。
+    daemon_state_file = session_root_path / ".chat" / "daemon.state"
+    # pid 文件：server 重启时可据此 kill 遗留 daemon（防双进程抢队列）。
+    daemon_pid_file = session_root_path / ".chat" / "daemon.pid"
+    try:
+        daemon_state_file.parent.mkdir(parents=True, exist_ok=True)
+        daemon_pid_file.write_text(str(os.getpid()), encoding="utf-8")
+    except OSError as e:
+        print(f"[run_task] 写 daemon 状态文件失败: {e}", flush=True)
+
+    def _set_state(state: str) -> None:
+        try:
+            daemon_state_file.write_text(state, encoding="utf-8")
+        except OSError as e:
+            print(f"[run_task] 写 daemon 状态失败: {e}", flush=True)
+
+    _set_state("waiting")
+
+    try:
+        while True:
+            _time.sleep(0.5)
+            try:
+                n = pending_count(session_root_path)
+            except Exception:
+                n = 0
+
+            if n <= 0:
+                if _time.time() - last_activity > idle_timeout:
+                    print("[run_task] daemon idle exit", flush=True)
+                    return
+                continue
+
+            # 有排队消息：消费队列（enqueue_pending 已同步写入历史，
+            # 这里只需清空队列文件，历史里已有该消息，避免 load 时重复）
+            last_activity = _time.time()
+            _set_state("working")  # server 据此转 running
+            try:
+                drain_pending(session_root_path)
+            except Exception as e:
+                print(f"[run_task] drain_pending 失败: {e}", flush=True)
+                continue
+
+            # 重置内存级状态（对齐"每任务全新进程"语义）
+            _reset_round_state()
+
+            # 组装上下文：历史已包含新消息（enqueue_pending 同步写历史）
+            try:
+                messages = load_recent_history(session_root_path)
+            except Exception as e:
+                print(f"[run_task] 加载对话历史失败（跳过本轮）: {e}", flush=True)
+                continue
+            if not messages:
+                print("[run_task] daemon 轮无历史消息，跳过", flush=True)
+                continue
+
+            try:
+                _run_one_round(messages, session_dir, session_root_path, mode)
+            except Exception as e:
+                import traceback
+                print(f"[run_task] daemon 轮异常（继续等待）: {e}", flush=True)
+                traceback.print_exc()
+                continue
+
+            # 本轮结束，回到空闲等待（server 据此再次显示"完成"）
+            _set_state("waiting")
+    finally:
+        try:
+            daemon_pid_file.unlink(missing_ok=True)
+        except OSError:
+            pass
+        try:
+            daemon_state_file.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
 def main() -> int:
     # 强制 stdout 行缓冲 + 直写：print 每行立即落盘（run.log），
     # 否则 Windows 重定向下 print 积压到 ~8KB 才写出，
@@ -251,32 +424,14 @@ def main() -> int:
         else:
             messages = [{"role": "user", "content": task_prompt}]
 
-    # 5. 跑完整 agent 循环
-    final = agent_loop(messages)
-    print(f"[run_task] 完成，最终回复:\n{final}", flush=True)
+    # 5. 跑完整 agent 循环（首轮）
+    _run_one_round(messages, session_dir, session_root_path, mode)
 
-    # 5.5 正常完成：清掉断点文件（一轮真正结束，不再需要断点恢复）
-    try:
-        from core.conversation import clear_working
-        clear_working(session_root_path)
-    except Exception as e:
-        print(f"[run_task] 清断点失败: {e}", flush=True)
-
-    # 6. 把最终回复追加进对话历史（chat 和 mod 模式都写，供历史会话展示）
-    if mode in ("chat", "mod"):
-        try:
-            from core.conversation import append_assistant as _append_assistant
-            _append_assistant(session_root_path, final or "")
-        except Exception as e:
-            print(f"[run_task] 保存回复到历史失败: {e}", flush=True)
-
-    # 7. 收尾：收集本次运行错误信号 → 去重追加 mod/KNOWN_ISSUES.md
-    #    （agent 对 KNOWN_ISSUES.md 只读，新坑统一在这里落账，旧条目永不清除）
-    #    仅 mod 模式（chat 模式没有模板 KNOWN_ISSUES.md，函数内部会跳过）
-    try:
-        finalize_known_issues(session_dir)
-    except Exception as e:
-        print(f"[run_task] finalize_known_issues 失败: {e}", flush=True)
+    # 6. chat 模式常驻：首轮与 resume 恢复后都进入 daemon 循环，
+    #    第二轮起零冷启动（openai SDK / 技能扫描只在首轮支付一次）。
+    #    mod 模式维持"每任务一进程"（7s 占比小，且 mod 状态污染风险高）。
+    if mode == "chat":
+        daemon_loop(session_dir, session_root_path, mode)
     return 0
 
 

@@ -74,6 +74,7 @@ class Session:
         self.result: Optional[str] = None
         self.log_path = mod_dir.parent / "run.log"
         self.event_cursor = None  # 事件流游标（由 /api/events 维护）
+        self.daemon_prev_state: Optional[str] = None  # daemon 状态机记忆（waiting/working/None）
 
 
 # 会话表：新会话进内存；服务启动时从磁盘恢复历史会话（供下载/预览/事件）
@@ -83,6 +84,30 @@ sessions: dict[str, Session] = {}
 # 下载互斥锁：防止并发请求同时写同一个 mod.zip（zipfile 非原子写，
 # 并发写半个文件会让读取方拿到 Content-Length 不匹配 → 浏览器 Failed to fetch）
 _download_lock = threading.Lock()
+
+
+def _kill_stale_daemon(session_dir: Path) -> None:
+    """杀掉上一轮 server 进程遗留的 chat daemon（读 .chat/daemon.pid）。
+
+    server 重启后旧 daemon 进程仍存活（孤儿），若不清理，用户发新消息时
+    会与新建进程同时消费同一 pending 队列 → 双进程跑同一会话（竞态污染）。
+    按 pid 文件 kill，失败（进程已死/pid 被复用）则忽略。
+    """
+    pid_file = session_dir / ".chat" / "daemon.pid"
+    try:
+        pid = int(pid_file.read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return
+    try:
+        # Windows 上 os.kill(pid, signal.SIGTERM) 即强制终止；
+        # 仅终止自己之前启动的子进程（pid 复用概率极低，接受）
+        os.kill(pid, 15)  # SIGTERM
+    except OSError:
+        pass
+    try:
+        pid_file.unlink(missing_ok=True)
+    except OSError:
+        pass
 
 
 def _restore_sessions() -> None:
@@ -102,6 +127,8 @@ def _restore_sessions() -> None:
         session_id = child.name
         if session_id in sessions:
             continue
+        # 重启时清理遗留 daemon（防双进程抢队列）
+        _kill_stale_daemon(child)
         mod_dir = child / "mod"
         # 恢复的历史会话：owner 从 owner.txt 读（重启后仍归原用户）
         owner_txt = child / "owner.txt"
@@ -299,18 +326,59 @@ def _assert_owner(sess: Session, username: str) -> None:
         raise HTTPException(403, "无权访问该会话")
 
 
+def _daemon_state(sess: Session) -> Optional[str]:
+    """读取 chat 常驻 daemon 的状态文件：waiting | working | None。
+
+    daemon 进程在 .chat/daemon.state 写入当前状态：
+      - waiting：空闲等待新消息（上一轮已完成）→ 会话应显示"完成"
+      - working：正在跑一轮 → 会话应显示"运行中"
+    - None：非 daemon（进程未存活 / mod 模式 / 状态文件不存在）。
+
+    仅在进程存活时才有意义；进程退出后由 poll() 判定 finished。
+    """
+    if sess.proc is None or sess.proc.poll() is not None:
+        return None
+    state_file = sess.mod_dir.parent / ".chat" / "daemon.state"
+    try:
+        val = state_file.read_text(encoding="utf-8").strip()
+        return val if val in ("waiting", "working") else None
+    except OSError:
+        return None
+
+
 def _session_stats(sess: Session) -> dict:
     """汇总会话状态：运行状态 / 耗时 / 产物统计。
 
     finished 判定：进程已退出（proc 非 None 且 poll 非 None），
-    或恢复的历史会话（proc=None 但 finished_at 已锁定，如已打包 zip）。
+    或恢复的历史会话（proc=None 但 finished_at 已锁定，如已打包 zip），
+    或 daemon 空闲等待（进程存活但 daemon.state == waiting）。
     否则新建未跑任务的会话（proc=None 且 finished_at=None）保持 pending。
+
+    daemon 状态机（chat 常驻）：
+      - waiting：上一轮完成、进程待命 → finished=True、running=False；
+        前端显示"完成"；elapsed 锁定到上一轮结束时刻。
+      - working：正在跑新一轮 → running=True、finished=False；
+        elapsed 从上一轮结束时刻重新起算。
     """
-    running = sess.proc is not None and sess.proc.poll() is None
-    finished = (sess.proc is not None and sess.proc.poll() is not None) or (
+    daemon_st = _daemon_state(sess)
+    proc_alive = sess.proc is not None and sess.proc.poll() is None
+    daemon_idle = daemon_st == "waiting" and proc_alive
+    daemon_working = daemon_st == "working" and proc_alive
+
+    running = proc_alive and not daemon_idle
+    finished = (sess.proc is not None and not proc_alive) or (
         sess.proc is None and sess.finished_at is not None
-    )
+    ) or daemon_idle
     state = "running" if running else ("finished" if finished else "pending")
+
+    # daemon 状态机：working（新轮开始）时清掉上一轮锁定的 finished_at，
+    # 让 elapsed 从新一轮开始计时；回到 waiting 时锁定一次。
+    if daemon_working and sess.daemon_prev_state == "waiting":
+        sess.finished_at = None
+        sess.started_at = time.time()  # 新轮开始：elapsed 重新起算
+    sess.daemon_prev_state = daemon_st
+    if daemon_idle and sess.finished_at is None:
+        sess.finished_at = time.time()  # 幂等：锁定到本轮结束时刻
 
     # 统计产物文件数量与总大小
     file_count = 0
@@ -569,11 +637,18 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
 
     # ── 运行中重入：排队（不 409）──
     if sess.proc is not None and sess.proc.poll() is None:
-        if req.resume:
+        daemon_st = _daemon_state(sess)
+        if req.resume and daemon_st != "waiting":
+            # resume 仅两种合法场景：
+            #   1) 进程已死（走下面恢复分支）
+            #   2) daemon 空闲等待（chat 常驻）——前端"自动续跑"（finished+pending>0）
+            #      会以 resume=True 重入；daemon 自己能消费 pending，直接确认即可。
+            # 其他进程存活时的 resume（如运行中）维持原 409 防御。
             raise HTTPException(409, "Task already running；请先暂停再继续")
         try:
-            from core.conversation import enqueue_pending
-            enqueue_pending(sess.mod_dir.parent, req.prompt)
+            if req.prompt.strip():
+                from core.conversation import enqueue_pending
+                enqueue_pending(sess.mod_dir.parent, req.prompt)
         except Exception:
             raise HTTPException(500, "排队消息写入失败")
         return {"session_id": sess.id, "status": "queued", "mode": mode}
@@ -680,6 +755,12 @@ def pause_task(session_id: str, authorization: str = Header(default="")):
     except Exception:
         pass
     sess.proc = None
+    # 清理 daemon 状态文件（daemon 被强杀，finally 不执行）
+    try:
+        (sess.mod_dir.parent / ".chat" / "daemon.pid").unlink(missing_ok=True)
+        (sess.mod_dir.parent / ".chat" / "daemon.state").unlink(missing_ok=True)
+    except OSError:
+        pass
     # finished_at 保持 None：暂停 ≠ 完成，前端据此显示"已终止/继续"状态
     return {"session_id": session_id, "status": "paused"}
 
@@ -699,16 +780,16 @@ def get_status(session_id: str, authorization: str = Header(default="")):
     username = _auth_username(authorization)
     sess = _get_session(session_id)
     _assert_owner(sess, username)
-    running = sess.proc is not None and sess.proc.poll() is None
-    finished = sess.proc is not None and sess.proc.poll() is not None
+    stats = _session_stats(sess)
+    running = stats["running"]
+    finished = stats["finished"]
     log_tail = ""
     if sess.log_path.exists():
         # 尾部预览取末尾 20000 字符（调试需要更完整上下文）
         log_tail = sess.log_path.read_text(encoding="utf-8", errors="replace")[-20000:]
-        if sess.proc is not None and finished and sess.result is None:
+        if finished and sess.result is None:
             sess.result = log_tail  # 简单起见：日志尾部即结果（可优化）
             sess.finished_at = time.time()
-    stats = _session_stats(sess)
     # 暂停状态：进程被 pause 杀掉但断点仍在 → 前端显示"已终止，可继续"
     paused = sess.proc is None and (sess.mod_dir.parent / ".chat" / "working.jsonl").exists()
     # 排队消息数：运行中用户插入、待当前轮跑完后自动续跑处理
