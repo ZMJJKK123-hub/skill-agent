@@ -1,13 +1,15 @@
 import json
 import os
 
-from .config import client, MODEL, SYSTEM, logger, MODE
+from . import config
+from .config import client, MODEL, logger, MODE
 from .tools import (
-    TOOLS, TOOL_HANDLERS, task_manager, todo_manager, bg_manager,
-    format_background_results, teammate_manager,
+    TOOL_HANDLERS, task_manager, todo_manager, bg_manager,
+    format_background_results, teammate_manager, maybe_inject_skill_catalog,
+    tool_registry,
 )
 from .protocol import inject_pending_requests, coordinator
-from .subagent import run_subagent
+from .subagent import run_subagent_async
 from .compact import (
     micro_compact,
     auto_compact,
@@ -22,12 +24,16 @@ from .supervisor import supervisor_manager
 # ---------- 接线：注册 task handler（打破循环依赖）----------
 # tools.py 不导入 subagent.py（避免循环依赖），
 # task 工具的定义在 TOOLS 列表里，但 handler 在此接线。
-TOOL_HANDLERS["task"] = lambda **kw: run_subagent(kw["prompt"])
+# M4: task 改为异步后台派发——父 agent 不再同步阻塞；
+# 结果经 <background-results> 下一轮注入。persona 参数可选覆盖子代理 system prompt。
+TOOL_HANDLERS["task"] = lambda **kw: run_subagent_async(
+    kw["prompt"], persona=kw.get("persona"))
 
 # 第 11 课修复：leader 侧排除 submit_plan。
 # submit_plan 语义是"队友→领导"，leader 是审批方，不该自己提交计划；
 # 否则 _agent_id 缺省 "unknown"，审批回执会发到不存在的收件箱。
-LEADER_TOOLS = [t for t in TOOLS if t["function"]["name"] != "submit_plan"]
+# M3: 声明式过滤（tool_registry.schemas）替代手工列表拷贝。
+LEADER_TOOLS = tool_registry.schemas(exclude={"submit_plan"})
 
 # chat 模式（通用对话）跳过所有 MOD 专属逻辑：
 # 监管线程 / KNOWN_ISSUES 强制注入 / skill-source 引用校验 / GameTest 核查 /
@@ -118,6 +124,11 @@ def agent_loop(messages: list) -> str:
         _save_checkpoint(messages)
         _drain_interjections(messages)
 
+        # ── Layer 0c3: 技能目录 digest 注入（M2，对齐 DSH tool-skill catalog）──
+        # 目录（name+首行描述）以 user 消息注入：digest 变化才追加，不变零开销；
+        # 会话中新增/编辑 SKILL.md 下一轮即生效。正文仍由 load_skill 按需加载。
+        maybe_inject_skill_catalog(messages)
+
         # ── Layer 0: 排空后台通知（第 8 课）──
         # 在 micro_compact 之前注入，让通知作为新数据参与后续 compact 估算
         notifications = bg_manager.drain_notifications()
@@ -174,7 +185,7 @@ def agent_loop(messages: list) -> str:
         logger.info(f"=== 新一轮 | messages 长度={len(messages)} ===")
         response = client.chat.completions.create(
             model=MODEL,
-            messages=[{"role": "system", "content": SYSTEM}] + messages,
+            messages=[{"role": "system", "content": config.SYSTEM}] + messages,
             tools=LEADER_TOOLS,  # 第 11 课：leader 侧排除 submit_plan
             max_tokens=8000,
         )
@@ -323,14 +334,9 @@ def agent_loop(messages: list) -> str:
                 logger.info("Layer 3 compact 工具被模型主动调用 | 先跳过，等其他工具执行完")
                 continue
 
-            handler = TOOL_HANDLERS.get(tc.function.name)
-            # ── 工具调用兜底防线：任何 handler 抛异常都不能炸掉 agent 主循环 ──
-            # 把异常转成温和错误文本塞回给 LLM，让它继续思考而非整个进程崩溃。
-            try:
-                output = handler(**args) if handler else f"Unknown tool: {tc.function.name}"
-            except Exception as e:
-                logger.exception(f"工具调用异常 | {tc.function.name} | {e}")
-                output = f"Error executing {tc.function.name}: {e}"
+            # M3: 统一走注册表执行管线（pre 钩子 → guard → handler → post 钩子；
+            # total 函数：任何异常都转温和错误文本，不炸主循环）。
+            output = tool_registry.execute(tc.function.name, args)
             if tc.function.name == "todo":
                 used_todo = True
                 print(f"\n[todo]\n{output}")   # 终端显示完整 todo 清单

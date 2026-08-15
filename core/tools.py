@@ -430,54 +430,97 @@ class TodoManager:
 
 todo_manager = TodoManager()
 
-# ---------- SkillLoader（第 5 课：两层知识注入）----------
+# ---------- SkillLoader（第 5 课：两层知识注入；M2：多源分层 + 正文现读）----------
+# M2 对齐 DSH skill 注册表设计：
+# - 多源分层（rank 小的赢）：会话技能（<session_root>/skills，rank 100）
+#   > 自定义目录（DSH_CUSTOM_SKILL_DIRS，rank 300）> 内置 core/skills（rank 600）
+# - 形态：目录包 <name>/SKILL.md 或平铺 <name>.md
+# - frontmatter 调用策略：disable-model-invocation（模型不可调）、user-invocable
+# - 目录（name+首行描述）由 digest 驱动注入会话消息（maybe_inject_skill_catalog）；
+#   正文每次 get_content() 现读磁盘——会话中编辑 SKILL.md 即时生效。
+import hashlib as _hashlib
+
+# 技能来源优先级（rank 越小越优先；同名低 rank 胜出）
+RANK_SESSION = 100
+RANK_CUSTOM = 300
+RANK_BUILTIN = 600
+
+
 class SkillLoader:
-    """扫描 skills/ 目录，提供目录描述和按需加载。
+    """多源技能加载器：目录描述 + 按需加载（正文现读）。
 
-    第一层：get_descriptions() 返回技能目录（名称+描述），拼接到 system prompt。
-    第二层：get_content(name) 返回完整技能内容，通过 load_skill 工具按需注入。
+    第一层：get_descriptions()/catalog_entries() 返回技能目录（名称+首行描述），
+    由 agent 循环按 digest 变化注入会话消息（M2 起不再拼进 system prompt）。
+    第二层：get_content(name) 每次重新读盘解析 SKILL.md，通过 load_skill 按需注入。
 
-    重构：skills 目录改为相对本包（core/skills/），不依赖运行时的 cwd——
+    skills 目录默认相对本包（core/skills/），不依赖运行时的 cwd——
     这样无论从项目根、server_app 还是任意目录启动，技能都能被找到。
     """
 
     def __init__(self, skills_dir: str | None = None):
-        if skills_dir is None:
-            # 默认指向 core/skills（本包所在目录下的 skills）
-            skills_dir = str(Path(__file__).resolve().parent / "skills")
-        self.skills_dir = skills_dir
-        self.skills = {}  # name → {description, content, path}
+        # roots: [(rank, path)]，rank 小者优先
+        self.skills_dir = skills_dir or str(Path(__file__).resolve().parent / "skills")
+        self.roots: list = [(RANK_BUILTIN, self.skills_dir)]
+        session_root = os.environ.get("DSH_SESSION_ROOT", "")
+        if session_root:
+            self.roots.append((RANK_SESSION, os.path.join(session_root, "skills")))
+        custom = os.environ.get("DSH_CUSTOM_SKILL_DIRS", "")
+        if custom:
+            for d in custom.split(os.pathsep):
+                if d.strip():
+                    self.roots.append((RANK_CUSTOM, d.strip()))
+        self.roots.sort(key=lambda r: r[0])
+        self.skills = {}  # name → {description, path, model_invocable, user_invocable, rank}
         self._scan()
         logger.info(
-            f"SkillLoader 初始化 | 扫描到 {len(self.skills)} 个技能: "
-            f"{list(self.skills.keys())}"
+            f"SkillLoader 初始化 | 源={[p for _, p in self.roots]} | "
+            f"扫描到 {len(self.skills)} 个技能: {list(self.skills.keys())}"
         )
 
     def _scan(self):
-        """扫描所有 skills/*/SKILL.md，解析 frontmatter。"""
-        if not os.path.isdir(self.skills_dir):
-            logger.info(f"SkillLoader: 目录 {self.skills_dir} 不存在，跳过扫描")
-            return
-        for entry in sorted(os.listdir(self.skills_dir)):
-            skill_path = os.path.join(self.skills_dir, entry, "SKILL.md")
-            if not os.path.isfile(skill_path):
+        """按 rank 扫描全部源；同名低 rank 胜出（高 rank 同名被跳过）。"""
+        self.skills = {}
+        for rank, root in self.roots:
+            if not os.path.isdir(root):
                 continue
-            with open(skill_path, "r", encoding="utf-8") as f:
-                raw = f.read()
-
-            meta, body = self._parse_frontmatter(raw)
-            name = meta.get("name", entry)
-            description = meta.get("description", "")
-
-            self.skills[name] = {
-                "description": description,
-                "content": body.strip(),
-                "path": skill_path,
-            }
-            logger.debug(
-                f"SkillLoader 扫描技能: {entry} | name={name} | "
-                f"content_len={len(body.strip())}"
-            )
+            for entry in sorted(os.listdir(root)):
+                skill_path = None
+                dir_path = os.path.join(root, entry)
+                if os.path.isdir(dir_path):
+                    # 目录包：<name>/SKILL.md
+                    candidate = os.path.join(dir_path, "SKILL.md")
+                    if os.path.isfile(candidate):
+                        skill_path = candidate
+                elif entry.endswith(".md"):
+                    # 平铺文件：<name>.md
+                    skill_path = os.path.join(root, entry)
+                if not skill_path:
+                    continue
+                try:
+                    with open(skill_path, "r", encoding="utf-8") as f:
+                        raw = f.read()
+                except OSError as e:
+                    logger.warning(f"SkillLoader 读取失败 {skill_path}: {e}")
+                    continue
+                meta, _body = self._parse_frontmatter(raw)
+                name = meta.get("name", "") or (
+                    entry[:-3] if entry.endswith(".md") else entry
+                )
+                description = meta.get("description", "") or ""
+                policy = self._parse_invocation_policy(meta, name, skill_path)
+                if policy is None:
+                    continue  # 策略字段非法 → fail-closed 丢弃整文件
+                if name in self.skills:
+                    logger.info(f"SkillLoader 跳过低优先级同名技能: {name} @ {skill_path}")
+                    continue
+                self.skills[name] = {
+                    "description": description,
+                    "path": skill_path,
+                    "model_invocable": policy[0],
+                    "user_invocable": policy[1],
+                    "rank": rank,
+                }
+                logger.debug(f"SkillLoader 扫描技能: {name} @ {skill_path}")
 
     @staticmethod
     def _parse_frontmatter(raw: str) -> tuple[dict, str]:
@@ -492,13 +535,32 @@ class SkillLoader:
         return meta, body
 
     @staticmethod
+    def _parse_invocation_policy(meta: dict, name: str, path: str):
+        """解析调用策略 (model_invocable, user_invocable)；非法 → None（丢弃技能）。
+
+        对齐 DSH SkillInvocationPolicy：disable-model-invocation / user-invocable
+        布尔字段；值非法时 fail-closed 丢弃整文件并告警，不静默降级。
+        """
+        for key, val in (
+            ("disable-model-invocation", meta.get("disable-model-invocation", False)),
+            ("user-invocable", meta.get("user-invocable", True)),
+        ):
+            if not isinstance(val, bool):
+                logger.warning(
+                    f"SkillLoader 丢弃技能 {name} @ {path}: 字段 {key} 必须为布尔，"
+                    f"实际 {val!r}（fail-closed）"
+                )
+                return None
+        return (not meta.get("disable-model-invocation", False),
+                meta.get("user-invocable", True))
+
+    @staticmethod
     def _shorten_description(desc: str, max_len: int = 100) -> str:
-        """压缩技能描述用于 system prompt 目录：只保留首行标题。
+        """压缩技能描述用于目录：只保留首行标题。
 
         desc 原始格式为「标题 + 【概述】 + 【涵盖内容】长列表 + 【适用场景】」，
-        完整版可达数百字符。system prompt 只需让模型识别技能主题，
+        完整版可达数百字符。目录只需让模型识别技能主题，
         首行标题已足够（如 'Forge BlockEntity（方块实体）完整指南'）。
-        完整 desc 仍保留在 self.skills 中，load_skill 加载全文能力不受影响。
         """
         if not desc:
             return ""
@@ -507,51 +569,74 @@ class SkillLoader:
             first = first[:max_len].rstrip() + "…"
         return first
 
-    def get_descriptions(self) -> str:
-        """生成 system prompt 中的技能目录（第一层注入，压缩版）。
+    def catalog_entries(self) -> list:
+        """目录条目 [(name, 首行描述)]，按 name 排序，仅模型可调用技能。"""
+        entries = []
+        for name in sorted(self.skills):
+            info = self.skills[name]
+            if not info["model_invocable"]:
+                continue
+            entries.append((name, self._shorten_description(info["description"])))
+        return entries
 
-        每技能只保留首行标题，避免数十 KB 的完整 desc 每轮全量发送。
-        """
-        if not self.skills:
+    def get_descriptions(self) -> str:
+        """生成技能目录文本（兼容旧调用方；M2 起主要由目录消息替代）。"""
+        entries = self.catalog_entries()
+        if not entries:
             return ""
         lines = ["Available skills (use load_skill to access):"]
-        for name, info in self.skills.items():
-            lines.append(
-                f"  - {name}: {self._shorten_description(info['description'])}"
-            )
+        for name, desc in entries:
+            lines.append(f"  - {name}: {desc}")
         result = "\n".join(lines)
-        logger.info(
-            f"SkillLoader.get_descriptions 生成技能目录 | {len(result)} 字符"
-        )
+        logger.info(f"SkillLoader.get_descriptions 生成技能目录 | {len(result)} 字符")
         return result
 
     def get_content(self, skill_name: str) -> str:
-        """返回完整技能内容（第二层注入），用 XML 标签包裹。"""
-        if skill_name not in self.skills:
+        """返回完整技能内容（第二层注入，每次现读磁盘），用 XML 标签包裹。
+
+        会话运行中编辑 SKILL.md，下次加载即读到新内容（对齐 DSH body-only
+        edits change later tool calls，无缓存协议）。
+        调用策略：disable-model-invocation 的技能拒绝模型加载。
+        """
+        info = self.skills.get(skill_name)
+        if info is None:
             available = ", ".join(self.skills.keys())
             logger.info(
-                f"SkillLoader.get_content: 技能 '{skill_name}' 未找到 | "
-                f"可用: {available}"
+                f"SkillLoader.get_content: 技能 '{skill_name}' 未找到 | 可用: {available}"
             )
             return f"Error: Skill '{skill_name}' not found. Available: {available}"
-        content = self.skills[skill_name]["content"]
+        if not info["model_invocable"]:
+            return (f"Error: Skill '{skill_name}' is not invocable by the model "
+                    f"(disable-model-invocation). Ask the user to invoke it directly.")
+        try:
+            with open(info["path"], "r", encoding="utf-8") as f:
+                raw = f.read()
+            _meta, body = self._parse_frontmatter(raw)
+        except OSError as e:
+            logger.warning(f"SkillLoader.get_content 读取失败 {info['path']}: {e}")
+            return f"Error: Failed to read skill '{skill_name}': {e}"
+        content = body.strip()
         result = f'<skill name="{skill_name}">\n{content}\n</skill>'
         logger.info(
-            f"SkillLoader.get_content: 加载技能 '{skill_name}' | "
-            f"{len(content)} 字符"
+            f"SkillLoader.get_content: 加载技能 '{skill_name}'（现读） | {len(content)} 字符"
         )
         return result
 
-# 重构：不再传 "skills"——缺省时自动解析为 core/skills（包相对），
-# 保证从任意启动目录都能找到技能，与 cwd 无关。
-skill_loader = SkillLoader()
+    def reload(self) -> None:
+        """重新扫描全部源（新增/删除技能文件后调用）。"""
+        self._scan()
+        logger.info(f"SkillLoader.reload | 扫描到 {len(self.skills)} 个技能")
 
-# 第一层注入：把技能目录拼接到 system prompt
-config.SYSTEM += (
-    "\n\n" + skill_loader.get_descriptions() +
-    "\n\nWhen a task involves a specific domain (testing, git, security, etc.), "
+
+# ---------- M2：技能目录 digest 动态注入（对齐 DSH tool-skill catalog）----------
+# 目录作为 user 角色消息注入会话历史：digest 变化才追加新目录（整表替换语义），
+# 不变则零开销；auto_compact 把目录消息压进摘要区后，下一轮自然重新注入。
+CATALOG_MARKER = "<available-skills>"
+
+# 目录消息中的路由指引（与旧 system prompt skill:catalog section 文案一致）
+CATALOG_ROUTING = (
+    "When a task involves a specific domain (testing, git, security, etc.), "
     "use the load_skill tool to load the relevant guidelines before proceeding.\n"
-    "\n"
     "MANDATORY for Minecraft MOD development: This session ALWAYS generates Minecraft "
     "MODs. Before writing ANY code or JSON resources, you MUST call load_skill to "
     "load the relevant Forge guideline skill. Examples:\n"
@@ -564,39 +649,114 @@ config.SYSTEM += (
     "- GUI/menus -> load forge-gui\n"
     "- General lifecycle/events/sides -> load forge-concept-lifecycle, forge-concept-events, forge-concept-sides\n"
     "Load the skill FIRST, then follow its rules exactly. Do NOT skip this step.\n"
-    "\n"
-    "\n"
+    "本目录仅含技能摘要（name + 首行描述），加载前不得推断或凭记忆执行技能内容。"
+)
+
+
+def _catalog_digest(entries: list) -> str:
+    """对 entries（name, desc）序列化取 sha256——对齐 DSH 基于 entries 而非渲染文本。"""
+    return _hashlib.sha256(
+        json.dumps(entries, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+
+
+def _last_catalog_digest(messages: list) -> str | None:
+    """从消息历史找最近的目录消息，返回其 digest；无则 None。"""
+    for m in reversed(messages):
+        if m.get("role") != "user":
+            continue
+        content = m.get("content")
+        if not isinstance(content, str) or not content.lstrip().startswith(CATALOG_MARKER):
+            continue
+        m2 = re.search(r"digest:\s*([0-9a-f]{64})", content)
+        if m2:
+            return m2.group(1)
+    return None
+
+
+def render_catalog_message(entries: list, digest: str) -> str:
+    """渲染目录消息（marker + digest + 条目 + 路由指引）。"""
+    lines = [CATALOG_MARKER, f"digest: {digest}"]
+    lines.append("Available skills (use load_skill to access):")
+    if entries:
+        for name, desc in entries:
+            lines.append(f"  - {name}: {desc}")
+    else:
+        lines.append("  (no skills available)")
+    lines.append("</available-skills>")
+    lines.append("")
+    lines.append(CATALOG_ROUTING)
+    return "\n".join(lines)
+
+
+def maybe_inject_skill_catalog(messages: list) -> bool:
+    """digest 变化（或无目录消息）时注入最新目录；返回是否注入。"""
+    entries = skill_loader.catalog_entries()
+    digest = _catalog_digest(entries)
+    if _last_catalog_digest(messages) == digest:
+        return False
+    messages.append({"role": "user", "content": render_catalog_message(entries, digest)})
+    logger.info(f"maybe_inject_skill_catalog | 注入 {len(entries)} 个技能目录条目")
+    return True
+
+
+# 重构：不再传 "skills"——缺省时自动解析为 core/skills（包相对），
+# 保证从任意启动目录都能找到技能，与 cwd 无关。
+skill_loader = SkillLoader()
+
+# 第一层注入：MOD 纪律规则。
+# M1/M2 重构：从"导入期 config.SYSTEM += 字符串拼接"改为注册有序 prompt section
+# （移植 DSH system-prompt 设计）。技能目录（skill:catalog）在 M2 迁出 system
+# prompt，改为 digest 驱动的会话消息注入（maybe_inject_skill_catalog）。
+# 顺序约定：-100 身份 / 0 persona / 100-199 工具指引 / 200+ 规则。
+from .promptkit import PromptSection as _PS
+
+# rules:skill-mandate(120) —— skill-first 纪律与 <skill-source> 引用契约
+config.prompt_assembler.section(_PS(
+    "rules:skill-mandate", 120,
     "MOD KNOWLEDGE MANDATE (skill-grounded rules): EVERY MOD-related action MUST strictly follow the loaded skills; "
     "never write/modify MOD code or files without a skill basis. After EVERY change to the MOD project "
     "(write_file / edit_file, etc.), you MUST list the source of the change: "
     "<skill-source> change: <file path> | <change summary>; "
     "source: <skill name> -> <specific section/rule/code pattern cited> </skill-source>. "
     "If no skill applies, explicitly write \"No skill source\" and explain why. "
-    "Prefer declaring a missing source over writing anything without a basis.\n"
-    "\n"
+    "Prefer declaring a missing source over writing anything without a basis.",
+))
+
+# rules:mc-source(130) —— 完整 MC+Forge 源码树查阅权限
+config.prompt_assembler.section(_PS(
+    "rules:mc-source", 130,
     "MC/FORGE SOURCE TREE (mc_java_sources/, ALWAYS AVAILABLE): The complete Minecraft + Forge Java sources are copied "
     "into your current working directory under mc_java_sources/. You may read ANY file freely with the read_file tool "
     "or search it with bash (e.g. `findstr /s /n /i \"keyword\" mc_java_sources\\*.java`). There is NO restriction on "
     "how much you may read — you are the authority on verifying exact class APIs (constructors, method signatures, "
     "fields, exact usage) directly from source. When a skill is unclear or incomplete, verify the real API in "
-    "mc_java_sources/ before writing code. Cross-reference the source with the loaded skill before writing code.\n"
-    "\n"
+    "mc_java_sources/ before writing code. Cross-reference the source with the loaded skill before writing code.",
+))
+
+# rules:project-gradle(140) —— 工程结构与 Gradle 工具（8）
+config.prompt_assembler.section(_PS(
+    "rules:project-gradle", 140,
     "STRICT PROJECT STRUCTURE & GRADLE TOOLS (8):\n"
-        "- src/main/java: ONLY production code; @GameTest/@GameTestHolder FORBIDDEN here.\n"
-        "- ALL tests MUST be under src/test/java (e.g. src/test/java/com/<pkg>/tests/).\n"
-        "- Automated self-testing MUST use run_test_gametest (gradlew runTestGameTestServer; scans src/test). NEVER use runGameTestServer for Agent verification (it scans src/main only).\n"
-        "Tools (main-agent only):\n"
-        " 1 run_data_gen -> runData: generate assets JSON\n"
-        " 2 run_game_test_server -> runGameTestServer: src/main @GameTest\n"
-        " 3 run_server -> runServer: server side check; success='Done ('\n"
-        " 4 run_client -> runClient: GUI client\n"
-        " 5 run_test_client -> runTestClient: client+test\n"
-        " 6 run_test_server -> runTestServer: server+test\n"
-        " 7 run_test_data -> runTestData: test placeholders\n"
-        " 8 run_test_gametest -> runTestGameTestServer: THE core — src/test tests\n"
-        "Each returns JSON {success,exit_code,summary,error_details,raw_logs_snippet}; fix src/main and re-run.\n"
-        "\n"
-"GAMETEST SELF-DEBUG LOOP (main agent only, MANDATORY): You MUST NOT declare your mod complete "
+    "- src/main/java: ONLY production code; @GameTest/@GameTestHolder FORBIDDEN here.\n"
+    "- ALL tests MUST be under src/test/java (e.g. src/test/java/com/<pkg>/tests/).\n"
+    "- Automated self-testing MUST use run_test_gametest (gradlew runTestGameTestServer; scans src/test). NEVER use runGameTestServer for Agent verification (it scans src/main only).\n"
+    "Tools (main-agent only):\n"
+    " 1 run_data_gen -> runData: generate assets JSON\n"
+    " 2 run_game_test_server -> runGameTestServer: src/main @GameTest\n"
+    " 3 run_server -> runServer: server side check; success='Done ('\n"
+    " 4 run_client -> runClient: GUI client\n"
+    " 5 run_test_client -> runTestClient: client+test\n"
+    " 6 run_test_server -> runTestServer: server+test\n"
+    " 7 run_test_data -> runTestData: test placeholders\n"
+    " 8 run_test_gametest -> runTestGameTestServer: THE core — src/test tests\n"
+    "Each returns JSON {success,exit_code,summary,error_details,raw_logs_snippet}; fix src/main and re-run.",
+))
+
+# rules:gametest(150) —— GameTest 强制自检纪律
+config.prompt_assembler.section(_PS(
+    "rules:gametest", 150,
+    "GAMETEST SELF-DEBUG LOOP (main agent only, MANDATORY): You MUST NOT declare your mod complete "
     "until you have verified it via GameTests. This is a hard requirement, same level as the skill "
     "rules above. After writing your mod code + assets, you MUST:\n"
     "  1. Write at least ONE @GameTest under src/test/java (e.g. src/test/java/com/<pkg>/tests/). "
@@ -608,8 +768,12 @@ config.SYSTEM += (
     "  4. If any test fails or the build fails: fix the code according to the loaded skills (verify any "
     "uncertain API directly in mc_java_sources/ with read_file or findstr), then re-run the loop from step 2 until ALL tests pass.\n"
     "Only after the GameTest run succeeds may you consider the mod finished. Never skip the GameTest "
-    "verification just because the task did not explicitly ask for tests.\n"
-    "\n"
+    "verification just because the task did not explicitly ask for tests.",
+))
+
+# rules:known-issues(160) —— KNOWN_ISSUES.md 使用纪律
+config.prompt_assembler.section(_PS(
+    "rules:known-issues", 160,
     "KNOWN ISSUES LOGBOOK (KNOWN_ISSUES.md, READ-ONLY): The mod project root contains a KNOWN_ISSUES.md "
     "file — a logbook of verified pitfalls and their fixes from previous sessions. Rules:\n"
     "  1. BEFORE starting any work, run_read KNOWN_ISSUES.md and follow every applicable entry. It is "
@@ -620,8 +784,13 @@ config.SYSTEM += (
     "to CONSUME the logbook and comply with it.\n"
     "  3. If you discover that an existing entry is wrong or incomplete, do NOT edit it. Instead, mention "
     "the correction in your final summary so the finalize step can record it accurately.\n"
-    "  4. Never delete KNOWN_ISSUES.md. It is part of the mod template and must always exist."
-)
+    "  4. Never delete KNOWN_ISSUES.md. It is part of the mod template and must always exist.",
+))
+
+# 组装最终系统提示词并覆盖 config.SYSTEM。
+# agent.py 在 tools.py 执行完之后才绑定 SYSTEM 引用——但 `from .config import SYSTEM`
+# 是值绑定，此处必须用"模块属性动态读取"；agent.py 已改为 import config 后读 config.SYSTEM。
+config.SYSTEM = config.build_system_prompt()
 
 # ---------- TaskManager（第 7 课：文件级持久化的任务图 DAG）----------
 class TaskManager:
@@ -2100,14 +2269,18 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "task",
-            "description": "Run a subtask in an isolated context. Use this for research, analysis, or any work whose intermediate output the parent does not need to see. Returns only the final text summary.",
+            "description": "Run a subtask in an isolated context ASYNCHRONOUSLY (M4). Returns a task_id immediately without blocking the main loop; the subagent runs in the background and its final summary is injected into the next round as <background-results>. Use this for research, analysis, or any work whose intermediate output the parent does not need to see. IMPORTANT: after dispatching, continue working and check the next round's <background-results> for the summary — do not expect the result in this tool's return value.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "prompt": {
                         "type": "string",
                         "description": "The task description for the subagent",
-                    }
+                    },
+                    "persona": {
+                        "type": "string",
+                        "description": "Optional custom system prompt for the subagent (defaults to the standard research-agent persona)",
+                    },
                 },
                 "required": ["prompt"],
             },
@@ -2679,3 +2852,53 @@ logger.info(
 # ── 注：mc_java_sources/（MC+Forge 完整源码）现已由 server.py 的 _copy_template
 # 在创建会话时整体复制进 <session>/mod/mc_java_sources/，agent 可直接用
 # read_file / bash findstr 任意查看，无需受限的源码查询工具。──
+
+# ---------- M3: 工具注册表（toolkit.py）----------
+# 由现有 TOOLS（模型 schema）+ TOOL_HANDLERS（执行）+ 元数据构建注册表。
+# TOOLS / TOOL_HANDLERS 保留为兼容层（迁移期旧代码不受影响）；
+# 新代码应使用 tool_registry.schemas(...) / tool_registry.execute(...)。
+# handler 惰性解析：agent.py 在 tools.py 导入完成后才接线 TOOL_HANDLERS["task"]，
+# 构建期快照会拿到占位 handler——闭包在 execute 时实时查 TOOL_HANDLERS。
+from .toolkit import ToolDef as _ToolDef, tool_registry
+
+# 工具元数据：readonly（只读声明）/ concurrency_safe（并行声明）/
+# timeout_ms（超时钩子 opt-in）/ needs_approval（审批预留，M5+）
+_TOOL_META: dict = {
+    # 只读 + 并行安全（supervisor 与并行调度用）
+    "read_file": {"readonly": True, "concurrency_safe": True},
+    "grep": {"readonly": True, "concurrency_safe": True},
+    "glob": {"readonly": True, "concurrency_safe": True},
+    "load_skill": {"readonly": True},
+    "web_search": {"readonly": True, "concurrency_safe": True},
+    "web_fetch": {"readonly": True, "concurrency_safe": True},
+    "task_list": {"readonly": True, "concurrency_safe": True},
+    "task_get": {"readonly": True, "concurrency_safe": True},
+    "team_status": {"readonly": True, "concurrency_safe": True},
+    "protocol_status": {"readonly": True},
+    "worktree_list": {"readonly": True},
+    "read_game_test_log": {"readonly": True},
+}
+
+def _unknown_handler(**kw):
+    return "(handler not wired yet)"
+
+
+for _t in TOOLS:
+    _name = _t["function"]["name"]
+    _meta = _TOOL_META.get(_name, {})
+    tool_registry.register(_ToolDef(
+        name=_name,
+        description=_t["function"]["description"],
+        parameters=_t["function"]["parameters"],
+        handler=lambda _n=_name, **kw: (TOOL_HANDLERS.get(_n) or _unknown_handler)(**kw),
+        timeout_ms=_meta.get("timeout_ms"),
+        concurrency_safe=_meta.get("concurrency_safe", False),
+        readonly=_meta.get("readonly", False),
+        needs_approval=_meta.get("needs_approval"),
+    ))
+
+
+logger.info(
+    f"M3 tool_registry 构建完成 | {len(tool_registry.names())} 个工具 | "
+    f"readonly={tool_registry.readonly_names()}"
+)

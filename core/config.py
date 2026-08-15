@@ -255,6 +255,26 @@ use them when the work benefits from parallelism or isolation, same as always.
 # 运行模式选择 system prompt：mod 模式用 MOD 制作版，普通对话用通用助手版
 SYSTEM = SYSTEM_MOD if MODE == "mod" else SYSTEM_CHAT
 
+# ---------- 提示词 section 化组装（M1：移植 DSH system-prompt 设计）----------
+# SYSTEM 现在只是 persona 段的文本来源；最终渲染值由 tools.py 注册
+# skill/规则 section 后调用 build_system_prompt() 覆盖（tools 导入晚于本模块，
+# agent.py 在两侧都执行完才绑定，动态读取 config.SYSTEM 即可拿到最终值）。
+# 顺序约定（对齐 DSH）：-100 身份 / 0 persona / 100-199 工具指引 / 200+ 规则。
+from .promptkit import PromptAssembler, PromptSection  # noqa: E402
+
+prompt_assembler = PromptAssembler()
+prompt_assembler.variable("model", lambda: MODEL)
+prompt_assembler.variable("cwd", lambda: str(Path.cwd()))
+prompt_assembler.variable("mode", lambda: MODE)
+prompt_assembler.variable("sandbox_mode", lambda: os.environ.get("DSH_SANDBOX_MODE", "full-access"))
+prompt_assembler.variable("skills_dir", lambda: os.environ.get("DSH_SKILLS_DIR", "core/skills"))
+prompt_assembler.section(PromptSection("deployment:persona", 0, SYSTEM))
+
+
+def build_system_prompt() -> str:
+    """组装最终系统提示词（persona + 工具指引 + 规则 section）。"""
+    return prompt_assembler.assemble()
+
 # ---------- Subagent 系统（第 4 课：隔离上下文的子任务派发）----------
 MAX_SUBAGENT_TURNS = 30  # 硬上限，防止子 Agent 失控死循环
 

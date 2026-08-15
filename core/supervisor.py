@@ -19,7 +19,7 @@ import uuid
 from pathlib import Path
 
 from .config import client, MODEL, SUPERVISOR_SYSTEM, SUPERVISOR_MAX_TURNS, logger
-from .tools import TOOLS, TOOL_HANDLERS, task_manager
+from .tools import tool_registry, task_manager
 from .subagent import extract_text
 
 
@@ -40,9 +40,12 @@ def _project_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
-# 监管 agent 的只读工具集（无写入/构建/GameTest 工具 -> 只有建议权）
+# 监管 agent 的只读工具集（无写入/构建/GameTest 工具 -> 只有建议权）。
+# 保持显式白名单（SUPERVISOR_SYSTEM 声明 "load_skill / read_file ONLY"）；
+# M3: 改为注册表声明式过滤。未来要扩权时在 TOOL_META 声明 readonly 并在
+# READONLY_NAMES 里加入即可（tool_registry.readonly_names() 可查看全部只读工具）。
 READONLY_NAMES = {"load_skill", "read_file"}
-READONLY_TOOLS = [t for t in TOOLS if t["function"]["name"] in READONLY_NAMES]
+READONLY_TOOLS = tool_registry.schemas(include=READONLY_NAMES)
 
 
 class SupervisorManager:
@@ -207,8 +210,8 @@ class SupervisorManager:
                     msgs.append({"role": "tool", "tool_call_id": tc.id,
                         "content": f"Error: Invalid tool arguments JSON: {e}"})
                     continue
-                handler = TOOL_HANDLERS.get(tc.function.name)
-                output = handler(**args) if handler else f"Unknown tool: {tc.function.name}"
+                # M3: 统一走注册表执行管线（total：异常转温和错误，不中断监管分析）
+                output = tool_registry.execute(tc.function.name, args)
                 logger.info(f"supervisor 工具调用: {tc.function.name}")
                 print(f"[supervisor:{tc.function.name}] {output}")
                 msgs.append({"role": "tool", "tool_call_id": tc.id, "content": str(output)})
