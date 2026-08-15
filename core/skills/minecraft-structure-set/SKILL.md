@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-structure-set
-description: Structure set definition JSON: STRUCTURE_SET registry, placement types.
-whenToUse: Use when writing datapack worldgen structure_set definitions.
+description: "Structure set definition JSON: STRUCTURE_SET registry, placement types."
+whenToUse: "Use when writing datapack worldgen structure_set definitions."
+
 ---
 
 # Structure Sets

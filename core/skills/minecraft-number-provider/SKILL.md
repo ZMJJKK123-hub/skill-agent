@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-number-provider
-description: Number provider format — all types (constant, uniform, binomial, score...).
-whenToUse: Use when writing number providers in loot tables, predicates, or enchantments.
+description: "Number provider format — all types (constant, uniform, binomial, score...)."
+whenToUse: "Use when writing number providers in loot tables, predicates, or enchantments."
+
 ---
 
 # Number Provider

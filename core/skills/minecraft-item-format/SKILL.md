@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-item-format
-description: Item stack storage format: id/count/components, encoding, validation.
-whenToUse: Use when understanding item stack data in saves, commands, or datapack item components.
+description: "Item stack storage format: id/count/components, encoding, validation."
+whenToUse: "Use when understanding item stack data in saves, commands, or datapack item components."
+
 ---
 
 # Item Format

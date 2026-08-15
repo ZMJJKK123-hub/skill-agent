@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-entity-predicate
-description: Entity predicate — sub-predicates: type, location, movement, effects, flags, type-specific.
-whenToUse: Use when writing entity predicates in advancements, loot predicates, or target selectors.
+description: "Entity predicate — sub-predicates: type, location, movement, effects, flags, type-specific."
+whenToUse: "Use when writing entity predicates in advancements, loot predicates, or target selectors."
+
 ---
 
 # Entity Predicate

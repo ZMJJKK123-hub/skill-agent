@@ -1,7 +1,9 @@
 ---
+
 name: forge-datagen-client
-description: Forge client asset data generation: model/language/sound providers (BlockModelProvider etc.).
-whenToUse: Use when data generating client assets (models, language, sounds).
+description: "Forge client asset data generation: model/language/sound providers (BlockModelProvider etc.)."
+whenToUse: "Use when data generating client assets (models, language, sounds)."
+
 ---
 
 Language Generation

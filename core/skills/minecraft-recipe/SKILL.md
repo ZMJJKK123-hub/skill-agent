@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-recipe
-description: Recipe system — acquisition, recipe book, Java recipe JSON types, Bedrock.
-whenToUse: Use when authoring recipe JSON files for data packs (Java) or behavior packs (Bedrock).
+description: "Recipe system — acquisition, recipe book, Java recipe JSON types, Bedrock."
+whenToUse: "Use when authoring recipe JSON files for data packs (Java) or behavior packs (Bedrock)."
+
 ---
 
 # Recipe

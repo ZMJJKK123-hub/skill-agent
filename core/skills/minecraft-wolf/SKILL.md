@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-wolf
-description: Wolf — variants, sound variants, taming, breeding, teleporting, armor, NBT.
-whenToUse: Use when working with wolves (taming, breeding, wolf armor, variant/sound-variant data).
+description: "Wolf — variants, sound variants, taming, breeding, teleporting, armor, NBT."
+whenToUse: "Use when working with wolves (taming, breeding, wolf armor, variant/sound-variant data)."
+
 ---
 
 # Wolf

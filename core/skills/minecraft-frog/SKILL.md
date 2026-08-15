@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-frog
-description: Frog — spawning, tadpoles, skin variants, hunting (slimes, magma cubes, froglight), breeding, NBT.
-whenToUse: Use when working with frogs and tadpoles (breeding, froglight farming, variants).
+description: "Frog — spawning, tadpoles, skin variants, hunting (slimes, magma cubes, froglight), breeding, NBT."
+whenToUse: "Use when working with frogs and tadpoles (breeding, froglight farming, variants)."
+
 ---
 
 # Frog

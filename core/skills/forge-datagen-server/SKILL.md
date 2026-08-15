@@ -1,7 +1,9 @@
 ---
+
 name: forge-datagen-server
-description: Forge server data generation: recipes, loot tables, advancements, tags, and global loot modifiers.
-whenToUse: Use when data generating server data (recipes, loot, advancements, tags).
+description: "Forge server data generation: recipes, loot tables, advancements, tags, and global loot modifiers."
+whenToUse: "Use when data generating server data (recipes, loot, advancements, tags)."
+
 ---
 
 Advancement Generation

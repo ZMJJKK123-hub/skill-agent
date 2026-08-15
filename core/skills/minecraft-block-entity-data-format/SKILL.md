@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-block-entity-data-format
-description: Block entity NBT format — common tags, per-block-entity tags, chunk storage (keepPacked).
-whenToUse: Use when reading or writing block entity NBT in commands, data packs, or save files.
+description: "Block entity NBT format — common tags, per-block-entity tags, chunk storage (keepPacked)."
+whenToUse: "Use when reading or writing block entity NBT in commands, data packs, or save files."
+
 ---
 
 # Block Entity Data Format

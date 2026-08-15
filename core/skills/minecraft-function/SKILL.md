@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-function
-description: Java Edition function — .mcfunction format, macros, invocation, recursion, return.
-whenToUse: Use when writing or calling .mcfunction files in datapacks.
+description: "Java Edition function — .mcfunction format, macros, invocation, recursion, return."
+whenToUse: "Use when writing or calling .mcfunction files in datapacks."
+
 ---
 
 # Java Edition Function

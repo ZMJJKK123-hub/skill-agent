@@ -1,7 +1,9 @@
 ---
+
 name: forge-blockentities
-description: Forge BlockEntity guide: registration, data storage, ticking, client sync, and BlockEntityRenderers.
-whenToUse: Use when implementing Forge block entities or block entity renderers.
+description: "Forge BlockEntity guide: registration, data storage, ticking, client sync, and BlockEntityRenderers."
+whenToUse: "Use when implementing Forge block entities or block entity renderers."
+
 ---
 
 # BlockEntities

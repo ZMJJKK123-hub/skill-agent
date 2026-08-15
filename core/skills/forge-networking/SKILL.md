@@ -1,7 +1,9 @@
 ---
+
 name: forge-networking
-description: Forge networking: SimpleChannel packets, spawn data, data parameters, sending and security.
-whenToUse: Use when implementing network packets or entity data sync in a Forge mod.
+description: "Forge networking: SimpleChannel packets, spawn data, data parameters, sending and security."
+whenToUse: "Use when implementing network packets or entity data sync in a Forge mod."
+
 ---
 
 # Entities sync

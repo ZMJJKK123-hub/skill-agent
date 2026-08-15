@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tag-superflat-preset
-description: Flat level generator preset tags controlling the flat world screen.
-whenToUse: Use when writing datapacks or understanding flat world generator presets and the #visible tag.
+description: "Flat level generator preset tags controlling the flat world screen."
+whenToUse: "Use when writing datapacks or understanding flat world generator presets and the #visible tag."
+
 ---
 
 # Flat Level Generator Preset Tags

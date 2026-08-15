@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-fluid
-description: Fluids — properties, depth, spreading, flow direction, droplets, interactions.
-whenToUse: Use when working with water/lava mechanics (spreading, source conversion, fluid interactions).
+description: "Fluids — properties, depth, spreading, flow direction, droplets, interactions."
+whenToUse: "Use when working with water/lava mechanics (spreading, source conversion, fluid interactions)."
+
 ---
 
 # Fluid

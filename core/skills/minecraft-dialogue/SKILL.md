@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-dialogue
-description: Dialog definition format — invocation, dialog types, body, inputs, actions.
-whenToUse: Use when authoring dialog JSON files for data packs (menus, forms, confirmations).
+description: "Dialog definition format — invocation, dialog types, body, inputs, actions."
+whenToUse: "Use when authoring dialog JSON files for data packs (menus, forms, confirmations)."
+
 ---
 
 # Dialog Definition

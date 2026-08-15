@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-wolf-variant
-description: Wolf variant definition JSON: WOLF_VARIANT registry, textures, spawn conditions.
-whenToUse: Use when writing datapack wolf_variant definitions or custom wolf variants.
+description: "Wolf variant definition JSON: WOLF_VARIANT registry, textures, spawn conditions."
+whenToUse: "Use when writing datapack wolf_variant definitions or custom wolf variants."
+
 ---
 
 # Wolf Variants

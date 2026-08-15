@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-frog-variant
-description: Frog variant definition JSON: FROG_VARIANT registry, texture, spawn conditions.
-whenToUse: Use when writing datapack frog_variant definitions or custom frog variants.
+description: "Frog variant definition JSON: FROG_VARIANT registry, texture, spawn conditions."
+whenToUse: "Use when writing datapack frog_variant definitions or custom frog variants."
+
 ---
 
 # Frog Variants

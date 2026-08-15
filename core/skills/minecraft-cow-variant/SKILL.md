@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-cow-variant
-description: Cow variant definition JSON: COW_VARIANT registry, textures, model, spawn conditions.
-whenToUse: Use when writing datapack cow_variant definitions or custom cow variants.
+description: "Cow variant definition JSON: COW_VARIANT registry, textures, model, spawn conditions."
+whenToUse: "Use when writing datapack cow_variant definitions or custom cow variants."
+
 ---
 
 # Cow Variants

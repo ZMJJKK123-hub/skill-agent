@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-nbt-format
-description: NBT format — tag types, storage/network formats, SNBT/JSON conversion.
-whenToUse: Use when working with NBT at the binary level, /data commands, or NBT matching in selectors.
+description: "NBT format — tag types, storage/network formats, SNBT/JSON conversion."
+whenToUse: "Use when working with NBT at the binary level, /data commands, or NBT matching in selectors."
+
 ---
 
 # NBT Format

@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tag-structure
-description: Structure tags and their members, used for locating structures, explorer maps, and related commands.
-whenToUse: Use when querying or using structure tags for structure location.
+description: "Structure tags and their members, used for locating structures, explorer maps, and related commands."
+whenToUse: "Use when querying or using structure tags for structure location."
+
 ---
 
 # Structure Tags

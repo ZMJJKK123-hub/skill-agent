@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-carver
-description: Configured carver definition JSON: CONFIGURED_CARVER registry, carver types and configs.
-whenToUse: Use when writing datapack worldgen carver definitions or custom cave/canyon carving.
+description: "Configured carver definition JSON: CONFIGURED_CARVER registry, carver types and configs."
+whenToUse: "Use when writing datapack worldgen carver definitions or custom cave/canyon carving."
+
 ---
 
 # Configured Carvers

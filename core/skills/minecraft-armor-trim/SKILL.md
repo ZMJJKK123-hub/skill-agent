@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-armor-trim
-description: Armor trim definition format — patterns, materials, tooltips, texture generation.
-whenToUse: Use when authoring armor trim patterns/materials in data packs.
+description: "Armor trim definition format — patterns, materials, tooltips, texture generation."
+whenToUse: "Use when authoring armor trim patterns/materials in data packs."
+
 ---
 
 # Armor Trim Definition

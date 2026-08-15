@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-texture
-description: Texture — directory structure, properties, animated textures, GUI sprites.
-whenToUse: Use when authoring textures and their .mcmeta metadata for resource packs.
+description: "Texture — directory structure, properties, animated textures, GUI sprites."
+whenToUse: "Use when authoring textures and their .mcmeta metadata for resource packs."
+
 ---
 
 # Texture

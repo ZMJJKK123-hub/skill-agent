@@ -1,7 +1,9 @@
 ---
+
 name: forge-resources-client
-description: Forge client resources: resource packs, models, item properties, BlockColor/ItemColor handlers.
-whenToUse: Use when developing Forge client resources: resource packs, models, item properties, or color handling.
+description: "Forge client resources: resource packs, models, item properties, BlockColor/ItemColor handlers."
+whenToUse: "Use when developing Forge client resources: resource packs, models, item properties, or color handling."
+
 ---
 
 # Resource Packs

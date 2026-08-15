@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-entity-data-format
-description: Java entity NBT formats: common tags plus per-entity fields for all mobs.
-whenToUse: Use when writing or parsing entity NBT data (summon commands, datapacks, saves).
+description: "Java entity NBT formats: common tags plus per-entity fields for all mobs."
+whenToUse: "Use when writing or parsing entity NBT data (summon commands, datapacks, saves)."
+
 ---
 
 # Entity Data Format

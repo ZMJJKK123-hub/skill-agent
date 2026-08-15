@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-sound-event
-description: Sound event — registry usage, sounds.json format, merging, playback.
-whenToUse: Use when defining or referencing sound events in data packs/resource packs (sounds.json, playable events).
+description: "Sound event — registry usage, sounds.json format, merging, playback."
+whenToUse: "Use when defining or referencing sound events in data packs/resource packs (sounds.json, playable events)."
+
 ---
 
 # Sound Event (Java Edition)

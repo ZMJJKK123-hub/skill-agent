@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tutorial-raycasting
-description: Tutorial — datapack raycasting: eye ray loop, passability, bee counter.
-whenToUse: Use when implementing raycasts (aim-point detection) in datapacks, Java 1.21+.
+description: "Tutorial — datapack raycasting: eye ray loop, passability, bee counter."
+whenToUse: "Use when implementing raycasts (aim-point detection) in datapacks, Java 1.21+."
+
 ---
 
 # Tutorial: Datapack Example — Raycasting

@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-dimension-type
-description: Dimension type definition JSON: DIMENSION_TYPE registry and all its fields.
-whenToUse: Use when writing datapack dimension_type definitions or custom dimension behaviors.
+description: "Dimension type definition JSON: DIMENSION_TYPE registry and all its fields."
+whenToUse: "Use when writing datapack dimension_type definitions or custom dimension behaviors."
+
 ---
 
 # Dimension Types

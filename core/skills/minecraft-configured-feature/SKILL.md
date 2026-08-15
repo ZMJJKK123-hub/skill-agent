@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-configured-feature
-description: Configured feature format — JSON in data packs; all feature types and configs.
-whenToUse: Use when authoring worldgen configured features, features, or related tags in data packs.
+description: "Configured feature format — JSON in data packs; all feature types and configs."
+whenToUse: "Use when authoring worldgen configured features, features, or related tags in data packs."
+
 ---
 
 # Configured Feature

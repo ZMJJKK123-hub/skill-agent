@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-example-datapack
-description: Slicedlime's example datapacks: macros, return values, data-driven enchantments.
-whenToUse: Use as reference when learning datapack macros, function return values, or data-driven enchantments.
+description: "Slicedlime's example datapacks: macros, return values, data-driven enchantments."
+whenToUse: "Use as reference when learning datapack macros, function return values, or data-driven enchantments."
+
 ---
 
 # Example Datapacks

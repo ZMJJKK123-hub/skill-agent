@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-pig-sound-variant
-description: Pig sound variant definition JSON: PIG_SOUND_VARIANT registry, sound events.
-whenToUse: Use when writing datapack pig_sound_variant definitions or custom pig sounds.
+description: "Pig sound variant definition JSON: PIG_SOUND_VARIANT registry, sound events."
+whenToUse: "Use when writing datapack pig_sound_variant definitions or custom pig sounds."
+
 ---
 
 # Pig Sound Variants

@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-entity-type
-description: Entities — behavior, riding, movement physics (Motion, drag, terminal speed), NBT.
-whenToUse: Use when working with entities in general — spawning, riding, movement mechanics, or common entity NBT.
+description: "Entities — behavior, riding, movement physics (Motion, drag, terminal speed), NBT."
+whenToUse: "Use when working with entities in general — spawning, riding, movement mechanics, or common entity NBT."
+
 ---
 
 # Entity

@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tag-banner-pattern
-description: Banner pattern tags: loom-craftable patterns and default components.
-whenToUse: Use when writing or understanding Java Edition banner pattern tags (banner_pattern).
+description: "Banner pattern tags: loom-craftable patterns and default components."
+whenToUse: "Use when writing or understanding Java Edition banner pattern tags (banner_pattern)."
+
 ---
 
 # Banner Pattern Tags

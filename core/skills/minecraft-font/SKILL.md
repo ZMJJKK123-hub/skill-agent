@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-font
-description: Fonts — Mojangles, GNU Unifont (JP, PUA), SGA, Illageralt, Minecraft Ten/Five.
-whenToUse: Use when choosing fonts for text components or understanding which characters each font renders.
+description: "Fonts — Mojangles, GNU Unifont (JP, PUA), SGA, Illageralt, Minecraft Ten/Five."
+whenToUse: "Use when choosing fonts for text components or understanding which characters each font renders."
+
 ---
 
 # Font

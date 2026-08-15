@@ -1,7 +1,9 @@
-﻿---
+---
+
 name: minecraft-atlas
-description: Texture atlas system — usage, sources (directory, filter, paletted_permutations...).
-whenToUse: Use when adding or removing textures from vanilla texture atlases via resource packs.
+description: "Texture atlas system — usage, sources (directory, filter, paletted_permutations...)."
+whenToUse: "Use when adding or removing textures from vanilla texture atlases via resource packs."
+
 ---
 
 # Texture Atlas

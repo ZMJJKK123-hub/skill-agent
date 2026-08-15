@@ -1,7 +1,9 @@
 ---
+
 name: forge-concept-registries
-description: Forge registries: DeferredRegister, RegisterEvent, RegistryObject, @ObjectHolder, custom registries.
-whenToUse: Use when registering Forge objects (items, blocks, etc.) or referencing registered objects.
+description: "Forge registries: DeferredRegister, RegisterEvent, RegistryObject, @ObjectHolder, custom registries."
+whenToUse: "Use when registering Forge objects (items, blocks, etc.) or referencing registered objects."
+
 ---
 
 # Registries

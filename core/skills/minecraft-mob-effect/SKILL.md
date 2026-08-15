@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-mob-effect
-description: Potion effects: base data for potions, splash/lingering, tipped arrows, clouds.
-whenToUse: Use when understanding potion effect data, potion colors, names, and their linked status effects.
+description: "Potion effects: base data for potions, splash/lingering, tipped arrows, clouds."
+whenToUse: "Use when understanding potion effect data, potion colors, names, and their linked status effects."
+
 ---
 
 # Potion Effects

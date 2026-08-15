@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tag-mob-effect
-description: The tradeable potion effect tag and its members.
-whenToUse: Use when writing datapack item modifiers or data component predicates that reference the tradeable potion effect tag.
+description: "The tradeable potion effect tag and its members."
+whenToUse: "Use when writing datapack item modifiers or data component predicates that reference the tradeable potion effect tag."
+
 ---
 
 # Mob Effect Tags

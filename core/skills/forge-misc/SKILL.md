@@ -1,7 +1,9 @@
 ---
+
 name: forge-misc
-description: Forge miscellaneous: configuration (ConfigValue), key bindings, game tests, update checks.
-whenToUse: Use when adding configs, key bindings, game tests, or debugging Forge mods.
+description: "Forge miscellaneous: configuration (ConfigValue), key bindings, game tests, update checks."
+whenToUse: "Use when adding configs, key bindings, game tests, or debugging Forge mods."
+
 ---
 
 Configuration

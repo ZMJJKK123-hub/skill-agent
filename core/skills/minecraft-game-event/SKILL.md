@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-game-event
-description: Game events — vibration system, listeners, detection rules, event list.
-whenToUse: Use when working with game events, sculk sensors, or vibration-based mechanics.
+description: "Game events — vibration system, listeners, detection rules, event list."
+whenToUse: "Use when working with game events, sculk sensors, or vibration-based mechanics."
+
 ---
 
 # Game Event

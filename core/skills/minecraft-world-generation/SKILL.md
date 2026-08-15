@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-world-generation
-description: World generation — chunk phases, PRNG/noise, biomes, terrain, carvers.
-whenToUse: Use when understanding or customizing how the world is generated (dimensions, biomes, terrain).
+description: "World generation — chunk phases, PRNG/noise, biomes, terrain, carvers."
+whenToUse: "Use when understanding or customizing how the world is generated (dimensions, biomes, terrain)."
+
 ---
 
 # World Generation

@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-noise
-description: Noise definition JSON: NOISE registry, octaves/amplitudes/normalize, vanilla usages.
-whenToUse: Use when writing datapack worldgen noise definitions.
+description: "Noise definition JSON: NOISE registry, octaves/amplitudes/normalize, vanilla usages."
+whenToUse: "Use when writing datapack worldgen noise definitions."
+
 ---
 
 # Noise

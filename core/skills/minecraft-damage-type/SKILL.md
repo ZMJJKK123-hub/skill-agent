@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-damage-type
-description: Damage type definition JSON: DAMAGE_TYPE registry, death messages, scaling, sounds.
-whenToUse: Use when writing datapack damage_type definitions or custom death messages and damage scaling.
+description: "Damage type definition JSON: DAMAGE_TYPE registry, death messages, scaling, sounds."
+whenToUse: "Use when writing datapack damage_type definitions or custom death messages and damage scaling."
+
 ---
 
 # Damage Types

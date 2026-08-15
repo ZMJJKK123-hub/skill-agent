@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-uuid
-description: UUID representations in Minecraft: formats, int-array, version 4 usage.
-whenToUse: Use when reading or writing UUIDs in commands, NBT, or datapacks.
+description: "UUID representations in Minecraft: formats, int-array, version 4 usage."
+whenToUse: "Use when reading or writing UUIDs in commands, NBT, or datapacks."
+
 ---
 
 # UUIDs in Minecraft

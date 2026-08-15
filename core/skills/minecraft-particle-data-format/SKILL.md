@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-particle-data-format
-description: Particle data format — particle types with options, colors, all options.
-whenToUse: Use when specifying particles in commands (/particle), biomes, or enchantments.
+description: "Particle data format — particle types with options, colors, all options."
+whenToUse: "Use when specifying particles in commands (/particle), biomes, or enchantments."
+
 ---
 
 # Particle Data Format

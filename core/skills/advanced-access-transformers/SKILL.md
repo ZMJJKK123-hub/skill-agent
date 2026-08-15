@@ -1,7 +1,9 @@
 ---
+
 name: advanced-access-transformers
-description: Forge Access Transformers (ATs): making classes, fields, and methods accessible to mod code.
-whenToUse: Use when access-transforming vanilla or mod classes/fields/methods.
+description: "Forge Access Transformers (ATs): making classes, fields, and methods accessible to mod code."
+whenToUse: "Use when access-transforming vanilla or mod classes/fields/methods."
+
 ---
 
 Access Transformers

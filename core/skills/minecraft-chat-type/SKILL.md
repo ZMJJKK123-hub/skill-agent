@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-chat-type
-description: Chat type definition JSON: CHAT_TYPE registry, chat/narration decorations, params.
-whenToUse: Use when overriding the 7 vanilla chat types in datapacks to control chat display style and narration.
+description: "Chat type definition JSON: CHAT_TYPE registry, chat/narration decorations, params."
+whenToUse: "Use when overriding the 7 vanilla chat types in datapacks to control chat display style and narration."
+
 ---
 
 # Chat Types

@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-random-sequence
-description: Random sequences save format, seeding (Xoroshiro128++), /random reset.
-whenToUse: Use when understanding random sequence seeding, loot randomness, or /random reset.
+description: "Random sequences save format, seeding (Xoroshiro128++), /random reset."
+whenToUse: "Use when understanding random sequence seeding, loot randomness, or /random reset."
+
 ---
 
 # Random Sequences

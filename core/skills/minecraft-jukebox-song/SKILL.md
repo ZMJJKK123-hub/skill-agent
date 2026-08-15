@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-jukebox-song
-description: Jukebox song definition JSON fields and playback behavior for datapack-custom music discs.
-whenToUse: Use when writing jukebox_song definitions or understanding jukebox playback.
+description: "Jukebox song definition JSON fields and playback behavior for datapack-custom music discs."
+whenToUse: "Use when writing jukebox_song definitions or understanding jukebox playback."
+
 ---
 
 # Jukebox Songs

@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tag-block
-description: Java Edition block tags: purpose and representative members of all 305 tags.
-whenToUse: Use when querying or writing block tags, or understanding which game behavior a block group controls.
+description: "Java Edition block tags: purpose and representative members of all 305 tags."
+whenToUse: "Use when querying or writing block tags, or understanding which game behavior a block group controls."
+
 ---
 
 # Block Tags

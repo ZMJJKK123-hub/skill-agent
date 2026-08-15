@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tag-painting-variant
-description: The placeable painting variant tag and its members.
-whenToUse: Use when writing datapacks or custom paintings that reference the placeable painting variant tag.
+description: "The placeable painting variant tag and its members."
+whenToUse: "Use when writing datapacks or custom paintings that reference the placeable painting variant tag."
+
 ---
 
 # Painting Variant Tags

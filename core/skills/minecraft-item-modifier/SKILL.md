@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-item-modifier
-description: Item modifier (loot function) format — all modifier types with fields.
-whenToUse: Use when writing item modifier JSON files or inline loot functions.
+description: "Item modifier (loot function) format — all modifier types with fields."
+whenToUse: "Use when writing item modifier JSON files or inline loot functions."
+
 ---
 
 # Item Modifier

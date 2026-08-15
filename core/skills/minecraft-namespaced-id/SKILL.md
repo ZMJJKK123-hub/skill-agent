@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-namespaced-id
-description: Namespaced ID — legal characters, string conversion, usage, namespaces.
-whenToUse: Use when referencing objects by namespaced ID in data packs, resource packs, or commands.
+description: "Namespaced ID — legal characters, string conversion, usage, namespaces."
+whenToUse: "Use when referencing objects by namespaced ID in data packs, resource packs, or commands."
+
 ---
 
 # Namespaced ID

@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-text-component
-description: Text Component format — Java types, styles, click/hover events; Bedrock rawtext.
-whenToUse: Use when composing text components in commands, data packs, or resource packs (tellraw, books, signs, item names).
+description: "Text Component format — Java types, styles, click/hover events; Bedrock rawtext."
+whenToUse: "Use when composing text components in commands, data packs, or resource packs (tellraw, books, signs, item names)."
+
 ---
 
 # Text Component

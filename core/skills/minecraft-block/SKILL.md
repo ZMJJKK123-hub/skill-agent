@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-block
-description: Blocks — behavior, block items, heights, textures, technical/Education/removed blocks.
-whenToUse: Use when working with blocks in general (placement, gravity, textures, item forms).
+description: "Blocks — behavior, block items, heights, textures, technical/Education/removed blocks."
+whenToUse: "Use when working with blocks in general (placement, gravity, textures, item forms)."
+
 ---
 
 # Block

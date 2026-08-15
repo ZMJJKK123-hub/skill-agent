@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-predicate
-description: Predicate (loot predicate) format — types with context requirements.
-whenToUse: Use when writing predicate JSON files or inline loot predicates in commands.
+description: "Predicate (loot predicate) format — types with context requirements."
+whenToUse: "Use when writing predicate JSON files or inline loot predicates in commands."
+
 ---
 
 # Predicate

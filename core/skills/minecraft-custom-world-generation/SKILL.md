@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-custom-world-generation
-description: Custom world generation overview: presets, dimensions, noise, biomes, features, structures.
-whenToUse: Use when creating custom world generation via datapacks.
+description: "Custom world generation overview: presets, dimensions, noise, biomes, features, structures."
+whenToUse: "Use when creating custom world generation via datapacks."
+
 ---
 
 # Custom World Generation

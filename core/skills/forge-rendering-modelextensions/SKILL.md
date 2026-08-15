@@ -1,7 +1,9 @@
 ---
+
 name: forge-rendering-modelextensions
-description: Forge model extensions: per-element face data — color, light, AO, origin, translation, rotation.
-whenToUse: Use when adding per-face color, light, AO, or transform data to vanilla elements models.
+description: "Forge model extensions: per-element face data — color, light, AO, origin, translation, rotation."
+whenToUse: "Use when adding per-face color, light, AO, or transform data to vanilla elements models."
+
 ---
 
 Face Data

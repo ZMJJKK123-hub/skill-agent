@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tag-item
-description: Java Edition item tags: all 248 tags with representative members.
-whenToUse: Use when querying or writing item tags for datapacks, or understanding which items a game mechanic accepts.
+description: "Java Edition item tags: all 248 tags with representative members."
+whenToUse: "Use when querying or writing item tags for datapacks, or understanding which items a game mechanic accepts."
+
 ---
 
 # Item Tags

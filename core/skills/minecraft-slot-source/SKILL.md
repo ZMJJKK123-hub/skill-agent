@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-slot-source
-description: Slot source format — all slot source types (slot_range, contents, group...).
-whenToUse: Use when writing slot sources in loot tables or /item commands.
+description: "Slot source format — all slot source types (slot_range, contents, group...)."
+whenToUse: "Use when writing slot sources in loot tables or /item commands."
+
 ---
 
 # Slot Source

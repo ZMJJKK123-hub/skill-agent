@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-goat-horn
-description: Goat horn instrument definition JSON: INSTRUMENT registry, sound, range, duration.
-whenToUse: Use when writing datapack instrument definitions or custom goat horn instruments.
+description: "Goat horn instrument definition JSON: INSTRUMENT registry, sound, range, duration."
+whenToUse: "Use when writing datapack instrument definitions or custom goat horn instruments."
+
 ---
 
 # Goat Horn Instruments

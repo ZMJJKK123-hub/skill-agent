@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-data-component
-description: Data component formats: item stacks, block entities, entities; /give syntax.
-whenToUse: Use when writing or parsing data components for items, block entities, or entities (custom item properties, component patches, /give component syntax).
+description: "Data component formats: item stacks, block entities, entities; /give syntax."
+whenToUse: "Use when writing or parsing data components for items, block entities, or entities (custom item properties, component patches, /give component syntax)."
+
 ---
 
 # Data Components

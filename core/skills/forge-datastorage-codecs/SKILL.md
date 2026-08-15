@@ -1,7 +1,9 @@
-﻿---
+---
+
 name: forge-datastorage-codecs
-description: Forge Codecs: DynamicOps, DataResult, custom codecs (Records, Dispatch...).
-whenToUse: Use when writing or understanding Forge data serialization (codec encode/decode, NBT/JSON data storage, registry codecs).
+description: "Forge Codecs: DynamicOps, DataResult, custom codecs (Records, Dispatch...)."
+whenToUse: "Use when writing or understanding Forge data serialization (codec encode/decode, NBT/JSON data storage, registry codecs)."
+
 ---
 
 # Codecs

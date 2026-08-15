@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-dimension
-description: Dimension definition JSON: LEVEL_STEM registry, chunk generators, biome sources.
-whenToUse: Use when writing datapack dimension definitions or custom world generation dimensions.
+description: "Dimension definition JSON: LEVEL_STEM registry, chunk generators, biome sources."
+whenToUse: "Use when writing datapack dimension definitions or custom world generation dimensions."
+
 ---
 
 # Dimension Definitions

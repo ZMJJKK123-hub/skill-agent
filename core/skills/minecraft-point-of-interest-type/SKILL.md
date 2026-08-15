@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-point-of-interest-type
-description: POI mechanism: POI types, claiming, retrieval, and vanilla usages.
-whenToUse: Use when understanding POI mechanics for villages, job sites, or bee behavior.
+description: "POI mechanism: POI types, claiming, retrieval, and vanilla usages."
+whenToUse: "Use when understanding POI mechanics for villages, job sites, or bee behavior."
+
 ---
 
 # Points of Interest (POI)

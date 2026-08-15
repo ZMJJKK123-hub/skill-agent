@@ -1,7 +1,9 @@
 ---
+
 name: forge-gameeffects-particles
-description: Forge particle system: ParticleType/ParticleOptions/Provider, registration, spawning.
-whenToUse: Use when creating custom particles in a Forge mod.
+description: "Forge particle system: ParticleType/ParticleOptions/Provider, registration, spawning."
+whenToUse: "Use when creating custom particles in a Forge mod."
+
 ---
 
 # Particles

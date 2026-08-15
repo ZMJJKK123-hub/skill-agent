@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tag-villager-trade
-description: Villager trade tags: purpose, naming, member structure.
-whenToUse: Use when customizing villager trade offers by profession and level via villager trade tags.
+description: "Villager trade tags: purpose, naming, member structure."
+whenToUse: "Use when customizing villager trade offers by profession and level via villager trade tags."
+
 ---
 
 # Villager Trade Tags

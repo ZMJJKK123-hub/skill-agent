@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-world-clock
-description: World clock definition format: WORLD_CLOCK registry, time markers, /time.
-whenToUse: Use when understanding world clocks, time markers, or /time command behavior.
+description: "World clock definition format: WORLD_CLOCK registry, time markers, /time."
+whenToUse: "Use when understanding world clocks, time markers, or /time command behavior."
+
 ---
 
 # World Clocks

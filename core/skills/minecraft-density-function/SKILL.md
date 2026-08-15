@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-density-function
-description: Density function format — all types: markers, math, noise sampling, splines.
-whenToUse: Use when authoring density function JSON files for world generation noise settings.
+description: "Density function format — all types: markers, math, noise sampling, splines."
+whenToUse: "Use when authoring density function JSON files for world generation noise settings."
+
 ---
 
 # Density Function

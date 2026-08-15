@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tag-goat-horn
-description: Goat horn instrument tags for referencing instruments in packs.
-whenToUse: Use when querying or writing goat horn instrument tags (goat_horns etc.).
+description: "Goat horn instrument tags for referencing instruments in packs."
+whenToUse: "Use when querying or writing goat horn instrument tags (goat_horns etc.)."
+
 ---
 
 # Goat Horn Instrument Tags

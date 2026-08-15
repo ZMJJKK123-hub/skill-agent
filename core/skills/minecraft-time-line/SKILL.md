@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-time-line
-description: Timeline definition format — tracks, keyframes, easing, time markers.
-whenToUse: Use when authoring timeline JSON files or referencing time-based environment attributes.
+description: "Timeline definition format — tracks, keyframes, easing, time markers."
+whenToUse: "Use when authoring timeline JSON files or referencing time-based environment attributes."
+
 ---
 
 # Timeline Definition

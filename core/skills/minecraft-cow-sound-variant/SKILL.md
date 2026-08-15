@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-cow-sound-variant
-description: Cow sound variant definition JSON: COW_SOUND_VARIANT registry, sound events.
-whenToUse: Use when writing datapack cow_sound_variant definitions or custom cow sounds.
+description: "Cow sound variant definition JSON: COW_SOUND_VARIANT registry, sound events."
+whenToUse: "Use when writing datapack cow_sound_variant definitions or custom cow sounds."
+
 ---
 
 # Cow Sound Variants

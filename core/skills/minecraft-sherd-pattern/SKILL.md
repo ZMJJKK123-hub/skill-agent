@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-sherd-pattern
-description: Decorated pot pattern definition JSON: DECORATED_POT_PATTERN registry.
-whenToUse: Use when writing datapack decorated_pot_pattern definitions or custom pot patterns.
+description: "Decorated pot pattern definition JSON: DECORATED_POT_PATTERN registry."
+whenToUse: "Use when writing datapack decorated_pot_pattern definitions or custom pot patterns."
+
 ---
 
 # Decorated Pot Pattern Definitions

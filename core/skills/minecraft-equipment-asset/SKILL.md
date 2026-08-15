@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-equipment-asset
-description: Equipment asset definition JSON: preset model types and layer textures.
-whenToUse: Use when defining custom armor/equipment appearance via equipment assets in resource packs.
+description: "Equipment asset definition JSON: preset model types and layer textures."
+whenToUse: "Use when defining custom armor/equipment appearance via equipment assets in resource packs."
+
 ---
 
 # Equipment Assets

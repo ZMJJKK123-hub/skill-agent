@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tutorial-datapack-create
-description: Tutorial — creating a datapack: setup, pack.mcmeta, namespaces, content.
-whenToUse: Use when creating your first datapack (setup, structure, pack.mcmeta).
+description: "Tutorial — creating a datapack: setup, pack.mcmeta, namespaces, content."
+whenToUse: "Use when creating your first datapack (setup, structure, pack.mcmeta)."
+
 ---
 
 # Tutorial: Making a Data Pack

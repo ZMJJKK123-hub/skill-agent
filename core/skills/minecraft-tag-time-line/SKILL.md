@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tag-time-line
-description: Timeline tags and their members, used in dimension type definitions to specify active timelines.
-whenToUse: Use when querying or writing timeline tags for dimension type definitions.
+description: "Timeline tags and their members, used in dimension type definitions to specify active timelines."
+whenToUse: "Use when querying or writing timeline tags for dimension type definitions."
+
 ---
 
 # Timeline Tags

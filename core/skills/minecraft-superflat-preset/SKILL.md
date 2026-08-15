@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-superflat-preset
-description: Flat level generator preset JSON: FLAT_LEVEL_GENERATOR_PRESET registry.
-whenToUse: Use when writing datapack flat_level_generator_preset definitions.
+description: "Flat level generator preset JSON: FLAT_LEVEL_GENERATOR_PRESET registry."
+whenToUse: "Use when writing datapack flat_level_generator_preset definitions."
+
 ---
 
 # Flat Level Generator Presets

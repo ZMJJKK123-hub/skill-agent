@@ -1,7 +1,9 @@
 ---
+
 name: forge-concept-events
-description: Forge events: buses, handler registration, @EventBusSubscriber, cancellation, results, priority.
-whenToUse: Use when listening to Forge events or firing custom events.
+description: "Forge events: buses, handler registration, @EventBusSubscriber, cancellation, results, priority."
+whenToUse: "Use when listening to Forge events or firing custom events."
+
 ---
 
 # Events

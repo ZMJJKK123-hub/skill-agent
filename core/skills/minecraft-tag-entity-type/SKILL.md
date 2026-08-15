@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tag-entity-type
-description: Entity type tags and their members, used in entity predicates, target selectors, and game behavior.
-whenToUse: Use when writing entity predicates, target selectors, or datapacks via entity type tags (#undead, #skeletons etc.).
+description: "Entity type tags and their members, used in entity predicates, target selectors, and game behavior."
+whenToUse: "Use when writing entity predicates, target selectors, or datapacks via entity type tags (#undead, #skeletons etc.)."
+
 ---
 
 # Entity Type Tags

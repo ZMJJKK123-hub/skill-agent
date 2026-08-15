@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-command
-description: Commands — usage, syntax notation, restrictions, parsing/execution, output, results.
-whenToUse: Use when writing or debugging commands, command blocks, or functions.
+description: "Commands — usage, syntax notation, restrictions, parsing/execution, output, results."
+whenToUse: "Use when writing or debugging commands, command blocks, or functions."
+
 ---
 
 # Command

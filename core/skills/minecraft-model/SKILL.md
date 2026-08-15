@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-model
-description: Model format — baked models, inheritance, elements, transforms, dispatch, tinting.
-whenToUse: Use when authoring or editing resource pack block/item models, blockstate JSON, or item model definitions.
+description: "Model format — baked models, inheritance, elements, transforms, dispatch, tinting."
+whenToUse: "Use when authoring or editing resource pack block/item models, blockstate JSON, or item model definitions."
+
 ---
 
 # Model (Java Edition)

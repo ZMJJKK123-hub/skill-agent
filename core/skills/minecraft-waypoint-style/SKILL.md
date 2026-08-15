@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-waypoint-style
-description: Waypoint style JSON: locator icons, distances, interpolation, built-ins.
-whenToUse: Use when writing resource pack waypoint_style definitions (upcoming content).
+description: "Waypoint style JSON: locator icons, distances, interpolation, built-ins."
+whenToUse: "Use when writing resource pack waypoint_style definitions (upcoming content)."
+
 ---
 
 # Waypoint Styles

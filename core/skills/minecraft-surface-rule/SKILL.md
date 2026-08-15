@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-surface-rule
-description: Surface (material) rule format — rule types, conditions, application order.
-whenToUse: Use when authoring surface/material rules in noise settings (worldgen).
+description: "Surface (material) rule format — rule types, conditions, application order."
+whenToUse: "Use when authoring surface/material rules in noise settings (worldgen)."
+
 ---
 
 # Surface Rule

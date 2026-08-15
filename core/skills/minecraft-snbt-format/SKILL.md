@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-snbt-format
-description: SNBT format — numbers, suffixes, strings, arrays, lists, compounds, operations.
-whenToUse: Use when writing SNBT in commands, NBT components, or .snbt files.
+description: "SNBT format — numbers, suffixes, strings, arrays, lists, compounds, operations."
+whenToUse: "Use when writing SNBT in commands, NBT components, or .snbt files."
+
 ---
 
 # SNBT Format

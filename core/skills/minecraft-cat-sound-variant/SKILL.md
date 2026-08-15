@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-cat-sound-variant
-description: Cat sound variant definition JSON: CAT_SOUND_VARIANT registry, adult/baby sound events.
-whenToUse: Use when writing datapack cat_sound_variant definitions or custom cat sounds.
+description: "Cat sound variant definition JSON: CAT_SOUND_VARIANT registry, adult/baby sound events."
+whenToUse: "Use when writing datapack cat_sound_variant definitions or custom cat sounds."
+
 ---
 
 # Cat Sound Variants

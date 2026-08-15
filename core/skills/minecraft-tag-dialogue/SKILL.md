@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tag-dialogue
-description: Dialogue tags and the two built-in tags, used when writing dialogue datapacks.
-whenToUse: Use when defining or invoking datapack dialogue tags (dialog_list etc.).
+description: "Dialogue tags and the two built-in tags, used when writing dialogue datapacks."
+whenToUse: "Use when defining or invoking datapack dialogue tags (dialog_list etc.)."
+
 ---
 
 # Dialogue Tags

@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-attribute
-description: Attributes — base/modifiers, operations (add_value, add_multiplied_base, add_multiplied_total).
-whenToUse: Use when working with attributes and attribute modifiers (items, enchantments, /attribute, /summon attributes).
+description: "Attributes — base/modifiers, operations (add_value, add_multiplied_base, add_multiplied_total)."
+whenToUse: "Use when working with attributes and attribute modifiers (items, enchantments, /attribute, /summon attributes)."
+
 ---
 
 # Attribute

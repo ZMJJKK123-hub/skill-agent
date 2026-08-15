@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-sulfur-block-prototype
-description: Sulfur cube archetype JSON: attributes, buoyancy, explosions, food, sounds.
-whenToUse: Use when writing datapack sulfur_cube_archetype definitions (upcoming content).
+description: "Sulfur cube archetype JSON: attributes, buoyancy, explosions, food, sounds."
+whenToUse: "Use when writing datapack sulfur_cube_archetype definitions (upcoming content)."
+
 ---
 
 # Sulfur Cube Archetypes

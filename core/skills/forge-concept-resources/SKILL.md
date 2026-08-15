@@ -1,7 +1,9 @@
 ---
+
 name: forge-concept-resources
-description: Forge resource systems guide: assets vs data, resource packs, ResourceLocation namespaces and paths.
-whenToUse: Use when understanding Minecraft resource systems, ResourceLocation naming, or where to place mod assets/data.
+description: "Forge resource systems guide: assets vs data, resource packs, ResourceLocation namespaces and paths."
+whenToUse: "Use when understanding Minecraft resource systems, ResourceLocation naming, or where to place mod assets/data."
+
 ---
 
 # Resources

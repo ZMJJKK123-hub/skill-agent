@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tag-game-event
-description: Game event tags: vibration listening conditions and listening ranges.
-whenToUse: Use when referencing game event tags (vibration system, Allay and Warden listening conditions).
+description: "Game event tags: vibration listening conditions and listening ranges."
+whenToUse: "Use when referencing game event tags (vibration system, Allay and Warden listening conditions)."
+
 ---
 
 # Game Event Tags

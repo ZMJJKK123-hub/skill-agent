@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-json
-description: JSON syntax used in Minecraft: values, objects, arrays, strings, numbers.
-whenToUse: Use when writing or validating JSON files in datapacks and resource packs.
+description: "JSON syntax used in Minecraft: values, objects, arrays, strings, numbers."
+whenToUse: "Use when writing or validating JSON files in datapacks and resource packs."
+
 ---
 
 # JSON in Minecraft

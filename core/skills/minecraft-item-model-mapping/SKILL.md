@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-item-model-mapping
-description: Item model definition format — condition/range/select dispatch, tints, special models.
-whenToUse: Use when authoring item model definition JSON files in assets/<namespace>/items/.
+description: "Item model definition format — condition/range/select dispatch, tints, special models."
+whenToUse: "Use when authoring item model definition JSON files in assets/<namespace>/items/."
+
 ---
 
 # Item Model Definition

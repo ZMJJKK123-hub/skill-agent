@@ -1,7 +1,9 @@
 ---
+
 name: forge-gettingstarted
-description: Getting started with Forge modding: build.gradle, mod metadata, dependencies, javafml, @Mod.
-whenToUse: Use when setting up a Forge mod project or build.gradle.
+description: "Getting started with Forge modding: build.gradle, mod metadata, dependencies, javafml, @Mod."
+whenToUse: "Use when setting up a Forge mod project or build.gradle."
+
 ---
 
 ## ⚠️ Hard Facts About This Project's Environment (Must Not Be Violated)

@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-experimental-datapack
-description: Java experimental content: built-in datapacks, feature flags, their effects.
-whenToUse: Use when understanding or enabling experimental content and feature flags in Java Edition.
+description: "Java experimental content: built-in datapacks, feature flags, their effects."
+whenToUse: "Use when understanding or enabling experimental content and feature flags in Java Edition."
+
 ---
 
 # Experimental Content

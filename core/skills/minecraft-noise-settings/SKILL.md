@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-noise-settings
-description: Noise settings JSON: NOISE_SETTINGS registry, sea level, aquifers, noise router.
-whenToUse: Use when writing datapack worldgen noise_settings definitions or custom terrain generation.
+description: "Noise settings JSON: NOISE_SETTINGS registry, sea level, aquifers, noise router."
+whenToUse: "Use when writing datapack worldgen noise_settings definitions or custom terrain generation."
+
 ---
 
 # Noise Settings

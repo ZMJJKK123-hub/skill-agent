@@ -1,7 +1,9 @@
 ---
+
 name: forge-datagen
-description: Forge data generators: runData task, generator modes, ExistingFileHelper, asset/server providers.
-whenToUse: Use when programmatically generating mod assets/data with Forge data generators.
+description: "Forge data generators: runData task, generator modes, ExistingFileHelper, asset/server providers."
+whenToUse: "Use when programmatically generating mod assets/data with Forge data generators."
+
 ---
 
 # Data Generators

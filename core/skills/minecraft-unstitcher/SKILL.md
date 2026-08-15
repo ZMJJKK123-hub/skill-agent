@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-unstitcher
-description: The Unstitcher utility: converts packs by splitting terrain/items atlases.
-whenToUse: Use when converting legacy texture packs or understanding the Unstitcher/Texture Ender/Slicer utility family.
+description: "The Unstitcher utility: converts packs by splitting terrain/items atlases."
+whenToUse: "Use when converting legacy texture packs or understanding the Unstitcher/Texture Ender/Slicer utility family."
+
 ---
 
 # Unstitcher

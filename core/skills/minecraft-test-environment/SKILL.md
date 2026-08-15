@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-test-environment
-description: Test environment definition format — environment types and batch behavior.
-whenToUse: Use when authoring test environment JSON files for game tests.
+description: "Test environment definition format — environment types and batch behavior."
+whenToUse: "Use when authoring test environment JSON files for game tests."
+
 ---
 
 # Test Environment

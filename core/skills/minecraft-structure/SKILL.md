@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-structure
-description: Structure (feature) definition format — fields and structure types.
-whenToUse: Use when authoring structure JSON files in data/worldgen/structure/.
+description: "Structure (feature) definition format — fields and structure types."
+whenToUse: "Use when authoring structure JSON files in data/worldgen/structure/."
+
 ---
 
 # Structure Definition

@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tag-configured-feature
-description: Configured feature tags referenced from biomes for feature generation.
-whenToUse: Use when writing or understanding configured feature tags (e.g. can_spawn_from_bone_meal).
+description: "Configured feature tags referenced from biomes for feature generation."
+whenToUse: "Use when writing or understanding configured feature tags (e.g. can_spawn_from_bone_meal)."
+
 ---
 
 # Configured Feature Tags

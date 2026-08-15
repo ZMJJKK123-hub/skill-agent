@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tag-function
-description: Function tags (#load, #tick) usage and a JSON example, for organizing datapack functions.
-whenToUse: Use when organizing datapack functions with function tags (#load, #tick).
+description: "Function tags (#load, #tick) usage and a JSON example, for organizing datapack functions."
+whenToUse: "Use when organizing datapack functions with function tags (#load, #tick)."
+
 ---
 
 # Function Tags

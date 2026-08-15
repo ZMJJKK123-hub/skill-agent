@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-enchantment-provider
-description: Enchantment provider definition JSON: the three types and built-in behavior.
-whenToUse: Use when writing datapack enchantment_provider definitions or understanding the enchanting source mechanism.
+description: "Enchantment provider definition JSON: the three types and built-in behavior."
+whenToUse: "Use when writing datapack enchantment_provider definitions or understanding the enchanting source mechanism."
+
 ---
 
 # Enchantment Providers

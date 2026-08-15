@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-shader
-description: Shader system — core shader format, render types, post-processing pipeline.
-whenToUse: Use when modifying shaders, render types, or post-processing effects via resource packs.
+description: "Shader system — core shader format, render types, post-processing pipeline."
+whenToUse: "Use when modifying shaders, render types, or post-processing effects via resource packs."
+
 ---
 
 # Shader

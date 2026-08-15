@@ -1,7 +1,9 @@
 ---
+
 name: forge-concept-lifecycle
-description: Forge mod lifecycle: mod event bus events, setup, sided setup, GatherDataEvent, InterModComms.
-whenToUse: Use when initializing a Forge mod or registering lifecycle event listeners.
+description: "Forge mod lifecycle: mod event bus events, setup, sided setup, GatherDataEvent, InterModComms."
+whenToUse: "Use when initializing a Forge mod or registering lifecycle event listeners."
+
 ---
 
 # Mod Lifecycle

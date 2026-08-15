@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-chicken-sound-variant
-description: Chicken sound variant definition JSON: CHICKEN_SOUND_VARIANT registry, sound events.
-whenToUse: Use when writing datapack chicken_sound_variant definitions or custom chicken sounds.
+description: "Chicken sound variant definition JSON: CHICKEN_SOUND_VARIANT registry, sound events."
+whenToUse: "Use when writing datapack chicken_sound_variant definitions or custom chicken sounds."
+
 ---
 
 # Chicken Sound Variants

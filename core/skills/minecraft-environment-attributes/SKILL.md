@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-environment-attributes
-description: Environment attributes — sources, modifiers, interpolation, full attribute list.
-whenToUse: Use when defining environment attributes in dimension types, biomes, or timelines (fog, sky, clouds, music, gameplay rules).
+description: "Environment attributes — sources, modifiers, interpolation, full attribute list."
+whenToUse: "Use when defining environment attributes in dimension types, biomes, or timelines (fog, sky, clouds, music, gameplay rules)."
+
 ---
 
 # Environment Attributes

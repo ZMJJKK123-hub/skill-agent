@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tag-fluid
-description: Java Edition fluid tags and their members controlling fluid behavior.
-whenToUse: Use when querying fluid tags (water, lava etc.) or judging which fluid tag controls a game behavior.
+description: "Java Edition fluid tags and their members controlling fluid behavior."
+whenToUse: "Use when querying fluid tags (water, lava etc.) or judging which fluid tag controls a game behavior."
+
 ---
 
 # Fluid Tags

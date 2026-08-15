@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-processor-list
-description: Processor list format — all processor types and behavior.
-whenToUse: Use when authoring structure processor lists in data/worldgen/processor_list/.
+description: "Processor list format — all processor types and behavior."
+whenToUse: "Use when authoring structure processor lists in data/worldgen/processor_list/."
+
 ---
 
 # Processor List

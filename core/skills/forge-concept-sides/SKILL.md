@@ -1,7 +1,9 @@
 ---
+
 name: forge-concept-sides
-description: Forge logical/physical sides: isClientSide, DistExecutor, thread groups, FMLEnvironment.dist.
-whenToUse: Use when writing side-aware Forge code or avoiding common client/server crashes.
+description: "Forge logical/physical sides: isClientSide, DistExecutor, thread groups, FMLEnvironment.dist."
+whenToUse: "Use when writing side-aware Forge code or avoiding common client/server crashes."
+
 ---
 
 # Sides in Minecraft

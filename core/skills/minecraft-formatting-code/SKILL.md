@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-formatting-code
-description: Legacy § formatting codes: colors, formats, input, usage in motd and names.
-whenToUse: Use when applying legacy § formatting to text, motd, world names, or language files (deprecated in favor of text components).
+description: "Legacy § formatting codes: colors, formats, input, usage in motd and names."
+whenToUse: "Use when applying legacy § formatting to text, motd, world names, or language files (deprecated in favor of text components)."
+
 ---
 
 # Formatting Codes

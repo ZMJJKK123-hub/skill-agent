@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-custom-font
-description: Custom font format — glyph providers (bitmap, reference, space, ttf, unihex).
-whenToUse: Use when creating or modifying fonts via resource packs (assets/<ns>/font/*.json).
+description: "Custom font format — glyph providers (bitmap, reference, space, ttf, unihex)."
+whenToUse: "Use when creating or modifying fonts via resource packs (assets/<ns>/font/*.json)."
+
 ---
 
 # Custom Font

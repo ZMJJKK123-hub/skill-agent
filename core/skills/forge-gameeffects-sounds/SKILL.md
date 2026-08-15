@@ -1,7 +1,9 @@
 ---
+
 name: forge-gameeffects-sounds
-description: Forge sounds: sounds.json, SoundEvent registration, and the sound-playing method matrix.
-whenToUse: Use when creating sound events or playing sounds in a Forge mod.
+description: "Forge sounds: sounds.json, SoundEvent registration, and the sound-playing method matrix."
+whenToUse: "Use when creating sound events or playing sounds in a Forge mod."
+
 ---
 
 # Sounds

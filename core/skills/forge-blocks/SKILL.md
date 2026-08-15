@@ -1,7 +1,9 @@
 ---
+
 name: forge-blocks
-description: Forge Block guide: BlockBehaviour.Properties, registration, BlockItem, and the block state system.
-whenToUse: Use when creating Forge blocks or working with block states.
+description: "Forge Block guide: BlockBehaviour.Properties, registration, BlockItem, and the block state system."
+whenToUse: "Use when creating Forge blocks or working with block states."
+
 ---
 
 # Blocks

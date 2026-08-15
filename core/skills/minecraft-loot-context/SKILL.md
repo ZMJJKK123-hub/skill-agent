@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-loot-context
-description: Loot context — parameters and every parameter set (table and predicate-only).
-whenToUse: Use when choosing the loot table `type` field or knowing which parameters are available in predicates/modifiers.
+description: "Loot context — parameters and every parameter set (table and predicate-only)."
+whenToUse: "Use when choosing the loot table `type` field or knowing which parameters are available in predicates/modifiers."
+
 ---
 
 # Loot Context

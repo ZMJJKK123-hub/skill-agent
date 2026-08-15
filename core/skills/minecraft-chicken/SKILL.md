@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-chicken
-description: Chicken — spawning, chicken jockeys, drops, egg laying, breeding, sound variants, variants, NBT.
-whenToUse: Use when working with chickens (breeding, egg farms, jockeys, variants).
+description: "Chicken — spawning, chicken jockeys, drops, egg laying, breeding, sound variants, variants, NBT."
+whenToUse: "Use when working with chickens (breeding, egg farms, jockeys, variants)."
+
 ---
 
 # Chicken

@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-wolf-sound-variant
-description: Wolf sound variant definition JSON: WOLF_SOUND_VARIANT registry, events.
-whenToUse: Use when writing datapack wolf_sound_variant definitions or custom wolf sounds.
+description: "Wolf sound variant definition JSON: WOLF_SOUND_VARIANT registry, events."
+whenToUse: "Use when writing datapack wolf_sound_variant definitions or custom wolf sounds."
+
 ---
 
 # Wolf Sound Variants

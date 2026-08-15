@@ -1,7 +1,9 @@
 ---
+
 name: forge-gui
-description: Forge GUI guide: menus (MenuType, AbstractContainerMenu), screens and HUD, data synchronization.
-whenToUse: Use when implementing containers/menus, screens, or HUD elements.
+description: "Forge GUI guide: menus (MenuType, AbstractContainerMenu), screens and HUD, data synchronization."
+whenToUse: "Use when implementing containers/menus, screens, or HUD elements."
+
 ---
 
 # Menus

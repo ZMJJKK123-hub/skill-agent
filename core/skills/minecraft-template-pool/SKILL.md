@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-template-pool
-description: Template pool (jigsaw pool) format — elements, generation rules, fallback.
-whenToUse: Use when authoring template pools for jigsaw structures.
+description: "Template pool (jigsaw pool) format — elements, generation rules, fallback."
+whenToUse: "Use when authoring template pools for jigsaw structures."
+
 ---
 
 # Template Pool

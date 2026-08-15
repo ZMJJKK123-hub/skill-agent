@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-registry
-description: Registry mechanism: built-in vs writable, ID keys, tags, datapack paths.
-whenToUse: Use when understanding how datapack registries (enchantment, jukebox_song, tags, etc.) work.
+description: "Registry mechanism: built-in vs writable, ID keys, tags, datapack paths."
+whenToUse: "Use when understanding how datapack registries (enchantment, jukebox_song, tags, etc.) work."
+
 ---
 
 # Registries

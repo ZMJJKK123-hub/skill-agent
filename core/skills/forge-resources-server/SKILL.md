@@ -1,7 +1,9 @@
 ---
+
 name: forge-resources-server
-description: Forge server data: advancements, conditional loading, loot tables, tags, recipes.
-whenToUse: Use when writing or modifying Forge server data (datapack content: advancements, loot tables, tags, recipes, etc.).
+description: "Forge server data: advancements, conditional loading, loot tables, tags, recipes."
+whenToUse: "Use when writing or modifying Forge server data (datapack content: advancements, loot tables, tags, recipes, etc.)."
+
 ---
 
 Advancements

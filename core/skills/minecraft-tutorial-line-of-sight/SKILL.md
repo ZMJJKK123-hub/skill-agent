@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tutorial-line-of-sight
-description: Tutorial — sight magic datapack: raycast, explosion, bee inspection.
-whenToUse: Use when building datapack spells/raycasts triggered by right-click items (Java 1.21.2+).
+description: "Tutorial — sight magic datapack: raycast, explosion, bee inspection."
+whenToUse: "Use when building datapack spells/raycasts triggered by right-click items (Java 1.21.2+)."
+
 ---
 
 # Tutorial: Datapack Example — Sight Magic

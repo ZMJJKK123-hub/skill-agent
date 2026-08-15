@@ -1,7 +1,9 @@
 ---
+
 name: forge-items
-description: Forge items: Item.Properties, registration, creative tabs, BEWLR dynamic rendering.
-whenToUse: Use when creating Forge items or custom item rendering.
+description: "Forge items: Item.Properties, registration, creative tabs, BEWLR dynamic rendering."
+whenToUse: "Use when creating Forge items or custom item rendering."
+
 ---
 
 # Items

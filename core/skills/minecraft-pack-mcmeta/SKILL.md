@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-pack-mcmeta
-description: pack.mcmeta — pack metadata, version validation, overlays, filters, languages.
-whenToUse: Use when writing pack.mcmeta for resource packs or data packs.
+description: "pack.mcmeta — pack metadata, version validation, overlays, filters, languages."
+whenToUse: "Use when writing pack.mcmeta for resource packs or data packs."
+
 ---
 
 # pack.mcmeta

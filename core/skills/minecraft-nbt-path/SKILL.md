@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-nbt-path
-description: NBT path format — the 6 node types, tag-set semantics, quoted names, mixed-path examples.
-whenToUse: Use when writing NBT paths in /data, /execute store, or NBT component predicates.
+description: "NBT path format — the 6 node types, tag-set semantics, quoted names, mixed-path examples."
+whenToUse: "Use when writing NBT paths in /data, /execute store, or NBT component predicates."
+
 ---
 
 # NBT Path

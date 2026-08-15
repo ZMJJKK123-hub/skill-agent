@@ -1,7 +1,9 @@
 ---
+
 name: forge-concept-internationalization
-description: Forge i18n: translation keys, language files, getDescriptionId, client/server localization.
-whenToUse: Use when localizing Forge mod text or sending translatable text to players.
+description: "Forge i18n: translation keys, language files, getDescriptionId, client/server localization."
+whenToUse: "Use when localizing Forge mod text or sending translatable text to players."
+
 ---
 
 # Internationalization and Localization

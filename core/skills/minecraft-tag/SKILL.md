@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tag
-description: Disambiguation of 'tag': datapack tags, scoreboard tags, NBT tags, chunk tags.
-whenToUse: Use when clarifying which "tag" concept applies in Java Edition contexts.
+description: "Disambiguation of 'tag': datapack tags, scoreboard tags, NBT tags, chunk tags."
+whenToUse: "Use when clarifying which \"tag\" concept applies in Java Edition contexts."
+
 ---
 
 # Tag (disambiguation)

@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-caves-and-cliffs-preview-datapack
-description: Caves & Cliffs Prototype Data Pack — the 8 versions and their worldgen changes.
-whenToUse: Use when researching the 1.17-era Caves & Cliffs prototype datapack (historical).
+description: "Caves & Cliffs Prototype Data Pack — the 8 versions and their worldgen changes."
+whenToUse: "Use when researching the 1.17-era Caves & Cliffs prototype datapack (historical)."
+
 ---
 
 # Caves & Cliffs Prototype Data Pack

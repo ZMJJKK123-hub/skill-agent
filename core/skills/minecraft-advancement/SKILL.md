@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-advancement
-description: Advancement definition format — JSON in data packs: criteria, triggers, display, rewards.
-whenToUse: Use when authoring or validating advancement JSON files in data packs.
+description: "Advancement definition format — JSON in data packs: criteria, triggers, display, rewards."
+whenToUse: "Use when authoring or validating advancement JSON files in data packs."
+
 ---
 
 # Advancement Format

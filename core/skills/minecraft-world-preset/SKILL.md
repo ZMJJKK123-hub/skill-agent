@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-world-preset
-description: World preset definition JSON: WORLD_PRESET registry, dimension sets, tags.
-whenToUse: Use when writing datapack worldgen world_preset definitions.
+description: "World preset definition JSON: WORLD_PRESET registry, dimension sets, tags."
+whenToUse: "Use when writing datapack worldgen world_preset definitions."
+
 ---
 
 # World Presets

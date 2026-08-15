@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-placed-feature
-description: Placed feature format — placement mechanics and all placement modifiers.
-whenToUse: Use when authoring placed feature JSON files in data/worldgen/placed_feature/.
+description: "Placed feature format — placement mechanics and all placement modifiers."
+whenToUse: "Use when authoring placed feature JSON files in data/worldgen/placed_feature/."
+
 ---
 
 # Placed Feature

@@ -1,7 +1,9 @@
 ---
+
 name: forge-rendering-modelloaders
-description: Forge custom model loaders: BakedModel — getOverrides, AO, gui3d, custom renderer, particle icon.
-whenToUse: Use when implementing custom model loaders or BakedModel logic.
+description: "Forge custom model loaders: BakedModel — getOverrides, AO, gui3d, custom renderer, particle icon."
+whenToUse: "Use when implementing custom model loaders or BakedModel logic."
+
 ---
 
 `BakedModel`

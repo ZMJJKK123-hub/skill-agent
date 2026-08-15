@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tutorial-custom-armor-trim
-description: Tutorial — custom armor trims: recipe, pattern/material, atlases, models.
-whenToUse: Use when adding custom armor trim patterns or materials via data + resource packs.
+description: "Tutorial — custom armor trims: recipe, pattern/material, atlases, models."
+whenToUse: "Use when adding custom armor trim patterns or materials via data + resource packs."
+
 ---
 
 # Tutorial: Custom Armor Trims

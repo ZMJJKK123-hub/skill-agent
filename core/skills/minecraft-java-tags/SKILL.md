@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-java-tags
-description: Tags (Java Edition) — directory structure, file format, replace/required, loading.
-whenToUse: Use when defining or extending tags in data packs.
+description: "Tags (Java Edition) — directory structure, file format, replace/required, loading."
+whenToUse: "Use when defining or extending tags in data packs."
+
 ---
 
 # Tags (Java Edition)

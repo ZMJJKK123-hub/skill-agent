@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-data-generator
-description: Data generator — running it, NBT↔SNBT conversion, exports, report tools.
-whenToUse: Use when exporting Minecraft's data-driven files, converting NBT/SNBT, or generating internal reports (blocks, commands, registries, packets).
+description: "Data generator — running it, NBT↔SNBT conversion, exports, report tools."
+whenToUse: "Use when exporting Minecraft's data-driven files, converting NBT/SNBT, or generating internal reports (blocks, commands, registries, packets)."
+
 ---
 
 # Data Generator

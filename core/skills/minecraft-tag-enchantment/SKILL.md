@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tag-enchantment
-description: Enchantment tags: acquisition, exclusivity, loot, villager trades.
-whenToUse: Use when handling enchantment acquisition, exclusivity, loot, or villager trades via enchantment tags (#treasure, #non_treasure etc.).
+description: "Enchantment tags: acquisition, exclusivity, loot, villager trades."
+whenToUse: "Use when handling enchantment acquisition, exclusivity, loot, or villager trades via enchantment tags (#treasure, #non_treasure etc.)."
+
 ---
 
 # Enchantment Tags

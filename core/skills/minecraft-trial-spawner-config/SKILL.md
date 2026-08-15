@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-trial-spawner-config
-description: Trial spawner config format — loot ejection, spawn counts, potentials.
-whenToUse: Use when authoring trial spawner config JSON files in data/trial_spawner/.
+description: "Trial spawner config format — loot ejection, spawn counts, potentials."
+whenToUse: "Use when authoring trial spawner config JSON files in data/trial_spawner/."
+
 ---
 
 # Trial Spawner Config

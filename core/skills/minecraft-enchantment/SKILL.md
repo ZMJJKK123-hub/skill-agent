@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-enchantment
-description: Enchantment definition format — root fields, cost ranges, effect components.
-whenToUse: Use when authoring enchantment JSON files in data packs.
+description: "Enchantment definition format — root fields, cost ranges, effect components."
+whenToUse: "Use when authoring enchantment JSON files in data packs."
+
 ---
 
 # Enchantment Definition

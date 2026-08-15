@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-command-context
-description: Command context — parameters, static vs dynamic, per-scenario contexts.
-whenToUse: Use when reasoning about how commands/functions/text components resolve (executor, coordinates, permissions) in different contexts.
+description: "Command context — parameters, static vs dynamic, per-scenario contexts."
+whenToUse: "Use when reasoning about how commands/functions/text components resolve (executor, coordinates, permissions) in different contexts."
+
 ---
 
 # Command Context

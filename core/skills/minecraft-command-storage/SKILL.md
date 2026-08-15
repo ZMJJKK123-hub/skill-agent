@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-command-storage
-description: Command storage save format: command_storage.dat, NBT structure, access methods.
-whenToUse: Use when understanding or accessing command storage (storage <target>) from commands, datapacks, or saves.
+description: "Command storage save format: command_storage.dat, NBT structure, access methods."
+whenToUse: "Use when understanding or accessing command storage (storage <target>) from commands, datapacks, or saves."
+
 ---
 
 # Command Storage Format

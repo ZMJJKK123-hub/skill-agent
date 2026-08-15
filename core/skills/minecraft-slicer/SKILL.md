@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-slicer
-description: The Slicer utility: splits texture atlases for resource pack upgrades.
-whenToUse: Use when upgrading resource packs or understanding the Slicer/Unstitcher/Texture Ender utility family.
+description: "The Slicer utility: splits texture atlases for resource pack upgrades."
+whenToUse: "Use when upgrading resource packs or understanding the Slicer/Unstitcher/Texture Ender utility family."
+
 ---
 
 # Slicer

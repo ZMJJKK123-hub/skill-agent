@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-texture-ender
-description: The Texture Ender utility: converts legacy texture packs to resource packs.
-whenToUse: Use when converting a legacy texture pack into a resource pack, or understanding the Texture Ender utility.
+description: "The Texture Ender utility: converts legacy texture packs to resource packs."
+whenToUse: "Use when converting a legacy texture pack into a resource pack, or understanding the Texture Ender utility."
+
 ---
 
 # Texture Ender

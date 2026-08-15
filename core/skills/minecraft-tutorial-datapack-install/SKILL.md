@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tutorial-datapack-install
-description: Tutorial — installing data packs: at world creation, into existing worlds, on servers.
-whenToUse: Use when installing data packs in single-player or multiplayer.
+description: "Tutorial — installing data packs: at world creation, into existing worlds, on servers."
+whenToUse: "Use when installing data packs in single-player or multiplayer."
+
 ---
 
 # Tutorial: Installing Data Packs

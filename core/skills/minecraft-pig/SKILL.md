@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-pig
-description: Pig — spawning, variants, sound variants, drops, breeding, riding (carrot on a stick speed), NBT.
-whenToUse: Use when working with pigs (breeding, riding, variants).
+description: "Pig — spawning, variants, sound variants, drops, breeding, riding (carrot on a stick speed), NBT."
+whenToUse: "Use when working with pigs (breeding, riding, variants)."
+
 ---
 
 # Pig

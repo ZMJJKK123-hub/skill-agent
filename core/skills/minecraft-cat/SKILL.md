@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-cat
-description: Cat — spawning, skins, sound variants, taming, breeding, sitting, teleporting, gifts, NBT.
-whenToUse: Use when working with cats (taming, breeding, variants, gifts).
+description: "Cat — spawning, skins, sound variants, taming, breeding, sitting, teleporting, gifts, NBT."
+whenToUse: "Use when working with cats (taming, breeding, variants, gifts)."
+
 ---
 
 # Cat

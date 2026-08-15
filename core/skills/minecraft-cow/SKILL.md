@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-cow
-description: Cow — spawning, mooshroom conversion, sound variants, drops, milking, breeding, NBT.
-whenToUse: Use when working with cows (breeding, milking, variants).
+description: "Cow — spawning, mooshroom conversion, sound variants, drops, milking, breeding, NBT."
+whenToUse: "Use when working with cows (breeding, milking, variants)."
+
 ---
 
 # Cow

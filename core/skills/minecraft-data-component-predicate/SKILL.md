@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-data-component-predicate
-description: Data component predicate format — existence checks and value predicates.
-whenToUse: Use when testing item/block entity/entity data components in advancements, loot predicates, item predicates, or item models.
+description: "Data component predicate format — existence checks and value predicates."
+whenToUse: "Use when testing item/block entity/entity data components in advancements, loot predicates, item predicates, or item models."
+
 ---
 
 # Data Component Predicate

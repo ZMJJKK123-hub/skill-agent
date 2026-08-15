@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-zombie-nautilus
-description: Zombie Nautilus — spawning, taming, equipment, riding, undead traits.
-whenToUse: Use when working with zombie nautiluses (taming, riding, nautilus armor).
+description: "Zombie Nautilus — spawning, taming, equipment, riding, undead traits."
+whenToUse: "Use when working with zombie nautiluses (taming, riding, nautilus armor)."
+
 ---
 
 # Zombie Nautilus

@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tag-world-preset
-description: World preset tags and their members, controlling which presets appear on the world creation screen.
-whenToUse: Use when writing datapacks or understanding world preset tags (#extended, #normal).
+description: "World preset tags and their members, controlling which presets appear on the world creation screen."
+whenToUse: "Use when writing datapacks or understanding world preset tags (#extended, #normal)."
+
 ---
 
 # World Preset Tags

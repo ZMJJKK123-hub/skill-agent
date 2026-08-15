@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-chicken-variant
-description: Chicken variant definition JSON: CHICKEN_VARIANT registry, textures, model, spawn conditions.
-whenToUse: Use when writing datapack chicken_variant definitions or custom chicken variants.
+description: "Chicken variant definition JSON: CHICKEN_VARIANT registry, textures, model, spawn conditions."
+whenToUse: "Use when writing datapack chicken_variant definitions or custom chicken variants."
+
 ---
 
 # Chicken Variants

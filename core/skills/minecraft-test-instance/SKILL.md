@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-test-instance
-description: Test instance definition format — environments, test flow, multi-run.
-whenToUse: Use when authoring test instance JSON files for automated game tests.
+description: "Test instance definition format — environments, test flow, multi-run."
+whenToUse: "Use when authoring test instance JSON files for automated game tests."
+
 ---
 
 # Test Instance Definition

@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-pig-variant
-description: Pig variant definition JSON: PIG_VARIANT registry, textures, model, spawn conditions.
-whenToUse: Use when writing datapack pig_variant definitions or custom pig variants.
+description: "Pig variant definition JSON: PIG_VARIANT registry, textures, model, spawn conditions."
+whenToUse: "Use when writing datapack pig_variant definitions or custom pig variants."
+
 ---
 
 # Pig Variants

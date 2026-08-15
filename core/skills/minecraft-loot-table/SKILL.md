@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-loot-table
-description: Loot table format — pools, entries (item/loot_table/slots/tag), invocation, context.
-whenToUse: Use when authoring loot table JSON files for data packs.
+description: "Loot table format — pools, entries (item/loot_table/slots/tag), invocation, context."
+whenToUse: "Use when authoring loot table JSON files for data packs."
+
 ---
 
 # Loot Table

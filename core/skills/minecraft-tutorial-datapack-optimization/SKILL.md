@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tutorial-datapack-optimization
-description: Tutorial — optimizing datapacks: profiling, selectors, NBT, macros.
-whenToUse: Use when optimizing command-heavy datapacks or debugging performance.
+description: "Tutorial — optimizing datapacks: profiling, selectors, NBT, macros."
+whenToUse: "Use when optimizing command-heavy datapacks or debugging performance."
+
 ---
 
 # Tutorial: Optimizing Data Packs

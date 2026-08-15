@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-biome
-description: Biome definition format — climate, colors, carvers, features (11 stages), spawners, spawn costs.
-whenToUse: Use when authoring biome JSON files in data/worldgen/biome/.
+description: "Biome definition format — climate, colors, carvers, features (11 stages), spawners, spawn costs."
+whenToUse: "Use when authoring biome JSON files in data/worldgen/biome/."
+
 ---
 
 # Biome Definition

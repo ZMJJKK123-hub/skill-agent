@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tag-damage-type
-description: Damage type tags and their members, for custom damage, game rules, and datapacks.
-whenToUse: Use when writing datapacks or understanding damage reduction rules via damage type tags (#is_fire, #bypasses_armor etc.).
+description: "Damage type tags and their members, for custom damage, game rules, and datapacks."
+whenToUse: "Use when writing datapacks or understanding damage reduction rules via damage type tags (#is_fire, #bypasses_armor etc.)."
+
 ---
 
 # Damage Type Tags

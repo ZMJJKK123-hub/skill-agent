@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-tag-biome
-description: Biome tags and their members, controlling structure generation, mob spawning, and other mechanics.
-whenToUse: Use when querying or using biome tags for structure generation or mob spawning.
+description: "Biome tags and their members, controlling structure generation, mob spawning, and other mechanics."
+whenToUse: "Use when querying or using biome tags for structure generation or mob spawning."
+
 ---
 
 # Biome Tags

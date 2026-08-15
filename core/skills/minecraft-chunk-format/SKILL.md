@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-chunk-format
-description: Java Edition save format — locations, folder structure, dimension dirs, region files.
-whenToUse: Use when locating or reading world save files (level.dat, region files, player data).
+description: "Java Edition save format — locations, folder structure, dimension dirs, region files."
+whenToUse: "Use when locating or reading world save files (level.dat, region files, player data)."
+
 ---
 
 # Java Edition Save Format

@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-data-pack
-description: Data pack — usage, directory structure, pack.mcmeta, loading, experimental features.
-whenToUse: Use when creating or managing data packs (pack.mcmeta, structure, reloading).
+description: "Data pack — usage, directory structure, pack.mcmeta, loading, experimental features."
+whenToUse: "Use when creating or managing data packs (pack.mcmeta, structure, reloading)."
+
 ---
 
 # Data Pack

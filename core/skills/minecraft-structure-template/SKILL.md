@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-structure-template
-description: Structure template format — NBT/SNBT storage, placement behavior, vanilla data.
-whenToUse: Use when authoring structure NBT files, debugging structure placement, or reading vanilla structure data.
+description: "Structure template format — NBT/SNBT storage, placement behavior, vanilla data."
+whenToUse: "Use when authoring structure NBT files, debugging structure placement, or reading vanilla structure data."
+
 ---
 
 # Structure Template

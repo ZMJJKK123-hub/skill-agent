@@ -1,7 +1,9 @@
-﻿---
+---
+
 name: forge-datastorage-capabilities
-description: Forge capabilities: obtaining/exposing, AttachCapabilitiesEvent, persistence, sync.
-whenToUse: Use when adding capabilities to items, entities, block entities, levels, or chunks.
+description: "Forge capabilities: obtaining/exposing, AttachCapabilitiesEvent, persistence, sync."
+whenToUse: "Use when adding capabilities to items, entities, block entities, levels, or chunks."
+
 ---
 
 # The Capability System

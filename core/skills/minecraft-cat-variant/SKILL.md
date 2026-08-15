@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-cat-variant
-description: Cat variant definition JSON: CAT_VARIANT registry, adult/baby textures, spawn conditions.
-whenToUse: Use when writing datapack cat_variant definitions or custom cat variants.
+description: "Cat variant definition JSON: CAT_VARIANT registry, adult/baby textures, spawn conditions."
+whenToUse: "Use when writing datapack cat_variant definitions or custom cat variants."
+
 ---
 
 # Cat Variants

@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-villager-trade
-description: Villager trade definition format — wants/gives, pricing, modifiers.
-whenToUse: Use when authoring villager/wandering trader trade JSON files in data/villager_trade/.
+description: "Villager trade definition format — wants/gives, pricing, modifiers."
+whenToUse: "Use when authoring villager/wandering trader trade JSON files in data/villager_trade/."
+
 ---
 
 # Villager Trade

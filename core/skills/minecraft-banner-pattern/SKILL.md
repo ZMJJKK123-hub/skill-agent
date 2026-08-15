@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-banner-pattern
-description: Banner pattern definition JSON format: BANNER_PATTERN registry, asset_id, translation keys.
-whenToUse: Use when writing datapack banner_pattern definitions or custom banner/shield patterns.
+description: "Banner pattern definition JSON format: BANNER_PATTERN registry, asset_id, translation keys."
+whenToUse: "Use when writing datapack banner_pattern definitions or custom banner/shield patterns."
+
 ---
 
 # Banner Pattern Definitions

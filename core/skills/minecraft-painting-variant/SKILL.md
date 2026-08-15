@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-painting-variant
-description: Painting variant definition JSON: PAINTING_VARIANT registry, size, texture.
-whenToUse: Use when writing datapack painting_variant definitions or custom paintings.
+description: "Painting variant definition JSON: PAINTING_VARIANT registry, size, texture."
+whenToUse: "Use when writing datapack painting_variant definitions or custom paintings."
+
 ---
 
 # Painting Variants

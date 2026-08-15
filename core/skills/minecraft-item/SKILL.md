@@ -1,7 +1,9 @@
 ---
+
 name: minecraft-item
-description: Items — behavior (stacking, rarity, durability, cooldowns), categories, removed.
-whenToUse: Use when working with items in general — behavior, stacking, durability, rarity, remainders.
+description: "Items — behavior (stacking, rarity, durability, cooldowns), categories, removed."
+whenToUse: "Use when working with items in general — behavior, stacking, durability, rarity, remainders."
+
 ---
 
 # Item
