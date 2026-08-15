@@ -183,15 +183,74 @@ def agent_loop(messages: list) -> str:
         # 发给模型
         move_skills_to_end(messages)
         logger.info(f"=== 新一轮 | messages 长度={len(messages)} ===")
-        response = client.chat.completions.create(
+        # ── 流式输出（M-opt2）：首 token 到达即开始把回复增量写入 run.log，
+        # 前端 /api/events 以 log 事件实时展示（[reply] 行）；tool_calls 增量
+        # 累积到完整后再执行，行为与非流式一致。最终 message 由累积结果
+        # 构造，后续 skillcheck / 循环退出 / 工具执行逻辑保持不变。
+        stream = client.chat.completions.create(
             model=MODEL,
             messages=[{"role": "system", "content": config.SYSTEM}] + messages,
             tools=LEADER_TOOLS,  # 第 11 课：leader 侧排除 submit_plan
             max_tokens=8000,
+            stream=True,
         )
 
-        choice = response.choices[0]
-        message = choice.message
+        content_parts: list[str] = []
+        reasoning_parts: list[str] = []
+        tool_call_deltas: dict[int, dict] = {}
+        finish_reason = None
+        for chunk in stream:
+            if not chunk.choices:
+                continue
+            ch = chunk.choices[0]
+            if ch.finish_reason:
+                finish_reason = ch.finish_reason
+            delta = ch.delta
+            if delta is None:
+                continue
+            if getattr(delta, "reasoning_content", None):
+                reasoning_parts.append(delta.reasoning_content)
+            if getattr(delta, "content", None):
+                content_parts.append(delta.content)
+                # 过程可见：回复增量实时落盘（run.log → /api/events）
+                print(f"[reply] {delta.content}", flush=True)
+            if getattr(delta, "tool_calls", None):
+                for tc in delta.tool_calls:
+                    entry = tool_call_deltas.setdefault(tc.index, {"id": "", "name": "", "args": ""})
+                    if tc.id:
+                        entry["id"] = tc.id
+                    if tc.function and tc.function.name:
+                        entry["name"] += tc.function.name
+                    if tc.function and tc.function.arguments:
+                        entry["args"] += tc.function.arguments
+
+        from types import SimpleNamespace as _NS
+        content = "".join(content_parts) or None
+        reasoning = "".join(reasoning_parts) or None
+        tool_calls = None
+        if tool_call_deltas:
+            tool_calls = []
+            for idx in sorted(tool_call_deltas):
+                d = tool_call_deltas[idx]
+                tool_calls.append(_NS(
+                    id=d["id"], type="function",
+                    function=_NS(name=d["name"], arguments=d["args"]),
+                ))
+        message = _NS(
+            content=content,
+            reasoning_content=reasoning,
+            tool_calls=tool_calls,
+            to_dict=lambda: {
+                "role": "assistant",
+                "content": content,
+                "tool_calls": ([
+                    {"id": tc.id, "type": "function",
+                     "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
+                    for tc in tool_calls
+                ] if tool_calls else None),
+            },
+        )
+        choice = _NS(message=message, finish_reason=finish_reason or "stop")
 
         # ── 打印思考过程（不进 messages）──
         reasoning = getattr(message, "reasoning_content", None)

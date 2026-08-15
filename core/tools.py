@@ -497,8 +497,7 @@ class SkillLoader:
                 if not skill_path:
                     continue
                 try:
-                    with open(skill_path, "r", encoding="utf-8") as f:
-                        raw = f.read()
+                    raw = self._read_head(skill_path)
                 except OSError as e:
                     logger.warning(f"SkillLoader 读取失败 {skill_path}: {e}")
                     continue
@@ -521,6 +520,20 @@ class SkillLoader:
                     "rank": rank,
                 }
                 logger.debug(f"SkillLoader 扫描技能: {name} @ {skill_path}")
+
+    @staticmethod
+    def _read_head(path: str, max_bytes: int = 8192) -> str:
+        """只读取文件头部（frontmatter 部分），避免扫描时全量读大文件。
+
+        frontmatter 必须位于文件开头（--- 包裹）；8KB 足够覆盖全部技能的
+        元数据字段（name/description/whenToUse/调用策略）。正文由
+        get_content 在需要时现读全文，扫描阶段不需要。
+        尾部可能截断多字节 UTF-8 字符 → errors="replace" 兜底（不影响
+        frontmatter 解析，因为分隔符在头部内）。
+        """
+        with open(path, "rb") as f:
+            head = f.read(max_bytes)
+        return head.decode("utf-8", errors="replace")
 
     @staticmethod
     def _parse_frontmatter(raw: str) -> tuple[dict, str]:
