@@ -365,6 +365,17 @@ def _session_stats(sess: Session) -> dict:
     daemon_idle = daemon_st == "waiting" and proc_alive
     daemon_working = daemon_st == "working" and proc_alive
 
+    # daemon 空闲但队列里有消息（用户刚发、daemon 尚未消费）：
+    # 不能算 finished——否则前端会在 finished+pending>0 时把上一轮的
+    # log_tail 误提取为本次回复（实测：发新消息秒回旧回复后停住）。
+    if daemon_idle:
+        try:
+            from core.conversation import pending_count
+            if pending_count(sess.mod_dir.parent) > 0:
+                daemon_idle = False
+        except Exception:
+            pass
+
     running = proc_alive and not daemon_idle
     finished = (sess.proc is not None and not proc_alive) or (
         sess.proc is None and sess.finished_at is not None
