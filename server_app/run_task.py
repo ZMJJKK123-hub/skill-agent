@@ -310,6 +310,10 @@ def daemon_loop(session_dir: Path, session_root_path: Path, mode: str) -> None:
 
             # 本轮结束，回到空闲等待（server 据此再次显示"完成"）
             _set_state("waiting")
+    except KeyboardInterrupt:
+        # server 被 Ctrl+C 停止时，Windows 控制台会把中断广播给
+        # 同一控制台的 daemon 子进程 → 优雅退出，不打印吓人的 traceback
+        print("[run_task] daemon stopped (interrupt)", flush=True)
     finally:
         try:
             daemon_pid_file.unlink(missing_ok=True)
@@ -326,9 +330,13 @@ def main() -> int:
     # 否则 Windows 重定向下 print 积压到 ~8KB 才写出，
     # 前端实时轮询读不到增量 → 表现为"卡住、结束才全部蹦出来"。
     # 覆盖 run_task.py 与 core 里所有不带 flush=True 的 print。
+    # 必须同时设 encoding="utf-8"：core/config.py 导入前 stdout 还是
+    # Windows 默认 GBK，第一行 print（模式/工作目录）会以 GBK 写入
+    # run.log，前端按 UTF-8 读 → 首行乱码（实测：ģʽ=chat | ����Ŀ¼）。
     if hasattr(sys.stdout, "reconfigure"):
         try:
-            sys.stdout.reconfigure(line_buffering=True, write_through=True)
+            sys.stdout.reconfigure(line_buffering=True, write_through=True,
+                                   encoding="utf-8", errors="replace")
         except (AttributeError, ValueError, OSError):
             pass
 
