@@ -494,6 +494,8 @@ def _get_vision_client():
 def run_screenshot(region: dict = None) -> str:
     """截取当前屏幕（全屏或指定区域），保存到工作区 .screenshots/ 并返回图片路径。"""
     try:
+        if not _vision_enabled():
+            return "Error: 识图模式未开启（DSH_VISION_ENABLED=0）"
         from PIL import ImageGrab
         if region:
             try:
@@ -3069,62 +3071,62 @@ _TOOL_META: dict = {
     "read_game_test_log": {"readonly": True},
 }
 
-# 识图模式开关：DSH_VISION_ENABLED=1 时注册 screenshot / analyze_image 两个工具。
-# 由 server.py 根据会话的 vision_enabled 注入；关闭时不注册，模型看不到这两个工具。
-if os.environ.get("DSH_VISION_ENABLED", "0") == "1":
-    TOOL_HANDLERS["screenshot"] = lambda **kw: run_screenshot(kw.get("region"))
-    TOOL_HANDLERS["analyze_image"] = lambda **kw: run_analyze_image(
-        kw["image_path"], kw.get("prompt"))
+# 识图模式工具始终注册，保证模型能看到 screenshot / analyze_image。
+# 是否允许实际调用由 DSH_VISION_ENABLED 控制：关闭时两个工具都返回“未开启”。
+# 这样即使用户忘记打开开关，agent 也会知道存在识图工具，而不是自己写 OCR 脚本。
+TOOL_HANDLERS["screenshot"] = lambda **kw: run_screenshot(kw.get("region"))
+TOOL_HANDLERS["analyze_image"] = lambda **kw: run_analyze_image(
+    kw["image_path"], kw.get("prompt"))
 
-    TOOLS.append({
-        "type": "function",
-        "function": {
-            "name": "screenshot",
-            "description": (
-                "Capture the current screen (full screen by default, or a region) "
-                "and save it under .screenshots/ in the workspace. Returns the image "
-                "path. Use together with analyze_image to inspect game/MOD visuals."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "region": {
-                        "type": "object",
-                        "description": "Optional screen region to capture.",
-                        "properties": {
-                            "left": {"type": "integer", "description": "Left pixel coordinate"},
-                            "top": {"type": "integer", "description": "Top pixel coordinate"},
-                            "width": {"type": "integer", "description": "Region width in pixels"},
-                            "height": {"type": "integer", "description": "Region height in pixels"},
-                        },
-                        "required": ["left", "top", "width", "height"],
+TOOLS.append({
+    "type": "function",
+    "function": {
+        "name": "screenshot",
+        "description": (
+            "Capture the current screen (full screen by default, or a region) "
+            "and save it under .screenshots/ in the workspace. Returns the image "
+            "path. Use together with analyze_image to inspect game/MOD visuals."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "region": {
+                    "type": "object",
+                    "description": "Optional screen region to capture.",
+                    "properties": {
+                        "left": {"type": "integer", "description": "Left pixel coordinate"},
+                        "top": {"type": "integer", "description": "Top pixel coordinate"},
+                        "width": {"type": "integer", "description": "Region width in pixels"},
+                        "height": {"type": "integer", "description": "Region height in pixels"},
                     },
+                    "required": ["left", "top", "width", "height"],
                 },
-                "required": [],
             },
+            "required": [],
         },
-    })
-    TOOLS.append({
-        "type": "function",
-        "function": {
-            "name": "analyze_image",
-            "description": (
-                "Analyze an image file (e.g. a screenshot saved by the screenshot tool) "
-                "using the separately configured vision API. Returns the model's textual "
-                "description. Useful for checking whether a game/MOD screen looks normal, "
-                "shows errors, or has rendered correctly."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "image_path": {"type": "string", "description": "Path to the image file (absolute or relative to workspace)"},
-                    "prompt": {"type": "string", "description": "Optional specific question/instruction about the image"},
-                },
-                "required": ["image_path"],
+    },
+})
+TOOLS.append({
+    "type": "function",
+    "function": {
+        "name": "analyze_image",
+        "description": (
+            "Analyze an image file (e.g. a screenshot saved by the screenshot tool) "
+            "using the separately configured vision API. Returns the model's textual "
+            "description. Useful for checking whether a game/MOD screen looks normal, "
+            "shows errors, or has rendered correctly."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "image_path": {"type": "string", "description": "Path to the image file (absolute or relative to workspace)"},
+                "prompt": {"type": "string", "description": "Optional specific question/instruction about the image"},
             },
+            "required": ["image_path"],
         },
-    })
-    _TOOL_META["analyze_image"] = {"readonly": True}
+    },
+})
+_TOOL_META["analyze_image"] = {"readonly": True}
 
 def _unknown_handler(**kw):
     return "(handler not wired yet)"
