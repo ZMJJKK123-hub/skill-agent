@@ -122,7 +122,7 @@ export function createSession(
   loader: string,
   version: string,
   model = 'deepseek-v4-flash',
-  baseUrl = 'https://api.deepseek.com/v1',
+  baseUrl = 'https://opencode.ai/zen/go/v1',
   sandbox = 'full-access',
   visionEnabled = false,
   visionApiKey = '',

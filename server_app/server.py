@@ -56,7 +56,7 @@ class Session:
 
     def __init__(self, session_id: str, mod_dir: Path, api_key: str, owner: str = "",
                  game: str = "minecraft", loader: str = "", version: str = "",
-                 model: str = "deepseek-v4-flash", base_url: str = "https://api.deepseek.com/v1",
+                 model: str = "deepseek-v4-flash", base_url: str = "https://opencode.ai/zen/go/v1",
                  sandbox: str = "full-access",
                  vision_enabled: bool = False, vision_api_key: str = "",
                  vision_base_url: str = "", vision_model: str = ""):
@@ -168,7 +168,7 @@ class SessionRequest(BaseModel):
     loader: str = ""          # 可选：Mod Loader（如 forge / fabric）
     version: str = ""         # 可选：游戏版本（如 1.21.1）
     model: str = "deepseek-v4-flash"          # 生成模型
-    base_url: str = "https://api.deepseek.com/v1"  # OpenAI 兼容 API 地址
+    base_url: str = "https://opencode.ai/zen/go/v1"  # OpenAI 兼容 API 地址
     sandbox: str = "full-access"              # 沙箱模式：full-access | workspace-write | read-only
     vision_enabled: bool = False              # 识图模式开关
     vision_api_key: str = ""                  # 视觉 API Key（独立于主模型）
@@ -490,7 +490,7 @@ def prepare_mod_session(
     loader: str = "forge",
     version: str = "1.21.11",
     model: str = "deepseek-v4-flash",
-    base_url: str = "https://api.deepseek.com/v1",
+    base_url: str = "https://opencode.ai/zen/go/v1",
     sandbox: str = "full-access",
 ):
     """为会话准备 mod 工作区：把模板 + MC 源码复制到 <session>/mod/（幂等）。
@@ -528,7 +528,7 @@ def prepare_mod_session(
 #     loader: str = "forge",
 #     version: str = "1.21.11",
 #     model: str = "deepseek-v4-flash",
-#     base_url: str = "https://api.deepseek.com/v1",
+#     base_url: str = "https://opencode.ai/zen/go/v1",
 #     sandbox: str = "full-access",
 # ):
 #     """导入已有 mod 文件夹：前端选目录打成 zip 上传，解压成新会话工作区。

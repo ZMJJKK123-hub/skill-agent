@@ -407,7 +407,7 @@ _http_client = _httpx.Client(
 )
 client = OpenAI(
     api_key=os.environ.get("DEEPSEEK_API_KEY", ""),
-    base_url=os.environ.get("DSH_BASE_URL", "https://api.deepseek.com/v1"),
+    base_url=os.environ.get("DSH_BASE_URL", "https://opencode.ai/zen/go/v1"),
     http_client=_http_client,
 )
 

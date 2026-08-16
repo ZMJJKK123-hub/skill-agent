@@ -18,11 +18,11 @@ export function resolveModelConfig(state: Pick<UiState, 'apiKey' | 'model' | 'pr
 } {
   const { apiKey, model, providers } = state
   if (model === 'deepseek-v4-flash' || model === 'deepseek-v4-pro') {
-    return { apiKey, baseUrl: 'https://api.deepseek.com/v1', model }
+    return { apiKey, baseUrl: 'https://opencode.ai/zen/go/v1', model }
   }
   const p = providers.find((p) => p.model.split(',').map((s) => s.trim()).includes(model))
   if (p) return { apiKey: p.apiKey, baseUrl: p.baseUrl, model }
-  return { apiKey, baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-v4-flash' }
+  return { apiKey, baseUrl: 'https://opencode.ai/zen/go/v1', model: 'deepseek-v4-flash' }
 }
 
 export type Locale = 'zh' | 'en'
