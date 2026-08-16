@@ -146,6 +146,7 @@ function Messages() {
   const t = useT()
   const sess = useSession()
   const { phase, prompts, events, elapsed, hasJar, error, mode, chatMessages, stoppedNotice, sessionId, paused } = sess
+  const [displayElapsed, setDisplayElapsed] = useState<number | null>(null)
 
   useEffect(() => {
     if (phase === 'running') {
@@ -154,7 +155,24 @@ function Messages() {
     }
   }, [phase])
 
+  // 本地每秒跳动：后端仍 2s 拉一次，但展示秒数不再 2s 一跳
+  useEffect(() => {
+    if (phase === 'running' || phase === 'creating') {
+      setDisplayElapsed(elapsed ?? 0)
+      const timer = window.setInterval(() => {
+        setDisplayElapsed((prev) => (prev ?? 0) + 1)
+      }, 1000)
+      return () => window.clearInterval(timer)
+    }
+    setDisplayElapsed(null)
+  }, [phase, elapsed])
+
   const shownEvents = useMemo(() => events.slice(-120), [events])
+
+  // chat 模式：把用户消息和最终回答拆开，中间插入实时事件流
+  const userChats = chatMessages.filter((m) => m.role === 'user')
+  const assistantChats = chatMessages.filter((m) => m.role === 'assistant')
+  const running = phase === 'running' || phase === 'creating'
 
   // 空态判断以"是否有会话"为准：无会话 → 引导页；
   // 有会话（含历史会话，phase=idle + chatMessages 有内容）→ 显示聊天流
@@ -166,16 +184,10 @@ function Messages() {
   return (
     <div className="mx-auto max-w-3xl space-y-3 p-4">
       <div className="space-y-2">
-        {/* chat 模式：完整气泡历史（用户 + agent 回复） */}
-        {mode === 'chat' && chatMessages.map((m, i) => (
-          <div key={i} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
-            <div
-              className={
-                m.role === 'user'
-                  ? 'max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-forge-500 px-4 py-2 text-sm text-ink-950'
-                  : 'max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm border border-line bg-panel px-4 py-2 text-sm'
-              }
-            >
+        {/* chat 模式：用户消息气泡 */}
+        {mode === 'chat' && userChats.map((m, i) => (
+          <div key={i} className="flex justify-end">
+            <div className="max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-forge-500 px-4 py-2 text-sm text-ink-950">
               {m.content}
             </div>
           </div>
@@ -190,19 +202,28 @@ function Messages() {
           </div>
         ))}
 
-        {/* mod 模式：DSH 风格事件流（每条事件独立渲染，不再是框内列表） */}
-        {mode === 'mod' && shownEvents.map((ev) => (
+        {/* 运行中提示（所有模式）：只显示状态 + 本地 1s 秒数，具体步骤看下方事件流 */}
+        {running && (
+          <div className="text-xs text-faint">
+            {phase === 'creating'
+              ? '⏳ 正在准备工作区…'
+              : `⏳ ${t('conv.running')}${displayElapsed != null ? ` · ${displayElapsed}s` : ''}…`}
+          </div>
+        )}
+
+        {/* DSH 风格事件流：chat / mod 都实时展示 agent 的思考、工具调用、结果与日志 */}
+        {shownEvents.map((ev) => (
           <EventView key={ev.id} ev={ev} t={t} />
         ))}
 
-        {/* 运行中（chat 模式）：左侧"进行中"提示 */}
-        {(phase === 'running' || phase === 'creating') && mode !== 'mod' && (
-          <div className="flex justify-start">
-            <div className="rounded-2xl rounded-bl-sm border border-line bg-panel px-4 py-2 text-sm text-faint">
-              {phase === 'creating' ? '正在准备工作区…' : `${t('conv.running')}${elapsed ? ` · ${elapsed}s` : ''}…`}
+        {/* chat 模式：最终回答放在事件流之后，避免“回答先于思考过程” */}
+        {mode === 'chat' && assistantChats.map((m, i) => (
+          <div key={i} className="flex justify-start">
+            <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm border border-line bg-panel px-4 py-2 text-sm">
+              {m.content}
             </div>
           </div>
-        )}
+        ))}
 
         {/* 已暂停：横线提示"您已终止该对话" */}
         {stoppedNotice && phase !== 'running' && (
