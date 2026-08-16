@@ -558,21 +558,33 @@ def run_analyze_image(image_path: str, prompt: str = None) -> str:
             "errors, crash screens, or anomalies."
         )
         client = _get_vision_client()
-        resp = client.chat.completions.create(
-            model=model,
-            messages=[{
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": text},
-                    {"type": "image_url", "image_url": {
-                        "url": f"data:image/jpeg;base64,{b64}",
-                    }},
-                ],
-            }],
-            max_tokens=2000,
-        )
-        content = resp.choices[0].message.content
-        return content or "(empty vision response)"
+        # 免费模型容易 429/5xx，做几次退避重试（与 glm4v-vision-mcp 行为一致）
+        last_err = None
+        for attempt in range(4):
+            try:
+                resp = client.chat.completions.create(
+                    model=model,
+                    messages=[{
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": text},
+                            {"type": "image_url", "image_url": {
+                                "url": f"data:image/jpeg;base64,{b64}",
+                            }},
+                        ],
+                    }],
+                    max_tokens=2000,
+                )
+                content = resp.choices[0].message.content
+                return content or "(empty vision response)"
+            except Exception as e:
+                last_err = e
+                status = getattr(e, "status_code", None)
+                if status in (429, 500, 502, 503, 504):
+                    time.sleep(2 * (attempt + 1))
+                    continue
+                raise
+        return f"Error: analyze_image failed after retries: {last_err}"
     except Exception as e:
         return f"Error: analyze_image failed: {e}"
 
