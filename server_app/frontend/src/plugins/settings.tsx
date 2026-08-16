@@ -254,7 +254,7 @@ function VisionSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft)
           type="password"
           value={draft.visionApiKey}
           onChange={(e) => setDraft({ ...draft, visionApiKey: e.target.value })}
-          placeholder="sk-..."
+          placeholder="留空自动用 GLM-4.6V-Flash（读桌面 glm4v-vision-mcp/server/.env）"
           className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500"
         />
       </Field>
@@ -262,7 +262,7 @@ function VisionSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft)
         <input
           value={draft.visionBaseUrl}
           onChange={(e) => setDraft({ ...draft, visionBaseUrl: e.target.value })}
-          placeholder="https://api.openai.com/v1"
+          placeholder="留空自动用 https://open.bigmodel.cn/api/paas/v4"
           className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500"
         />
       </Field>
@@ -270,7 +270,7 @@ function VisionSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft)
         <input
           value={draft.visionModel}
           onChange={(e) => setDraft({ ...draft, visionModel: e.target.value })}
-          placeholder="gpt-4o / qwen-vl-plus / glm-4v"
+          placeholder="留空自动用 glm-4.6v-flash"
           className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500"
         />
       </Field>

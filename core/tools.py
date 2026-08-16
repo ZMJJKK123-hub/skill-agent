@@ -404,9 +404,71 @@ def run_ask_user(questions, options: list = None) -> str:
 _vision_client = None
 _vision_http_client = None
 
+# 智谱 GLM-4.6V-Flash 免费视觉模型的本地配置目录（用户克隆的 glm4v-vision-mcp）。
+# 如果设置面板没有填视觉 API，就自动读取该目录 server/.env 里的 ZHIPU_API_KEY。
+_GLM4V_DEFAULT_BASE_URL = "https://open.bigmodel.cn/api/paas/v4"
+_GLM4V_DEFAULT_MODEL = "glm-4.6v-flash"
+
 
 def _vision_enabled() -> bool:
     return os.environ.get("DSH_VISION_ENABLED", "0") == "1"
+
+
+def _glm4v_env_path():
+    """定位 glm4v-vision-mcp 的 server/.env（可用 DSH_GLM4V_ENV_FILE 覆盖）。"""
+    override = os.environ.get("DSH_GLM4V_ENV_FILE", "").strip()
+    if override:
+        p = Path(override)
+        if p.is_file():
+            return p
+    home = Path.home()
+    candidates = [
+        home / "Desktop" / "glm4v-vision-mcp" / "server" / ".env",
+        home / "OneDrive" / "Desktop" / "glm4v-vision-mcp" / "server" / ".env",
+    ]
+    for p in candidates:
+        if p.is_file():
+            return p
+    return None
+
+
+def _load_env_file(path: Path) -> dict:
+    """极简 .env 解析（支持 KEY=VALUE、引号、# 注释）。"""
+    data = {}
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return data
+    for raw in lines:
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key:
+            data[key] = value
+    return data
+
+
+def _resolve_vision_config():
+    """返回 (api_key, base_url, model)。
+
+    优先使用用户显式配置的 DSH_VISION_*；没有配置时自动回退到桌面
+    glm4v-vision-mcp 的免费 GLM-4.6V-Flash（读取 server/.env 的 ZHIPU_API_KEY）。
+    """
+    api_key = os.environ.get("DSH_VISION_API_KEY", "").strip()
+    base_url = os.environ.get("DSH_VISION_BASE_URL", "").strip()
+    model = os.environ.get("DSH_VISION_MODEL", "").strip()
+    if api_key and base_url and model:
+        return api_key, base_url, model
+    env_path = _glm4v_env_path()
+    if env_path:
+        data = _load_env_file(env_path)
+        zkey = (data.get("ZHIPU_API_KEY") or data.get("GLM_API_KEY") or "").strip()
+        if zkey:
+            return zkey, _GLM4V_DEFAULT_BASE_URL, _GLM4V_DEFAULT_MODEL
+    return api_key, base_url, model
 
 
 def _get_vision_client():
@@ -415,14 +477,15 @@ def _get_vision_client():
     if _vision_client is None:
         import httpx as _httpx
         from openai import OpenAI
+        api_key, base_url, _model = _resolve_vision_config()
         _vision_http_client = _httpx.Client(
             trust_env=False,
             verify=False,
             timeout=180.0,
         )
         _vision_client = OpenAI(
-            api_key=os.environ.get("DSH_VISION_API_KEY", ""),
-            base_url=os.environ.get("DSH_VISION_BASE_URL", ""),
+            api_key=api_key,
+            base_url=base_url,
             http_client=_vision_http_client,
         )
     return _vision_client
@@ -466,12 +529,11 @@ def run_analyze_image(image_path: str, prompt: str = None) -> str:
     try:
         if not _vision_enabled():
             return "Error: 识图模式未开启（DSH_VISION_ENABLED=0）"
-        api_key = os.environ.get("DSH_VISION_API_KEY", "")
-        base_url = os.environ.get("DSH_VISION_BASE_URL", "")
-        model = os.environ.get("DSH_VISION_MODEL", "")
+        api_key, base_url, model = _resolve_vision_config()
         if not api_key or not base_url or not model:
             return ("Error: 视觉 API 未配置（需要 DSH_VISION_API_KEY / "
-                    "DSH_VISION_BASE_URL / DSH_VISION_MODEL）")
+                    "DSH_VISION_BASE_URL / DSH_VISION_MODEL，"
+                    "或桌面 glm4v-vision-mcp/server/.env 里有 ZHIPU_API_KEY）")
         base = worktree_manager.resolve_dir() if worktree_manager else None
         p = safe_path(image_path, base)
         if not p.is_file():

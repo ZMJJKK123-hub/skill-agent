@@ -35,7 +35,7 @@ const zh: Record<string, string> = {
 
   'settings.vision': '识图模式',
   'vision.title': '识图模式',
-  'vision.hint': '用于截屏 + 图片识别，让 agent 自主判断游戏/MOD 画面是否正常。需单独配置支持图片输入的 OpenAI 兼容视觉 API（如 GPT-4o / Qwen-VL / GLM-4V）；DeepSeek 官方 API 图片输入不可靠。',
+  'vision.hint': '用于截屏 + 图片识别，让 agent 自主判断游戏/MOD 画面是否正常。留空时自动使用桌面 glm4v-vision-mcp 里的 GLM-4.6V-Flash 免费模型（读取该目录 server/.env 的 ZHIPU_API_KEY）；也可手动填其他 OpenAI 兼容视觉 API。DeepSeek 官方 API 图片输入不可靠。',
   'vision.enabled': '启用识图模式',
   'vision.apiKey': '视觉 API Key',
   'vision.baseUrl': '视觉 API Base URL',
@@ -140,7 +140,7 @@ const en: Record<string, string> = {
 
   'settings.vision': 'Vision Mode',
   'vision.title': 'Vision Mode',
-  'vision.hint': 'Lets the agent take screenshots and analyze images to verify game/MOD visuals. Requires a separate OpenAI-compatible vision API (e.g. GPT-4o / Qwen-VL / GLM-4V); DeepSeek official API image input is unreliable.',
+  'vision.hint': 'Lets the agent take screenshots and analyze images to verify game/MOD visuals. If left blank, it automatically uses the free GLM-4.6V-Flash model from the local glm4v-vision-mcp folder (reads ZHIPU_API_KEY from server/.env). You can also manually configure any OpenAI-compatible vision API. DeepSeek official API image input is unreliable.',
   'vision.enabled': 'Enable vision mode',
   'vision.apiKey': 'Vision API Key',
   'vision.baseUrl': 'Vision API Base URL',
