@@ -270,7 +270,7 @@ function extractFinalReply(logTail: string): string | null {
   const lines = logTail.split(/\r?\n/).filter((l) => l.trim())
   for (let i = lines.length - 1; i >= 0; i--) {
     const line = lines[i].trim()
-    if (line && !line.startsWith('[run_task]') && !line.startsWith('[思考]') && !line.startsWith('[todo]')) {
+    if (line && !line.startsWith('[run_task]') && !line.startsWith('[思考]') && !line.startsWith('[todo]') && !line.startsWith('[reply]')) {
       return line
     }
   }

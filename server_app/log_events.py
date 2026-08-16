@@ -73,6 +73,10 @@ def _parse_run_block(text: str) -> list[dict]:
             events.append(_ev("thinking", _after(stripped, "[supervisor 思考]"), seq,
                               peer="supervisor")); seq += 1
         # ── 新结构化工具日志（core/agent.py 主 agent 输出，DSH 风格渲染用）──
+        elif stripped.startswith("[reply]"):
+            # 流式回复增量（每个 token 一行），不单独作为事件，避免刷屏
+            i += 1
+            continue
         elif stripped.startswith("[tool-result]"):
             # [tool-result] success|failed\n<输出> —— 多行块：收集后续行，
             # 遇到下一个 [标记行 或 空行 时停止（不能吞掉后续工具事件）
