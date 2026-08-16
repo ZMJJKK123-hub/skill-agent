@@ -164,7 +164,7 @@ SIMPLE MOD FAST PATH (MANDATORY for simple item/block + recipe requests):
      - Item registration class (e.g. ModItems.java)
      - Update ExampleMod.java to register it and add to creative tab
      - item model/texture/lang JSON
-     - recipe JSON
+     - recipe JSON (MC 1.21.11 Forge: ingredients must be plain item ID strings, e.g. `"minecraft:stick"`, NOT `{"item": "minecraft:stick"}` objects)
   4. Verify with `gradlew build` (or build_mod_jar_forge). For simple tasks you may skip GameTest.
   5. Once `gradlew build` succeeds and a jar is produced, STOP researching immediately. Do NOT read more skills/sources.
      Write the final summary and finish the task.
