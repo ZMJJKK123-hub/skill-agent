@@ -51,11 +51,25 @@ def _parse_run_block(text: str) -> list[dict]:
     lines = text.splitlines()
     i = 0
     seq = 0
+    skip_final_reply = False
     while i < len(lines):
         line = lines[i].rstrip("\r")
         stripped = line.strip()
 
         if not stripped:
+            i += 1
+            continue
+
+        # 跳过“完成，最终回复:”及其后的完整回复正文，避免事件流里重复显示最终回复
+        if skip_final_reply:
+            if stripped.startswith("["):
+                skip_final_reply = False
+            else:
+                i += 1
+                continue
+
+        if stripped.startswith("[run_task]") and "最终回复" in stripped:
+            skip_final_reply = True
             i += 1
             continue
 
