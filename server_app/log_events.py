@@ -68,13 +68,12 @@ def _parse_run_block(text: str) -> list[dict]:
                 i += 1
                 continue
 
-        if stripped.startswith("[run_task]") and "最终回复" in stripped:
-            skip_final_reply = True
+        if stripped.startswith("[run_task]"):
+            # 内部启动/收尾日志不展示给用户；若包含“最终回复”，则后续正文也跳过
+            if "最终回复" in stripped:
+                skip_final_reply = True
             i += 1
             continue
-
-        if stripped.startswith("[run_task]"):
-            events.append(_ev("system", stripped, seq)); seq += 1
         elif stripped.startswith("[思考]"):
             events.append(_ev("thinking", _after(stripped, "[思考]"), seq)); seq += 1
         elif stripped.startswith("[teammate 思考]"):
