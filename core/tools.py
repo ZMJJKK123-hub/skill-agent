@@ -83,12 +83,15 @@ config.prompt_assembler.section(_PS(
     "Each returns JSON {success,exit_code,summary,error_details,raw_logs_snippet}; fix src/main and re-run.",
 ))
 
-# rules:gametest(150) —— GameTest 强制自检纪律
+# rules:gametest(150) —— GameTest 自检纪律（简单任务可走快速通道）
 config.prompt_assembler.section(_PS(
     "rules:gametest", 150,
-    "GAMETEST SELF-DEBUG LOOP (main agent only, MANDATORY): You MUST NOT declare your mod complete "
-    "until you have verified it via GameTests. This is a hard requirement, same level as the skill "
-    "rules above. After writing your mod code + assets, you MUST:\n"
+    "GAMETEST SELF-DEBUG LOOP (main agent only):\n"
+    "- SIMPLE FAST PATH: For simple item/block + recipe tasks (no custom entities/GUI/capabilities/network), "
+    "you MAY skip writing/running GameTest. Instead verify with `gradlew build` (or build_mod_jar_forge) that the project compiles and produces a jar. "
+    "This keeps simple MOD generation within 5-6 minutes.\n"
+    "- COMPLEX PATH (MANDATORY for anything beyond simple items/recipes): You MUST NOT declare your mod complete "
+    "until you have verified it via GameTests. After writing your mod code + assets, you MUST:\n"
     "  1. Write at least ONE @GameTest under src/test/java (e.g. src/test/java/com/<pkg>/tests/). "
     "NEVER put @GameTest in src/main. Enable the namespace via forge.enabledGameTestNamespaces matching your mods.toml modId.\n"
     "  2. Call run_test_gametest to compile and run all tests (gradlew runTestGameTestServer; scans src/test; "
