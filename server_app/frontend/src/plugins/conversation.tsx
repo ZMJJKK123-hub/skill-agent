@@ -266,9 +266,6 @@ function Messages() {
 
 function EmptyState({ loggedIn, configured }: { loggedIn: boolean; configured: boolean }) {
   const t = useT()
-  const hints: string[] = []
-  if (!loggedIn) hints.push(t('auth.loginFirst'))
-  if (!configured) hints.push(t('auth.needApiKey'))
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
       <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-forge-500 text-3xl font-bold text-ink-950">
@@ -276,9 +273,6 @@ function EmptyState({ loggedIn, configured }: { loggedIn: boolean; configured: b
       </div>
       <div className="text-lg font-semibold">{t('conv.title')}</div>
       <div className="max-w-md text-sm text-muted">{t('conv.desc')}</div>
-      {hints.length > 0 && (
-        <div className="flex flex-col gap-1 text-xs text-amber-400">{hints.map((h) => <span key={h}>⚠ {h}</span>)}</div>
-      )}
     </div>
   )
 }
