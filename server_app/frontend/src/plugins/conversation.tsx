@@ -169,9 +169,14 @@ function Messages() {
 
   const shownEvents = useMemo(() => events.slice(-120), [events])
 
-  // chat 模式：把用户消息和最终回答拆开，中间插入实时事件流
-  const userChats = chatMessages.filter((m) => m.role === 'user')
-  const assistantChats = chatMessages.filter((m) => m.role === 'assistant')
+  // chat 模式：把“当前轮”的事件插在最后一个 assistant 回复之前，
+  // 避免最终回答先于思考/工具过程出现；之前的轮次尽量保持原始顺序。
+  let lastAssistantIdx = -1
+  chatMessages.forEach((m, i) => {
+    if (m.role === 'assistant') lastAssistantIdx = i
+  })
+  const beforeLastAssistant = lastAssistantIdx >= 0 ? chatMessages.slice(0, lastAssistantIdx) : chatMessages
+  const lastAssistant = lastAssistantIdx >= 0 ? chatMessages.slice(lastAssistantIdx) : []
   const running = phase === 'running' || phase === 'creating'
 
   // 空态判断以"是否有会话"为准：无会话 → 引导页；
@@ -184,10 +189,16 @@ function Messages() {
   return (
     <div className="mx-auto max-w-3xl space-y-3 p-4">
       <div className="space-y-2">
-        {/* chat 模式：用户消息气泡 */}
-        {mode === 'chat' && userChats.map((m, i) => (
-          <div key={i} className="flex justify-end">
-            <div className="max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-forge-500 px-4 py-2 text-sm text-ink-950">
+        {/* chat 模式：历史消息（保持原始顺序，最后一个 assistant 留到事件流之后） */}
+        {mode === 'chat' && beforeLastAssistant.map((m, i) => (
+          <div key={i} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
+            <div
+              className={
+                m.role === 'user'
+                  ? 'max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-forge-500 px-4 py-2 text-sm text-ink-950'
+                  : 'max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm border border-line bg-panel px-4 py-2 text-sm'
+              }
+            >
               {m.content}
             </div>
           </div>
@@ -216,8 +227,8 @@ function Messages() {
           <EventView key={ev.id} ev={ev} t={t} />
         ))}
 
-        {/* chat 模式：最终回答放在事件流之后，避免“回答先于思考过程” */}
-        {mode === 'chat' && assistantChats.map((m, i) => (
+        {/* chat 模式：当前轮最终回答放在事件流之后 */}
+        {mode === 'chat' && lastAssistant.map((m, i) => (
           <div key={i} className="flex justify-start">
             <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm border border-line bg-panel px-4 py-2 text-sm">
               {m.content}
@@ -445,11 +456,11 @@ function Composer() {
   return (
     <div className="mx-auto max-w-3xl">
       <QuestionCard />
-      {!user ? (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-400">{t('auth.loginFirst')}</div>
-      ) : !apiKey && providers.length === 0 ? (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-400">{t('auth.needApiKey')}</div>
-      ) : (
+      {(!user || (!apiKey && providers.length === 0)) && sess.sessionId ? (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-400">
+          {!user ? t('auth.loginFirst') : t('auth.needApiKey')}
+        </div>
+      ) : (!user || (!apiKey && providers.length === 0)) && !sess.sessionId ? null : (
         <div className="rounded-xl border border-line bg-panel p-3">
           <textarea
             value={text}
