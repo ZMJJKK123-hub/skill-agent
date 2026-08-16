@@ -57,7 +57,9 @@ class Session:
     def __init__(self, session_id: str, mod_dir: Path, api_key: str, owner: str = "",
                  game: str = "minecraft", loader: str = "", version: str = "",
                  model: str = "deepseek-v4-flash", base_url: str = "https://api.deepseek.com/v1",
-                 sandbox: str = "full-access"):
+                 sandbox: str = "full-access",
+                 vision_enabled: bool = False, vision_api_key: str = "",
+                 vision_base_url: str = "", vision_model: str = ""):
         self.id = session_id
         self.mod_dir = mod_dir
         self.api_key = api_key
@@ -68,6 +70,10 @@ class Session:
         self.model = model        # 生成用的模型名（如 deepseek-v4-flash / 自定义 provider 的模型）
         self.base_url = base_url  # 生成用的 API base_url（OpenAI 兼容）
         self.sandbox = sandbox    # 会话沙箱模式：full-access | workspace-write | read-only
+        self.vision_enabled = vision_enabled    # 识图模式：True 时注册 screenshot/analyze_image 工具
+        self.vision_api_key = vision_api_key    # 视觉 API Key（独立于主模型，不落盘）
+        self.vision_base_url = vision_base_url  # 视觉 API Base URL（OpenAI 兼容）
+        self.vision_model = vision_model        # 视觉模型名（如 gpt-4o / qwen-vl-plus / glm-4v）
         self.proc: Optional[subprocess.Popen] = None
         self.started_at: Optional[float] = None
         self.finished_at: Optional[float] = None
@@ -164,6 +170,10 @@ class SessionRequest(BaseModel):
     model: str = "deepseek-v4-flash"          # 生成模型
     base_url: str = "https://api.deepseek.com/v1"  # OpenAI 兼容 API 地址
     sandbox: str = "full-access"              # 沙箱模式：full-access | workspace-write | read-only
+    vision_enabled: bool = False              # 识图模式开关
+    vision_api_key: str = ""                  # 视觉 API Key（独立于主模型）
+    vision_base_url: str = ""                 # 视觉 API Base URL
+    vision_model: str = ""                    # 视觉模型名
 
 
 class TaskRequest(BaseModel):
@@ -173,6 +183,10 @@ class TaskRequest(BaseModel):
     resume: bool = False  # True=从断点恢复继续（暂停后点继续按钮）
     model: str = ""       # 可选：覆盖会话模型（前端切换 flash/pro 后立即生效）
     base_url: str = ""    # 可选：覆盖会话 base_url（自定义 provider）
+    vision_enabled: Optional[bool] = None  # 可选：覆盖会话识图模式开关
+    vision_api_key: Optional[str] = None   # 可选：覆盖会话视觉 API Key
+    vision_base_url: Optional[str] = None  # 可选：覆盖会话视觉 API Base URL
+    vision_model: Optional[str] = None     # 可选：覆盖会话视觉模型名
 
 
 class AuthRequest(BaseModel):
@@ -459,7 +473,11 @@ def create_session(req: SessionRequest, authorization: str = Header(default=""))
         pass
     sessions[session_id] = Session(session_id, mod_dir, req.api_key, owner=username,
                                   game=req.game, loader=req.loader, version=req.version,
-                                  model=req.model, base_url=req.base_url, sandbox=req.sandbox)
+                                  model=req.model, base_url=req.base_url, sandbox=req.sandbox,
+                                  vision_enabled=req.vision_enabled,
+                                  vision_api_key=req.vision_api_key,
+                                  vision_base_url=req.vision_base_url,
+                                  vision_model=req.vision_model)
     return {"session_id": session_id, "mod_dir": str(mod_dir)}
 
 
@@ -710,6 +728,14 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
         sess.model = req.model
     if req.base_url:
         sess.base_url = req.base_url
+    if req.vision_enabled is not None:
+        sess.vision_enabled = req.vision_enabled
+    if req.vision_api_key is not None:
+        sess.vision_api_key = req.vision_api_key
+    if req.vision_base_url is not None:
+        sess.vision_base_url = req.vision_base_url
+    if req.vision_model is not None:
+        sess.vision_model = req.vision_model
 
     # 启动隔离子进程：cwd 切到工作目录（run_task.py 内部 os.chdir）。
     # PYTHONUNBUFFERED=1：强制子进程 stdout 无缓冲，否则 print 会积压到
@@ -727,6 +753,10 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
                  "DSH_MODE": mode,
                  "DSH_SESSION_ROOT": str(sess.mod_dir.parent),
                  "DSH_RESUME": "1" if req.resume else "0",
+                 "DSH_VISION_ENABLED": "1" if sess.vision_enabled else "0",
+                 "DSH_VISION_API_KEY": sess.vision_api_key or "",
+                 "DSH_VISION_BASE_URL": sess.vision_base_url or "",
+                 "DSH_VISION_MODEL": sess.vision_model or "",
                  **env_extra},
         )
     except Exception:

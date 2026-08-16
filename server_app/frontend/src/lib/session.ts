@@ -11,6 +11,10 @@ export interface GenSettings {
   model: string
   baseUrl: string
   sandbox: string
+  visionEnabled: boolean
+  visionApiKey: string
+  visionBaseUrl: string
+  visionModel: string
 }
 
 export interface SessionState {
@@ -95,7 +99,8 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
   if (state.phase === 'creating' || state.phase === 'running') {
     if (state.sessionId) {
       try {
-        await api.startTask(state.sessionId, prompt, mode, false, settings.model, settings.baseUrl)
+        await api.startTask(state.sessionId, prompt, mode, false, settings.model, settings.baseUrl,
+          settings.visionEnabled, settings.visionApiKey, settings.visionBaseUrl, settings.visionModel)
         // 本地乐观显示排队消息（chat 模式）
         setState({
           chatMessages: [...state.chatMessages, { role: 'user', content: prompt }],
@@ -113,7 +118,8 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
   if (state.paused && state.sessionId) {
     try {
       setState({ phase: 'running', paused: false, stoppedNotice: false, chatMessages: [...state.chatMessages, { role: 'user', content: prompt }] })
-      await api.startTask(state.sessionId, prompt, state.mode ?? 'chat', true, settings.model, settings.baseUrl)
+      await api.startTask(state.sessionId, prompt, state.mode ?? 'chat', true, settings.model, settings.baseUrl,
+        settings.visionEnabled, settings.visionApiKey, settings.visionBaseUrl, settings.visionModel)
       void poll()
       startPolling(2000)
     } catch (e) {
@@ -145,6 +151,10 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
         settings.model,
         settings.baseUrl,
         settings.sandbox,
+        settings.visionEnabled,
+        settings.visionApiKey,
+        settings.visionBaseUrl,
+        settings.visionModel,
       )
       sid = session_id
       setState({ sessionId: session_id })
@@ -161,7 +171,8 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
       ? [...state.chatMessages, { role: 'user' as const, content: prompt }]
       : state.chatMessages
     setState({ prompts, phase: 'running', title, chatMessages })
-    await api.startTask(sid, prompt, mode, false, settings.model, settings.baseUrl)
+    await api.startTask(sid, prompt, mode, false, settings.model, settings.baseUrl,
+      settings.visionEnabled, settings.visionApiKey, settings.visionBaseUrl, settings.visionModel)
     void poll()
     void loadHistory()
   } catch (e) {

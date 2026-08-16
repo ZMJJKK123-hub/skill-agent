@@ -4,9 +4,18 @@ import { setUi, useUi, type Provider, type ThemePref, type SandboxMode } from '.
 import { useT } from '../lib/i18n'
 import { composition } from '../composition'
 
-type SectionKey = 'general' | 'models' | 'plugins' | 'language' | 'appearance' | 'agent'
+type SectionKey = 'general' | 'models' | 'vision' | 'plugins' | 'language' | 'appearance' | 'agent'
 
-type Draft = { apiKey: string; loader: string; version: string; sandbox: SandboxMode }
+type Draft = {
+  apiKey: string
+  loader: string
+  version: string
+  sandbox: SandboxMode
+  visionEnabled: boolean
+  visionApiKey: string
+  visionBaseUrl: string
+  visionModel: string
+}
 
 const VERSIONS = ['1.21.11', '1.21.10', '1.21.9']
 const LOADERS = ['forge', 'neoforge', 'fabric']
@@ -17,23 +26,40 @@ function SettingsPanel() {
   const [section, setSection] = useState<SectionKey>('general')
 
   // 通用配置草稿：应用前不落库
-  const { apiKey, loader, version, sandbox } = useUi()
-  const [draft, setDraft] = useState({ apiKey, loader, version, sandbox })
+  const { apiKey, loader, version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel } = useUi()
+  const [draft, setDraft] = useState({
+    apiKey, loader, version, sandbox,
+    visionEnabled, visionApiKey, visionBaseUrl, visionModel,
+  })
   useEffect(() => {
-    if (settingsOpen) setDraft({ apiKey, loader, version, sandbox })
+    if (settingsOpen) setDraft({
+      apiKey, loader, version, sandbox,
+      visionEnabled, visionApiKey, visionBaseUrl, visionModel,
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settingsOpen])
 
   if (!settingsOpen) return null
 
   const apply = () => {
-    setUi({ apiKey: draft.apiKey.trim(), loader: draft.loader, version: draft.version, sandbox: draft.sandbox, settingsOpen: false })
+    setUi({
+      apiKey: draft.apiKey.trim(),
+      loader: draft.loader,
+      version: draft.version,
+      sandbox: draft.sandbox,
+      visionEnabled: draft.visionEnabled,
+      visionApiKey: draft.visionApiKey.trim(),
+      visionBaseUrl: draft.visionBaseUrl.trim(),
+      visionModel: draft.visionModel.trim(),
+      settingsOpen: false,
+    })
   }
   const cancel = () => setUi({ settingsOpen: false })
 
   const SECTIONS: { key: SectionKey; label: string }[] = [
     { key: 'general', label: t('settings.general') },
     { key: 'models', label: t('settings.models') },
+    { key: 'vision', label: t('settings.vision') },
     { key: 'plugins', label: t('settings.plugins') },
     { key: 'agent', label: t('settings.agent') },
     { key: 'language', label: t('settings.language') },
@@ -209,6 +235,49 @@ function ModelsSection() {
   )
 }
 
+function VisionSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft) => void }) {
+  const t = useT()
+  return (
+    <div>
+      <h2 className="mb-3 text-lg font-semibold">{t('vision.title')}</h2>
+      <p className="mb-3 text-xs text-faint">{t('vision.hint')}</p>
+      <Field label={t('vision.enabled')}>
+        <button
+          onClick={() => setDraft({ ...draft, visionEnabled: !draft.visionEnabled })}
+          className={`relative h-6 w-11 rounded-full transition ${draft.visionEnabled ? 'bg-forge-500' : 'bg-slate-600'}`}
+        >
+          <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${draft.visionEnabled ? 'left-[22px]' : 'left-0.5'}`} />
+        </button>
+      </Field>
+      <Field label={t('vision.apiKey')}>
+        <input
+          type="password"
+          value={draft.visionApiKey}
+          onChange={(e) => setDraft({ ...draft, visionApiKey: e.target.value })}
+          placeholder="sk-..."
+          className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500"
+        />
+      </Field>
+      <Field label={t('vision.baseUrl')}>
+        <input
+          value={draft.visionBaseUrl}
+          onChange={(e) => setDraft({ ...draft, visionBaseUrl: e.target.value })}
+          placeholder="https://api.openai.com/v1"
+          className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500"
+        />
+      </Field>
+      <Field label={t('vision.model')}>
+        <input
+          value={draft.visionModel}
+          onChange={(e) => setDraft({ ...draft, visionModel: e.target.value })}
+          placeholder="gpt-4o / qwen-vl-plus / glm-4v"
+          className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500"
+        />
+      </Field>
+    </div>
+  )
+}
+
 function PluginsSection() {
   const t = useT()
   const { disabledPlugins } = useUi()
@@ -321,6 +390,8 @@ function SectionContent({
       return <GeneralSection draft={draft} setDraft={setDraft} />
     case 'models':
       return <ModelsSection />
+    case 'vision':
+      return <VisionSection draft={draft} setDraft={setDraft} />
     case 'plugins':
       return <PluginsSection />
     case 'agent':

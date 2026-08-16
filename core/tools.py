@@ -398,6 +398,121 @@ def run_ask_user(questions, options: list = None) -> str:
     return "(用户未回答，已超时)"
 
 
+# ---------- 识图模式：截图 + 图片识别 ----------
+# 视觉 API 使用独立 OpenAI 兼容客户端（DSH_VISION_*），与主模型 client 分离：
+# DeepSeek 官方 API 图片输入不可靠，需由用户单独配置 GPT-4o / Qwen-VL / GLM-4V 等。
+_vision_client = None
+_vision_http_client = None
+
+
+def _vision_enabled() -> bool:
+    return os.environ.get("DSH_VISION_ENABLED", "0") == "1"
+
+
+def _get_vision_client():
+    """惰性创建视觉 API 的 OpenAI 客户端（进程内复用）。"""
+    global _vision_client, _vision_http_client
+    if _vision_client is None:
+        import httpx as _httpx
+        from openai import OpenAI
+        _vision_http_client = _httpx.Client(
+            trust_env=False,
+            verify=False,
+            timeout=180.0,
+        )
+        _vision_client = OpenAI(
+            api_key=os.environ.get("DSH_VISION_API_KEY", ""),
+            base_url=os.environ.get("DSH_VISION_BASE_URL", ""),
+            http_client=_vision_http_client,
+        )
+    return _vision_client
+
+
+def run_screenshot(region: dict = None) -> str:
+    """截取当前屏幕（全屏或指定区域），保存到工作区 .screenshots/ 并返回图片路径。"""
+    try:
+        from PIL import ImageGrab
+        if region:
+            try:
+                left = int(region.get("left", 0))
+                top = int(region.get("top", 0))
+                width = int(region.get("width", 0))
+                height = int(region.get("height", 0))
+            except (TypeError, ValueError):
+                return "Error: region must contain integer left/top/width/height"
+            if width <= 0 or height <= 0:
+                return "Error: region width/height must be positive"
+            bbox = (left, top, left + width, top + height)
+            img = ImageGrab.grab(bbox=bbox)
+        else:
+            img = ImageGrab.grab()
+        base = worktree_manager.resolve_dir() if worktree_manager else Path.cwd()
+        shot_dir = Path(base) / ".screenshots"
+        shot_dir.mkdir(parents=True, exist_ok=True)
+        ts = time.strftime("%Y%m%d_%H%M%S")
+        path = shot_dir / f"shot_{ts}.png"
+        counter = 1
+        while path.exists():
+            path = shot_dir / f"shot_{ts}_{counter}.png"
+            counter += 1
+        img.save(path, "PNG")
+        return f"Screenshot saved: {path.resolve()}"
+    except Exception as e:
+        return f"Error: screenshot failed: {e}"
+
+
+def run_analyze_image(image_path: str, prompt: str = None) -> str:
+    """读取图片并调用视觉 API 识别，返回模型描述文本（用于判断游戏/MOD 画面是否正常）。"""
+    try:
+        if not _vision_enabled():
+            return "Error: 识图模式未开启（DSH_VISION_ENABLED=0）"
+        api_key = os.environ.get("DSH_VISION_API_KEY", "")
+        base_url = os.environ.get("DSH_VISION_BASE_URL", "")
+        model = os.environ.get("DSH_VISION_MODEL", "")
+        if not api_key or not base_url or not model:
+            return ("Error: 视觉 API 未配置（需要 DSH_VISION_API_KEY / "
+                    "DSH_VISION_BASE_URL / DSH_VISION_MODEL）")
+        base = worktree_manager.resolve_dir() if worktree_manager else None
+        p = safe_path(image_path, base)
+        if not p.is_file():
+            return f"Error: image not found: {image_path}"
+        from PIL import Image
+        import base64
+        import io
+        img = Image.open(p)
+        # 缩放 + JPEG 压缩，降低 token/带宽消耗
+        max_dim = 1280
+        if max(img.size) > max_dim:
+            img.thumbnail((max_dim, max_dim))
+        if img.mode != "RGB":
+            img = img.convert("RGB")
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=85)
+        b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+        text = prompt or (
+            "Describe this image in detail. Focus on game/MOD UI state, "
+            "errors, crash screens, or anomalies."
+        )
+        client = _get_vision_client()
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": text},
+                    {"type": "image_url", "image_url": {
+                        "url": f"data:image/jpeg;base64,{b64}",
+                    }},
+                ],
+            }],
+            max_tokens=2000,
+        )
+        content = resp.choices[0].message.content
+        return content or "(empty vision response)"
+    except Exception as e:
+        return f"Error: analyze_image failed: {e}"
+
+
 # ---------- TodoManager（叠加的规划系统，不改动 Agent Loop 核心）----------
 class TodoManager:
     def __init__(self):
@@ -2891,6 +3006,63 @@ _TOOL_META: dict = {
     "worktree_list": {"readonly": True},
     "read_game_test_log": {"readonly": True},
 }
+
+# 识图模式开关：DSH_VISION_ENABLED=1 时注册 screenshot / analyze_image 两个工具。
+# 由 server.py 根据会话的 vision_enabled 注入；关闭时不注册，模型看不到这两个工具。
+if os.environ.get("DSH_VISION_ENABLED", "0") == "1":
+    TOOL_HANDLERS["screenshot"] = lambda **kw: run_screenshot(kw.get("region"))
+    TOOL_HANDLERS["analyze_image"] = lambda **kw: run_analyze_image(
+        kw["image_path"], kw.get("prompt"))
+
+    TOOLS.append({
+        "type": "function",
+        "function": {
+            "name": "screenshot",
+            "description": (
+                "Capture the current screen (full screen by default, or a region) "
+                "and save it under .screenshots/ in the workspace. Returns the image "
+                "path. Use together with analyze_image to inspect game/MOD visuals."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "region": {
+                        "type": "object",
+                        "description": "Optional screen region to capture.",
+                        "properties": {
+                            "left": {"type": "integer", "description": "Left pixel coordinate"},
+                            "top": {"type": "integer", "description": "Top pixel coordinate"},
+                            "width": {"type": "integer", "description": "Region width in pixels"},
+                            "height": {"type": "integer", "description": "Region height in pixels"},
+                        },
+                        "required": ["left", "top", "width", "height"],
+                    },
+                },
+                "required": [],
+            },
+        },
+    })
+    TOOLS.append({
+        "type": "function",
+        "function": {
+            "name": "analyze_image",
+            "description": (
+                "Analyze an image file (e.g. a screenshot saved by the screenshot tool) "
+                "using the separately configured vision API. Returns the model's textual "
+                "description. Useful for checking whether a game/MOD screen looks normal, "
+                "shows errors, or has rendered correctly."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "image_path": {"type": "string", "description": "Path to the image file (absolute or relative to workspace)"},
+                    "prompt": {"type": "string", "description": "Optional specific question/instruction about the image"},
+                },
+                "required": ["image_path"],
+            },
+        },
+    })
+    _TOOL_META["analyze_image"] = {"readonly": True}
 
 def _unknown_handler(**kw):
     return "(handler not wired yet)"

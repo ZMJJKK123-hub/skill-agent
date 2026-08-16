@@ -46,6 +46,10 @@ export interface UiState {
   providers: Provider[]
   disabledPlugins: string[]
   toast: string | null
+  visionEnabled: boolean
+  visionApiKey: string
+  visionBaseUrl: string
+  visionModel: string
 }
 
 const STORAGE_KEY = 'modforge_ui'
@@ -67,6 +71,10 @@ function loadState(): UiState {
     providers: [],
     disabledPlugins: [],
     toast: null,
+    visionEnabled: false,
+    visionApiKey: '',
+    visionBaseUrl: '',
+    visionModel: '',
   }
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -99,6 +107,10 @@ function persist() {
         sandbox: state.sandbox,
         providers: state.providers,
         disabledPlugins: state.disabledPlugins,
+        visionEnabled: state.visionEnabled,
+        visionApiKey: state.visionApiKey,
+        visionBaseUrl: state.visionBaseUrl,
+        visionModel: state.visionModel,
       }),
     )
   } catch {

@@ -33,6 +33,14 @@ const zh: Record<string, string> = {
   'models.remove': '移除',
   'models.empty': '暂无自定义提供方',
 
+  'settings.vision': '识图模式',
+  'vision.title': '识图模式',
+  'vision.hint': '用于截屏 + 图片识别，让 agent 自主判断游戏/MOD 画面是否正常。需单独配置支持图片输入的 OpenAI 兼容视觉 API（如 GPT-4o / Qwen-VL / GLM-4V）；DeepSeek 官方 API 图片输入不可靠。',
+  'vision.enabled': '启用识图模式',
+  'vision.apiKey': '视觉 API Key',
+  'vision.baseUrl': '视觉 API Base URL',
+  'vision.model': '视觉模型',
+
   'plugins.title': '插件',
   'plugins.enabled': '已启用',
   'plugins.disabled': '已禁用',
@@ -129,6 +137,14 @@ const en: Record<string, string> = {
   'models.save': 'Save',
   'models.remove': 'Remove',
   'models.empty': 'No custom providers yet',
+
+  'settings.vision': 'Vision Mode',
+  'vision.title': 'Vision Mode',
+  'vision.hint': 'Lets the agent take screenshots and analyze images to verify game/MOD visuals. Requires a separate OpenAI-compatible vision API (e.g. GPT-4o / Qwen-VL / GLM-4V); DeepSeek official API image input is unreliable.',
+  'vision.enabled': 'Enable vision mode',
+  'vision.apiKey': 'Vision API Key',
+  'vision.baseUrl': 'Vision API Base URL',
+  'vision.model': 'Vision Model',
 
   'plugins.title': 'Plugins',
   'plugins.enabled': 'Enabled',

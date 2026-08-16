@@ -124,10 +124,20 @@ export function createSession(
   model = 'deepseek-v4-flash',
   baseUrl = 'https://api.deepseek.com/v1',
   sandbox = 'full-access',
+  visionEnabled = false,
+  visionApiKey = '',
+  visionBaseUrl = '',
+  visionModel = '',
 ) {
   return api<{ session_id: string; mod_dir: string }>('/api/session', {
     method: 'POST',
-    body: JSON.stringify({ api_key: apiKey, game, loader, version, model, base_url: baseUrl, sandbox }),
+    body: JSON.stringify({
+      api_key: apiKey, game, loader, version, model, base_url: baseUrl, sandbox,
+      vision_enabled: visionEnabled,
+      vision_api_key: visionApiKey,
+      vision_base_url: visionBaseUrl,
+      vision_model: visionModel,
+    }),
   })
 }
 
@@ -142,10 +152,26 @@ export function deleteSession(sessionId: string) {
   return api(`/api/session?session_id=${sessionId}`, { method: 'DELETE' })
 }
 
-export function startTask(sessionId: string, prompt: string, mode = 'chat', resume = false, model = '', baseUrl = '') {
+export function startTask(
+  sessionId: string,
+  prompt: string,
+  mode = 'chat',
+  resume = false,
+  model = '',
+  baseUrl = '',
+  visionEnabled?: boolean,
+  visionApiKey?: string,
+  visionBaseUrl?: string,
+  visionModel?: string,
+) {
+  const body: Record<string, unknown> = { session_id: sessionId, prompt, mode, resume, model, base_url: baseUrl }
+  if (visionEnabled !== undefined) body.vision_enabled = visionEnabled
+  if (visionApiKey !== undefined) body.vision_api_key = visionApiKey
+  if (visionBaseUrl !== undefined) body.vision_base_url = visionBaseUrl
+  if (visionModel !== undefined) body.vision_model = visionModel
   return api<{ session_id: string; status: string; mode: string; resume?: boolean }>('/api/task', {
     method: 'POST',
-    body: JSON.stringify({ session_id: sessionId, prompt, mode, resume, model, base_url: baseUrl }),
+    body: JSON.stringify(body),
   })
 }
 
