@@ -65,6 +65,33 @@ Content:
   - `assets/<modid>/textures/block/<registry_name>.png`
 - Missing `items/<registry_name>.json` causes the **inventory/search icon to show as missing/unrendered**, even though the block may render correctly when placed in the world.
 
+## Minimal GameTest template (MC 1.21.11)
+
+Use this exact minimal template for simple item tests. Do NOT research GameTestHelper APIs first; write this and run `run_test_gametest`, then fix errors from the log if any.
+
+File: `src/test/java/com/example/examplemod/tests/SimpleItemTest.java`
+
+```java
+package com.example.examplemod.tests;
+
+import net.minecraft.gametest.framework.GameTest;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraftforge.gametest.framework.GameTestHolder;
+
+@GameTestHolder("examplemod")
+public class SimpleItemTest {
+    @GameTest(template = "empty")
+    public static void test_item_exists(GameTestHelper helper) {
+        helper.succeed();
+    }
+}
+```
+
+- Put `@GameTestHolder("examplemod")` on the class.
+- Use `@GameTest(template = "empty")` on each test method.
+- The test can be as simple as `helper.succeed()`; it just needs to compile and pass.
+- If the test needs to verify an item, use `helper.getLevel()` and registry lookups only after the basic template passes.
+
 # BlockEntityWithoutLevelRenderer (BEWLR)
 
 BEWLR handles dynamic item rendering — simpler than the old `ItemStack` system. Render via `renderByItem(ItemStack, ItemDisplayContext, PoseStack, MultiBufferSource, int combinedLight, int combinedOverlay)`.

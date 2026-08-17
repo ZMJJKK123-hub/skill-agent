@@ -45,7 +45,10 @@ from .tools_worktree import _worktree_remove
 config.prompt_assembler.section(_PS(
     "rules:skill-mandate", 120,
     "MOD KNOWLEDGE MANDATE (skill-grounded rules): EVERY MOD-related action MUST strictly follow the loaded skills; "
-    "never write/modify MOD code or files without a skill basis. After EVERY change to the MOD project "
+    "never write/modify MOD code or files without a skill basis. "
+    "SIMPLE FAST PATH EXCEPTION: For simple item/block + recipe tasks, DO NOT write `<skill-source>` citations "
+    "and DO NOT research before writing. Write first, verify with build/GameTest, and only consult skills/source on failure.\n"
+    "Otherwise, after EVERY change to the MOD project "
     "(write_file / edit_file, etc.), you MUST list the source of the change: "
     "<skill-source> change: <file path> | <change summary>; "
     "source: <skill name> -> <specific section/rule/code pattern cited> </skill-source>. "
