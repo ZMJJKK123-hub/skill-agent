@@ -154,28 +154,12 @@ def init_per_loop(tag: str) -> None:
     _loop_state[tag] = {"last": None, "streak": 0}
 
 def run_loop_check(tag: str, content: str, messages: list) -> bool:
-    """每轮统一校验：PASS→注入 PASSED（去重）；FAIL→注入 FAILED 并返回 False（调用方 continue）。
-    content 为空（工具轮）自动跳过视为通过。连续 FAIL ≥ FAIL_STREAK_LIMIT 时附加重读指引。"""
+    """每轮统一校验：已按用户要求关闭强制 <skill-source> 引用校验。
+
+    现在总是返回 True，不再阻断 agent；让 agent 先写代码/资源，
+    跑 build/GameTest 报错后再回头查技能/源码。
+    """
     st = _loop_state.setdefault(tag, {"last": None, "streak": 0})
-    if not content or not content.strip():
-        st["streak"] = 0
-        return True
-    loaded = extract_loaded_skills(messages)
-    ok, reason = check_skill_source(content, loaded)
-    if ok:
-        st["streak"] = 0
-        if st["last"] != "passed":
-            messages.append({"role": "user", "content":
-                "<skill-source-check> PASSED: 引用原文与已加载技能一致。"})
-            st["last"] = "passed"
-        return True
-    st["last"] = "failed"
-    st["streak"] += 1
-    extra = ""
-    if st["streak"] >= FAIL_STREAK_LIMIT:
-        extra = ("\n你已连续多轮未通过引用校验，请停止写作，先调用 load_skill "
-                 "仔细阅读相关技能原文，再基于其真实内容继续。")
-    messages.append({"role": "user", "content":
-        f"<skill-source-check> FAILED: {reason}{extra}\n"
-        "请重新 load_skill 加载正确技能并按其原文补充 <skill-source>，通过前不得结束。"})
-    return False
+    st["streak"] = 0
+    st["last"] = "passed"
+    return True

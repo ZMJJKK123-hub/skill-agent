@@ -37,10 +37,7 @@ def _is_mod_file(path: str) -> bool:
 def run_write(path: str, content: str) -> str:
     if _sandbox_mode() == "read-only":
         return "Error: read-only 模式禁止写入文件"
-    # MOD 文件 skill 前置检查仅 mod 模式生效；chat 模式写普通文件不受限
-    if config.MODE == "mod" and _is_mod_file(path) and not any_loaded():
-        return ("Error: MOD 文件禁止无技能依据写入。请先调用 load_skill 加载相关技能"
-                "（如 forge-items / forge-blocks / forge-resources-* / forge-networking），再重试。")
+    # 已按用户要求关闭“必须先 load_skill 才能写 MOD 文件”的限制，允许先写后验证
     try:
         # 第 12 课：基座跟随线程 session（worktree_use 后落在 worktree 内）
         base = worktree_manager.resolve_dir() if worktree_manager else None
@@ -54,10 +51,7 @@ def run_write(path: str, content: str) -> str:
 def run_edit(path: str, old_text: str, new_text: str) -> str:
     if _sandbox_mode() == "read-only":
         return "Error: read-only 模式禁止修改文件"
-    # MOD 文件 skill 前置检查仅 mod 模式生效；chat 模式改普通文件不受限
-    if config.MODE == "mod" and _is_mod_file(path) and not any_loaded():
-        return ("Error: MOD 文件禁止无技能依据修改。请先调用 load_skill 加载相关技能"
-                "（如 forge-items / forge-blocks / forge-resources-* / forge-networking），再重试。")
+    # 已按用户要求关闭“必须先 load_skill 才能改 MOD 文件”的限制，允许先写后验证
     try:
         # 第 12 课：基座跟随线程 session（worktree_use 后落在 worktree 内）
         base = worktree_manager.resolve_dir() if worktree_manager else None

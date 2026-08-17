@@ -157,9 +157,9 @@ ACTION-DRIVEN WORKFLOW (mandatory; 防止分析死循环):
 SIMPLE MOD FAST PATH (MANDATORY for simple item/block + recipe requests):
 - If the user asks for a simple item/block with basic properties and a recipe (no custom entities/GUI/capabilities/network),
   you MUST use this fast path and finish within 5-6 minutes:
-  1. Load ONLY these skills: forge-items, forge-concept-registries. Do NOT load additional skills.
+  1. Load ONLY these skills: simple-mod-template, forge-items, forge-concept-registries. Do NOT load additional skills.
   2. Read KNOWN_ISSUES.md once. Do NOT browse mc_java_sources, do NOT run `dir /s /b` on mc_java_sources,
-     do NOT search client renderer/model sources. The skill examples + existing ExampleMod.java are enough.
+     do NOT search client renderer/model sources. COPY the files from `simple-mod-template` and rename.
   3. Start writing files within the first 2 rounds. Immediately write:
      - Item registration class (e.g. ModItems.java)
      - Update ExampleMod.java to register it and add to creative tab
