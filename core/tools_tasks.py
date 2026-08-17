@@ -7,9 +7,33 @@ import threading
 from .config import logger
 
 # ---------- TodoManager（叠加的规划系统，不改动 Agent Loop 核心）----------
+# 持久化：进程重启后恢复 todo（用户中断 / MOD 自我循环结束后继续对话也能记住进度）。
+TODO_STATE_FILE = ".todo.json"
+
+
 class TodoManager:
     def __init__(self):
         self.todos: list[dict] = []
+        self.state_file = TODO_STATE_FILE
+        self._load()
+
+    def _load(self) -> None:
+        try:
+            if os.path.exists(self.state_file):
+                with open(self.state_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, list):
+                    self.todos = data
+                    logger.info(f"TodoManager._load | 已恢复 {len(self.todos)} 条 todo")
+        except Exception as e:
+            logger.warning(f"TodoManager._load 失败: {e}")
+
+    def _save(self) -> None:
+        try:
+            with open(self.state_file, "w", encoding="utf-8") as f:
+                json.dump(self.todos, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.warning(f"TodoManager._save 失败: {e}")
 
     def update(self, items: list[dict]) -> str:
         """更新待办列表。核心约束：同一时间只允许一个 in_progress。"""
@@ -18,6 +42,7 @@ class TodoManager:
         if len(in_progress) > 1:
             return "Error: Only one item can be in_progress at a time."
         self.todos = items
+        self._save()
         return self.render()
 
     def render(self) -> str:

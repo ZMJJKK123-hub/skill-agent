@@ -17,8 +17,24 @@ from .protocol import coordinator
 from .promptkit import PromptSection as _PS
 from .toolkit import ToolDef as _ToolDef, tool_registry
 from .tools_ask import run_ask_user
+from .tools_artifact import verify_artifact
+from .tools_auto import set_auto_mode
 from .tools_background import bg_manager, format_background_results
+from .tools_cleanup import cleanup_workspace
+from .tools_crash import analyze_crash, read_crash_report
+from .tools_download import download_file, extract_archive
+from .tools_env import detect_environment
 from .tools_fs import run_edit, run_glob, run_grep, run_read, run_write
+from .tools_game import (
+    game_input,
+    press_key,
+    send_game_command,
+    type_text,
+    verify_visual_loop,
+    wait_for_log,
+    wait_for_screen,
+)
+from .tools_gametest import parse_gametest_results
 from .tools_mod import (
     _build_source_zip,
     _forge_build_jar,
@@ -31,8 +47,10 @@ from .tools_shell import run_bash
 from .tools_skills import _load_skill_and_record, maybe_inject_skill_catalog, skill_loader
 from .tools_tasks import _claim_task, task_manager, todo_manager
 from .tools_team import _respond_to_request, _submit_plan, teammate_manager
+from .tools_validate import validate_resources
 from .tools_vision import run_analyze_image, run_screenshot
-from .tools_web import run_web_fetch, run_web_search
+from .tools_search import run_search_minecraft_docs, run_web_search
+from .tools_web import run_web_fetch
 from .tools_worktree import _worktree_remove
 
 # 第一层注入：MOD 纪律规则。
@@ -123,6 +141,25 @@ config.prompt_assembler.section(_PS(
     "  4. Never delete KNOWN_ISSUES.md. It is part of the mod template and must always exist.",
 ))
 
+# rules:resource-loading(145) —— 资源加载强制规则（MC 1.21.11+ Forge 图片/JSON 正确写法）
+config.prompt_assembler.section(_PS(
+    "rules:resource-loading", 145,
+    "RESOURCE LOADING MANDATORY RULES (MC 1.21.11+ Forge):\n"
+    "- Every item/block item MUST have assets/<modid>/items/<registry_name>.json:\n"
+    '  { "model": { "type": "minecraft:model", "model": "<modid>:item/<registry_name>" } }\n'
+    "- Model/texture references are namespaced resource locations WITHOUT .json/.png:\n"
+    '  "<modid>:item/<name>" -> assets/<modid>/models/item/<name>.json + assets/<modid>/textures/item/<name>.png\n'
+    "- Block items also need: blockstates/<name>.json, models/block/<name>.json, "
+    "models/item/<name>.json (parent block), textures/block/<name>.png.\n"
+    "- Recipes MC 1.21.11+: ingredients are plain item id strings (e.g. \"minecraft:stick\"); "
+    "result uses {\"id\":\"<modid>:<item>\",\"count\":1}.\n"
+    "- Lang keys: item.<modid>.<name> / block.<modid>.<name> / itemGroup.<modid>.<tab>.\n"
+    "- After writing assets, run validate_resources to check file paths/JSON references, then run gradlew build / "
+    "run_test_gametest and parse results with parse_gametest_results; for visuals use run_client + "
+    "screenshot/analyze_image if vision enabled.\n"
+    "- For full details load the minecraft-resource-loading skill.",
+))
+
 # 组装最终系统提示词并覆盖 config.SYSTEM。
 # agent.py 在 tools.py 执行完之后才绑定 SYSTEM 引用——但 `from .config import SYSTEM`
 # 是值绑定，此处必须用"模块属性动态读取"；agent.py 已改为 import config 后读 config.SYSTEM。
@@ -134,7 +171,28 @@ TOOL_HANDLERS = {
                                           kw.get("glob_filter"), kw.get("max_results", 50)),
     "glob":         lambda **kw: run_glob(kw["pattern"]),
     "web_search":   lambda **kw: run_web_search(kw["query"], kw.get("max_results", 5)),
+    "search_minecraft_docs": lambda **kw: run_search_minecraft_docs(kw["query"], kw.get("max_results", 5)),
     "web_fetch":    lambda **kw: run_web_fetch(kw["url"], kw.get("max_chars", 100000)),
+    "validate_resources": lambda **kw: validate_resources(kw.get("modid")),
+    "parse_gametest_results": lambda **kw: parse_gametest_results(kw.get("lines", 200), kw.get("log_path")),
+    "read_crash_report": lambda **kw: read_crash_report(kw.get("max_lines", 120)),
+    "analyze_crash": lambda **kw: analyze_crash(kw.get("max_lines", 60)),
+    "detect_environment": lambda **kw: detect_environment(),
+    "verify_artifact": lambda **kw: verify_artifact(kw.get("jar_path")),
+    "download_file": lambda **kw: download_file(kw["url"], kw["dest_path"]),
+    "extract_archive": lambda **kw: extract_archive(kw["archive_path"], kw["dest_path"]),
+    "cleanup_workspace": lambda **kw: cleanup_workspace(kw.get("mode", "cache")),
+    "set_auto_mode": lambda **kw: set_auto_mode(kw.get("enabled", True)),
+    "send_game_command": lambda **kw: send_game_command(
+        kw["command"], kw.get("host", "127.0.0.1"), kw.get("port", 25575), kw.get("password")),
+    "game_input": lambda **kw: game_input(kw.get("action", "type"), kw.get("key"), kw.get("text")),
+    "press_key": lambda **kw: press_key(kw["key"]),
+    "type_text": lambda **kw: type_text(kw["text"]),
+    "wait_for_log": lambda **kw: wait_for_log(kw["pattern"], kw.get("timeout", 60), kw.get("log_path")),
+    "wait_for_screen": lambda **kw: wait_for_screen(kw.get("duration", 5), kw.get("prompt")),
+    "verify_visual_loop": lambda **kw: verify_visual_loop(
+        kw.get("prompt", ""), kw.get("max_attempts", 3), kw.get("interval", 5),
+        kw.get("command"), kw.get("rcon_password"), kw.get("rcon_port", 25575)),
     "ask_user_question": lambda **kw: run_ask_user(kw.get("questions") or kw.get("question", ""), kw.get("options", [])),
     "read_file":    lambda **kw: run_read(kw["path"], kw.get("limit")),
     "write_file":   lambda **kw: run_write(kw["path"], kw["content"]),
@@ -241,6 +299,21 @@ TOOLS = [
                 "type": "object",
                 "properties": {
                     "query": {"type": "string", "description": "Search query"},
+                    "max_results": {"type": "integer", "description": "Max results (default 5)"},
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_minecraft_docs",
+            "description": "Search Minecraft/Forge-specific documentation sites (Minecraft Wiki, Forge Docs, NeoForged, GitHub) for exact APIs, versions, JSON formats, and mod development references.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query, e.g. 'item model definition 1.21.11'"},
                     "max_results": {"type": "integer", "description": "Max results (default 5)"},
                 },
                 "required": ["query"],
@@ -949,6 +1022,7 @@ _TOOL_META: dict = {
     "glob": {"readonly": True, "concurrency_safe": True},
     "load_skill": {"readonly": True},
     "web_search": {"readonly": True, "concurrency_safe": True},
+    "search_minecraft_docs": {"readonly": True, "concurrency_safe": True},
     "web_fetch": {"readonly": True, "concurrency_safe": True},
     "task_list": {"readonly": True, "concurrency_safe": True},
     "task_get": {"readonly": True, "concurrency_safe": True},
@@ -1014,6 +1088,269 @@ TOOLS.append({
     },
 })
 _TOOL_META["analyze_image"] = {"readonly": True}
+
+# ── 新增自动流程工具：搜索 / 校验 / 解析 / 环境 / 产物 / 下载 / 清理 / 全自动 ──
+_TOOL_SCHEMAS_EXTRA = [
+    {
+        "type": "function",
+        "function": {
+            "name": "validate_resources",
+            "description": "Validate all MOD resource files (item model definitions, models, textures, blockstates, recipes, lang, pack.mcmeta) and report missing/invalid references. Use after writing assets to catch purple-missing-texture issues before running the game.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "modid": {"type": "string", "description": "Optional mod id; auto-detected from mods.toml/@Mod when omitted"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "parse_gametest_results",
+            "description": "Parse the latest GameTest log and return a concise pass/fail summary with failed test names and error lines.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "lines": {"type": "integer", "description": "Tail lines to scan (default 200, max 2000)"},
+                    "log_path": {"type": "string", "description": "Optional custom log path; default run/logs/latest.log"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_crash_report",
+            "description": "Read the latest crash report from crash-reports/ and return the head of the report for debugging.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "max_lines": {"type": "integer", "description": "Lines to return (default 120)"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "analyze_crash",
+            "description": "Extract key facts from the latest crash report: description, exception, caused by, stack frames.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "max_lines": {"type": "integer", "description": "Max stack frames to include (default 60)"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "detect_environment",
+            "description": "Detect current workspace environment: Java version, Gradle wrapper, mod loader, mod id, MC/Forge version, source layout, resource namespaces.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "verify_artifact",
+            "description": "Verify built jar(s) and source zip contain required metadata/resources and no forbidden runtime directories.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "jar_path": {"type": "string", "description": "Optional specific jar path; default uses latest dist/*.jar"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "download_file",
+            "description": "Download a URL to a workspace path. Use for reference files, textures, or external resources.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "URL to download"},
+                    "dest_path": {"type": "string", "description": "Destination path inside workspace"},
+                },
+                "required": ["url", "dest_path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "extract_archive",
+            "description": "Extract a zip/tar.gz/jar archive into a workspace directory (zip-slip safe).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "archive_path": {"type": "string", "description": "Archive path inside workspace"},
+                    "dest_path": {"type": "string", "description": "Destination directory inside workspace"},
+                },
+                "required": ["archive_path", "dest_path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "cleanup_workspace",
+            "description": "Clean build/runtime artifacts. mode='cache' removes build/.gradle/__pycache__/agent.log; mode='all' also removes run/run-data/.worktrees/.team/.tasks/.transcripts.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "mode": {"type": "string", "enum": ["cache", "all"], "description": "Cleanup mode (default cache)"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_auto_mode",
+            "description": "Toggle auto mode for the current agent process. When enabled, ask_user_question will not block and the agent uses reasonable defaults.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "enabled": {"type": "boolean", "description": "true to enable auto mode, false to disable"},
+                },
+                "required": ["enabled"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "send_game_command",
+            "description": "Send a Minecraft RCON command to a running server/client (e.g. /give, /tp, /reload). Requires RCON enabled and password.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "command": {"type": "string", "description": "Command to send, e.g. 'give @p minecraft:diamond 1'"},
+                    "host": {"type": "string", "description": "RCON host (default 127.0.0.1)"},
+                    "port": {"type": "integer", "description": "RCON port (default 25575)"},
+                    "password": {"type": "string", "description": "RCON password; if omitted uses DSH_RCON_PASSWORD"},
+                },
+                "required": ["command"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "game_input",
+            "description": "Generic game input. action='key' with key name, or action='type' with text. Sends input to the focused game window.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "enum": ["key", "type"], "description": "key=press single key, type=type text"},
+                    "key": {"type": "string", "description": "Key name for key action (e.g. enter, e, esc)"},
+                    "text": {"type": "string", "description": "Text to type for type action"},
+                },
+                "required": ["action"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "press_key",
+            "description": "Press and release a single key in the focused window (e.g. 'e' to open inventory, 'esc').",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "key": {"type": "string", "description": "Key name (enter, esc, e, space, f1, etc.)"},
+                },
+                "required": ["key"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "type_text",
+            "description": "Type Unicode text into the focused window (useful for chat commands or search boxes).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "Text to type"},
+                },
+                "required": ["text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "wait_for_log",
+            "description": "Wait until a regex pattern appears in a log file (default run/logs/latest.log). Useful for waiting for server/client startup or test completion.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pattern": {"type": "string", "description": "Regex pattern to search for"},
+                    "timeout": {"type": "integer", "description": "Max seconds to wait (default 60)"},
+                    "log_path": {"type": "string", "description": "Optional custom log path"},
+                },
+                "required": ["pattern"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "wait_for_screen",
+            "description": "Wait a few seconds, take a screenshot, and optionally analyze it with the vision API. Use to let the game render before checking.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "duration": {"type": "integer", "description": "Seconds to wait (default 5)"},
+                    "prompt": {"type": "string", "description": "Optional vision analysis prompt"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "verify_visual_loop",
+            "description": "Run a visual verification loop: optionally send RCON commands, screenshot, analyze with vision, repeat. Returns all screenshot paths and analyses.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "prompt": {"type": "string", "description": "Vision analysis prompt (e.g. 'is the item icon rendered correctly?')"},
+                    "max_attempts": {"type": "integer", "description": "Number of attempts (default 3)"},
+                    "interval": {"type": "integer", "description": "Seconds between attempts (default 5)"},
+                    "command": {"type": "string", "description": "Optional RCON command to send before each screenshot"},
+                    "rcon_password": {"type": "string", "description": "Optional RCON password"},
+                    "rcon_port": {"type": "integer", "description": "Optional RCON port (default 25575)"},
+                },
+                "required": [],
+            },
+        },
+    },
+]
+
+for _schema in _TOOL_SCHEMAS_EXTRA:
+    TOOLS.append(_schema)
+    _name = _schema["function"]["name"]
+    if _name in ("validate_resources", "parse_gametest_results", "read_crash_report", "analyze_crash",
+                 "detect_environment", "verify_artifact", "wait_for_log"):
+        _TOOL_META[_name] = {"readonly": True, "concurrency_safe": True}
 
 def _unknown_handler(**kw):
     return "(handler not wired yet)"

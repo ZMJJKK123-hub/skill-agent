@@ -18,6 +18,7 @@ TeamCoordinator 通过 wire() 由 tools.py 注入 MessageBus / 团队名册 / �
 
 from enum import Enum
 from dataclasses import dataclass, field
+import json
 import uuid
 import time
 import threading
@@ -52,9 +53,61 @@ class ProtocolRequest:
 class ProtocolTracker:
     """所有请求-响应协议的核心。只管理状态流转，不关心 req_type。"""
 
+    STATE_FILE = ".team/protocol.json"
+
     def __init__(self):
         self._requests: dict[str, ProtocolRequest] = {}
         self._lock = threading.Lock()
+        self._load()
+
+    def _load(self) -> None:
+        """从 .team/protocol.json 恢复协议请求（进程重启后继续保留）。"""
+        try:
+            import os
+            if os.path.exists(self.STATE_FILE):
+                with open(self.STATE_FILE, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                for item in data or []:
+                    try:
+                        req = ProtocolRequest(
+                            req_id=item["req_id"],
+                            req_type=item["req_type"],
+                            from_agent=item["from_agent"],
+                            to_agent=item["to_agent"],
+                            payload=item.get("payload", {}),
+                            status=RequestStatus(item.get("status", "pending")),
+                            response_payload=item.get("response_payload", {}),
+                            created_at=item.get("created_at", time.time()),
+                        )
+                        self._requests[req.req_id] = req
+                    except Exception:
+                        continue
+                if self._requests:
+                    logger.info(f"ProtocolTracker._load | 恢复 {len(self._requests)} 条协议请求")
+        except Exception as e:
+            logger.warning(f"ProtocolTracker._load 失败: {e}")
+
+    def _save(self) -> None:
+        """持久化所有协议请求到 .team/protocol.json。"""
+        try:
+            import os
+            os.makedirs(os.path.dirname(self.STATE_FILE), exist_ok=True)
+            data = []
+            for r in self._requests.values():
+                data.append({
+                    "req_id": r.req_id,
+                    "req_type": r.req_type,
+                    "from_agent": r.from_agent,
+                    "to_agent": r.to_agent,
+                    "payload": r.payload,
+                    "status": r.status.value,
+                    "response_payload": r.response_payload,
+                    "created_at": r.created_at,
+                })
+            with open(self.STATE_FILE, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.warning(f"ProtocolTracker._save 失败: {e}")
 
     def create_request(self, req_type, from_agent, to_agent, payload) -> str:
         req_id = f"{req_type}_{uuid.uuid4().hex[:8]}"
@@ -64,6 +117,7 @@ class ProtocolTracker:
         )
         with self._lock:
             self._requests[req_id] = req
+            self._save()
         logger.info(
             f"ProtocolTracker.create_request | {req_id} | {req_type} | "
             f"{from_agent} → {to_agent}"
@@ -80,6 +134,7 @@ class ProtocolTracker:
                 raise ValueError(f"Request {req_id} already resolved")  # 状态守卫
             req.status = status
             req.response_payload = response_payload or {}
+            self._save()
         logger.info(
             f"ProtocolTracker.respond | {req_id} → {status.value} | "
             f"response={response_payload}"
@@ -113,6 +168,7 @@ class ProtocolTracker:
         """清空所有请求（session 结束时调用，与 team 清空保持一致）。"""
         with self._lock:
             self._requests.clear()
+            self._save()
         logger.info("ProtocolTracker.reset | 已清空所有请求")
 
 

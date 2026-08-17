@@ -446,6 +446,10 @@ client = OpenAI(
 # 会话级沙箱模式：full-access | workspace-write | read-only（由 server 注入 DSH_SANDBOX_MODE）
 SANDBOX_MODE = os.environ.get("DSH_SANDBOX_MODE", "full-access")
 
+# 全自动模式：开启后 ask_user_question 不再阻塞等待用户，而是返回提示让 agent 用合理默认值继续。
+# 由 server 通过 DSH_AUTO_MODE 注入（前端设置面板可切换）。
+AUTO_MODE = os.environ.get("DSH_AUTO_MODE", "0") == "1"
+
 # ---------- 路径安全沙箱 ----------
 WORKDIR = Path.cwd()
 

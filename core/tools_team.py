@@ -157,13 +157,32 @@ class TeammateManager:
         self.bus = MessageBus(os.path.join(self.team_dir, "inbox"))
         self.threads: dict = {}
         self._lock = threading.Lock()
-        # 每次运行干净开始：不跨 session 持久化团队状态
-        # 队友无持久记忆（每次 task 都是全新 context），跨 session 保留名册无意义
+        # 持久化恢复：上次进程退出时留下的队友名册会恢复为 shutdown（线程已不存在），
+        # 用户仍能看到历史队友；需要时 spawn 会重新创建并启动线程。
+        self._load_team_config()
         self._save_team_config()
         logger.info(
-            f"TeammateManager 初始化 | 干净启动，team 已清空 | "
+            f"TeammateManager 初始化 | 恢复 {len(self.team)} 个队友名册 | "
             f"活跃线程: {list(self.threads.keys())}"
         )
+
+    def _load_team_config(self) -> None:
+        """从 .team/config.json 加载队友名册；线程不存在，全部标记为 shutdown。"""
+        try:
+            if os.path.exists(self.config_path):
+                with open(self.config_path, "r", encoding="utf-8") as f:
+                    raw = json.load(f)
+                for name, data in raw.items():
+                    if not isinstance(data, dict):
+                        continue
+                    cfg = TeammateConfig(
+                        name=str(name),
+                        system_prompt=str(data.get("system_prompt", "")),
+                        status="shutdown",
+                    )
+                    self.team[str(name)] = cfg
+        except Exception as e:
+            logger.warning(f"TeammateManager._load_team_config 失败: {e}")
 
     def _save_team_config(self):
         """保存团队名册到 .team/config.json。

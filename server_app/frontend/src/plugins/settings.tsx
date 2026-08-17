@@ -15,6 +15,8 @@ type Draft = {
   visionApiKey: string
   visionBaseUrl: string
   visionModel: string
+  autoMode: boolean
+  searchApiKey: string
 }
 
 const VERSIONS = ['1.21.11', '1.21.10', '1.21.9']
@@ -26,15 +28,15 @@ function SettingsPanel() {
   const [section, setSection] = useState<SectionKey>('general')
 
   // 通用配置草稿：应用前不落库
-  const { apiKey, loader, version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel } = useUi()
+  const { apiKey, loader, version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey } = useUi()
   const [draft, setDraft] = useState({
     apiKey, loader, version, sandbox,
-    visionEnabled, visionApiKey, visionBaseUrl, visionModel,
+    visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey,
   })
   useEffect(() => {
     if (settingsOpen) setDraft({
       apiKey, loader, version, sandbox,
-      visionEnabled, visionApiKey, visionBaseUrl, visionModel,
+      visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settingsOpen])
@@ -51,6 +53,8 @@ function SettingsPanel() {
       visionApiKey: draft.visionApiKey.trim(),
       visionBaseUrl: draft.visionBaseUrl.trim(),
       visionModel: draft.visionModel.trim(),
+      autoMode: draft.autoMode,
+      searchApiKey: draft.searchApiKey.trim(),
       settingsOpen: false,
     })
   }
@@ -157,6 +161,24 @@ function GeneralSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft
           <option value="workspace-write">{t('general.sandbox.workspace')}</option>
           <option value="read-only">{t('general.sandbox.readonly')}</option>
         </select>
+      </Field>
+      <Field label="全自动模式">
+        <button
+          onClick={() => setDraft({ ...draft, autoMode: !draft.autoMode })}
+          className={`relative h-6 w-11 rounded-full transition ${draft.autoMode ? 'bg-forge-500' : 'bg-slate-600'}`}
+        >
+          <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${draft.autoMode ? 'left-[22px]' : 'left-0.5'}`} />
+        </button>
+        <p className="mt-1 text-xs text-faint">开启后 agent 不再阻塞等待提问，会用合理默认值继续。</p>
+      </Field>
+      <Field label="Tavily Search API Key">
+        <input
+          type="password"
+          value={draft.searchApiKey}
+          onChange={(e) => setDraft({ ...draft, searchApiKey: e.target.value })}
+          placeholder="tvly-…（留空则使用 DuckDuckGo fallback）"
+          className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500"
+        />
       </Field>
       <p className="text-xs text-faint">{t('general.fallbackHint')}</p>
     </div>

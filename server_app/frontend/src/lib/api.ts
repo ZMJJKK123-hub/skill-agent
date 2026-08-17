@@ -128,6 +128,8 @@ export function createSession(
   visionApiKey = '',
   visionBaseUrl = '',
   visionModel = '',
+  autoMode = false,
+  searchApiKey = '',
 ) {
   return api<{ session_id: string; mod_dir: string }>('/api/session', {
     method: 'POST',
@@ -137,6 +139,8 @@ export function createSession(
       vision_api_key: visionApiKey,
       vision_base_url: visionBaseUrl,
       vision_model: visionModel,
+      auto_mode: autoMode,
+      search_api_key: searchApiKey,
     }),
   })
 }
@@ -163,12 +167,16 @@ export function startTask(
   visionApiKey?: string,
   visionBaseUrl?: string,
   visionModel?: string,
+  autoMode?: boolean,
+  searchApiKey?: string,
 ) {
   const body: Record<string, unknown> = { session_id: sessionId, prompt, mode, resume, model, base_url: baseUrl }
   if (visionEnabled !== undefined) body.vision_enabled = visionEnabled
   if (visionApiKey !== undefined) body.vision_api_key = visionApiKey
   if (visionBaseUrl !== undefined) body.vision_base_url = visionBaseUrl
   if (visionModel !== undefined) body.vision_model = visionModel
+  if (autoMode !== undefined) body.auto_mode = autoMode
+  if (searchApiKey !== undefined) body.search_api_key = searchApiKey
   return api<{ session_id: string; status: string; mode: string; resume?: boolean }>('/api/task', {
     method: 'POST',
     body: JSON.stringify(body),

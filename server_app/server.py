@@ -59,7 +59,8 @@ class Session:
                  model: str = "deepseek-v4-flash", base_url: str = "https://opencode.ai/zen/go/v1",
                  sandbox: str = "full-access",
                  vision_enabled: bool = False, vision_api_key: str = "",
-                 vision_base_url: str = "", vision_model: str = ""):
+                 vision_base_url: str = "", vision_model: str = "",
+                 auto_mode: bool = False, search_api_key: str = ""):
         self.id = session_id
         self.mod_dir = mod_dir
         self.api_key = api_key
@@ -74,6 +75,8 @@ class Session:
         self.vision_api_key = vision_api_key    # 视觉 API Key（独立于主模型，不落盘）
         self.vision_base_url = vision_base_url  # 视觉 API Base URL（OpenAI 兼容）
         self.vision_model = vision_model        # 视觉模型名（如 gpt-4o / qwen-vl-plus / glm-4v）
+        self.auto_mode = auto_mode              # 全自动模式：True 时 ask_user_question 不阻塞等待用户
+        self.search_api_key = search_api_key    # 联网搜索 API Key（Tavily 等）
         self.proc: Optional[subprocess.Popen] = None
         self.started_at: Optional[float] = None
         self.finished_at: Optional[float] = None
@@ -174,6 +177,8 @@ class SessionRequest(BaseModel):
     vision_api_key: str = ""                  # 视觉 API Key（独立于主模型）
     vision_base_url: str = ""                 # 视觉 API Base URL
     vision_model: str = ""                    # 视觉模型名
+    auto_mode: bool = False                   # 全自动模式：不阻塞 ask_user_question
+    search_api_key: str = ""                  # 联网搜索 API Key（Tavily 等）
 
 
 class TaskRequest(BaseModel):
@@ -187,6 +192,8 @@ class TaskRequest(BaseModel):
     vision_api_key: Optional[str] = None   # 可选：覆盖会话视觉 API Key
     vision_base_url: Optional[str] = None  # 可选：覆盖会话视觉 API Base URL
     vision_model: Optional[str] = None     # 可选：覆盖会话视觉模型名
+    auto_mode: Optional[bool] = None       # 可选：覆盖会话全自动模式开关
+    search_api_key: Optional[str] = None   # 可选：覆盖会话搜索 API Key
 
 
 class AuthRequest(BaseModel):
@@ -477,7 +484,9 @@ def create_session(req: SessionRequest, authorization: str = Header(default=""))
                                   vision_enabled=req.vision_enabled,
                                   vision_api_key=req.vision_api_key,
                                   vision_base_url=req.vision_base_url,
-                                  vision_model=req.vision_model)
+                                  vision_model=req.vision_model,
+                                  auto_mode=req.auto_mode,
+                                  search_api_key=req.search_api_key)
     return {"session_id": session_id, "mod_dir": str(mod_dir)}
 
 
@@ -736,6 +745,10 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
         sess.vision_base_url = req.vision_base_url
     if req.vision_model is not None:
         sess.vision_model = req.vision_model
+    if req.auto_mode is not None:
+        sess.auto_mode = req.auto_mode
+    if req.search_api_key is not None:
+        sess.search_api_key = req.search_api_key
 
     # 启动隔离子进程：cwd 切到工作目录（run_task.py 内部 os.chdir）。
     # PYTHONUNBUFFERED=1：强制子进程 stdout 无缓冲，否则 print 会积压到
@@ -757,6 +770,8 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
                  "DSH_VISION_API_KEY": sess.vision_api_key or "",
                  "DSH_VISION_BASE_URL": sess.vision_base_url or "",
                  "DSH_VISION_MODEL": sess.vision_model or "",
+                 "DSH_AUTO_MODE": "1" if sess.auto_mode else "0",
+                 "DSH_TAVILY_API_KEY": sess.search_api_key or "",
                  **env_extra},
         )
     except Exception:

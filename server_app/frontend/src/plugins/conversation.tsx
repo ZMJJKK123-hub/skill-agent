@@ -388,7 +388,7 @@ function QuestionCard() {
 }
 
 function Composer() {
-  const { user, apiKey, model, providers, version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel } = useUi()
+  const { user, apiKey, model, providers, version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey } = useUi()
   const t = useT()
   const sess = useSession()
   const [text, setText] = useState('')
@@ -401,7 +401,7 @@ function Composer() {
     const prompt = text.trim()
     if (!prompt) return
     const r = resolveModelConfig({ apiKey, model, providers })
-    const settings = { apiKey: r.apiKey, baseUrl: r.baseUrl, model: r.model, game: 'minecraft', loader: 'forge', version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel }
+    const settings = { apiKey: r.apiKey, baseUrl: r.baseUrl, model: r.model, game: 'minecraft', loader: 'forge', version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey }
 
     // /mod 拦截：固定格式触发 mod 制作模式
     if (prompt.startsWith('/mod')) {

@@ -50,6 +50,8 @@ export interface UiState {
   visionApiKey: string
   visionBaseUrl: string
   visionModel: string
+  autoMode: boolean
+  searchApiKey: string
 }
 
 const STORAGE_KEY = 'modforge_ui'
@@ -75,6 +77,8 @@ function loadState(): UiState {
     visionApiKey: '',
     visionBaseUrl: '',
     visionModel: '',
+    autoMode: false,
+    searchApiKey: '',
   }
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -111,6 +115,8 @@ function persist() {
         visionApiKey: state.visionApiKey,
         visionBaseUrl: state.visionBaseUrl,
         visionModel: state.visionModel,
+        autoMode: state.autoMode,
+        searchApiKey: state.searchApiKey,
       }),
     )
   } catch {

@@ -4,6 +4,7 @@ import json
 import time
 from pathlib import Path
 
+from . import config
 from .config import logger
 
 def run_ask_user(questions, options: list = None) -> str:
@@ -32,6 +33,14 @@ def run_ask_user(questions, options: list = None) -> str:
         qs = [{"question": str(questions or ""), "options": options}]
     if not qs or not qs[0]["question"].strip():
         return "Error: 问题为空"
+
+    if config.AUTO_MODE:
+        logger.info("ask_user_question | 全自动模式开启，跳过用户提问")
+        return (
+            "AUTO_MODE is enabled: cannot block for user input. "
+            "Use your best judgment / reasonable defaults, and clearly state assumptions "
+            "in your final summary."
+        )
 
     base = Path.cwd()  # agent 子进程 cwd = 会话目录（run_task.py os.chdir）
     qpath = base / "question.json"

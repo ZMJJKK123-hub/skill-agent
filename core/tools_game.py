@@ -1,0 +1,205 @@
+# -*- coding: utf-8 -*-
+"""Game interaction tools: RCON commands, Windows input, log/screen waiting, visual verify loop."""
+import ctypes
+import os
+import re
+import socket
+import struct
+import subprocess
+import time
+from pathlib import Path
+
+from .config import logger
+from .tools_runtime import worktree_manager
+from .tools_vision import run_analyze_image, run_screenshot
+
+
+def _base_dir() -> str:
+    return worktree_manager.resolve_dir() if worktree_manager else os.getcwd()
+
+
+# ── RCON ──────────────────────────────────────────────────────────────
+def _recv_exact(sock: socket.socket, n: int) -> bytes:
+    buf = b""
+    while len(buf) < n:
+        chunk = sock.recv(n - len(buf))
+        if not chunk:
+            raise ConnectionError("RCON connection closed")
+        buf += chunk
+    return buf
+
+
+def _rcon_packet(sock: socket.socket, req_id: int, ptype: int, payload: str):
+    body = struct.pack("<ii", req_id, ptype) + payload.encode("utf-8") + b"\x00\x00"
+    sock.sendall(struct.pack("<i", len(body)) + body)
+    length = struct.unpack("<i", _recv_exact(sock, 4))[0]
+    resp_body = _recv_exact(sock, length)
+    rid, rtype = struct.unpack("<ii", resp_body[:8])
+    text = resp_body[8:-2].decode("utf-8", errors="replace")
+    return rid, rtype, text
+
+
+def send_game_command(command: str, host: str = "127.0.0.1", port: int = 25575,
+                      password: str = None) -> str:
+    """Send a Minecraft RCON command to a running server/client with RCON enabled."""
+    password = password or os.environ.get("DSH_RCON_PASSWORD", "")
+    if not password:
+        return "Error: RCON password not provided (set password parameter or DSH_RCON_PASSWORD)"
+    try:
+        with socket.create_connection((host, int(port)), timeout=10) as sock:
+            rid, rtype, _ = _rcon_packet(sock, 1, 3, password)
+            if rid == -1:
+                return "Error: RCON authentication failed"
+            rid, rtype, text = _rcon_packet(sock, 2, 2, command)
+            return text if text.strip() else "(empty RCON response)"
+    except Exception as e:
+        return f"Error: RCON failed: {e}"
+
+
+# ── Windows input ─────────────────────────────────────────────────────
+_VK_MAP = {
+    "enter": 0x0D, "return": 0x0D, "esc": 0x1B, "escape": 0x1B,
+    "tab": 0x09, "space": 0x20, "backspace": 0x08, "delete": 0x2E,
+    "up": 0x26, "down": 0x28, "left": 0x25, "right": 0x27,
+    "home": 0x24, "end": 0x23, "pageup": 0x21, "pagedown": 0x22,
+    "shift": 0x10, "ctrl": 0x11, "control": 0x11, "alt": 0x12,
+    "f1": 0x70, "f2": 0x71, "f3": 0x72, "f4": 0x73,
+    "f5": 0x74, "f6": 0x75, "f7": 0x76, "f8": 0x77,
+    "f9": 0x78, "f10": 0x79, "f11": 0x7A, "f12": 0x7B,
+    "a": 0x41, "b": 0x42, "c": 0x43, "d": 0x44, "e": 0x45,
+    "f": 0x46, "g": 0x47, "h": 0x48, "i": 0x49, "j": 0x4A,
+    "k": 0x4B, "l": 0x4C, "m": 0x4D, "n": 0x4E, "o": 0x4F,
+    "p": 0x50, "q": 0x51, "r": 0x52, "s": 0x53, "t": 0x54,
+    "u": 0x55, "v": 0x56, "w": 0x57, "x": 0x58, "y": 0x59, "z": 0x5A,
+    "0": 0x30, "1": 0x31, "2": 0x32, "3": 0x33, "4": 0x34,
+    "5": 0x35, "6": 0x36, "7": 0x37, "8": 0x38, "9": 0x39,
+}
+
+
+def _vk_code(key: str) -> int:
+    k = key.strip().lower()
+    if k in _VK_MAP:
+        return _VK_MAP[k]
+    if len(k) == 1 and k.isprintable():
+        return ord(k.upper())
+    raise ValueError(f"Unknown key: {key}")
+
+
+def press_key(key: str) -> str:
+    """Press and release a single key (Windows SendInput via keybd_event)."""
+    try:
+        vk = _vk_code(key)
+        user32 = ctypes.windll.user32
+        user32.keybd_event(vk, 0, 0, 0)
+        time.sleep(0.05)
+        user32.keybd_event(vk, 0, 2, 0)
+        return f"Pressed {key}"
+    except Exception as e:
+        return f"Error: press_key failed: {e}"
+
+
+def type_text(text: str) -> str:
+    """Type Unicode text into the focused window (Windows SendInput)."""
+    try:
+        user32 = ctypes.windll.user32
+
+        class KEYBDINPUT(ctypes.Structure):
+            _fields_ = [
+                ("wVk", ctypes.c_ushort),
+                ("wScan", ctypes.c_ushort),
+                ("dwFlags", ctypes.c_ulong),
+                ("time", ctypes.c_ulong),
+                ("dwExtraInfo", ctypes.POINTER(ctypes.c_ulong)),
+            ]
+
+        class INPUT(ctypes.Structure):
+            class _INPUT(ctypes.Union):
+                _fields_ = [("ki", KEYBDINPUT), ("padding", ctypes.c_byte * 24)]
+            _anonymous_ = ("_input",)
+            _fields_ = [("type", ctypes.c_ulong), ("_input", _INPUT)]
+
+        def send_unicode(char: str):
+            inp = INPUT()
+            inp.type = 1  # INPUT_KEYBOARD
+            inp.ki.wVk = 0
+            inp.ki.wScan = ord(char)
+            inp.ki.dwFlags = 0x0004  # KEYEVENTF_UNICODE
+            inp.ki.time = 0
+            inp.ki.dwExtraInfo = ctypes.pointer(ctypes.c_ulong(0))
+            user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(INPUT))
+            inp.ki.dwFlags = 0x0004 | 0x0002  # KEYEVENTF_UNICODE | KEYEVENTF_KEYUP
+            user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(INPUT))
+
+        for ch in text:
+            send_unicode(ch)
+            time.sleep(0.01)
+        return f"Typed {len(text)} characters"
+    except Exception as e:
+        return f"Error: type_text failed: {e}"
+
+
+def game_input(action: str, key: str = None, text: str = None) -> str:
+    """Generic game input: action='key' -> press_key(key), action='type' -> type_text(text)."""
+    action = (action or "type").lower()
+    if action in ("key", "press", "press_key"):
+        if not key:
+            return "Error: game_input key action requires 'key'"
+        return press_key(key)
+    if action in ("type", "text", "type_text"):
+        if text is None:
+            return "Error: game_input type action requires 'text'"
+        return type_text(text)
+    return "Error: game_input action must be 'key' or 'type'"
+
+
+# ── Wait helpers ──────────────────────────────────────────────────────
+def wait_for_log(pattern: str, timeout: int = 60, log_path: str = None) -> str:
+    """Wait until a regex pattern appears in a log file (default run/logs/latest.log)."""
+    base = _base_dir()
+    path = Path(log_path) if log_path else Path(base) / "run/logs/latest.log"
+    if not path.is_absolute():
+        path = Path(base) / path
+    deadline = time.time() + max(1, int(timeout))
+    rx = re.compile(pattern, re.I)
+    while time.time() < deadline:
+        try:
+            if path.exists():
+                text = path.read_text(encoding="utf-8", errors="replace")
+                if rx.search(text):
+                    return f"Found pattern '{pattern}' in {path}"
+        except OSError:
+            pass
+        time.sleep(1)
+    return f"Timeout waiting for pattern '{pattern}' in {path}"
+
+
+def wait_for_screen(duration: int = 5, prompt: str = None) -> str:
+    """Wait N seconds, take a screenshot, and optionally analyze it with vision API."""
+    time.sleep(max(0, int(duration)))
+    shot = run_screenshot()
+    lines = [f"Screenshot after {duration}s: {shot}"]
+    if prompt:
+        analysis = run_analyze_image(str(shot).replace("Screenshot saved: ", ""), prompt)
+        lines.append(f"Analysis: {analysis}")
+    return "\n".join(lines)
+
+
+# ── Visual verify loop ────────────────────────────────────────────────
+def verify_visual_loop(prompt: str, max_attempts: int = 3, interval: int = 5,
+                       command: str = None, rcon_password: str = None,
+                       rcon_port: int = 25575) -> str:
+    """Repeatedly send optional RCON command, screenshot, and analyze the screen."""
+    max_attempts = max(1, int(max_attempts))
+    interval = max(1, int(interval))
+    out = [f"Visual verify loop: {max_attempts} attempts, interval {interval}s"]
+    for i in range(1, max_attempts + 1):
+        out.append(f"--- Attempt {i}/{max_attempts} ---")
+        if command:
+            out.append("RCON: " + send_game_command(command, port=rcon_port, password=rcon_password))
+        time.sleep(interval)
+        shot = run_screenshot()
+        out.append(shot)
+        if prompt:
+            path = shot.replace("Screenshot saved: ", "").strip()
+            out.append("Analysis: " + run_analyze_image(path, prompt))
+    return "\n".join(out)

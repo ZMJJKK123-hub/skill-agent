@@ -15,6 +15,8 @@ export interface GenSettings {
   visionApiKey: string
   visionBaseUrl: string
   visionModel: string
+  autoMode: boolean
+  searchApiKey: string
 }
 
 export interface SessionState {
@@ -100,7 +102,8 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
     if (state.sessionId) {
       try {
         await api.startTask(state.sessionId, prompt, mode, false, settings.model, settings.baseUrl,
-          settings.visionEnabled, settings.visionApiKey, settings.visionBaseUrl, settings.visionModel)
+          settings.visionEnabled, settings.visionApiKey, settings.visionBaseUrl, settings.visionModel,
+          settings.autoMode, settings.searchApiKey)
         // 本地乐观显示排队消息（chat 模式）
         setState({
           chatMessages: [...state.chatMessages, { role: 'user', content: prompt }],
@@ -119,7 +122,8 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
     try {
       setState({ phase: 'running', paused: false, stoppedNotice: false, chatMessages: [...state.chatMessages, { role: 'user', content: prompt }] })
       await api.startTask(state.sessionId, prompt, state.mode ?? 'chat', true, settings.model, settings.baseUrl,
-        settings.visionEnabled, settings.visionApiKey, settings.visionBaseUrl, settings.visionModel)
+        settings.visionEnabled, settings.visionApiKey, settings.visionBaseUrl, settings.visionModel,
+        settings.autoMode, settings.searchApiKey)
       void poll()
       startPolling(2000)
     } catch (e) {
@@ -155,6 +159,8 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
         settings.visionApiKey,
         settings.visionBaseUrl,
         settings.visionModel,
+        settings.autoMode,
+        settings.searchApiKey,
       )
       sid = session_id
       setState({ sessionId: session_id })
@@ -172,7 +178,8 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
       : state.chatMessages
     setState({ prompts, phase: 'running', title, chatMessages })
     await api.startTask(sid, prompt, mode, false, settings.model, settings.baseUrl,
-      settings.visionEnabled, settings.visionApiKey, settings.visionBaseUrl, settings.visionModel)
+      settings.visionEnabled, settings.visionApiKey, settings.visionBaseUrl, settings.visionModel,
+      settings.autoMode, settings.searchApiKey)
     void poll()
     void loadHistory()
   } catch (e) {
