@@ -46,6 +46,8 @@ def git_commit(message, workdir=None, files=None, push=False):
     if not message or not str(message).strip():
         return "Error: git_commit requires a non-empty message"
     if files:
+        if isinstance(files, str):
+            files = [files]
         add = ["add", "--"] + [str(f) for f in files]
     else:
         add = ["add", "-A"]
