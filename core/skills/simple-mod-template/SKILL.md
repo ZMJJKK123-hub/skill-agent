@@ -269,18 +269,20 @@ def make_block(path):
 ```java
 package com.example.examplemod.tests;
 
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraftforge.gametest.framework.GameTestHolder;
+import net.minecraftforge.gametest.GameTest;
+import net.minecraftforge.gametest.GameTestNamespace;
 
-@GameTestHolder("examplemod")
+@GameTestNamespace("examplemod")
 public class SimpleItemTest {
-    @GameTest(template = "empty")
+    @GameTest
     public static void test_item_exists(GameTestHelper helper) {
         helper.succeed();
     }
 }
 ```
+
+> Note: This is the CORRECT API for Forge 1.21.11-61.2.0. Do NOT use `net.minecraft.gametest.framework.GameTest` or `GameTestHolder` in this version — they fail to compile here.
 
 ---
 
