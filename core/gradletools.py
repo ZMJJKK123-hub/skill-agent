@@ -5,6 +5,8 @@
 import json, os, re, subprocess
 from pathlib import Path
 
+from . import process_manager as pm
+
 
 def _run_gradle(task, timeout, base):
     if not os.path.exists(os.path.join(base, "build.gradle")):
@@ -59,6 +61,48 @@ def _dev_err(res):
     return ("compile_error", m.group(1) if m else "BUILD FAILED", lm.group(1) if lm else "")
 
 
+def _gradle_cmd(task, base):
+    """Return the command to run a Gradle task in the given mod base dir."""
+    if not os.path.exists(os.path.join(base, "build.gradle")):
+        return None
+    if os.name == "nt":
+        g = "gradlew.bat" if os.path.exists(os.path.join(base, "gradlew.bat")) else "gradle"
+        return ["cmd", "/c", g, task, "--console=plain"]
+    g = "./gradlew" if os.path.exists(os.path.join(base, "gradlew")) else "gradle"
+    return [g, task, "--console=plain"]
+
+
+def start_gradle_task(task, base, handle="mc"):
+    """Start a Gradle task in background; returns immediately with handle/pid/log_path."""
+    cmd = _gradle_cmd(task, base)
+    if cmd is None:
+        return {"success": False, "message": f"No build.gradle in {base}"}
+    log_path = Path(base) / "run" / f"{handle}.log"
+    try:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        log_file = open(log_path, "a", encoding="utf-8", errors="replace")
+        proc = subprocess.Popen(
+            cmd, cwd=base,
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+            stdin=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            env={**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"},
+        )
+        pm.register(handle, proc, task, base, log_path)
+        return {
+            "success": True,
+            "handle": handle,
+            "pid": proc.pid,
+            "log_path": str(log_path),
+            "message": f"Started '{task}' in background (handle={handle}, pid={proc.pid})",
+        }
+    except Exception as e:
+        return {"success": False, "message": f"Failed to start {task}: {e}"}
+
+
 # ---------- 8 个工具 ----------
 def run_data_gen(base, timeout=120):
     res = _run_gradle("runData", timeout, base)
@@ -77,28 +121,32 @@ def run_game_test_server(base, timeout=180):
 
 
 def run_server(base, timeout=60):
-    res = _run_gradle("runServer", timeout, base)
-    txt = res.get("raw", "")
-    if "Done (" in txt:
-        return _ok(res, "Server booted: Done. Dedicated-server compatible.")
-    cr = Path(base) / "crash-reports"
-    crash = ""
-    if cr.is_dir():
-        fs = sorted(cr.glob("crash-*.txt"), key=lambda p: p.stat().st_mtime, reverse=True)
-        if fs:
-            crash = fs[0].read_text(encoding="utf-8", errors="replace")[:2000]
-    mt = re.search(r"(NoClassDefFoundError|ClassCastException|NullPointerException|FATAL)", txt + crash)
-    return _fail(res, "Server did not reach Done", mt.group(1) if mt else "server_crash",
-                 crash[:300], "")
+    """Run 'gradlew runServer' in background (non-blocking).
+
+    Use mc_status / wait_for_log / wait_for_port to check when it reaches 'Done'.
+    The previous blocking behavior moved to start_gradle_task; this keeps the
+    same tool name for compatibility but no longer blocks the agent loop.
+    """
+    res = start_gradle_task("runServer", base, "mc-server")
+    if not res["success"]:
+        return {"success": False, "exit_code": -1, "summary": res["message"],
+                "error_details": None, "raw_logs_snippet": res["message"]}
+    return {"success": True, "exit_code": 0, "summary": res["message"],
+            "error_details": None, "raw_logs_snippet": f"Server starting in background. Log: {res['log_path']}\nUse mc_status or wait_for_log to check readiness."}
 
 
 def run_client(base, timeout=90):
-    res = _run_gradle("runClient", timeout, base)
-    txt = res.get("raw", "")
-    if "BUILD FAILED" in txt or "Exception" in txt:
-        t, m, l = _dev_err(res)
-        return _fail(res, "Client crash/fail", t, m, l)
-    return _ok(res, "Client launched without visible crash")
+    """Run 'gradlew runClient' in background (non-blocking).
+
+    Use mc_status / wait_for_log / wait_for_screen to observe the GUI client.
+    The previous blocking behavior moved to start_gradle_task.
+    """
+    res = start_gradle_task("runClient", base, "mc-client")
+    if not res["success"]:
+        return {"success": False, "exit_code": -1, "summary": res["message"],
+                "error_details": None, "raw_logs_snippet": res["message"]}
+    return {"success": True, "exit_code": 0, "summary": res["message"],
+            "error_details": None, "raw_logs_snippet": f"Client starting in background. Log: {res['log_path']}\nUse mc_status or wait_for_log to check readiness."}
 
 
 def _run_test_task(task, base, timeout):

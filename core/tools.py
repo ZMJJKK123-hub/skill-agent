@@ -34,6 +34,17 @@ from .tools_game import (
     wait_for_log,
     wait_for_screen,
 )
+from .tools_git import git_commit, git_diff, git_status, restore_snapshot, snapshot
+from .tools_lifecycle import (
+    kill_game,
+    mc_status,
+    server_console,
+    start_mc_client,
+    start_mc_server,
+    stop_mc_process,
+)
+from .tools_loop import parse_build_output, run_mod_test_cycle
+from .tools_wait import tail_log, wait_for_mc_ready, wait_for_port
 from .tools_gametest import parse_gametest_results
 from .tools_mod import (
     _build_source_zip,
@@ -193,6 +204,35 @@ TOOL_HANDLERS = {
     "verify_visual_loop": lambda **kw: verify_visual_loop(
         kw.get("prompt", ""), kw.get("max_attempts", 3), kw.get("interval", 5),
         kw.get("command"), kw.get("rcon_password"), kw.get("rcon_port", 25575)),
+    "start_mc_server": lambda **kw: start_mc_server(
+        kw.get("base"), kw.get("handle", "mc-server"), kw.get("rcon_port"), kw.get("rcon_password")),
+    "start_mc_client": lambda **kw: start_mc_client(kw.get("base"), kw.get("handle", "mc-client")),
+    "mc_status": lambda **kw: mc_status(kw.get("handle")),
+    "stop_mc_process": lambda **kw: stop_mc_process(kw.get("handle", "all"), kw.get("force", True)),
+    "kill_game": lambda **kw: kill_game(kw.get("handle", "all")),
+    "server_console": lambda **kw: server_console(
+        handle=kw.get("handle", "mc-server"),
+        command=kw.get("command"),
+        text=kw.get("text"),
+        rcon_password=kw.get("rcon_password"),
+        rcon_port=kw.get("rcon_port", 25575)),
+    "wait_for_port": lambda **kw: wait_for_port(
+        kw["port"], kw.get("host", "127.0.0.1"), kw.get("timeout", 60)),
+    "tail_log": lambda **kw: tail_log(kw.get("log_path"), kw.get("lines", 80), kw.get("base")),
+    "wait_for_mc_ready": lambda **kw: wait_for_mc_ready(
+        kw.get("handle", "mc-server"), kw.get("pattern", r"Done \("), kw.get("timeout", 120),
+        kw.get("check_port", True), kw.get("port", 25565)),
+    "git_status": lambda **kw: git_status(kw.get("workdir")),
+    "git_diff": lambda **kw: git_diff(kw.get("workdir"), kw.get("stat", True)),
+    "git_commit": lambda **kw: git_commit(
+        kw["message"], kw.get("workdir"), kw.get("files"), kw.get("push", False)),
+    "snapshot": lambda **kw: snapshot(kw.get("name", "checkpoint"), kw.get("workdir"), kw.get("message")),
+    "restore_snapshot": lambda **kw: restore_snapshot(kw["ref"], kw.get("workdir")),
+    "parse_build_output": lambda **kw: parse_build_output(
+        kw.get("log_path"), kw.get("raw_text"), kw.get("base")),
+    "run_mod_test_cycle": lambda **kw: run_mod_test_cycle(
+        kw.get("modid"), kw.get("validate", True), kw.get("build", True), kw.get("run_tests", True),
+        kw.get("build_timeout", 900), kw.get("test_timeout", 180), kw.get("base")),
     "ask_user_question": lambda **kw: run_ask_user(kw.get("questions") or kw.get("question", ""), kw.get("options", [])),
     "read_file":    lambda **kw: run_read(kw["path"], kw.get("limit")),
     "write_file":   lambda **kw: run_write(kw["path"], kw["content"]),
@@ -894,13 +934,13 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "run_client",
-            "description": "Run 'gradlew runClient' - launches the GUI Minecraft client using ONLY src/main production code. Use for daily in-game verification of items/blocks/UI/rendering. DIFFERENT from run_test_client: run_client does NOT load src/test helpers; if you wrote cheat/helper tools in src/test for manual debugging, use run_test_client instead. On timeout without crash this is considered a pass; any Exception/BUILD FAILED is a failure. Leader/MAIN agent tool only.",
+            "description": "Run 'gradlew runClient' in the BACKGROUND (non-blocking). Launches the GUI Minecraft client using ONLY src/main production code. Use mc_status / wait_for_screen to observe; stop with stop_mc_process(handle='mc-client'). Does not block the agent loop.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "timeout": {
                         "type": "integer",
-                        "description": "Optional seconds (default 90) to wait before treating as stabilised-pass",
+                        "description": "Kept for compatibility; ignored because startup is now background",
                     },
                 },
             },
@@ -910,13 +950,13 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "run_server",
-            "description": "Run 'gradlew runServer' - launches a headless dedicated server using ONLY src/main code. Use to verify side-isolation/classloading: catches client-only code (e.g. Minecraft.getInstance() misuse) crashing on server. PASS signal: console prints 'Done (' - server booted fine (process then auto-terminated). On failure it reads crash-reports/ latest txt to extract NoClassDefFoundError/ClassCastException etc. DIFFERENT from run_game_test_server: this is a real dedicated server, not a test server. Leader/MAIN agent tool only.",
+            "description": "Run 'gradlew runServer' in the BACKGROUND (non-blocking). Launches a headless dedicated server using ONLY src/main code. Use wait_for_log('Done (') / wait_for_port(25565) to check boot; stop with stop_mc_process(handle='mc-server'). Does not block the agent loop.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "timeout": {
                         "type": "integer",
-                        "description": "Optional seconds (default 60)",
+                        "description": "Kept for compatibility; ignored because startup is now background",
                     },
                 },
             },
@@ -1343,13 +1383,271 @@ _TOOL_SCHEMAS_EXTRA = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "start_mc_server",
+            "description": "Start the Forge dedicated server (gradlew runServer) in the background. Non-blocking; use mc_status / wait_for_log / wait_for_port to check readiness.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "base": {"type": "string", "description": "Optional MOD project dir (default current worktree)"},
+                    "handle": {"type": "string", "description": "Process handle (default mc-server)"},
+                    "rcon_port": {"type": "integer", "description": "If set, write enable-rcon/rcon.port to run/server.properties"},
+                    "rcon_password": {"type": "string", "description": "If set, write rcon.password to run/server.properties and remember for RCON"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "start_mc_client",
+            "description": "Start the Minecraft GUI client (gradlew runClient) in the background. Non-blocking; use mc_status / wait_for_screen to observe.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "base": {"type": "string", "description": "Optional MOD project dir (default current worktree)"},
+                    "handle": {"type": "string", "description": "Process handle (default mc-client)"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "mc_status",
+            "description": "Show tracked Minecraft server/client processes, open ports, and latest log readiness hints.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "handle": {"type": "string", "description": "Optional handle filter (e.g. mc-server, mc-client)"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "stop_mc_process",
+            "description": "Stop a tracked Minecraft process by handle, or all with 'all' (default). Uses taskkill /T to kill the process tree.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "handle": {"type": "string", "description": "handle (mc-server/mc-client) or 'all' (default all)"},
+                    "force": {"type": "boolean", "description": "Force kill (default true)"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "kill_game",
+            "description": "Force kill all (or a named) Minecraft dev process. Alias for stop_mc_process(force=true).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "handle": {"type": "string", "description": "Optional handle; default 'all'"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "server_console",
+            "description": "Send a console command to the local Minecraft server process via stdin if possible, otherwise fallback to RCON.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "handle": {"type": "string", "description": "Process handle (default mc-server)"},
+                    "command": {"type": "string", "description": "Command to send (e.g. 'list', 'save-all')"},
+                    "text": {"type": "string", "description": "Alias of command"},
+                    "rcon_password": {"type": "string", "description": "Optional RCON password for fallback"},
+                    "rcon_port": {"type": "integer", "description": "Optional RCON port (default 25575)"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "wait_for_port",
+            "description": "Wait until a TCP port is open (e.g. 25565 server or 25575 RCON).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "port": {"type": "integer", "description": "TCP port to probe"},
+                    "host": {"type": "string", "description": "Host (default 127.0.0.1)"},
+                    "timeout": {"type": "integer", "description": "Max seconds (default 60)"},
+                },
+                "required": ["port"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "tail_log",
+            "description": "Read the tail of a log file (default run/logs/latest.log). Useful for quick diagnostics.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "log_path": {"type": "string", "description": "Optional custom log path"},
+                    "lines": {"type": "integer", "description": "Number of tail lines (default 80)"},
+                    "base": {"type": "string", "description": "Optional project dir"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "wait_for_mc_ready",
+            "description": "Wait until a Minecraft server/client process is ready: log pattern matched or port open.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "handle": {"type": "string", "description": "Process handle (default mc-server)"},
+                    "pattern": {"type": "string", "description": "Regex readiness pattern (default 'Done (')"},
+                    "timeout": {"type": "integer", "description": "Max seconds (default 120)"},
+                    "check_port": {"type": "boolean", "description": "Also check server port (default true)"},
+                    "port": {"type": "integer", "description": "Port to check (default 25565)"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "git_status",
+            "description": "Show git working tree status (git status --short).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "workdir": {"type": "string", "description": "Optional project dir"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "git_diff",
+            "description": "Show git diff (--stat by default) for the working tree.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "workdir": {"type": "string", "description": "Optional project dir"},
+                    "stat": {"type": "boolean", "description": "Use --stat (default true)"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "git_commit",
+            "description": "Stage all (or given files) and commit. Optionally push.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "message": {"type": "string", "description": "Commit message"},
+                    "workdir": {"type": "string", "description": "Optional project dir"},
+                    "files": {"type": "array", "items": {"type": "string"}, "description": "Optional specific files to commit; default -A"},
+                    "push": {"type": "boolean", "description": "Also git push (default false)"},
+                },
+                "required": ["message"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "snapshot",
+            "description": "Create a git checkpoint commit (snapshot). Returns short HEAD hash.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Snapshot name (default checkpoint)"},
+                    "workdir": {"type": "string", "description": "Optional project dir"},
+                    "message": {"type": "string", "description": "Optional commit message; default 'snapshot: <name>'"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "restore_snapshot",
+            "description": "Hard reset to a previous snapshot/commit. Destructive: discards uncommitted changes.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "ref": {"type": "string", "description": "Commit hash/branch/tag to restore"},
+                    "workdir": {"type": "string", "description": "Optional project dir"},
+                },
+                "required": ["ref"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "parse_build_output",
+            "description": "Extract compile errors and FAILED Gradle tasks from build log or raw text.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "log_path": {"type": "string", "description": "Optional path to build log"},
+                    "raw_text": {"type": "string", "description": "Optional raw build output"},
+                    "base": {"type": "string", "description": "Optional project dir for relative log_path"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_mod_test_cycle",
+            "description": "One-call MOD test loop: validate_resources -> build jar -> run_test_gametest -> parse results. Returns full status.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "modid": {"type": "string", "description": "Optional modid for resource validation"},
+                    "validate": {"type": "boolean", "description": "Run validate_resources (default true)"},
+                    "build": {"type": "boolean", "description": "Run gradlew build (default true)"},
+                    "run_tests": {"type": "boolean", "description": "Run run_test_gametest (default true)"},
+                    "build_timeout": {"type": "integer", "description": "Build timeout seconds (default 900)"},
+                    "test_timeout": {"type": "integer", "description": "GameTest timeout seconds (default 180)"},
+                    "base": {"type": "string", "description": "Optional project dir"},
+                },
+                "required": [],
+            },
+        },
+    },
 ]
 
 for _schema in _TOOL_SCHEMAS_EXTRA:
     TOOLS.append(_schema)
     _name = _schema["function"]["name"]
     if _name in ("validate_resources", "parse_gametest_results", "read_crash_report", "analyze_crash",
-                 "detect_environment", "verify_artifact", "wait_for_log"):
+                 "detect_environment", "verify_artifact", "wait_for_log", "wait_for_port",
+                 "tail_log", "wait_for_mc_ready", "mc_status", "git_status", "git_diff",
+                 "parse_build_output"):
         _TOOL_META[_name] = {"readonly": True, "concurrency_safe": True}
 
 def _unknown_handler(**kw):
