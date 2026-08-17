@@ -163,6 +163,11 @@ SIMPLE MOD FAST PATH (MANDATORY for simple item/block + recipe requests):
   3. Start writing files within the first 2 rounds. Immediately write:
      - Item registration class (e.g. ModItems.java)
      - Update ExampleMod.java to register it and add to creative tab
+     - For EVERY item/block item, create `assets/<modid>/items/<registry_name>.json` item model definition (MC 1.21.11+):
+       ```json
+       { "model": { "type": "minecraft:model", "model": "<modid>:item/<registry_name>" } }
+       ```
+       Missing this file makes the inventory/search icon show as unrendered even if the block renders in the world.
      - item model/texture/lang JSON
      - recipe JSON (MC 1.21.11 Forge: ingredients must be plain item ID strings, e.g. `"minecraft:stick"`, NOT `{"item": "minecraft:stick"}` objects)
   4. Verify with `gradlew build` (or build_mod_jar_forge). For simple tasks you may skip GameTest.

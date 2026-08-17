@@ -38,6 +38,33 @@ Custom tabs: register a `CreativeModeTab` built with `CreativeModeTab#builder()`
 
 Items must be registered (see registries).
 
+## Item model definitions (MC 1.21.11+ REQUIRED)
+
+Every item and every block item MUST have an item model definition file at:
+
+```
+assets/<modid>/items/<registry_name>.json
+```
+
+Content:
+
+```json
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "<modid>:item/<registry_name>"
+  }
+}
+```
+
+- For normal items, also create `assets/<modid>/models/item/<registry_name>.json` (e.g. parent `minecraft:item/generated` with `layer0` texture).
+- For block items, also create:
+  - `assets/<modid>/models/item/<registry_name>.json` with parent `"<modid>:block/<registry_name>"`
+  - `assets/<modid>/models/block/<registry_name>.json`
+  - `assets/<modid>/blockstates/<registry_name>.json`
+  - `assets/<modid>/textures/block/<registry_name>.png`
+- Missing `items/<registry_name>.json` causes the **inventory/search icon to show as missing/unrendered**, even though the block may render correctly when placed in the world.
+
 # BlockEntityWithoutLevelRenderer (BEWLR)
 
 BEWLR handles dynamic item rendering — simpler than the old `ItemStack` system. Render via `renderByItem(ItemStack, ItemDisplayContext, PoseStack, MultiBufferSource, int combinedLight, int combinedOverlay)`.
