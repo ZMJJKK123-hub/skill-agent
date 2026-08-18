@@ -148,6 +148,71 @@ def finalize_known_issues(session_dir: Path) -> None:
     )
 
 
+def finalize_error_list(session_dir: Path) -> None:
+    """自动把本次运行的新错误追加到 docs/agent/ERROR_LIST.md（共享知识库）。
+
+    优先读取 run.log 中以 `NEW_ERROR:` 开头的结构化行（agent 在总结里输出的
+    `NEW_ERROR: <symptom> | <root cause> | <fix>`）。没有结构化行时，退化为
+    提取常规错误信号。无论哪种，都会与现有文档去重，绝不覆盖/删除旧条目。
+    """
+    log_path = session_dir / "run.log"
+    target = PROJECT_ROOT / "docs" / "agent" / "ERROR_LIST.md"
+    if not log_path.exists():
+        return
+    existing = target.read_text(encoding="utf-8") if target.exists() else ""
+    existing_lower = existing.lower()
+    lines = log_path.read_text(encoding="utf-8", errors="replace").splitlines()
+
+    new_entries = []
+    seen = set()
+
+    # 1) 结构化 NEW_ERROR: 行
+    for raw in lines:
+        s = raw.strip()
+        if s.upper().startswith("NEW_ERROR:"):
+            body = s[len("NEW_ERROR:"):].strip()
+            if body and body.lower() not in existing_lower and body not in seen:
+                seen.add(body)
+                new_entries.append(f"- **Auto-recorded:** {body}")
+
+    # 2) 兜底：常规错误信号（最多 10 条，避免刷屏）
+    if not new_entries:
+        pat = re.compile(
+            r"(?i)(:\s*error:|exception|build failed|failed to|cannot find symbol|"
+            r"not found|invalid mod|missing language|supported_formats|mandatory=true)",
+        )
+        cnt = 0
+        for raw in lines:
+            if cnt >= 10:
+                break
+            if not pat.search(raw):
+                continue
+            s = re.sub(r"\s+", " ", raw).strip()
+            if len(s) < 20:
+                continue
+            # 只保留一个代表性症状行，避免时间戳噪音
+            sample = s[:220]
+            if sample.lower() in existing_lower or sample in seen:
+                continue
+            seen.add(sample)
+            new_entries.append(f"- **Auto-recorded:** {sample}")
+            cnt += 1
+
+    if not new_entries:
+        return
+
+    today = datetime.now().strftime("%Y-%m-%d")
+    section = f"\n## {today} Auto-recorded from runtime\n\n" + "\n".join(new_entries) + "\n"
+    try:
+        if not existing.endswith("\n"):
+            existing += "\n"
+        with open(target, "a", encoding="utf-8") as f:
+            f.write(section)
+        print(f"[finalize_error_list] 已追加 {len(new_entries)} 条到 docs/agent/ERROR_LIST.md", flush=True)
+    except OSError as e:
+        print(f"[finalize_error_list] 写回失败: {e}", flush=True)
+
+
 def _run_one_round(messages: list, session_dir: Path,
                    session_root_path: Path, mode: str) -> str:
     """跑一轮 agent_loop 并完成收尾：清断点、写回复历史、收集错误信号。"""
@@ -177,6 +242,11 @@ def _run_one_round(messages: list, session_dir: Path,
         finalize_known_issues(session_dir)
     except Exception as e:
         print(f"[run_task] finalize_known_issues 失败: {e}", flush=True)
+    # 自动沉淀新错误到共享 docs/agent/ERROR_LIST.md（所有模式都执行）
+    try:
+        finalize_error_list(session_dir)
+    except Exception as e:
+        print(f"[run_task] finalize_error_list 失败: {e}", flush=True)
     return final
 
 

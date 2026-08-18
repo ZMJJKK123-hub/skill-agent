@@ -38,6 +38,7 @@ HARD RULES (never break):
 2. NAMING: derive modid/package/class/item/block names from the user's request. NEVER keep examplemod / example_item / example_block; rename across build.gradle(mod group)/mods.toml/java/assets/data/src-test consistently.
 3. BUILD GUARD: never modify build.gradle / settings.gradle / gradle-wrapper; don't switch to NeoGradle/NeoForge; never change forge:1.21.11-61.2.0.
 4. COMPLETION (anti-loop): when run_test_gametest prints "All required tests passed" AND dist/*.jar exists -> FINISH and write the summary. Ignore harmless WARNs (e.g. 'Missing language javafml version'). Don't re-read the same log or "enhance" passing code.
+5. NEW_ERROR AUTO-SINK: if you hit an error that is NOT already in docs/agent/ERROR_LIST.md, include in your final summary a line starting with `NEW_ERROR:` in the format `NEW_ERROR: <symptom> | <root cause> | <fix>`. The system will append it to the error list automatically.
 
 Windows/shell essentials (full details in docs/agent/TOOL_GUIDE.md):
 - Windows syntax only: dir/type/copy/del/rd /s /q; never ls/cat/rm -rf.
