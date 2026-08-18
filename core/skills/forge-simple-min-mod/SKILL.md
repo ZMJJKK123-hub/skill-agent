@@ -129,11 +129,12 @@ Texture must be `assets/<modid>/textures/item/example_item.png` (16x16), referen
 Use this exact Python script to generate solid 16x16 PNG textures. Write it with write_file, then run it with python.
 
 ```python
-import struct, zlib
+import os, struct, zlib
 def png(path, rgb):
     w=h=16
     raw=b''.join(b'\x00'+bytes(rgb)*w for _ in range(h))
     def chunk(t,d): return struct.pack('>I',len(d))+t+d+struct.pack('>I',zlib.crc32(t+d)&0xffffffff)
+    os.makedirs(os.path.dirname(path), exist_ok=True)  # REQUIRED: creates texture dir
     data=b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',w,h,8,6,0,0,0))+chunk(b'IDAT',zlib.compress(raw,9))+chunk(b'IEND',b'')
     open(path,'wb').write(data)
 
@@ -243,6 +244,8 @@ Pair it with a shapeless recipe: `corresponding chestplate + elytra -> flying ch
   `failOnNoDiscoveredTests=false`; do not remove it.
 - 1.21.11 has NO `ArmorItem` class; do not import `net.minecraft.world.item.ArmorItem`; use
   `Item.Properties.humanoidArmor(ArmorMaterial, ArmorType)`.
+- Mod constructor uses `FMLJavaModLoadingContext.get().getModBusGroup()` (NOT `getModEventBus()`);
+  GameTest annotations come from `net.minecraftforge.gametest.GameTest` / `GameTestNamespace`.
 - `ResourceLocation` is `Identifier` in 1.21.11; registry lookup uses `lookupOrThrow` not `registryOrThrow`.
 - NEVER change build system/plugins, Forge version, or dependency versions. You ARE allowed to edit
   modid/namespace references in build.gradle/settings.gradle when renaming the mod (e.g.

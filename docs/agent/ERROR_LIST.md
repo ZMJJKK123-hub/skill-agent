@@ -168,6 +168,18 @@
     `.pickaxe(...)` for pickaxe, and `new AxeItem(ToolMaterial.COPPER, damageBonus, attackSpeed, properties)`
     for axe. `ToolMaterial.COPPER` exists.
 
+- **`FileNotFoundError` when generating texture PNG**
+  - Symptom: `FileNotFoundError: [Errno 2] No such file or directory: 'src/main/resources/assets/<modid>/textures/item/foo.png'`
+  - Root cause: the PNG generator writes to a path whose parent directory does not exist yet
+  - Fix: call `os.makedirs(os.path.dirname(path), exist_ok=True)` inside the PNG generator before writing the file.
+
+- **`FMLJavaModLoadingContext.get().getModEventBus()` not found**
+  - Symptom: compile error `getModEventBus()` not found / deprecated-removal warnings on mod constructor
+  - Root cause: 1.21.11 Forge uses `BusGroup` instead of the old event bus accessor
+  - Fix: use `ITEMS.register(FMLJavaModLoadingContext.get().getModBusGroup());` in the mod constructor, and import
+    `net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext`. For GameTest, use
+    `net.minecraftforge.gametest.GameTest` / `net.minecraftforge.gametest.GameTestNamespace`.
+
 - **`pack.mcmeta` ERROR: supported_formats required**
   - Symptom: `Pack declares support for format 48, but game versions supporting formats 17 to 81 require a supported_formats field`
   - Root cause: pack.mcmeta uses min/max format without `supported_formats`
