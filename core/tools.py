@@ -45,6 +45,7 @@ from .tools_lifecycle import (
 )
 from .tools_loop import parse_build_output, run_mod_test_cycle
 from .tools_wait import tail_log, wait_for_mc_ready, wait_for_port
+from .tool_gate import unlock_test_mode
 from .tools_gametest import parse_gametest_results
 from .tools_mod import (
     _build_source_zip,
@@ -194,6 +195,7 @@ TOOL_HANDLERS = {
     "extract_archive": lambda **kw: extract_archive(kw["archive_path"], kw["dest_path"]),
     "cleanup_workspace": lambda **kw: cleanup_workspace(kw.get("mode", "cache")),
     "set_auto_mode": lambda **kw: set_auto_mode(kw.get("enabled", True)),
+    "activate_test_mode": lambda **kw: unlock_test_mode(),
     "send_game_command": lambda **kw: send_game_command(
         kw["command"], kw.get("host", "127.0.0.1"), kw.get("port", 25575), kw.get("password")),
     "game_input": lambda **kw: game_input(kw.get("action", "type"), kw.get("key"), kw.get("text")),
@@ -1635,6 +1637,18 @@ _TOOL_SCHEMAS_EXTRA = [
                     "test_timeout": {"type": "integer", "description": "GameTest timeout seconds (default 180)"},
                     "base": {"type": "string", "description": "Optional project dir"},
                 },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "activate_test_mode",
+            "description": "Unlock the full toolset for this session. Call this when you need to build, run GameTest, start server/client, use game input/visual verification, or use Git snapshots. After calling, all remaining tools and their usage guide become visible for the rest of the session.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
                 "required": [],
             },
         },

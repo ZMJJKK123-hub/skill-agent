@@ -287,7 +287,8 @@ SYSTEM = SYSTEM_MOD if MODE == "mod" else SYSTEM_CHAT
 # agent.py 在两侧都执行完才绑定，动态读取 config.SYSTEM 即可拿到最终值）。
 # 顺序约定（对齐 DSH）：-100 身份 / 0 persona / 100-199 工具指引 / 200+ 规则。
 from .promptkit import PromptAssembler, PromptSection  # noqa: E402
-from .tool_guide import TOOL_USAGE_GUIDE  # noqa: E402
+from .tool_guide import BASE_TOOL_GUIDE, EXTENDED_TOOL_GUIDE  # noqa: E402
+from .tool_gate import is_unlocked  # noqa: E402
 
 prompt_assembler = PromptAssembler()
 prompt_assembler.variable("model", lambda: MODEL)
@@ -296,7 +297,11 @@ prompt_assembler.variable("mode", lambda: MODE)
 prompt_assembler.variable("sandbox_mode", lambda: os.environ.get("DSH_SANDBOX_MODE", "full-access"))
 prompt_assembler.variable("skills_dir", lambda: os.environ.get("DSH_SKILLS_DIR", "core/skills"))
 prompt_assembler.section(PromptSection("deployment:persona", 0, SYSTEM))
-prompt_assembler.section(PromptSection("deployment:tool_usage_guide", 100, TOOL_USAGE_GUIDE))
+prompt_assembler.section(PromptSection("deployment:tool_usage_guide", 100, BASE_TOOL_GUIDE))
+prompt_assembler.section(PromptSection(
+    "deployment:extended_tool_usage_guide", 110,
+    lambda env: EXTENDED_TOOL_GUIDE if is_unlocked() else "",
+))
 
 
 def build_system_prompt() -> str:

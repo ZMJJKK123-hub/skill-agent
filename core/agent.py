@@ -19,6 +19,7 @@ from .compact import (
 )
 from .skillcheck import init_per_loop, run_loop_check, move_skills_to_end
 from .supervisor import supervisor_manager
+from .tool_gate import leader_tools
 
 
 # ---------- 接线：注册 task handler（打破循环依赖）----------
@@ -190,7 +191,7 @@ def agent_loop(messages: list) -> str:
         stream = client.chat.completions.create(
             model=MODEL,
             messages=[{"role": "system", "content": config.SYSTEM}] + messages,
-            tools=LEADER_TOOLS,  # 第 11 课：leader 侧排除 submit_plan
+            tools=leader_tools(),  # 阶段式：基础阶段只开放开发工具；解锁后开放全部
             max_tokens=8000,
             stream=True,
         )
