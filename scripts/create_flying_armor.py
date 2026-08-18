@@ -5,6 +5,7 @@ import os
 import shutil
 import struct
 import zlib
+import glob
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent  # repo root
@@ -57,6 +58,25 @@ def write_png(path, rgba):
     png += chunk(b"IDAT", zlib.compress(raw, 9))
     png += chunk(b"IEND", b"")
     p.write_bytes(png)
+
+
+def _vanilla_chestplate(name):
+    """Try to copy a real vanilla chestplate texture from a cached client.jar."""
+    candidates = [
+        Path(r"C:\Users\59639\.gradle\caches\minecraftforge\forgegradle\mavenizer\caches\minecraft_tasks\1.21.11\client.jar"),
+        *[Path(p) for p in glob.glob(r"C:\Users\59639\.gradle\caches\minecraftforge\**\client.jar", recursive=True)],
+    ]
+    target = f"assets/minecraft/textures/item/{name}.png"
+    import zipfile
+    for jar in candidates:
+        if jar.exists():
+            try:
+                with zipfile.ZipFile(jar) as z:
+                    if target in z.namelist():
+                        return z.read(target)
+            except Exception:
+                pass
+    return None
 
 
 def build_gradle():
@@ -154,6 +174,14 @@ def assets():
         "leather": "皮革", "chainmail": "锁链", "iron": "铁", "gold": "金", "diamond": "钻石", "netherite": "下界合金"
     }
     zh = {}
+    vanilla_tex = {
+        "leather": "leather_chestplate",
+        "chainmail": "chainmail_chestplate",
+        "iron": "iron_chestplate",
+        "gold": "golden_chestplate",
+        "diamond": "diamond_chestplate",
+        "netherite": "netherite_chestplate",
+    }
     for name, vanilla, mat, color in MATERIALS:
         en[f"item.{MODID}.flying_{name}_chestplate"] = f"Flying {name.title()} Chestplate"
         zh[f"item.{MODID}.flying_{name}_chestplate"] = f"飞行{zh_names[name]}胸甲"
@@ -165,7 +193,13 @@ def assets():
             "parent": "minecraft:item/generated",
             "textures": {"layer0": f"{MODID}:item/{item_id}"}
         }, ensure_ascii=False, indent=2))
-        write_png(ASSET / "textures/item" / f"{item_id}.png", color)
+        tex = _vanilla_chestplate(vanilla_tex[name])
+        texture_path = ASSET / "textures/item" / f"{item_id}.png"
+        if tex:
+            texture_path.parent.mkdir(parents=True, exist_ok=True)
+            texture_path.write_bytes(tex)
+        else:
+            write_png(texture_path, color)
         write(DATA / "recipe" / f"{item_id}.json", json.dumps({
             "type": "minecraft:crafting_shapeless",
             "ingredients": [vanilla, "minecraft:elytra"],
