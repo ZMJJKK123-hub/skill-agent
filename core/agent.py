@@ -50,6 +50,24 @@ MAX_TOOL_ROUNDS = 25
 SESSION_ROOT = os.environ.get("DSH_SESSION_ROOT", "")
 
 
+def _replace_runtime_slot(messages: list, tag_prefix: str, content: str) -> None:
+    """Replace ephemeral runtime-context messages (official dsh runtime-context style).
+
+    Removes any previous user message whose content starts with '<tag_prefix',
+    then appends the latest one. Prevents stale/duplicate runtime context from
+    accumulating and distracting the model.
+    """
+    messages[:] = [
+        m for m in messages
+        if not (
+            m.get("role") == "user"
+            and isinstance(m.get("content"), str)
+            and m["content"].lstrip().startswith(f"<{tag_prefix}")
+        )
+    ]
+    messages.append({"role": "user", "content": content})
+
+
 def _save_checkpoint(messages: list) -> None:
     """把当前轮 messages 存为断点（每轮循环开头）。"""
     if not SESSION_ROOT:
@@ -117,11 +135,12 @@ def agent_loop(messages: list) -> str:
         if IS_MOD_MODE:
             supervisor_msgs = supervisor_manager.drain_advice()
             if supervisor_msgs:
+                blocks = []
                 for sv in supervisor_msgs:
                     tag = "supervisor-alert" if sv["type"] == "alert" else "supervisor-advice"
-                    block = f"<{tag}>\n{sv['content']}\n</{tag}>"
-                    messages.append({"role": "user", "content": block})
-                    logger.info(f"注入监管信息 type={sv['type']}:\n{block}")
+                    blocks.append(f"<{tag}>\n{sv['content']}\n</{tag}>")
+                _replace_runtime_slot(messages, "supervisor", "\n".join(blocks))
+                logger.info(f"注入监管信息 type={[sv['type'] for sv in supervisor_msgs]}:\n{blocks}")
             supervisor_manager.notify_round()  # 计数 + 每 5 轮触发一次监管分析
 
         if _force_final_msg is not None:
@@ -146,7 +165,7 @@ def agent_loop(messages: list) -> str:
         notifications = bg_manager.drain_notifications()
         if notifications:
             bg_results = format_background_results(notifications)
-            messages.append({"role": "user", "content": bg_results})
+            _replace_runtime_slot(messages, "background-results", bg_results)
             logger.info(f"注入后台通知:\n{bg_results}")
 
         # ── Layer 0b: 排空 leader 收件箱（第 9 课：队友汇报）──
@@ -160,7 +179,7 @@ def agent_loop(messages: list) -> str:
                 )
             parts.append("</teammate-reports>")
             teammate_report = "\n".join(parts)
-            messages.append({"role": "user", "content": teammate_report})
+            _replace_runtime_slot(messages, "teammate-reports", teammate_report)
             logger.info(f"注入队友汇报:\n{teammate_report}")
 
         # ── Layer 0b2: 强制 KNOWN_ISSUES 首轮注入（绕圈修复）──
@@ -292,10 +311,11 @@ def agent_loop(messages: list) -> str:
                     f"模型想退出但队友仍在工作: {working_teammates} | "
                     f"注入提醒，继续等待队友汇报"
                 )
-                messages.append({
-                    "role": "user",
-                    "content": f"<reminder>Teammates still working: {', '.join(working_teammates)}. Wait for their reports before finishing.</reminder>",
-                })
+                _replace_runtime_slot(
+                    messages,
+                    "reminder",
+                    f"<reminder>Teammates still working: {', '.join(working_teammates)}. Wait for their reports before finishing.</reminder>",
+                )
                 continue
 
             logger.info(f"循环结束，最终回复:\n{message.content}")
@@ -458,11 +478,10 @@ def agent_loop(messages: list) -> str:
 
         if rounds_since_todo >= 3:
             logger.info("触发 nag reminder：连续 3 轮未更新 todo")
-            messages.append(
-                {
-                    "role": "user",
-                    "content": "<reminder>Update your todos to track progress.</reminder>",
-                }
+            _replace_runtime_slot(
+                messages,
+                "reminder",
+                "<reminder>Update your todos to track progress.</reminder>",
             )
             rounds_since_todo = 0
 
