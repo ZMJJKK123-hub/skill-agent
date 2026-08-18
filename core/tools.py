@@ -71,105 +71,16 @@ from .tools_worktree import _worktree_remove
 # prompt，改为 digest 驱动的会话消息注入（maybe_inject_skill_catalog）。
 # 顺序约定：-100 身份 / 0 persona / 100-199 工具指引 / 200+ 规则。
 
-# rules:skill-mandate(120) —— skill-first 纪律与 <skill-source> 引用契约
+# rules:core(150) —— 精简版核心规则；完整细节见 docs/agent/TOOL_GUIDE.md / ERROR_LIST.md / 技能
 config.prompt_assembler.section(_PS(
-    "rules:skill-mandate", 120,
-    "MOD KNOWLEDGE MANDATE (skill-grounded rules): EVERY MOD-related action MUST strictly follow the loaded skills; "
-    "never write/modify MOD code or files without a skill basis. "
-    "SIMPLE FAST PATH EXCEPTION: For simple item/block + recipe tasks, DO NOT write `<skill-source>` citations "
-    "and DO NOT research before writing. Write first, verify with build/GameTest, and only consult skills/source on failure.\n"
-    "Otherwise, after EVERY change to the MOD project "
-    "(write_file / edit_file, etc.), you MUST list the source of the change: "
-    "<skill-source> change: <file path> | <change summary>; "
-    "source: <skill name> -> <specific section/rule/code pattern cited> </skill-source>. "
-    "If no skill applies, explicitly write \"No skill source\" and explain why. "
-    "Prefer declaring a missing source over writing anything without a basis.",
-))
-
-# rules:mc-source(130) —— 完整 MC+Forge 源码树查阅权限
-config.prompt_assembler.section(_PS(
-    "rules:mc-source", 130,
-    "MC/FORGE SOURCE TREE (mc_java_sources/, ALWAYS AVAILABLE): The complete Minecraft + Forge Java sources are copied "
-    "into your current working directory under mc_java_sources/. You may read ANY file freely with the read_file tool "
-    "or search it with bash (e.g. `findstr /s /n /i \"keyword\" mc_java_sources\\*.java`). There is NO restriction on "
-    "how much you may read — you are the authority on verifying exact class APIs (constructors, method signatures, "
-    "fields, exact usage) directly from source. When a skill is unclear or incomplete, verify the real API in "
-    "mc_java_sources/ before writing code. Cross-reference the source with the loaded skill before writing code.",
-))
-
-# rules:project-gradle(140) —— 工程结构与 Gradle 工具（8）
-config.prompt_assembler.section(_PS(
-    "rules:project-gradle", 140,
-    "STRICT PROJECT STRUCTURE & GRADLE TOOLS (8):\n"
-    "- src/main/java: ONLY production code; @GameTest/@GameTestHolder FORBIDDEN here.\n"
-    "- ALL tests MUST be under src/test/java (e.g. src/test/java/com/<pkg>/tests/).\n"
-    "- Automated self-testing MUST use run_test_gametest (gradlew runTestGameTestServer; scans src/test). NEVER use runGameTestServer for Agent verification (it scans src/main only).\n"
-    "Tools (main-agent only):\n"
-    " 1 run_data_gen -> runData: generate assets JSON\n"
-    " 2 run_game_test_server -> runGameTestServer: src/main @GameTest\n"
-    " 3 run_server -> runServer: server side check; success='Done ('\n"
-    " 4 run_client -> runClient: GUI client\n"
-    " 5 run_test_client -> runTestClient: client+test\n"
-    " 6 run_test_server -> runTestServer: server+test\n"
-    " 7 run_test_data -> runTestData: test placeholders\n"
-    " 8 run_test_gametest -> runTestGameTestServer: THE core — src/test tests\n"
-    "Each returns JSON {success,exit_code,summary,error_details,raw_logs_snippet}; fix src/main and re-run.",
-))
-
-# rules:gametest(150) —— GameTest 自检纪律（简单任务可走快速通道）
-config.prompt_assembler.section(_PS(
-    "rules:gametest", 150,
-    "GAMETEST SELF-DEBUG LOOP (main agent only):\n"
-    "- SIMPLE FAST PATH: For simple item/block + recipe tasks (no custom entities/GUI/capabilities/network), "
-    "you MAY skip writing/running GameTest. Instead verify with `gradlew build` (or build_mod_jar_forge) that the project compiles and produces a jar. "
-    "This keeps simple MOD generation within 5-6 minutes.\n"
-    "- COMPLEX PATH (MANDATORY for anything beyond simple items/recipes): You MUST NOT declare your mod complete "
-    "until you have verified it via GameTests. After writing your mod code + assets, you MUST:\n"
-    "  1. Write at least ONE @GameTest under src/test/java (e.g. src/test/java/com/<pkg>/tests/). "
-    "NEVER put @GameTest in src/main. Enable the namespace via forge.enabledGameTestNamespaces matching your mods.toml modId.\n"
-    "  2. Call run_test_gametest to compile and run all tests (gradlew runTestGameTestServer; scans src/test; "
-    "first run takes minutes). NEVER use run_game_test_server for self-verification — it scans src/main only.\n"
-    "  3. Call read_game_test_log to read <mod dir>/run/logs/latest.log (tail, default 200 lines) and "
-    "inspect failures/errors (they are at the end of the log).\n"
-    "  4. If any test fails or the build fails: fix the code according to the loaded skills (verify any "
-    "uncertain API directly in mc_java_sources/ with read_file or findstr), then re-run the loop from step 2 until ALL tests pass.\n"
-    "Only after the GameTest run succeeds may you consider the mod finished. Never skip the GameTest "
-    "verification just because the task did not explicitly ask for tests.",
-))
-
-# rules:known-issues(160) —— KNOWN_ISSUES.md 使用纪律
-config.prompt_assembler.section(_PS(
-    "rules:known-issues", 160,
-    "KNOWN ISSUES LOGBOOK (KNOWN_ISSUES.md, READ-ONLY): The mod project root contains a KNOWN_ISSUES.md "
-    "file — a logbook of verified pitfalls and their fixes from previous sessions. Rules:\n"
-    "  1. BEFORE starting any work, run_read KNOWN_ISSUES.md and follow every applicable entry. It is "
-    "the highest-priority factual source for this environment: if it conflicts with a skill, the logbook wins.\n"
-    "  2. This file is READ-ONLY for you. Do NOT modify, append to, or delete it. New pitfalls are "
-    "collected automatically at the end of the session by the system (finalize_known_issues), which "
-    "summarizes this run's log and appends deduplicated entries back to the template. Your job is only "
-    "to CONSUME the logbook and comply with it.\n"
-    "  3. If you discover that an existing entry is wrong or incomplete, do NOT edit it. Instead, mention "
-    "the correction in your final summary so the finalize step can record it accurately.\n"
-    "  4. Never delete KNOWN_ISSUES.md. It is part of the mod template and must always exist.",
-))
-
-# rules:resource-loading(145) —— 资源加载强制规则（MC 1.21.11+ Forge 图片/JSON 正确写法）
-config.prompt_assembler.section(_PS(
-    "rules:resource-loading", 145,
-    "RESOURCE LOADING MANDATORY RULES (MC 1.21.11+ Forge):\n"
-    "- Every item/block item MUST have assets/<modid>/items/<registry_name>.json:\n"
-    '  { "model": { "type": "minecraft:model", "model": "<modid>:item/<registry_name>" } }\n'
-    "- Model/texture references are namespaced resource locations WITHOUT .json/.png:\n"
-    '  "<modid>:item/<name>" -> assets/<modid>/models/item/<name>.json + assets/<modid>/textures/item/<name>.png\n'
-    "- Block items also need: blockstates/<name>.json, models/block/<name>.json, "
-    "models/item/<name>.json (parent block), textures/block/<name>.png.\n"
-    "- Recipes MC 1.21.11+: ingredients are plain item id strings (e.g. \"minecraft:stick\"); "
-    "result uses {\"id\":\"<modid>:<item>\",\"count\":1}.\n"
-    "- Lang keys: item.<modid>.<name> / block.<modid>.<name> / itemGroup.<modid>.<tab>.\n"
-    "- After writing assets, run validate_resources to check file paths/JSON references, then run gradlew build / "
-    "run_test_gametest and parse results with parse_gametest_results; for visuals use run_client + "
-    "screenshot/analyze_image if vision enabled.\n"
-    "- For full details load the minecraft-resource-loading skill.",
+    "rules:core", 150,
+    "CORE RULES (full detail in docs/agent/TOOL_GUIDE.md / ERROR_LIST.md / skills):\n"
+    "- STRUCTURE: src/main/java = production code ONLY; ALL tests under src/test/java; NEVER put @GameTest in src/main.\n"
+    "- SELF-TEST: use run_test_gametest (runTestGameTestServer, scans src/test). NEVER use run_game_test_server for self-verification.\n"
+    "- RESOURCES (1.21.11): every item/block item needs assets/<modid>/items/<name>.json; model/texture refs are namespaced WITHOUT .json/.png; recipes use string ingredients + result {id,count}; lang item.<modid>.<name>/block.<modid>.<name> in BOTH en_us and zh_cn.\n"
+    "- SOURCE: mc_java_sources/ always available; verify exact APIs there with read_file/findstr when a skill is unclear.\n"
+    "- KNOWN ISSUES: read KNOWN_ISSUES.md before starting work (read-only; never edit/delete it).\n"
+    "- COMPLETION: All required tests passed + dist/*.jar exists -> finish immediately; never loop on harmless WARNs.\n"
 ))
 
 # 组装最终系统提示词并覆盖 config.SYSTEM。

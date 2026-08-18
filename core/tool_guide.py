@@ -6,77 +6,13 @@ activate_test_mode, EXTENDED_TOOL_GUIDE is appended to the system prompt and
 all tools become visible for the rest of the session.
 """
 
-BASE_TOOL_GUIDE = r"""【工具使用总则（基础阶段）】
-1. 本系统采用“阶段式工具开放”。你现在处于【开发阶段】，只开放基础开发工具。
-2. 优先使用已有工具；只有完全没有对应工具时，才允许使用 bash/终端。
-3. 文件操作用 read_file / write_file / edit_file / glob / grep，不要用 bash 重定向写文件（Windows 编码会损坏中文/emoji）。
-4. 当你需要进入测试/验证阶段（构建、GameTest、启动服务端/客户端、游戏内交互、截图识图、Git 快照）时，
-   必须调用 activate_test_mode 解锁全部工具。调用后你会获得完整工具列表和完整使用说明。
-5. 解锁后本会话永久生效，不需要重复解锁。
-6. 终端（bash）是最后手段；有专用工具就用专用工具。
-7. 完整工具手册保存在 docs/agent/TOOL_GUIDE.md；遇到错误或思考转圈时，先 read_file docs/agent/ERROR_LIST.md，
-   找不到解决方案再把新错误追加到该文件对应分类。
-8. 生成 MOD 时必须根据用户需求决定 modid/包名/类名/物品名，禁止保留模板默认名（examplemod、example_item、example_block 等）。
-9. 禁止修改 build.gradle / settings.gradle / gradle-wrapper（除非任务明确要求换构建工具）；构建失败先用错误名单，不要切 NeoGradle/NeoForge。
-
-【基础工具详细说明】
-
-## 一、文件/代码操作
-- read_file：读取文件内容。查看源码、日志、配置时优先用它。
-- write_file：整文件写入/覆盖。写代码/资源/配置必须用它，不要用 bash 重定向。
-- edit_file：精确替换文件片段。改一处代码比 write_file 更安全。
-- glob：按通配符找文件路径（如 **/*.java），用于确认文件存在/列目录。
-- grep：按正则搜索文件内容，返回文件名+行号，快速定位引用/报错/TODO。
-
-## 二、Shell/后台
-- bash：执行命令。仅当没有专用工具时使用；Windows 语法，禁止 taskkill /f /im python.exe。
-- run_in_background：把长时间命令放后台执行，返回 job id。
-
-## 三、工作区/多工作树
-- worktree_create：创建隔离工作树，适合并行实验/多版本尝试。
-- worktree_list：查看所有工作树。
-- worktree_use：切换当前工作树；后续文件/构建默认作用于该工作树。
-- worktree_remove：删除工作树。
-- worktree_run：在指定工作树里执行命令。
-- worktree_recover：恢复异常/丢失的工作树。
-
-## 四、搜索/网络
-- web_search：联网搜索（Tavily/DDG），查最新资料。
-- web_fetch：抓取指定网页正文。
-- search_minecraft_docs：定向搜索 Minecraft Wiki / Forge / NeoForged / GitHub，查 MC/Forge 专用知识优先用它。
-
-## 五、环境/资源/工具
-- detect_environment：检测 Java/Gradle/MC/Forge/modid/目录布局，任务开始前可先跑一次。
-- validate_resources：扫描并校验 MOD 资源（item definitions、model/texture 引用、blockstate、recipe、JSON 语法）。写资源后先跑它。
-- download_file：下载文件到工作区。
-- extract_archive：安全解压 zip/tar.gz/jar。
-- cleanup_workspace：清理 build/.gradle/cache 或运行缓存；需要释放空间/重置环境时用。
-
-## 六、任务/待办/团队/协议
-- todo：维护待办列表，多步任务必须用。
-- task_create / task_get / task_list / task_update / task_clear：子任务 DAG 管理。
-- task：派发一个独立子任务给隔离子 agent（异步，后台执行）。
-- claim_task：认领任务。
-- spawn_teammate：创建子 agent。
-- send_to_teammate：给子 agent 发消息。
-- shutdown_teammate：关闭子 agent。
-- team_status：查看子 agent 状态。
-- protocol_status：查看外部请求/协议状态。
-- request_shutdown：请求关闭协作/外部服务。
-- respond_to_request：响应外部请求。
-- submit_plan：提交计划。
-
-## 七、会话/自动模式/记忆/用户
-- set_auto_mode：切换全自动模式；开启后 ask_user_question 不阻塞。
-- compact：上下文过长时压缩历史。
-- load_skill：加载技能文档；写 MOD 前必须按规则加载相关技能。
-- ask_user_question：需要用户确认/选择时使用。
-
-## 八、测试模式解锁
-- activate_test_mode：进入测试/验证阶段的关键入口。调用后本会话会解锁全部剩余工具（构建、GameTest、
-  服务端/客户端生命周期、游戏内交互、截图识图、Git 快照、日志/崩溃/产物验证等），
-  并注入完整的扩展工具使用说明。返回结果中会列出新解锁的工具清单。
-  当任务需要验证/运行/测试 MOD 时，必须调用它，不要用 bash 裸跑 gradlew。
+BASE_TOOL_GUIDE = r"""【工具使用总则（精简版）】
+1. 阶段式开放：当前只开放基础工具。需要构建/测试/游戏验证时，先调用 activate_test_mode 解锁全部工具（解锁后本会话永久有效）。
+2. 优先用已有工具；只有没有对应工具才用 bash。文件统一 read_file/write_file/edit_file/glob/grep，禁止 bash 重定向写文件。
+3. 完整工具手册：docs/agent/TOOL_GUIDE.md（需要时 read_file/grep 对应章节）。
+4. 遇到错误/思考转圈：先 read docs/agent/ERROR_LIST.md；找不到再解决并追加。
+5. 命名规则：根据用户需求取 modid/包名/类名/物品名，禁止 examplemod 等默认名。
+6. 构建文件禁区：禁止修改 build.gradle/settings.gradle/gradle-wrapper（除非任务明确要求）。
 """
 
 EXTENDED_TOOL_GUIDE = r"""【扩展工具使用说明（测试/验证阶段）】
