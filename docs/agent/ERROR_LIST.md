@@ -166,6 +166,15 @@
   - Root cause: pack.mcmeta uses min/max format without `supported_formats`
   - Fix: use `"pack_format": 61` and `"supported_formats": [48, 81]`
 
+- **Build Guard too strict: agent refuses to update modid namespace in build.gradle**
+  - Symptom: agent wants to rename modid but gets stuck because `forge.enabledGameTestNamespaces` still says
+    `examplemod`, and it believes modifying build.gradle is forbidden; it loops researching workarounds
+  - Root cause: the guard was phrased as "never modify build.gradle", but renaming a mod legitimately requires
+    changing namespace/mod references in build.gradle
+  - Fix: BUILD GUARD means: never change build system/plugins, Forge version, or dependency versions. Editing
+    modid/namespace references (e.g. `forge.enabledGameTestNamespaces`, DataGen `--mod`, group/modId) is ALLOWED
+    and required when renaming the mod.
+
 - **`Missing language javafml version [24,]` (may be harmless)**
   - Symptom: WARN appears in logs but later `All required tests passed` / `BUILD SUCCESSFUL`
   - Root cause: usually an environment/dependency version hint, does NOT affect correctness

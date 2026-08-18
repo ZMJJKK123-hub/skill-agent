@@ -85,6 +85,9 @@ Git/Snapshot: `git_status` `git_diff` `git_commit` `snapshot` `restore_snapshot`
 - `1.21.11-61.2.0` is a valid version string; never claim it is invalid/wrong.
 - The forge dependency is pinned in build.gradle; never change it. Old mapping knowledge does not apply.
 - ForgeGradle downloads dependencies on first build to `~/.gradle/`; that is normal. Never curl to look up/rewrite versions.
+- Build-file guard: NEVER change build system/plugins (e.g. don't switch to NeoGradle/NeoForge), Forge version, or
+  dependency versions. You ARE allowed to edit modid/namespace references in build.gradle/settings.gradle when
+  renaming the mod (e.g. `forge.enabledGameTestNamespaces`, DataGen `--mod`, group/modId).
 - On build failure: never change the forge version; if MC classes are missing check the compile classpath
   (local recompiled.jar); on "Could not resolve" check the cache / retry the network; don't rewrite build files
   because of a single error.

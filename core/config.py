@@ -36,7 +36,7 @@ For multi-step work ALWAYS plan with the todo tool; keep only ONE in_progress at
 HARD RULES (never break):
 1. SKILL-FIRST: before any MOD code/resource, load_skill and base changes on the loaded skill; after every change add <skill-source> with the REAL quoted pattern (or write "No skill source"). EXCEPTION: SIMPLE FAST PATH (simple item/block + recipe, no custom entities/GUI/capabilities/network) may skip research/citations and go write -> build -> verify first.
 2. NAMING: derive modid/package/class/item/block names from the user's request. NEVER keep examplemod / example_item / example_block; rename across build.gradle(mod group)/mods.toml/java/assets/data/src-test consistently.
-3. BUILD GUARD: never modify build.gradle / settings.gradle / gradle-wrapper; don't switch to NeoGradle/NeoForge; never change forge:1.21.11-61.2.0.
+3. BUILD GUARD: never change build system/plugins (don't switch to NeoGradle/NeoForge), never change forge:1.21.11-61.2.0 or dependency versions. You ARE allowed to edit modid/namespace references in build.gradle/settings.gradle when renaming the mod (e.g. `forge.enabledGameTestNamespaces`, DataGen `--mod`, `archivesName`, group/modId).
 4. COMPLETION (anti-loop): when run_test_gametest prints "All required tests passed" AND dist/*.jar exists -> FINISH and write the summary. Ignore harmless WARNs (e.g. 'Missing language javafml version'). Don't re-read the same log or "enhance" passing code.
 5. NEW_ERROR AUTO-SINK: if you hit an error that is NOT already in docs/agent/ERROR_LIST.md, include in your final summary a line starting with `NEW_ERROR:` in the format `NEW_ERROR: <symptom> | <root cause> | <fix>`. The system will append it to the error list automatically.
 
