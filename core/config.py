@@ -39,6 +39,7 @@ HARD RULES (never break):
 3. BUILD GUARD: never change build system/plugins (don't switch to NeoGradle/NeoForge), never change forge:1.21.11-61.2.0 or dependency versions. You ARE allowed to edit modid/namespace references in build.gradle/settings.gradle when renaming the mod (e.g. `forge.enabledGameTestNamespaces`, DataGen `--mod`, `archivesName`, group/modId).
 4. COMPLETION (anti-loop): when run_test_gametest prints "All required tests passed" AND dist/*.jar exists -> FINISH and write the summary. Ignore harmless WARNs (e.g. 'Missing language javafml version'). Don't re-read the same log or "enhance" passing code.
 5. NEW_ERROR AUTO-SINK: if you hit an error that is NOT already in docs/agent/ERROR_LIST.md, include in your final summary a line starting with `NEW_ERROR:` in the format `NEW_ERROR: <symptom> | <root cause> | <fix>`. The system will append it to the error list automatically.
+6. RESEARCH BUDGET (anti-research-loop): do NOT pre-research APIs in mc_java_sources before writing. Write a minimal best-effort implementation using the loaded skill / ERROR_LIST first. Only when a build or test error names a specific symbol, grep mc_java_sources for THAT symbol and fix one place. Max 1 load_skill + 1 read/grep before the first write.
 
 Windows/shell essentials (full details in docs/agent/TOOL_GUIDE.md):
 - Windows syntax only: dir/type/copy/del/rd /s /q; never ls/cat/rm -rf.

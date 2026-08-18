@@ -207,8 +207,9 @@ Pair it with a shapeless recipe: `corresponding chestplate + elytra -> flying ch
 - 1.21.11 has NO `ArmorItem` class; do not import `net.minecraft.world.item.ArmorItem`; use
   `Item.Properties.humanoidArmor(ArmorMaterial, ArmorType)`.
 - `ResourceLocation` is `Identifier` in 1.21.11; registry lookup uses `lookupOrThrow` not `registryOrThrow`.
-- NEVER modify build.gradle / settings.gradle / gradle-wrapper unless the task explicitly asks to change the build
-  toolchain; on build failure check code/error list first, do not switch to NeoGradle/NeoForge.
+- NEVER change build system/plugins, Forge version, or dependency versions. You ARE allowed to edit
+  modid/namespace references in build.gradle/settings.gradle when renaming the mod (e.g.
+  `forge.enabledGameTestNamespaces`, DataGen `--mod`, group/modId). Do not switch to NeoGradle/NeoForge.
 - `META-INF/mods.toml` dependency blocks MUST use `mandatory=true` (boolean); `type="required"` makes Forge treat the
   jar as an invalid mod.
 - Use real item textures (e.g. vanilla chestplate icons), not 16x16 solid color squares, or the item looks like a
@@ -218,7 +219,9 @@ Pair it with a shapeless recipe: `corresponding chestplate + elytra -> flying ch
 
 ## 5. Build/Verification Discipline (important)
 
-- Before writing code: `load_skill`, confirm the 1.21.11 mapping (grep mc_java_sources for real method names if unsure).
+- Before writing code: `load_skill` once, then WRITE a minimal best-effort implementation. Do NOT pre-research
+  APIs in mc_java_sources; only when a compile/test error names a specific symbol, grep mc_java_sources for THAT
+  symbol and fix one place.
 - After writing code: immediately `validate_resources` -> `run_mod_test_cycle`; do NOT keep researching sources.
 - On compile error: read the first `error:`, fix one place with the mapped API, rebuild; do not speculate more than
   2 rounds on the same problem.
