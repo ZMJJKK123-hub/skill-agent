@@ -141,6 +141,19 @@
   - Fix: `DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, MODID);` and register with
     `new Item.Properties().setId(ITEMS.key("xxx"))`.
 
+- **MOD shows as invalid in game / mods.toml dependency uses `type="required"`**
+  - Symptom: the jar is copied into `mods/` but Forge reports it as an invalid/unrecognized mod
+  - Root cause: `META-INF/mods.toml` uses `type="required"` for dependencies; Forge expects `mandatory=true`
+  - Fix: use `mandatory=true` (boolean), not `type="required"`:
+    ```toml
+    [[dependencies.<modid>]]
+    modId="forge"
+    mandatory=true
+    versionRange="[61,)"
+    ordering="NONE"
+    side="BOTH"
+    ```
+
 - **`Missing language javafml version [24,]` (may be harmless)**
   - Symptom: WARN appears in logs but later `All required tests passed` / `BUILD SUCCESSFUL`
   - Root cause: usually an environment/dependency version hint, does NOT affect correctness

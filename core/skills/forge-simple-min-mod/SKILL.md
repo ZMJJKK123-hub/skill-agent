@@ -203,6 +203,8 @@ Pair it with a shapeless recipe: `corresponding chestplate + elytra -> flying ch
 - `ResourceLocation` is `Identifier` in 1.21.11; registry lookup uses `lookupOrThrow` not `registryOrThrow`.
 - NEVER modify build.gradle / settings.gradle / gradle-wrapper unless the task explicitly asks to change the build
   toolchain; on build failure check code/error list first, do not switch to NeoGradle/NeoForge.
+- `META-INF/mods.toml` dependency blocks MUST use `mandatory=true` (boolean); `type="required"` makes Forge treat the
+  jar as an invalid mod.
 
 ## 5. Build/Verification Discipline (important)
 

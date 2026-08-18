@@ -7,7 +7,7 @@ import struct
 import zlib
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent  # repo root
 TARGET = ROOT / "build_workspace" / "flyingarmor"
 MODID = "flyingarmor"
 PACKAGE = "com.flyingarmor.flyingarmor"
@@ -219,15 +219,30 @@ def main():
     write("src/main/resources/pack.mcmeta", json.dumps({
         "pack": {"description": "Flying Armor", "pack_format": 61, "min_format": 48, "max_format": 61}
     }, indent=2))
-    write("src/main/resources/META-INF/mods.toml", f"""modLoader="javafml"
+    write("src/main/resources/META-INF/mods.toml", f"""# Forge 1.21.11 mod metadata
+modLoader="javafml"
 loaderVersion="[61,)"
 license="MIT"
-modLoaderVersion="[61,)"
+
 [[mods]]
 modId="{MODID}"
 version="1.0.0"
 displayName="Flying Armor"
 description="Chestplates that can fly like elytra."
+
+[[dependencies.{MODID}]]
+    modId="forge"
+    mandatory=true
+    versionRange="[61,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.{MODID}]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.21.11,1.22)"
+    ordering="NONE"
+    side="BOTH"
 """)
     mods_toml()
     java_main()
