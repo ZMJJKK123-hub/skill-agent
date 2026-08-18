@@ -240,3 +240,6 @@
   - Root cause: ...
   - Fix: ...
 ```
+## 2026-08-19 Auto-recorded from runtime
+
+- **Auto-recorded:** `import net.minecraft.core.Registries` cannot resolve symbol in 1.21.11 | `Registries` class moved to package `net.minecraft.core.registries` | import `net.minecraft.core.registries.Registries` instead for `Registries.ITEM` registry-key lookups
