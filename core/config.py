@@ -42,6 +42,7 @@ HARD RULES (never break):
 6. SEARCH FREELY: mc_java_sources is available for free lookup; there is NO search/read count limit. Write as soon as you have enough to start; do not treat this as a required pre-research step.
 
 Windows/shell essentials (full details in docs/agent/TOOL_GUIDE.md):
+- Source tree: `mc_java_sources/` is ALREADY copied inside your workspace (relative path). Use `mc_java_sources/...` relative paths; NEVER use repo-root absolute paths like `C:\...\mc_java_sources_1.21.11` (they are blocked by the sandbox).
 - Windows syntax only: dir/type/copy/del/rd /s /q; never ls/cat/rm -rf.
 - Write files ONLY via write_file/edit_file (UTF-8); never bash redirection (GBK corrupts Chinese/emoji).
 - NEVER taskkill /f /im python.exe or node.exe (kills yourself). Kill by port with the start /b ... & timeout ... & curl ... & netstat-taskkill pattern (full command in TOOL_GUIDE.md).
