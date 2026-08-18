@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { PluginManifest, SLOTS } from '../shell/registry'
 import { setUi, useUi, type Provider, type ThemePref, type SandboxMode } from '../lib/store'
 import { useT } from '../lib/i18n'
@@ -212,7 +212,7 @@ function ModelsSection() {
       <h2 className="mb-3 text-lg font-semibold">{t('models.title')}</h2>
       <div className="mb-2 rounded-md border border-forge-500/40 bg-forge-500/10 px-3 py-2 text-sm">
         <div className="font-medium text-forge-300">DeepSeek</div>
-        <div className="text-xs text-faint">deepseek-v4-flash · deepseek-v4-pro · 官方</div>
+        <div className="text-xs text-faint">DeepSeek-V4-Pro · deepseek-v4-pro · 官方</div>
       </div>
       {providers.length === 0 && <div className="mb-2 px-1 text-xs text-faint">{t('models.empty')}</div>}
       {providers.map((p) => (

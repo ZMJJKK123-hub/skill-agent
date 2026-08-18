@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { PluginManifest, SLOTS } from '../shell/registry'
 import { useUi, setUi, resolveModelConfig } from '../lib/store'
 import { useT } from '../lib/i18n'
@@ -395,7 +395,7 @@ function Composer() {
   const running = sess.phase === 'running' || sess.phase === 'creating'
   const paused = sess.phase === 'paused' || sess.paused
 
-  const models = ['deepseek-v4-flash', 'deepseek-v4-pro', ...providers.map((p) => p.model)]
+  const models = ['DeepSeek-V4-Pro', 'deepseek-v4-pro', ...providers.map((p) => p.model)]
 
   const send = () => {
     const prompt = text.trim()
@@ -487,7 +487,7 @@ function Composer() {
               className="rounded-md border border-line bg-field px-2 py-1 text-xs text-muted outline-none"
             >
               <optgroup label="DeepSeek">
-                <option value="deepseek-v4-flash">deepseek-v4-flash</option>
+                <option value="DeepSeek-V4-Pro">DeepSeek-V4-Pro</option>
                 <option value="deepseek-v4-pro">deepseek-v4-pro</option>
               </optgroup>
               {providers.map((p) => (

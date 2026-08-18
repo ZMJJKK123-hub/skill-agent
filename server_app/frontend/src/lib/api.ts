@@ -1,4 +1,4 @@
-// 后端 API 封装：token 注入 + 所有接口 + 类型定义
+﻿// 后端 API 封装：token 注入 + 所有接口 + 类型定义
 // 后端 = server_app/server.py（FastAPI，无需改动）
 
 import JSZip from 'jszip'
@@ -121,8 +121,8 @@ export function createSession(
   game: string,
   loader: string,
   version: string,
-  model = 'deepseek-v4-flash',
-  baseUrl = 'https://opencode.ai/zen/go/v1',
+  model = 'DeepSeek-V4-Pro',
+  baseUrl = 'https://llmapi.paratera.com',
   sandbox = 'full-access',
   visionEnabled = false,
   visionApiKey = '',
