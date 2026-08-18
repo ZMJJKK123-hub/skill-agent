@@ -481,8 +481,11 @@ def agent_loop(messages: list) -> str:
         compact_pending = False
         concluded_output = None
         for tc in message.tool_calls:
-            # 写前研究预算：没写任何文件前，禁止无休止读文档
-            if tc.function.name in ("write_file", "edit_file"):
+            # 写前研究预算：没写任何 Java 源码前，禁止无休止读文档
+            if tc.function.name in ("write_file", "edit_file") and (
+                "src/main/java" in (tc.function.arguments or "")
+                or "src/test/java" in (tc.function.arguments or "")
+            ):
                 _wrote_file = True
             elif not _wrote_file and tc.function.name in (
                 "read_file", "bash", "grep", "glob", "load_skill",
