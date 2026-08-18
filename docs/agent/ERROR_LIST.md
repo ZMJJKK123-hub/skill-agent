@@ -161,6 +161,13 @@
   - Fix: add `.component(DataComponents.GLIDER, Unit.INSTANCE)` to `Item.Properties` (imports
     `net.minecraft.core.component.DataComponents`, `net.minecraft.util.Unit`).
 
+- **`SwordItem` / `PickaxeItem` not found in 1.21.11**
+  - Symptom: `cannot find SwordItem.java` / `PickaxeItem.java` in mc_java_sources; agent keeps searching
+  - Root cause: 1.21.11 removed old tool classes; tools are built with `Item.Properties` methods
+  - Fix: use `new Item.Properties().sword(ToolMaterial.COPPER, damageBonus, attackSpeed)` for sword,
+    `.pickaxe(...)` for pickaxe, and `new AxeItem(ToolMaterial.COPPER, damageBonus, attackSpeed, properties)`
+    for axe. `ToolMaterial.COPPER` exists.
+
 - **`pack.mcmeta` ERROR: supported_formats required**
   - Symptom: `Pack declares support for format 48, but game versions supporting formats 17 to 81 require a supported_formats field`
   - Root cause: pack.mcmeta uses min/max format without `supported_formats`

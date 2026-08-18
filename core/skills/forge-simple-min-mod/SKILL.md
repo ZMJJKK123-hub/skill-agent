@@ -143,6 +143,24 @@ png('src/main/resources/assets/<modid>/textures/item/copper_sword.png', (184,115
 
 > Do NOT design pixel-art or write PowerShell/System.Drawing scripts. Use the snippet above for placeholder textures.
 
+## 2.7 Tools quick reference (1.21.11, NO SwordItem/PickaxeItem classes)
+
+In 1.21.11 `SwordItem` / `PickaxeItem` / `Tier` do NOT exist as old-style classes. Use `Item.Properties` methods directly:
+
+```java
+// Sword
+new Item.Properties()
+    .sword(ToolMaterial.COPPER, 3.0F, -2.4F)          // damage bonus, attack speed
+// Pickaxe
+new Item.Properties()
+    .pickaxe(ToolMaterial.COPPER, 1.0F, -2.8F)        // damage bonus, attack speed
+// Axe
+new AxeItem(ToolMaterial.COPPER, 7.0F, -3.2F,
+    new Item.Properties().setId(ITEMS.key("copper_axe")))
+```
+
+`ToolMaterial.COPPER` exists in vanilla 1.21.11. Do NOT search for `SwordItem.java` / `PickaxeItem.java` — they are not in this version.
+
 ## 3. GameTest (src/test, fixed routine)
 
 Test class under `src/test/java/<pkg>/tests/`, `@GameTestNamespace`, method with `@GameTest` using the standard
