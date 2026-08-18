@@ -40,11 +40,9 @@ def _project_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
-# 监管 agent 的只读工具集（无写入/构建/GameTest 工具 -> 只有建议权）。
-# 保持显式白名单（SUPERVISOR_SYSTEM 声明 "load_skill / read_file ONLY"）；
-# M3: 改为注册表声明式过滤。未来要扩权时在 TOOL_META 声明 readonly 并在
-# READONLY_NAMES 里加入即可（tool_registry.readonly_names() 可查看全部只读工具）。
-READONLY_NAMES = {"load_skill", "read_file"}
+# 监管 agent 的只读工具集：当前改为无工具（只分析已提供的 run.log 尾部），
+# 避免反复 load 不存在的 skill / read_file 越界导致的噪音和死循环。
+READONLY_NAMES: set[str] = set()
 READONLY_TOOLS = tool_registry.schemas(include=READONLY_NAMES)
 
 

@@ -124,6 +124,25 @@ Texture must be `assets/<modid>/textures/item/example_item.png` (16x16), referen
 
 > Result MUST be `{"id": ..., "count": ...}`; ingredients are string ids; do not use the old `"item"` key.
 
+## 2.6 Quick PNG placeholder generator (copy-paste, no extra libraries)
+
+Use this exact Python script to generate solid 16x16 PNG textures. Write it with write_file, then run it with python.
+
+```python
+import struct, zlib
+def png(path, rgb):
+    w=h=16
+    raw=b''.join(b'\x00'+bytes(rgb)*w for _ in range(h))
+    def chunk(t,d): return struct.pack('>I',len(d))+t+d+struct.pack('>I',zlib.crc32(t+d)&0xffffffff)
+    data=b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',w,h,8,6,0,0,0))+chunk(b'IDAT',zlib.compress(raw,9))+chunk(b'IEND',b'')
+    open(path,'wb').write(data)
+
+# copper color example
+png('src/main/resources/assets/<modid>/textures/item/copper_sword.png', (184,115,51))
+```
+
+> Do NOT design pixel-art or write PowerShell/System.Drawing scripts. Use the snippet above for placeholder textures.
+
 ## 3. GameTest (src/test, fixed routine)
 
 Test class under `src/test/java/<pkg>/tests/`, `@GameTestNamespace`, method with `@GameTest` using the standard
