@@ -22,7 +22,15 @@ from pathlib import Path
 from .config import client, MODEL, logger
 
 # ── 压缩预算（对应 dsh config：thresholdRatio=0.8 / retainRatio=0.16）──
-CONTEXT_WINDOW = int(os.environ.get("DSH_CONTEXT_WINDOW", "100000"))
+# per-model context window map; env DSH_CONTEXT_WINDOW always wins.
+MODEL_CONTEXT_WINDOWS = {
+    "DeepSeek-V4-Flash-0731": 1000000,
+    "DeepSeek-V4-Pro": 1000000,
+}
+CONTEXT_WINDOW = int(os.environ.get(
+    "DSH_CONTEXT_WINDOW",
+    str(MODEL_CONTEXT_WINDOWS.get(MODEL, 1000000)),
+))
 THRESHOLD_RATIO = 0.8
 RETAIN_RATIO = 0.16
 TOKEN_THRESHOLD = int(CONTEXT_WINDOW * THRESHOLD_RATIO)  # 触发阈值
