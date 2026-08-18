@@ -16,6 +16,7 @@ This file is copied into every session workspace. The agent should read it once 
 5. When `All required tests passed` + `dist/*.jar` exists, finish immediately.
 
 ## Common pitfalls
+- For a tool set, copy `starter/tools/CopperToolsMod.java` into `src/main/java` and rename — do not write tool registration from scratch.
 - 1.21.11 has no `SwordItem`/`ArmorItem`; use `Item.Properties` methods.
 - `ResourceLocation` is `Identifier`; `Registries` is `net.minecraft.core.registries.Registries`.
 - Mod constructor uses `FMLJavaModLoadingContext.get().getModBusGroup()`.
