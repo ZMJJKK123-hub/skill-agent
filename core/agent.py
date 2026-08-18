@@ -161,6 +161,9 @@ def agent_loop(messages: list) -> str:
     _known_issues_injected = False
     _agents_injected = False
     _tool_rounds = 0
+    _wrote_file = False
+    _pre_write_reads = 0
+    _pre_write_warned = False
     _force_final_msg = None
     while True:
         # ── Layer 0s: 排空监管信箱（第 13 课）──
@@ -478,6 +481,14 @@ def agent_loop(messages: list) -> str:
         compact_pending = False
         concluded_output = None
         for tc in message.tool_calls:
+            # 写前研究预算：没写任何文件前，禁止无休止读文档
+            if tc.function.name in ("write_file", "edit_file"):
+                _wrote_file = True
+            elif not _wrote_file and tc.function.name in (
+                "read_file", "bash", "grep", "glob", "load_skill",
+                "web_search", "web_fetch",
+            ):
+                _pre_write_reads += 1
             # flash 适配：工具参数 JSON 可能不完整/非法，解析失败不炸主循环，
             # 而是返回温和错误文本作为该工具的结果，让模型修正后重试。
             try:
@@ -532,6 +543,21 @@ def agent_loop(messages: list) -> str:
                     "content": output,
                 }
             )
+
+        # 写前研究预算守卫：超过 6 次读/查还没写文件，强制提醒立即写首个文件
+        if not _wrote_file and not _pre_write_warned and _pre_write_reads >= 6:
+            _pre_write_warned = True
+            logger.warning(f"写前研究超预算（{_pre_write_reads}），强制提醒写文件")
+            messages.append({
+                "role": "user",
+                "content": (
+                    "<write-first-stop> 你已反复读取文档/starter 但没有写任何文件。"
+                    "立即停止研究：先用 write_file 写出第一个最小实现文件（哪怕是不完整的骨架），"
+                    "然后直接 build/compile，让编译错误指导下一步。"
+                    "不要继续 read_file/grep/load_skill。</write-first-stop>"
+                ),
+            })
+            continue
 
         # 工具主动收尾：不进入下一轮 LLM 调用
         if concluded_output is not None:
