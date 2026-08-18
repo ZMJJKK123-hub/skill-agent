@@ -282,6 +282,7 @@ Pair it with a shapeless recipe: `corresponding chestplate + elytra -> flying ch
 ## 4. Common Pitfalls (check ERROR_LIST.md first)
 
 - Missing `items/<name>.json` -> item not rendered.
+- Item rendering checklist: `assets/<modid>/items/<name>.json` + `models/item/<name>.json` + `textures/item/<name>.png` + lang must ALL exist. Use `starter/item/` templates; tools/staff use parent `minecraft:item/handheld`, normal items use `minecraft:item/generated`.
 - Reference with `.json` / `.png` -> validation error.
 - Old recipe result format -> recipe does not load.
 - `src/test` has sources but no JUnit -> `gradlew build` `:test` fails: template already sets
@@ -293,6 +294,8 @@ Pair it with a shapeless recipe: `corresponding chestplate + elytra -> flying ch
 - `ResourceLocation` is `Identifier` in 1.21.11; registry lookup uses `lookupOrThrow` not `registryOrThrow`.
 - `Registries` class is `net.minecraft.core.registries.Registries` (not `net.minecraft.core.Registries`) in 1.21.11.
 - Cooldowns: `player.getCooldowns().addCooldown(player.getItemInHand(hand), ticks)` — the first param is `ItemStack` in 1.21.11, not `Item`.
+- Chinese in JSON: always write UTF-8; if a script goes through Windows shell, use Unicode escapes to avoid GBK mojibake.
+- Explosion damage: use `level.explode(null, x, y, z, power, Level.ExplosionInteraction.MOB)` so entities (including the eater) take damage; `NONE` may look like an explosion without hurting the player.
 - NEVER change build system/plugins, Forge version, or dependency versions. You ARE allowed to edit
   modid/namespace references in build.gradle/settings.gradle when renaming the mod (e.g.
   `forge.enabledGameTestNamespaces`, DataGen `--mod`, group/modId). Do not switch to NeoGradle/NeoForge.

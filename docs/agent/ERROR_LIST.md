@@ -168,6 +168,20 @@
     (`BlockBehaviour.Properties.of().setId(...).mapColor(...).strength(...)` + `BlockItem`, plus
     blockstate/model/item/texture files).
 
+- **Chinese text in JSON becomes garbled**
+  - Symptom: item name in-game shows mojibake (e.g. `ըƻ`), but model/JSON structure is fine
+  - Root cause: the JSON was written/encoded with the wrong charset (usually GBK from shell, or Python default encoding)
+  - Fix: always write JSON via write_file (UTF-8); when generating JSON with Python, open/write with
+    `encoding='utf-8'`; if a script receives Chinese through a Windows shell, use Unicode escapes
+    (e.g. `\u7206\u70b8\u82f9\u679c` for `爆炸苹果`).
+
+- **Explosion has effect but does not damage the player**
+  - Symptom: eating an exploding item shows the explosion but the player takes no damage
+  - Root cause: using `level.explode(player, ..., Level.ExplosionInteraction.NONE)` with the player as the source
+    can produce an explosion without hurting the eater
+  - Fix: use `level.explode(null, x, y, z, power, Level.ExplosionInteraction.MOB)` so entities in the radius take
+    damage, or explicitly hurt the player after the explosion.
+
 - **`player.getCooldowns().addCooldown(Item, int)` fails in 1.21.11**
   - Symptom: compile error on `addCooldown(Item, int)`; no matching method
   - Root cause: `ItemCooldowns.addCooldown` first parameter is now `ItemStack` (or item id), legacy `Item` overload removed
@@ -236,6 +250,12 @@
   - Symptom: item appears as a plain colored square / gray box in inventory instead of a recognizable item icon
   - Root cause: the texture is a 16x16 solid color square instead of a real item icon
   - Fix: use real item textures (e.g. extract vanilla chestplate icons from the 1.21.11 client jar) for inventory icons.
+
+- **Item not rendered in-game even though functionality works**
+  - Symptom: item works, but in inventory/hand it is invisible or missing
+  - Root cause: one of `items/<name>.json`, `models/item/<name>.json`, `textures/item/<name>.png`, or lang is missing/wrong
+  - Fix: use `starter/item/` templates; ensure all three resource files exist. Tools/staff use
+    `minecraft:item/handheld`; normal items use `minecraft:item/generated`. Verify texture PNG is a valid PNG (signature + IHDR).
 
 ## Append Format
 
