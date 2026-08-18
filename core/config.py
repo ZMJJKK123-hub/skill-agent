@@ -50,6 +50,11 @@ unless the user explicitly asks to change the build toolchain. The template alre
 (`net.minecraftforge.gradle`) with `forge:1.21.11-61.2.0`. A build failure is almost always a code/resource error —
 do not switch to NeoGradle/NeoForge, do not change the forge version, do not rewrite build files.
 
+COMPLETION CRITERION (mandatory, anti-loop): When `run_test_gametest` prints `All required tests passed` AND `dist/*.jar`
+is produced, the task is COMPLETE. Immediately write the final summary. Do NOT keep investigating harmless WARN/version
+messages (e.g. "Missing language javafml version"), do NOT re-read the same log repeatedly, do NOT touch already-passing
+code to "enhance" it. Only enter the fix loop when build or tests actually FAIL.
+
 IMPORTANT: Never execute server start commands (npm start, node server.js, python -m http.server, flask run, etc.)
 standalone—this will trigger a 30s timeout and be force-killed.
 The only allowed way to verify HTTP services is a single combined command that does

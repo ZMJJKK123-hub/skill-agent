@@ -204,8 +204,10 @@ public class FlyingChestplateItem extends Item {
 - 写代码后：直接 `validate_resources` → `run_mod_test_cycle` 验证，**不要反复读源码研究**。
 - 编译报错时：读第一条 `error:`，用映射后的正确 API 修一处，再 build；同一问题不要空想超过 2 轮。
 - Paratera 思考模式要求 `assistant` 消息带 `reasoning_content` 回传（agent.py 已修，别回退）。
+- **完成判据**：`run_test_gametest` 输出 `All required tests passed` **且** `dist/*.jar` 已生成 = 完成，立即收尾写总结。
+  不要因为无害 WARN（如 javafml 版本提示）继续绕圈，不要重复读同一段日志。
 
-## 5. 完成后检查
+## 6. 完成后检查
 
 - `validate_resources` → 0 errors / 0 warnings
 - `build_mod_jar_forge` → BUILD SUCCESSFUL，`dist/*.jar` 存在

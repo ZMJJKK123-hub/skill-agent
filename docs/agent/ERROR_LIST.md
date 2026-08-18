@@ -126,6 +126,25 @@
   - 根因：无必要触动构建文件
   - 解法：模板已正确配置 `net.minecraftforge.gradle` + `forge:1.21.11-61.2.0`；构建失败先查代码/错误名单，禁止切构建系统。
 
+- **`DeferredRegister.Items` 不存在**
+  - 现象：`类型 DeferredRegister 中找不到耗时符号 Items`
+  - 根因：本模板用 `DeferredRegister<Item>`，不是 `DeferredRegister.Items`
+  - 解法：`DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, MODID);`，注册时用 `new Item.Properties().setId(ITEMS.key("xxx"))`。
+
+- **`Missing language javafml version [24,]`（可能是无害告警）**
+  - 现象：构建/启动日志里出现该条 WARN，但随后 `All required tests passed` / `BUILD SUCCESSFUL`
+  - 根因：一般是启动环境或某依赖版本提示，**不影响代码正确性**
+  - 解法：只要 GameTest 显示 `All required tests passed` 且 `dist/*.jar` 已生成 → 视为完成，不要因为这类无害 WARN 继续绕圈。
+
+## 10. 完成判据（防绕圈）
+
+- 当 `run_test_gametest` 输出 `All required tests passed` **并且** `dist/*.jar` 已生成时，任务即视为完成：
+  1. 立即输出最终总结；
+  2. 不要再深挖无害 WARN（如 javafml 版本提示）；
+  3. 不要反复读同一段日志；
+  4. 不要修改已经通过的结果去“验证增强”。
+- 如果构建失败/测试失败才进入修复循环；通过后禁止再“锦上添花”。
+
 ## 追加格式
 
 ```md
