@@ -14,6 +14,8 @@ BASE_TOOL_GUIDE = r"""【工具使用总则（基础阶段）】
    必须调用 activate_test_mode 解锁全部工具。调用后你会获得完整工具列表和完整使用说明。
 5. 解锁后本会话永久生效，不需要重复解锁。
 6. 终端（bash）是最后手段；有专用工具就用专用工具。
+7. 完整工具手册保存在 docs/agent/TOOL_GUIDE.md；遇到错误或思考转圈时，先 read_file docs/agent/ERROR_LIST.md，
+   找不到解决方案再把新错误追加到该文件对应分类。
 
 【基础工具详细说明】
 
