@@ -162,6 +162,42 @@ new AxeItem(ToolMaterial.COPPER, 7.0F, -3.2F,
 
 `ToolMaterial.COPPER` exists in vanilla 1.21.11. Do NOT search for `SwordItem.java` / `PickaxeItem.java` — they are not in this version.
 
+## 2.8 Block quick reference (1.21.11)
+
+Register a simple block + block item:
+
+```java
+public static final DeferredRegister<Block> BLOCKS =
+    DeferredRegister.create(ForgeRegistries.BLOCKS, MODID);
+public static final DeferredRegister<Item> ITEMS =
+    DeferredRegister.create(ForgeRegistries.ITEMS, MODID);
+
+public static final RegistryObject<Block> COMPRESSED_COPPER =
+    BLOCKS.register("compressed_copper", () -> new Block(
+        BlockBehaviour.Properties.of()
+            .setId(BLOCKS.key("compressed_copper"))
+            .mapColor(MapColor.COLOR_ORANGE)
+            .strength(5.0F, 6.0F)
+            .requiresCorrectToolForDrops()
+            .sound(SoundType.COPPER)));
+public static final RegistryObject<Item> COMPRESSED_COPPER_ITEM =
+    ITEMS.register("compressed_copper", () -> new BlockItem(
+        COMPRESSED_COPPER.get(),
+        new Item.Properties().setId(ITEMS.key("compressed_copper"))));
+```
+
+Required files:
+- `assets/<modid>/blockstates/<name>.json`: `{"variants": {"": {"model": "<modid>:block/<name>"}}}`
+- `assets/<modid>/models/block/<name>.json`: parent `minecraft:block/cube_all`, texture `all`
+- `assets/<modid>/models/item/<name>.json`: parent `<modid>:block/<name>`
+- `assets/<modid>/items/<name>.json`: item model definition pointing to `minecraft:item/...`? For a block item, a normal item model definition with `"model": "<modid>:item/<name>"` plus the item model file is also valid; simplest is to keep `items/<name>.json` referencing the item model.
+- texture: `assets/<modid>/textures/block/<name>.png`
+- lang keys: `block.<modid>.<name>`
+- recipe result: `{"id": "<modid>:<name>", "count": 1}`
+
+Imports: `net.minecraft.world.level.block.Block`, `BlockBehaviour`, `SoundType`,
+`net.minecraft.world.level.material.MapColor`, `net.minecraft.world.item.BlockItem`.
+
 ## 3. GameTest (src/test, fixed routine)
 
 Test class under `src/test/java/<pkg>/tests/`, `@GameTestNamespace`, method with `@GameTest` using the standard

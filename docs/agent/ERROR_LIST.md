@@ -161,6 +161,13 @@
   - Fix: add `.component(DataComponents.GLIDER, Unit.INSTANCE)` to `Item.Properties` (imports
     `net.minecraft.core.component.DataComponents`, `net.minecraft.util.Unit`).
 
+- **Block task slow / searching MapColor or block APIs**
+  - Symptom: agent spends minutes grepping `MapColor`, `BlockBehaviour`, `BlockItem` locations in block tasks
+  - Root cause: block registration API is not in the skill/error list yet
+  - Fix: use the block quick reference in forge-simple-min-mod §2.8
+    (`BlockBehaviour.Properties.of().setId(...).mapColor(...).strength(...)` + `BlockItem`, plus
+    blockstate/model/item/texture files).
+
 - **`SwordItem` / `PickaxeItem` not found in 1.21.11**
   - Symptom: `cannot find SwordItem.java` / `PickaxeItem.java` in mc_java_sources; agent keeps searching
   - Root cause: 1.21.11 removed old tool classes; tools are built with `Item.Properties` methods
