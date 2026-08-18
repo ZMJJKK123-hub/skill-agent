@@ -159,6 +159,7 @@ def agent_loop(messages: list) -> str:
     # "GameTest 自检必须用 run_test_gametest"，本可一击解决绕圈。
     # 现在改为硬性第一步：未读取前不允许进入正常规划/写码。
     _known_issues_injected = False
+    _agents_injected = False
     _tool_rounds = 0
     _force_final_msg = None
     while True:
@@ -227,6 +228,23 @@ def agent_loop(messages: list) -> str:
                 "尤其注意：GameTest 自检必须用 run_test_gametest（扫描 src/test/java），"
                 "禁止用 run_game_test_server 做自检。未读取前不要写任何代码/资源。</mandatory-first-step>"
             )})
+
+        # ── Layer 0b3: 首次读取并注入 AGENTS.md（移植 dsh agent-instructions 的 baseline）──
+        # 文件由模板复制进会话工作区，只读；内容包含项目硬事实/验证闭环/常见坑。
+        if IS_MOD_MODE and not _agents_injected:
+            _agents_injected = True
+            try:
+                _agents_path = os.path.join(os.getcwd(), "AGENTS.md")
+                if os.path.exists(_agents_path):
+                    _agents_text = open(_agents_path, "r", encoding="utf-8").read()
+                    _replace_runtime_slot(
+                        messages,
+                        "agents-instructions",
+                        f"<agents-instructions>\n{_agents_text}\n</agents-instructions>",
+                    )
+                    logger.info("已注入 AGENTS.md 工作区指令")
+            except Exception as _e:
+                logger.warning(f"AGENTS.md 注入失败: {_e}")
 
         # ── Layer 0c: 注入协议请求（第 10 课）──
         # leader 每轮看到：待审批的 plan 请求（队友提交的计划）+ 已决议的
