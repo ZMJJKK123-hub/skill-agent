@@ -403,9 +403,15 @@ def agent_loop(messages: list) -> str:
                         continue
                 # 2) 是否调用过 run_game_test_server（工具返回以 [gametest] 开头 / 或出现过该 tool_call）
                 _ran_gt = any(
-                    (m.get("role") == "tool" and str(m.get("content", "")).lstrip().startswith("[gametest]"))
+                    (m.get("role") == "tool" and (
+                        str(m.get("content", "")).lstrip().startswith("[gametest]")
+                        or "All required tests passed" in str(m.get("content", ""))
+                        or "GAME TESTS COMPLETE" in str(m.get("content", ""))
+                    ))
                     or (m.get("role") == "assistant" and any(
-                        tc.get("function", {}).get("name") in ("run_test_gametest", "run_game_test_server")
+                        tc.get("function", {}).get("name") in (
+                            "run_test_gametest", "run_game_test_server", "run_mod_test_cycle",
+                        )
                         for tc in (m.get("tool_calls") or [])))
                     for m in messages
                 )
