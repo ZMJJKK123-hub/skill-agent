@@ -9,7 +9,6 @@ from .tools import (
     tool_registry,
 )
 from .protocol import inject_pending_requests
-from .tools_tasks import task_manager, todo_manager
 from .agent_hooks import run_pre_step_hooks
 from .subagent import run_subagent_async
 from .compact import (
