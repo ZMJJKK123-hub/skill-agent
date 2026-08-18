@@ -9,6 +9,8 @@ agent.log
 .worktrees/
 data/
 cloudflared.exe
+artifacts/
+build_workspace/
 .vscode/
 mod_material/
 Documentation/
