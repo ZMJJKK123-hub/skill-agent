@@ -206,6 +206,7 @@ public class FlyingChestplateItem extends Item {
 - Paratera 思考模式要求 `assistant` 消息带 `reasoning_content` 回传（agent.py 已修，别回退）。
 - **完成判据**：`run_test_gametest` 输出 `All required tests passed` **且** `dist/*.jar` 已生成 = 完成，立即收尾写总结。
   不要因为无害 WARN（如 javafml 版本提示）继续绕圈，不要重复读同一段日志。
+  **不要纠结测试数量**：一个 `@GameTest` 方法内循环校验多个物品即可；`All required tests passed` 就是所有校验都通过，测试数量不是完成度。
 
 ## 6. 完成后检查
 
