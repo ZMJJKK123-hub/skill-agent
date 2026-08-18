@@ -293,30 +293,37 @@ def agent_loop(messages: list) -> str:
         reasoning_parts: list[str] = []
         tool_call_deltas: dict[int, dict] = {}
         finish_reason = None
-        for chunk in stream:
-            if not chunk.choices:
+        try:
+            for chunk in stream:
+                if not chunk.choices:
+                    continue
+                ch = chunk.choices[0]
+                if ch.finish_reason:
+                    finish_reason = ch.finish_reason
+                delta = ch.delta
+                if delta is None:
+                    continue
+                if getattr(delta, "reasoning_content", None):
+                    reasoning_parts.append(delta.reasoning_content)
+                if getattr(delta, "content", None):
+                    content_parts.append(delta.content)
+                    # 过程可见：回复增量实时落盘（run.log → /api/events）
+                    print(f"[reply] {delta.content}", flush=True)
+                if getattr(delta, "tool_calls", None):
+                    for tc in delta.tool_calls:
+                        entry = tool_call_deltas.setdefault(tc.index, {"id": "", "name": "", "args": ""})
+                        if tc.id:
+                            entry["id"] = tc.id
+                        if tc.function and tc.function.name:
+                            entry["name"] += tc.function.name
+                        if tc.function and tc.function.arguments:
+                            entry["args"] += tc.function.arguments
+        except Exception as _le2:
+            if _is_context_overflow(_le2):
+                logger.warning(f"流式上下文超限，自动压缩后重试: {_le2}")
+                messages = auto_compact(messages)
                 continue
-            ch = chunk.choices[0]
-            if ch.finish_reason:
-                finish_reason = ch.finish_reason
-            delta = ch.delta
-            if delta is None:
-                continue
-            if getattr(delta, "reasoning_content", None):
-                reasoning_parts.append(delta.reasoning_content)
-            if getattr(delta, "content", None):
-                content_parts.append(delta.content)
-                # 过程可见：回复增量实时落盘（run.log → /api/events）
-                print(f"[reply] {delta.content}", flush=True)
-            if getattr(delta, "tool_calls", None):
-                for tc in delta.tool_calls:
-                    entry = tool_call_deltas.setdefault(tc.index, {"id": "", "name": "", "args": ""})
-                    if tc.id:
-                        entry["id"] = tc.id
-                    if tc.function and tc.function.name:
-                        entry["name"] += tc.function.name
-                    if tc.function and tc.function.arguments:
-                        entry["args"] += tc.function.arguments
+            raise
 
         from types import SimpleNamespace as _NS
         content = "".join(content_parts) or None
