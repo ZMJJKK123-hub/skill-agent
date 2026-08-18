@@ -41,6 +41,9 @@ LEADER_TOOLS = tool_registry.schemas(exclude={"submit_plan"})
 # 收尾 jar 构建与 zip 预生成——这些只在 mod 制作模式有意义。
 IS_MOD_MODE = MODE == "mod"
 
+# 防死循环：同一 agent_loop 内允许的最大工具调用轮次（每轮可能含多个 tool_call）
+MAX_TOOL_ROUNDS = 25
+
 # 会话根目录（.chat/ 断点与队列所在处）：由 server 通过 DSH_SESSION_ROOT 注入。
 # agent 的 cwd 可能在会话根（chat）或 mod/（mod 模式），断点永远落在会话根，
 # 因此这里显式读取环境变量而不是依赖 Path.cwd()。
@@ -104,6 +107,8 @@ def agent_loop(messages: list) -> str:
     # "GameTest 自检必须用 run_test_gametest"，本可一击解决绕圈。
     # 现在改为硬性第一步：未读取前不允许进入正常规划/写码。
     _known_issues_injected = False
+    _tool_rounds = 0
+    _force_final_msg = None
     while True:
         # ── Layer 0s: 排空监管信箱（第 13 课）──
         # 后台监管线程发现异常会写信箱；这里读后即删，按严重度
@@ -118,6 +123,12 @@ def agent_loop(messages: list) -> str:
                     messages.append({"role": "user", "content": block})
                     logger.info(f"注入监管信息 type={sv['type']}:\n{block}")
             supervisor_manager.notify_round()  # 计数 + 每 5 轮触发一次监管分析
+
+        if _force_final_msg is not None:
+            logger.warning(_force_final_msg)
+            if IS_MOD_MODE:
+                supervisor_manager.stop()
+            return _force_final_msg
 
         # ── Layer 0c2: 断点保存 + 运行中插话注入（暂停/继续 与 queue 支持）──
         # 每轮开头把完整 messages 落盘（断点）；继续时新进程原样恢复。
@@ -419,6 +430,17 @@ def agent_loop(messages: list) -> str:
                     "content": output,
                 }
             )
+
+        # 防死循环：统计工具调用轮次；超限强制收尾
+        if message.tool_calls:
+            _tool_rounds += 1
+            if _tool_rounds >= MAX_TOOL_ROUNDS:
+                _force_final_msg = (
+                    f"Max tool rounds reached ({MAX_TOOL_ROUNDS}). Partial progress is in run.log; "
+                    "stopping the loop to prevent an infinite tool-call loop."
+                )
+                logger.warning(_force_final_msg)
+                continue
 
         # compact 最后执行：替换整个 messages 列表
         if compact_pending:
