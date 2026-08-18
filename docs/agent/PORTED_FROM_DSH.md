@@ -20,12 +20,15 @@ This document records what was studied from the official `deepseek-harness` (dsh
 | Ordered prompt sections + variables | `core/promptkit.py`, `core/config.py` | ✅ already existed |
 | Automatic compaction with structured summary | `core/compact.py` | ✅ already existed |
 | Tool-pairing compaction boundary | `core/compact.py` | ✅ already existed |
-| Runtime-context snapshot (single replaceable user message) | `core/agent.py` | ✅ new |
+| Runtime-context snapshot (single replaceable user message) | `core/agent.py`, `core/agent_hooks.py` | ✅ new |
+| Pre-step hook infrastructure | `core/agent_hooks.py`, `core/agent.py` | ✅ new |
 | Max tool-call rounds guard | `core/agent.py` | ✅ new |
 | `[CONCLUDED]` tool ends turn | `core/agent.py` | ✅ new |
-| Context-overflow auto-compact + retry | `core/agent.py` | ✅ new |
+| Context-overflow auto-compact + retry (create + streaming) | `core/agent.py` | ✅ new |
 | Spill oversized tool results to `.spill/*.txt` | `core/agent.py` | ✅ new |
 | Summarizer receives system prompt | `core/compact.py` | ✅ new |
+| Per-model context-window defaults | `core/compact.py` | ✅ new |
+| Preserve initial task anchor across compaction | `core/compact.py` | ✅ new |
 | Workspace docs (`docs/agent`) copied into session | `server_app/server.py` | ✅ new |
 | AGENTS.md baseline instructions loader | `core/agent.py`, `mod_templates/.../AGENTS.md` | ✅ new |
 | Auto error sink (`NEW_ERROR:` -> ERROR_LIST) | `server_app/run_task.py` | ✅ new |
