@@ -395,7 +395,7 @@ function Composer() {
   const running = sess.phase === 'running' || sess.phase === 'creating'
   const paused = sess.phase === 'paused' || sess.paused
 
-  const models = ['DeepSeek-V4-Pro', 'deepseek-v4-pro', ...providers.map((p) => p.model)]
+  const models = ['DeepSeek-V4-Flash-0731', 'DeepSeek-V4-Flash-0731', ...providers.map((p) => p.model)]
 
   const send = () => {
     const prompt = text.trim()
@@ -487,8 +487,8 @@ function Composer() {
               className="rounded-md border border-line bg-field px-2 py-1 text-xs text-muted outline-none"
             >
               <optgroup label="DeepSeek">
-                <option value="DeepSeek-V4-Pro">DeepSeek-V4-Pro</option>
-                <option value="deepseek-v4-pro">deepseek-v4-pro</option>
+                <option value="DeepSeek-V4-Flash-0731">DeepSeek-V4-Flash-0731</option>
+                <option value="DeepSeek-V4-Flash-0731">DeepSeek-V4-Flash-0731</option>
               </optgroup>
               {providers.map((p) => (
                 <optgroup key={p.id} label={p.name}>

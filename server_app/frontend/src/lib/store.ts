@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react'
+﻿import { useSyncExternalStore } from 'react'
 
 export interface Provider {
   id: string
@@ -17,12 +17,12 @@ export function resolveModelConfig(state: Pick<UiState, 'apiKey' | 'model' | 'pr
   model: string
 } {
   const { apiKey, model, providers } = state
-  if (model === 'DeepSeek-V4-Pro' || model === 'deepseek-v4-pro') {
+  if (model === 'DeepSeek-V4-Flash-0731' || model === 'DeepSeek-V4-Flash-0731') {
     return { apiKey, baseUrl: 'https://llmapi.paratera.com', model }
   }
   const p = providers.find((p) => p.model.split(',').map((s) => s.trim()).includes(model))
   if (p) return { apiKey: p.apiKey, baseUrl: p.baseUrl, model }
-  return { apiKey, baseUrl: 'https://llmapi.paratera.com', model: 'DeepSeek-V4-Pro' }
+  return { apiKey, baseUrl: 'https://llmapi.paratera.com', model: 'DeepSeek-V4-Flash-0731' }
 }
 
 export type Locale = 'zh' | 'en'
@@ -68,7 +68,7 @@ function loadState(): UiState {
     version: '1.21.11',
     locale: 'zh',
     theme: 'dark',
-    model: 'DeepSeek-V4-Pro',
+    model: 'DeepSeek-V4-Flash-0731',
     sandbox: 'full-access',
     providers: [],
     disabledPlugins: [],

@@ -56,7 +56,7 @@ class Session:
 
     def __init__(self, session_id: str, mod_dir: Path, api_key: str, owner: str = "",
                  game: str = "minecraft", loader: str = "", version: str = "",
-                 model: str = "DeepSeek-V4-Pro", base_url: str = "https://llmapi.paratera.com",
+                 model: str = "DeepSeek-V4-Flash-0731", base_url: str = "https://llmapi.paratera.com",
                  sandbox: str = "full-access",
                  vision_enabled: bool = False, vision_api_key: str = "",
                  vision_base_url: str = "", vision_model: str = "",
@@ -68,7 +68,7 @@ class Session:
         self.game = game          # 目标游戏（重置时重建骨架用）
         self.loader = loader      # 加载器（如 forge）
         self.version = version    # 版本（如 1.21.1）
-        self.model = model        # 生成用的模型名（如 DeepSeek-V4-Pro / 自定义 provider 的模型）
+        self.model = model        # 生成用的模型名（如 DeepSeek-V4-Flash-0731 / 自定义 provider 的模型）
         self.base_url = base_url  # 生成用的 API base_url（OpenAI 兼容）
         self.sandbox = sandbox    # 会话沙箱模式：full-access | workspace-write | read-only
         self.vision_enabled = vision_enabled    # 识图模式：True 时注册 screenshot/analyze_image 工具
@@ -170,7 +170,7 @@ class SessionRequest(BaseModel):
     game: str = "minecraft"   # 默认 Minecraft
     loader: str = ""          # 可选：Mod Loader（如 forge / fabric）
     version: str = ""         # 可选：游戏版本（如 1.21.1）
-    model: str = "DeepSeek-V4-Pro"          # 生成模型
+    model: str = "DeepSeek-V4-Flash-0731"          # 生成模型
     base_url: str = "https://llmapi.paratera.com"  # OpenAI 兼容 API 地址
     sandbox: str = "full-access"              # 沙箱模式：full-access | workspace-write | read-only
     vision_enabled: bool = False              # 识图模式开关
@@ -498,7 +498,7 @@ def prepare_mod_session(
     game: str = "minecraft",
     loader: str = "forge",
     version: str = "1.21.11",
-    model: str = "DeepSeek-V4-Pro",
+    model: str = "DeepSeek-V4-Flash-0731",
     base_url: str = "https://llmapi.paratera.com",
     sandbox: str = "full-access",
 ):
@@ -536,7 +536,7 @@ def prepare_mod_session(
 #     game: str = "minecraft",
 #     loader: str = "forge",
 #     version: str = "1.21.11",
-#     model: str = "DeepSeek-V4-Pro",
+#     model: str = "DeepSeek-V4-Flash-0731",
 #     base_url: str = "https://llmapi.paratera.com",
 #     sandbox: str = "full-access",
 # ):

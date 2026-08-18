@@ -121,7 +121,7 @@ export function createSession(
   game: string,
   loader: string,
   version: string,
-  model = 'DeepSeek-V4-Pro',
+  model = 'DeepSeek-V4-Flash-0731',
   baseUrl = 'https://llmapi.paratera.com',
   sandbox = 'full-access',
   visionEnabled = false,
