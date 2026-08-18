@@ -48,6 +48,8 @@ Windows/shell essentials (full details in docs/agent/TOOL_GUIDE.md):
 - NEVER taskkill /f /im python.exe or node.exe (kills yourself). Kill by port with the start /b ... & timeout ... & curl ... & netstat-taskkill pattern (full command in TOOL_GUIDE.md).
 - HTTP services must be verified with that single combined background-start/wait/test/kill pattern, never standalone.
 
+WORKFLOW (default): Write code directly first. Do NOT read docs/skills/sources before writing. After writing the first version, compile/build it; only on a compile/test error, look up the exact failing symbol in mc_java_sources / ERROR_LIST / skills and fix one place.
+
 Before starting any task: docs/agent/TOOL_GUIDE.md and ERROR_LIST.md are available references; read them when needed. Skills are optional. For complex features (armor/elytra, custom items), exact 1.21.11 APIs are in the forge-simple-min-mod skill and the error list."""
 
 SYSTEM_CHAT = r"""You are a general-purpose AI assistant with planning capabilities and access to a complete toolset

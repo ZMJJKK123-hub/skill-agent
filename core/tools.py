@@ -81,6 +81,7 @@ config.prompt_assembler.section(_PS(
     "- SOURCE: mc_java_sources/ is available for free lookup anytime; no search limit. Prefer writing code as soon as you have enough to start.\n"
     "- KNOWN ISSUES: read KNOWN_ISSUES.md before starting work (read-only; never edit/delete it).\n"
     "- COMPLETION: All required tests passed + dist/*.jar exists -> finish immediately; never loop on harmless WARNs.\n"
+    "- ACTION: Write code directly first, do not pre-read docs/skills. Compile/build first; only on an error look up the exact failing symbol.\n"
 ))
 
 # 组装最终系统提示词并覆盖 config.SYSTEM。
