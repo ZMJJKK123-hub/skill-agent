@@ -219,6 +219,9 @@ Pair it with a shapeless recipe: `corresponding chestplate + elytra -> flying ch
 
 ## 5. Build/Verification Discipline (important)
 
+- ACTION FIRST: Within the first 2 rounds, write at least one file (even a placeholder). Do NOT plan textures/APIs
+  before writing. For textures use a simple solid-color PNG or copy vanilla textures; NEVER write pixel-art scripts.
+  Do not meta-reason about the rules; just write.
 - Before writing code: `load_skill` once, then WRITE a minimal best-effort implementation. Do NOT pre-research
   APIs in mc_java_sources; only when a compile/test error names a specific symbol, grep mc_java_sources for THAT
   symbol and fix one place.
