@@ -44,10 +44,33 @@ IS_MOD_MODE = MODE == "mod"
 # 防死循环：同一 agent_loop 内允许的最大工具调用轮次（每轮可能含多个 tool_call）
 MAX_TOOL_ROUNDS = 25
 
+# 超大工具结果阈值：超过则落盘 spill 文件，模型只看到前后预览
+MAX_INLINE_TOOL_CHARS = 3000
+
 # 会话根目录（.chat/ 断点与队列所在处）：由 server 通过 DSH_SESSION_ROOT 注入。
 # agent 的 cwd 可能在会话根（chat）或 mod/（mod 模式），断点永远落在会话根，
 # 因此这里显式读取环境变量而不是依赖 Path.cwd()。
 SESSION_ROOT = os.environ.get("DSH_SESSION_ROOT", "")
+
+
+def _maybe_spill(name: str, output: str) -> str:
+    """Spill oversized plain-text tool results to disk, return preview+locator."""
+    if not isinstance(output, str) or len(output) <= MAX_INLINE_TOOL_CHARS:
+        return output
+    try:
+        spill_dir = os.path.join(os.getcwd(), ".spill")
+        os.makedirs(spill_dir, exist_ok=True)
+        fname = f"{name}-{os.urandom(4).hex()}.txt"
+        path = os.path.join(spill_dir, fname)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(output)
+        preview = output[:1200] + "\n...[truncated]...\n" + output[-1200:]
+        return (
+            f"[spilled] Full tool output ({len(output)} chars) saved to {path}.\n"
+            f"Preview:\n{preview}"
+        )
+    except Exception:
+        return output
 
 
 def _is_context_overflow(exc: Exception) -> bool:
@@ -441,11 +464,12 @@ def agent_loop(messages: list) -> str:
 
             # M3: 统一走注册表执行管线（pre 钩子 → guard → handler → post 钩子；
             # total 函数：任何异常都转温和错误文本，不炸主循环）。
-            output = tool_registry.execute(tc.function.name, args)
+            raw_output = tool_registry.execute(tc.function.name, args)
             # 移植 dsh concludesTurn：工具结果带 [CONCLUDED] 标记时，本轮立即结束
-            if "[CONCLUDED]" in str(output):
-                concluded_output = str(output)
+            if "[CONCLUDED]" in str(raw_output):
+                concluded_output = str(raw_output)
                 logger.info(f"工具 {tc.function.name} 返回 [CONCLUDED]，本轮将立即收尾")
+            output = _maybe_spill(tc.function.name, str(raw_output))
             if tc.function.name == "todo":
                 used_todo = True
                 print(f"\n[todo]\n{output}")   # 终端显示完整 todo 清单
