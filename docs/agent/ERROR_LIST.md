@@ -34,6 +34,10 @@
   - 根因：1.21.11+ 配方结果必须 `{"id": "modid:item", "count": N}`，原料用字符串 id
   - 解法：按新格式重写 recipe JSON。
 
+- **同一个 MOD 里中英文名混杂（如方块是英文、物品是中文）**
+  - 根因：`zh_cn.json` 漏了某个 item/block 的翻译键，游戏在中文环境会回退到英文
+  - 解法：每个注册的 Item/Block 必须在 `en_us.json` 和 `zh_cn.json` 都写对应键：`item.<modid>.<name>` / `block.<modid>.<name>`
+
 ## 3. GameTest 类
 
 - **GameTest 全部未运行 / 无结果**

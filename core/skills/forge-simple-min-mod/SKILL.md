@@ -81,12 +81,29 @@ ITEMS.register(bus);
 
 贴图必须是 `assets/<modid>/textures/item/example_item.png`（16×16），引用不带 `.png`。
 
-### 2.4 语言文件
+### 2.4 语言文件（必须同时覆盖 en_us + zh_cn，且覆盖所有注册的物品和方块）
+
 `assets/<modid>/lang/en_us.json`：
 
 ```json
-{ "item.<modid>.example_item": "Example Item" }
+{
+  "item.<modid>.example_item": "Example Item",
+  "block.<modid>.example_block": "Example Block"
+}
 ```
+
+`assets/<modid>/lang/zh_cn.json`：
+
+```json
+{
+  "item.<modid>.example_item": "示例物品",
+  "block.<modid>.example_block": "示例方块"
+}
+```
+
+> 常见坑：只写了 `en_us.json` 的 item 翻译，漏了 `zh_cn.json` 或漏了 block 的翻译键。
+> 如果 `zh_cn.json` 缺了某个键，游戏在中文环境下会**回退到英文**，导致同一个 MOD 里既有中文名又有英文名，很混乱。
+> 每个注册的 Item 和 Block 必须在两个语言文件里都有对应的条目。
 
 ### 2.5 配方（可选，1.21.11 新格式）
 `data/<modid>/recipe/example_item.json`：
