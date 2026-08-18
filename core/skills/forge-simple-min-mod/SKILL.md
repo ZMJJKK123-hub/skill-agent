@@ -297,6 +297,8 @@ Pair it with a shapeless recipe: `corresponding chestplate + elytra -> flying ch
 
 - WRITE FIRST: Write code directly before reading docs/skills/sources. After the first version, compile/build it;
   only on a compile/test error look up the exact failing symbol in mc_java_sources / ERROR_LIST / skills.
+- STARTER TEMPLATES: `starter/` in the workspace contains optional copy-paste templates (e.g. block). Copy/rename
+  what you need; delete starters you do NOT use — they are optional and safe to remove.
 - SEARCH FREELY: you may grep/read mc_java_sources anytime, no limit. Write code as soon as you have enough.
 - Textures: placeholders are fine (simple solid-color PNG or copy vanilla textures); do NOT spend time designing pixel art.
 - After writing code: immediately `validate_resources` -> `run_mod_test_cycle`; do NOT keep researching sources.
