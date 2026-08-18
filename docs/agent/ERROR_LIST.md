@@ -183,6 +183,20 @@
 - Do NOT obsess over test count: one `@GameTest` method can loop-check multiple items. "All required tests passed"
   means all checks passed; test count is NOT the completion measure.
 
+## 11. Validation / Rendering Gaps
+
+- **Dev GameTest passed but the jar is not a valid installed mod**
+  - Symptom: `run_test_gametest` passes, but copying the jar into the real client `mods/` shows invalid mod / doesn't load
+  - Root cause: dev GameTest loads classes+resources from the Gradle classpath, not from the packaged jar; it does not
+    run the same strict installed-mod validation
+  - Fix: before delivering, run `verify_artifact` on the actual jar and also test the jar in a real Forge client
+    `mods/` folder when possible. "GameTest passed" does NOT prove jar validity.
+
+- **Item renders as a gray/solid box**
+  - Symptom: item appears as a plain colored square / gray box in inventory instead of a recognizable item icon
+  - Root cause: the texture is a 16x16 solid color square instead of a real item icon
+  - Fix: use real item textures (e.g. extract vanilla chestplate icons from the 1.21.11 client jar) for inventory icons.
+
 ## Append Format
 
 ```md

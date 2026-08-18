@@ -211,6 +211,10 @@ Pair it with a shapeless recipe: `corresponding chestplate + elytra -> flying ch
   toolchain; on build failure check code/error list first, do not switch to NeoGradle/NeoForge.
 - `META-INF/mods.toml` dependency blocks MUST use `mandatory=true` (boolean); `type="required"` makes Forge treat the
   jar as an invalid mod.
+- Use real item textures (e.g. vanilla chestplate icons), not 16x16 solid color squares, or the item looks like a
+  gray/solid box in inventory.
+- Dev GameTest passing does NOT prove the packaged jar is a valid installed mod; run `verify_artifact` on the jar and
+  test it in a real client `mods/` folder when possible.
 
 ## 5. Build/Verification Discipline (important)
 
