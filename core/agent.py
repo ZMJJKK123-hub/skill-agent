@@ -56,6 +56,9 @@ SESSION_ROOT = os.environ.get("DSH_SESSION_ROOT", "")
 
 def _maybe_spill(name: str, output: str) -> str:
     """Spill oversized plain-text tool results to disk, return preview+locator."""
+    # Port of dsh spill-policy: skip read_file to avoid read -> spill -> read again loop.
+    if name == "read_file":
+        return output
     if not isinstance(output, str) or len(output) <= MAX_INLINE_TOOL_CHARS:
         return output
     try:
