@@ -62,3 +62,9 @@ tasks.withType(JavaCompile).configureEach {
     // This is done by default in Java 18+, but this ensures it no matter the Java or Gradle version
     options.encoding = 'UTF-8'
 }
+
+tasks.named('test') {
+    // GameTest sources live in src/test but are not JUnit tests; make \gradlew build\ pass
+    // when no plain JUnit tests are discovered.
+    failOnNoDiscoveredTests = false
+}
