@@ -74,6 +74,28 @@
 - 如果错误名单里已有同现象，必须直接采用已知解法，禁止重新探索。
 - 如果错误名单没有，且已确认可复现 → 把“现象 / 根因 / 解法”追加到本文件对应分类，再继续。
 
+## 7. API/模型调用类（Paratera）
+
+- **`reasoning_content` must be passed back**
+  - 现象：`The reasoning_content in the thinking mode must be passed back to the API. assistant message at index N has tool_calls but no reasoning_content`
+  - 根因：Paratera 思考模式要求历史 assistant 消息保留 `reasoning_content`
+  - 解法：`core/agent.py` 的 `message.to_dict()` 必须包含 `reasoning_content`（已修，别回退）。
+
+- **模型名找不到**
+  - 现象：`There are no healthy deployments for this model=deepseek-v4-flash`
+  - 解法：Paratera 可用模型为 `DeepSeek-V4-Pro`；默认已切换。
+
+## 8. 模板/构建类
+
+- **`gradlew build` 的 `:test` 失败**
+  - 现象：`test task did not discover any tests`，但 `src/test` 有 GameTest 源码
+  - 根因：GameTest 不是 JUnit，Gradle 默认 `failOnNoDiscoveredTests=true`
+  - 解法：模板 `build.gradle` 已加 `failOnNoDiscoveredTests=false`，不要删。
+
+- **Gradle wrapper `.lck` 文件访问拒绝**
+  - 现象：`FileNotFoundException ... gradle-9.5.0-bin.zip.lck (拒绝访问)`
+  - 解法：这是环境/沙箱对 `C:\Users\59639\.gradle` 写权限限制；服务端需以 full-access 运行，或先手动跑通一次 Gradle 初始化。
+
 ## 追加格式
 
 ```md
