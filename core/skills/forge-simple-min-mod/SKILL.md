@@ -1,62 +1,64 @@
 ---
 name: forge-simple-min-mod
-description: "最小可运行 Forge 1.21.11 MOD 固定套路：注册物品 + 资源 + GameTest 一键闭环。用于要求『快、能跑、能通过 GameTest、物品注册/渲染可用』的任务。"
-whenToUse: "任务是让 MOD 能运行、需要一个简单物品/方块并能通过构建与 GameTest 时。"
+description: "Minimal runnable Forge 1.21.11 MOD fixed routine: register items + resources + GameTest in one closed loop. Use when the task needs something that compiles, runs, passes GameTest, and has working item registration/rendering."
+whenToUse: "The task is to make a MOD run, needs a simple item/block, and must pass build + GameTest."
 ---
 
-# Forge 1.21.11 最小可运行 MOD 固定套路
+# Forge 1.21.11 Minimal Runnable MOD Fixed Routine
 
-目标：用最少步骤做出一个能构建、能通过 GameTest、物品注册与渲染都正常的 MOD。
-已在本机验证：`validate_resources` 0 错误 → `gradlew build` 成功 → `run_test_gametest` All tests passed。
+Goal: in the fewest steps, build a MOD that compiles, passes GameTest, and has correct item registration + rendering.
+Verified locally: `validate_resources` 0 errors -> `gradlew build` OK -> `run_test_gametest` All tests passed.
 
-## 0. 命名规则（必须先做）
+## 0. Naming Rules (do this first)
 
-**禁止保留模板默认名**：`examplemod`、`example_item`、`example_block`、`com.example.examplemod` 只允许出现在示例代码里。
+**Never keep template defaults**: `examplemod`, `example_item`, `example_block`, `com.example.examplemod` may only
+appear in example code.
 
-每次生成/修改 MOD 时，必须先根据用户需求确定：
-- `modid`（如 `myhero`、`enchantedtools`）
-- Java 包名（如 `com.xxx.myhero`）
-- 主类名（如 `MyHeroMod`）
-- 物品/方块 id（如 `legend_sword`）
-- 资源路径、lang key、GameTest namespace 全部跟着 modid/物品名走
+Before generating/modifying a MOD, decide from the user's request:
+- `modid` (e.g. `myhero`, `enchantedtools`)
+- Java package (e.g. `com.xxx.myhero`)
+- main class name (e.g. `MyHeroMod`)
+- item/block ids (e.g. `legend_sword`)
+- resource paths, lang keys, GameTest namespace all follow modid/item name
 
-并且同步修改：
-- `build.gradle` 的 `group`
-- `META-INF/mods.toml` 的 `modId` / description
-- `src/main/java` 包路径与类名
-- `assets/<modid>/...` 与 `data/<modid>/...`
-- `src/test` 的包名、类名、`@GameTestNamespace`
+And update consistently:
+- `build.gradle` `group`
+- `META-INF/mods.toml` `modId` / description
+- `src/main/java` package and class names
+- `assets/<modid>/...` and `data/<modid>/...`
+- `src/test` package, class name, `@GameTestNamespace`
 
-## 1. 固定工作流（按顺序，别跳）
+## 1. Fixed Workflow (in order, don't skip)
 
 ```text
-1. load_skill（加载本技能 / minecraft-resource-loading）
-2. 先调用 activate_test_mode 解锁全部测试工具
-3. 写/改代码资源
-4. validate_resources → 修复到 0 错误
-5. run_mod_test_cycle（内含 build + GameTest）→ 循环修复直到 RESULT: PASS
-6. 通过后 git_commit / snapshot 打检查点
+1. load_skill (this skill / minecraft-resource-loading)
+2. call activate_test_mode to unlock all test tools
+3. write/edit code & resources
+4. validate_resources -> fix until 0 errors
+5. run_mod_test_cycle (contains build + GameTest) -> loop until RESULT: PASS
+6. on pass, git_commit / snapshot a checkpoint
 ```
 
-## 2. 注册一个物品（1.21.11 固定套路）
+## 2. Registering an Item (1.21.11 fixed routine)
 
-### 2.1 Java 注册（src/main）
-在 Mod 主类注册 Item（可用食物/普通物品均可），例如：
+### 2.1 Java registration (src/main)
+Register an Item in the main class (food or plain item both fine):
 
 ```java
-public static final DeferredRegister.Items ITEMS =
-    DeferredRegister.createItems(Registries.ITEM, MODID);
+public static final DeferredRegister<Item> ITEMS =
+    DeferredRegister.create(ForgeRegistries.ITEMS, MODID);
 
-public static final Supplier<Item> EXAMPLE_ITEM =
-    ITEMS.register("example_item", () -> new Item(new Item.Properties().food(
-        new FoodProperties.Builder().nutrition(1).saturationModifier(0.2f).build())));
+public static final RegistryObject<Item> EXAMPLE_ITEM =
+    ITEMS.register("example_item", () -> new Item(new Item.Properties()
+        .setId(ITEMS.key("example_item"))
+        .food(new FoodProperties.Builder().nutrition(1).saturationModifier(0.2f).build())));
 
-// Mod 构造器里：
-ITEMS.register(bus);
+// In the mod constructor:
+ITEMS.register(context.getModBusGroup());
 ```
 
-### 2.2 物品模型定义（必须！1.21.11 加了这层）
-`assets/<modid>/items/example_item.json`：
+### 2.2 Item model definition (REQUIRED! 1.21.11 added this layer)
+`assets/<modid>/items/example_item.json`:
 
 ```json
 {
@@ -67,10 +69,10 @@ ITEMS.register(bus);
 }
 ```
 
-> 没有这层，物品即使注册了也会“模型缺失/不显示”。这是最容易漏的一步。
+> Without this layer the item renders as "no model / not visible" even if registered. This is the easiest step to miss.
 
-### 2.3 父模型 + 贴图
-`assets/<modid>/models/item/example_item.json`：
+### 2.3 Parent model + texture
+`assets/<modid>/models/item/example_item.json`:
 
 ```json
 {
@@ -79,11 +81,11 @@ ITEMS.register(bus);
 }
 ```
 
-贴图必须是 `assets/<modid>/textures/item/example_item.png`（16×16），引用不带 `.png`。
+Texture must be `assets/<modid>/textures/item/example_item.png` (16x16), reference without `.png`.
 
-### 2.4 语言文件（必须同时覆盖 en_us + zh_cn，且覆盖所有注册的物品和方块）
+### 2.4 Lang files (BOTH en_us + zh_cn, and cover every item/block)
 
-`assets/<modid>/lang/en_us.json`：
+`assets/<modid>/lang/en_us.json`:
 
 ```json
 {
@@ -92,7 +94,7 @@ ITEMS.register(bus);
 }
 ```
 
-`assets/<modid>/lang/zh_cn.json`：
+`assets/<modid>/lang/zh_cn.json`:
 
 ```json
 {
@@ -101,12 +103,12 @@ ITEMS.register(bus);
 }
 ```
 
-> 常见坑：只写了 `en_us.json` 的 item 翻译，漏了 `zh_cn.json` 或漏了 block 的翻译键。
-> 如果 `zh_cn.json` 缺了某个键，游戏在中文环境下会**回退到英文**，导致同一个 MOD 里既有中文名又有英文名，很混乱。
-> 每个注册的 Item 和 Block 必须在两个语言文件里都有对应的条目。
+> Common pitfall: only en_us has the item key, missing zh_cn or missing the block key. If zh_cn lacks a key, the
+> game falls back to English in a Chinese environment, causing mixed-language names. Every registered Item/Block
+> needs entries in both files.
 
-### 2.5 配方（可选，1.21.11 新格式）
-`data/<modid>/recipe/example_item.json`：
+### 2.5 Recipe (optional, 1.21.11 format)
+`data/<modid>/recipe/example_item.json`:
 
 ```json
 {
@@ -120,18 +122,19 @@ ITEMS.register(bus);
 }
 ```
 
-> 结果必须是 `{"id": ..., "count": ...}`，原料用字符串 id，不要用旧的 `"item"` 键。
+> Result MUST be `{"id": ..., "count": ...}`; ingredients are string ids; do not use the old `"item"` key.
 
-## 3. GameTest（src/test，固定套路）
+## 3. GameTest (src/test, fixed routine)
 
-测试类放 `src/test/java/<pkg>/tests/`，注解 `@GameTestNamespace`，方法加 `@GameTest`，参数用 1.21.11 标准 `GameTestHelper`：
+Test class under `src/test/java/<pkg>/tests/`, `@GameTestNamespace`, method with `@GameTest` using the standard
+1.21.11 `GameTestHelper`:
 
 ```java
 @GameTestNamespace("<modid>")
 public class SimpleItemTest {
     @GameTest
     public static void item_registered(GameTestHelper helper) {
-        // 1.21.11 里 ResourceLocation 已改名为 Identifier
+        // In 1.21.11 ResourceLocation is renamed to Identifier
         ResourceKey<Item> key = ResourceKey.create(Registries.ITEM,
             Identifier.fromNamespaceAndPath("<modid>", "example_item"));
         if (helper.getLevel().registryAccess().lookupOrThrow(Registries.ITEM).get(key).isEmpty()) {
@@ -143,21 +146,21 @@ public class SimpleItemTest {
 }
 ```
 
-> 注意：这是 1.21.11 的正确写法。`ResourceLocation` → `Identifier`，`registryOrThrow` → `lookupOrThrow`。
-> `@GameTest` 不要带 `template = "empty"`（这个版本没有该参数）。
+> Note: this is the correct 1.21.11 form. `ResourceLocation` -> `Identifier`, `registryOrThrow` -> `lookupOrThrow`.
+> `@GameTest` has no `template = "empty"` parameter in this version.
 
-## 3.5 复杂功能：自定义装甲 + 鞘翅（如“飞行胸甲”）
+## 3.5 Complex feature: custom armor + elytra (e.g. "Flying Chestplates")
 
-1.21.11 **没有 `ArmorItem` 类**，装甲由普通 `Item` 加 `humanoidArmor(...)` 属性实现：
+1.21.11 has **no `ArmorItem` class**. Armor is a normal `Item` with `humanoidArmor(...)` properties:
 
 ```java
-// 注册：护甲属性用 humanoidArmor
+// Register: armor via humanoidArmor
 ITEMS.register("flying_iron_chestplate",
     () -> new FlyingChestplateItem(ArmorMaterials.IRON,
         ArmorType.CHESTPLATE,
         new Item.Properties().setId(ITEMS.key("flying_iron_chestplate"))));
 
-// 自定义物品：继承 Item，拥有护甲 + 鞘翅飞行
+// Custom item: extends Item, has armor + elytra flight
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
@@ -184,33 +187,39 @@ public class FlyingChestplateItem extends Item {
 }
 ```
 
-配合无序合成即可：`对应胸甲 + 鞘翅 → 飞行胸甲`。
+Pair it with a shapeless recipe: `corresponding chestplate + elytra -> flying chestplate`.
 
-> GameTest 放在 src/test，不是 src/main；自检用 `run_test_gametest`，不要用 `run_game_test_server`。
+> GameTest lives in src/test, not src/main; self-check with `run_test_gametest`, never `run_game_test_server`.
 
-## 4. 常见坑（先查 ERROR_LIST.md）
+## 4. Common Pitfalls (check ERROR_LIST.md first)
 
-- 忘写 `items/<name>.json` → 物品不显示。
-- 引用写了 `.json` / `.png` → 校验报错。
-- 配方结果写成旧格式 → 配方不加载。
-- `src/test` 有源码但无 JUnit → `gradlew build` 的 `:test` 失败：模板已加 `failOnNoDiscoveredTests=false`，不要删。
-- 1.21.11 **没有 `ArmorItem` 类**，别去 import `net.minecraft.world.item.ArmorItem`；装甲用 `Item.Properties.humanoidArmor(ArmorMaterial, ArmorType)`。
-- `ResourceLocation` 在 1.21.11 叫 **`Identifier`**，注册表用 `lookupOrThrow` 而不是 `registryOrThrow`。
-- **禁止修改 build.gradle / settings.gradle / gradle-wrapper**，除非任务明确要求更换构建系统；构建失败时不要切到 NeoGradle/NeoForge，优先排查代码错误。
+- Missing `items/<name>.json` -> item not rendered.
+- Reference with `.json` / `.png` -> validation error.
+- Old recipe result format -> recipe does not load.
+- `src/test` has sources but no JUnit -> `gradlew build` `:test` fails: template already sets
+  `failOnNoDiscoveredTests=false`; do not remove it.
+- 1.21.11 has NO `ArmorItem` class; do not import `net.minecraft.world.item.ArmorItem`; use
+  `Item.Properties.humanoidArmor(ArmorMaterial, ArmorType)`.
+- `ResourceLocation` is `Identifier` in 1.21.11; registry lookup uses `lookupOrThrow` not `registryOrThrow`.
+- NEVER modify build.gradle / settings.gradle / gradle-wrapper unless the task explicitly asks to change the build
+  toolchain; on build failure check code/error list first, do not switch to NeoGradle/NeoForge.
 
-## 5. 构建/验证纪律（重要）
+## 5. Build/Verification Discipline (important)
 
-- 写代码前：先 `load_skill`，确认 1.21.11 映射（必要时 `grep mc_java_sources` 里的真实方法名）。
-- 写代码后：直接 `validate_resources` → `run_mod_test_cycle` 验证，**不要反复读源码研究**。
-- 编译报错时：读第一条 `error:`，用映射后的正确 API 修一处，再 build；同一问题不要空想超过 2 轮。
-- Paratera 思考模式要求 `assistant` 消息带 `reasoning_content` 回传（agent.py 已修，别回退）。
-- **完成判据**：`run_test_gametest` 输出 `All required tests passed` **且** `dist/*.jar` 已生成 = 完成，立即收尾写总结。
-  不要因为无害 WARN（如 javafml 版本提示）继续绕圈，不要重复读同一段日志。
-  **不要纠结测试数量**：一个 `@GameTest` 方法内循环校验多个物品即可；`All required tests passed` 就是所有校验都通过，测试数量不是完成度。
+- Before writing code: `load_skill`, confirm the 1.21.11 mapping (grep mc_java_sources for real method names if unsure).
+- After writing code: immediately `validate_resources` -> `run_mod_test_cycle`; do NOT keep researching sources.
+- On compile error: read the first `error:`, fix one place with the mapped API, rebuild; do not speculate more than
+  2 rounds on the same problem.
+- Paratera thinking mode requires `reasoning_content` passed back on assistant messages (already fixed in
+  core/agent.py; do not regress).
+- Completion criterion: `run_test_gametest` shows `All required tests passed` AND `dist/*.jar` exists = DONE.
+  Do not loop on harmless WARNs (e.g. javafml version hints) or re-read the same log repeatedly.
+  Do NOT obsess over test count: one `@GameTest` can loop-check multiple items; `All required tests passed` means
+  all checks passed; test count is NOT the completion measure.
 
-## 6. 完成后检查
+## 6. Final Checks
 
-- `validate_resources` → 0 errors / 0 warnings
-- `build_mod_jar_forge` → BUILD SUCCESSFUL，`dist/*.jar` 存在
-- `run_test_gametest` → All required tests passed
-- item 的 items/、models/item/、textures/item/、lang 齐全 → 渲染可用
+- `validate_resources` -> 0 errors / 0 warnings
+- `build_mod_jar_forge` -> BUILD SUCCESSFUL, `dist/*.jar` exists
+- `run_test_gametest` -> All required tests passed
+- item items/ , models/item/ , textures/item/ , lang all present -> rendering works

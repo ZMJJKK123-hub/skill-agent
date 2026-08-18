@@ -1,157 +1,168 @@
-# Agent Error List（错误名单）
+# Agent Error List
 
-> 用途：当模型思考转圈、反复试错、遇到同类报错时，先读本文件。找到已知解法就直接采用；
-> 遇到新的可复现错误，把“现象/根因/解法”追加到对应分类，防止下次再绕路。
+> Purpose: when the model is thinking in circles, retrying the same mistake, or hitting a known error, read this
+> file first. If a fix is already listed, use it directly. If you hit a new reproducible error, append
+> "symptom / root cause / fix" under the matching category so the next run does not go the long way round.
 
-## 1. 构建类
+## 1. Build
 
-- **Gradle SSL/PKIX 错误**
-  - 现象：`PKIX path building failed`、`SSLHandshakeException`、`Failed to find JDK for version 8`
-  - 根因：公司网络/代理拦截，或 Gradle 下载依赖时证书校验失败
-  - 解法：不要改版本号；修复证书/代理/网络后重试。首次构建下载依赖耗时长属正常。
+- **Gradle SSL/PKIX error**
+  - Symptom: `PKIX path building failed`, `SSLHandshakeException`, `Failed to find JDK for version 8`
+  - Root cause: corporate network/proxy blocks, or certificate validation failure while Gradle downloads dependencies
+  - Fix: do NOT change versions; fix certs/proxy/network and retry. Slow first build (dependency download) is normal.
 
-- **`gradlew build` 失败但本机无 Java**
-  - 现象：`java` 不在 PATH、JAVA_HOME 未设置
-  - 解法：先 `detect_environment` 确认 Java 是否可用；没有则不要强行跑构建。
+- **`gradlew build` fails because no local Java**
+  - Symptom: `java` not on PATH, JAVA_HOME not set
+  - Fix: run `detect_environment` first; if Java is unavailable, do not force a build.
 
 - **`Could not resolve`**
-  - 解法：先查本地 Gradle 缓存，再让 Gradle 联网下载；不要反复改 build.gradle 版本号。
+  - Fix: check the local Gradle cache first (or let Gradle re-fetch deps); do not repeatedly rewrite build.gradle/settings.gradle versions.
 
-## 2. 资源加载类（1.21.11+）
+## 2. Resource Loading (1.21.11+)
 
-- **物品没有模型**
-  - 根因：MC 1.21.11+ 需要 `assets/<modid>/items/<name>.json`，只有 `models/item/*.json` 不够
-  - 解法：补 `items/<name>.json`，内容形如 `{"model": {"type": "minecraft:model", "model": "modid:item/<name>"}}`
+- **Item has no model**
+  - Root cause: MC 1.21.11+ needs `assets/<modid>/items/<name>.json`; `models/item/*.json` alone is not enough
+  - Fix: add `items/<name>.json` like `{"model": {"type": "minecraft:model", "model": "<modid>:item/<name>"}}`
 
-- **模型/贴图引用加了扩展名**
-  - 根因：在 JSON 里写 `item/foo.json` / `textures/foo.png`
-  - 解法：引用一律不带 `.json` / `.png`
+- **Model/texture reference includes extension**
+  - Root cause: writing `item/foo.json` / `textures/foo.png` inside JSON
+  - Fix: references never include `.json` / `.png`
 
-- **vanilla 父模型/贴图报 missing**
-  - 解法：`minecraft:` 命名空间属于原版，跳过本工作区校验；只校验自己 modid 的资源。
+- **Vanilla parent model/texture reported missing**
+  - Fix: `minecraft:` namespace is vanilla; skip validating it; only validate your own modid's resources.
 
-- **配方不加载**
-  - 根因：1.21.11+ 配方结果必须 `{"id": "modid:item", "count": N}`，原料用字符串 id
-  - 解法：按新格式重写 recipe JSON。
+- **Recipe does not load**
+  - Root cause: 1.21.11+ recipes must use result `{"id": "modid:item", "count": N}` and string ingredient ids
+  - Fix: rewrite the recipe JSON in the new format.
 
-- **同一个 MOD 里中英文名混杂（如方块是英文、物品是中文）**
-  - 根因：`zh_cn.json` 漏了某个 item/block 的翻译键，游戏在中文环境会回退到英文
-  - 解法：每个注册的 Item/Block 必须在 `en_us.json` 和 `zh_cn.json` 都写对应键：`item.<modid>.<name>` / `block.<modid>.<name>`
+- **Mixed EN/CN names in the same mod (e.g. block English, item Chinese)**
+  - Root cause: a key is missing in `zh_cn.json`; the game falls back to English for that entry
+  - Fix: every registered Item/Block must have a key in BOTH `en_us.json` and `zh_cn.json`:
+    `item.<modid>.<name>` / `block.<modid>.<name>`
 
-## 3. GameTest 类
+## 3. GameTest
 
-- **GameTest 全部未运行 / 无结果**
-  - 根因：测试类可能放错位置，或没有 `@GameTest` 注解，或方法签名不是 1.21.11 标准
-  - 解法：测试类放 `src/test/java`；确认注解与 `StringTestFunction` 签名正确；自检用 `run_test_gametest`，不要用 `run_game_test_server`。
+- **No GameTest runs / no result**
+  - Root cause: test class in the wrong place, missing `@GameTest`, or non-1.21.11 method signature
+  - Fix: test class under `src/test/java`; confirm annotation and `GameTestHelper` signature; self-check with
+    `run_test_gametest`, NOT `run_game_test_server`.
 
-- **`run_test_gametest` 失败**
-  - 解法：先 `parse_gametest_results` 看失败列表，再 `read_game_test_log` / `tail_log` 看完整异常。
+- **`run_test_gametest` fails**
+  - Fix: use `parse_gametest_results` to see failures, then `read_game_test_log` / `tail_log` for the full exception.
 
-## 4. 服务端/客户端与游戏交互
+## 4. Server/Client & In-Game
 
-- **RCON 连接失败**
-  - 现象：`RCON authentication failed` / `connection refused`
-  - 解法：`start_mc_server` 传 `rcon_port` + `rcon_password` 自动写配置；或手动确认 `server.properties` 的 `enable-rcon=true`。
+- **RCON connection fails**
+  - Symptom: `RCON authentication failed` / `connection refused`
+  - Fix: `start_mc_server` with `rcon_port` + `rcon_password` auto-writes the config; or confirm `server.properties`
+    has `enable-rcon=true`.
 
-- **按键/输入无效**
-  - 根因：游戏窗口不在前台
-  - 解法：先把游戏窗口切到前台，再 `press_key` / `type_text`。
+- **Key/input does nothing**
+  - Root cause: game window is not in the foreground
+  - Fix: bring the game window to front, then `press_key` / `type_text`.
 
-- **后台启动后一直没就绪**
-  - 解法：用 `mc_status` 看进程是否存活，`tail_log` 看日志，`wait_for_mc_ready` 等待；若进程已退出则看崩溃报告。
+- **Background process never becomes ready**
+  - Fix: use `mc_status` to check the process, `tail_log` to read the log, `wait_for_mc_ready` to wait; if the process
+    exited, read the crash report.
 
-## 5. Windows/环境类
+## 5. Windows/Environment
 
-- **写文件中文/emoji 变问号**
-  - 根因：bash 重定向用 GBK
-  - 解法：永远用 `write_file` / `edit_file`。
+- **Writing Chinese/emoji becomes question marks**
+  - Root cause: bash redirection uses GBK
+  - Fix: always use `write_file` / `edit_file`.
 
-- **删除长路径目录被拒**
-  - 解法：Windows 下用 `cmd /c rd /s /q "\\?\<绝对路径>"`。
+- **Deleting a long path is denied**
+  - Fix: on Windows use `cmd /c rd /s /q "\\?\<absolute path>"`.
 
-- **禁止 `taskkill /f /im python.exe`**
-  - 原因：agent 自身就是 python.exe，会杀死自己。
+- **Never `taskkill /f /im python.exe`**
+  - Reason: the agent itself is python.exe; you would kill yourself.
 
-## 6. 模型“转圈/反复试错”规则
+## 6. Model "thinking in circles / retry" Rules
 
-- 同一错误连续猜测超过 2 次 → 立即停止推测，执行最小验证动作（读日志/读错误名单/跑一次构建）。
-- 如果错误名单里已有同现象，必须直接采用已知解法，禁止重新探索。
-- 如果错误名单没有，且已确认可复现 → 把“现象 / 根因 / 解法”追加到本文件对应分类，再继续。
+- If you guess the same error more than 2 times, stop guessing and do a minimal verification (read a log / read the
+  error list / run one build).
+- If this error list already has the same symptom, use the known fix directly; do not re-explore.
+- If it is not here and it is reproducible, append "symptom / root cause / fix" to the matching category, then continue.
 
-## 7. API/模型调用类（Paratera）
+## 7. API/Model Calls (Paratera)
 
 - **`reasoning_content` must be passed back**
-  - 现象：`The reasoning_content in the thinking mode must be passed back to the API. assistant message at index N has tool_calls but no reasoning_content`
-  - 根因：Paratera 思考模式要求历史 assistant 消息保留 `reasoning_content`
-  - 解法：`core/agent.py` 的 `message.to_dict()` 必须包含 `reasoning_content`（已修，别回退）。
+  - Symptom: `The reasoning_content in the thinking mode must be passed back to the API. assistant message at index N has tool_calls but no reasoning_content`
+  - Root cause: Paratera thinking mode requires assistant history messages to keep `reasoning_content`
+  - Fix: `core/agent.py` `message.to_dict()` must include `reasoning_content` (already fixed; do not regress).
 
-- **模型名找不到**
-  - 现象：`There are no healthy deployments for this model=deepseek-v4-flash`
-  - 解法：Paratera 可用模型为 `DeepSeek-V4-Pro`；默认已切换。
+- **Model name not found**
+  - Symptom: `There are no healthy deployments for this model=deepseek-v4-flash`
+  - Fix: use `DeepSeek-V4-Flash-0731` (current default).
 
-## 8. 模板/构建类
+## 8. Template / Build
 
-- **`gradlew build` 的 `:test` 失败**
-  - 现象：`test task did not discover any tests`，但 `src/test` 有 GameTest 源码
-  - 根因：GameTest 不是 JUnit，Gradle 默认 `failOnNoDiscoveredTests=true`
-  - 解法：模板 `build.gradle` 已加 `failOnNoDiscoveredTests=false`，不要删。
+- **`gradlew build` `:test` fails**
+  - Symptom: `test task did not discover any tests`, but `src/test` has GameTest sources
+  - Root cause: GameTest is not JUnit; Gradle defaults `failOnNoDiscoveredTests=true`
+  - Fix: the template build.gradle already sets `failOnNoDiscoveredTests=false`; do not delete it.
 
-- **Gradle wrapper `.lck` 文件访问拒绝**
-  - 现象：`FileNotFoundException ... gradle-9.5.0-bin.zip.lck (拒绝访问)`
-  - 解法：这是环境/沙箱对 `C:\Users\59639\.gradle` 写权限限制；服务端需以 full-access 运行，或先手动跑通一次 Gradle 初始化。
+- **Gradle wrapper `.lck` file access denied**
+  - Symptom: `FileNotFoundException ... gradle-9.5.0-bin.zip.lck (拒绝访问)`
+  - Fix: environment/sandbox write restriction on `C:\Users\59639\.gradle`; run the server with full access, or init
+    Gradle once manually.
 
-## 9. 复杂功能 / 1.21.11 映射类
+## 9. Complex Features / 1.21.11 Mapping
 
-- **找不到 `ArmorItem` 类**
-  - 现象：`import net.minecraft.world.item.ArmorItem; 找不到符号`
-  - 根因：1.21.11 已移除 `ArmorItem` 类，装甲用 `Item.Properties()` 的 `humanoidArmor(ArmorMaterial, ArmorType)`
-  - 解法：自定义 Item 继承 `Item`，构造器里 `super(properties.humanoidArmor(material, type))`；护甲材料用 `ArmorMaterials.IRON` 等。
+- **`ArmorItem` class not found**
+  - Symptom: `import net.minecraft.world.item.ArmorItem; 找不到符号`
+  - Root cause: 1.21.11 removed `ArmorItem`; armor is made with `Item.Properties.humanoidArmor(ArmorMaterial, ArmorType)`
+  - Fix: custom class extends `Item`, constructor calls `super(properties.humanoidArmor(material, type))`;
+    materials use `ArmorMaterials.IRON` etc.
 
-- **找不到 `ResourceLocation`**
-  - 现象：`import net.minecraft.resources.ResourceLocation; 找不到符号`
-  - 根因：1.21.11 中 `ResourceLocation` 改名为 `Identifier`
-  - 解法：用 `net.minecraft.resources.Identifier`，如 `Identifier.fromNamespaceAndPath(modid, name)`。
+- **`ResourceLocation` not found**
+  - Symptom: `import net.minecraft.resources.ResourceLocation; 找不到符号`
+  - Root cause: in 1.21.11 `ResourceLocation` is renamed to `Identifier`
+  - Fix: use `net.minecraft.resources.Identifier`, e.g. `Identifier.fromNamespaceAndPath(modid, name)`.
 
-- **找不到 `registryOrThrow`**
-  - 现象：`方法 registryOrThrow(ResourceKey<Registry<Item>>) 找不到`
-  - 根因：1.21.11 的 `RegistryAccess` 用 `lookupOrThrow` 而不是 `registryOrThrow`
-  - 解法：`helper.getLevel().registryAccess().lookupOrThrow(Registries.ITEM).get(key)`。
+- **`registryOrThrow` not found**
+  - Symptom: `method registryOrThrow(ResourceKey<Registry<Item>>) not found`
+  - Root cause: 1.21.11 `RegistryAccess` uses `lookupOrThrow` instead of `registryOrThrow`
+  - Fix: `helper.getLevel().registryAccess().lookupOrThrow(Registries.ITEM).get(key)`.
 
-- **`@GameTest` 报找不到 `template()`**
-  - 根因：该版本 `@GameTest` 没有 `template` 参数
-  - 解法：直接用 `@GameTest`，不要写 `@GameTest(template = "empty")`。
+- **`@GameTest` reports no `template()`**
+  - Root cause: this version's `@GameTest` has no `template` parameter
+  - Fix: use plain `@GameTest`; do not write `@GameTest(template = "empty")`.
 
-- **改 build.gradle 导致构建系统损坏**
-  - 现象：agent 把 ForgeGradle 换成 NeoGradle，插件解析失败，Supervisor 反复告警
-  - 根因：无必要触动构建文件
-  - 解法：模板已正确配置 `net.minecraftforge.gradle` + `forge:1.21.11-61.2.0`；构建失败先查代码/错误名单，禁止切构建系统。
+- **Modifying build.gradle breaks the build system**
+  - Symptom: agent switches ForgeGradle to NeoGradle, plugin resolution fails, Supervisor keeps alerting
+  - Root cause: unnecessary changes to build files
+  - Fix: the template already configures `net.minecraftforge.gradle` + `forge:1.21.11-61.2.0`; check code/error list
+    first; never switch build toolchain.
 
-- **`DeferredRegister.Items` 不存在**
-  - 现象：`类型 DeferredRegister 中找不到耗时符号 Items`
-  - 根因：本模板用 `DeferredRegister<Item>`，不是 `DeferredRegister.Items`
-  - 解法：`DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, MODID);`，注册时用 `new Item.Properties().setId(ITEMS.key("xxx"))`。
+- **`DeferredRegister.Items` does not exist**
+  - Symptom: `cannot find symbol Items in DeferredRegister`
+  - Root cause: this template uses `DeferredRegister<Item>`, not `DeferredRegister.Items`
+  - Fix: `DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, MODID);` and register with
+    `new Item.Properties().setId(ITEMS.key("xxx"))`.
 
-- **`Missing language javafml version [24,]`（可能是无害告警）**
-  - 现象：构建/启动日志里出现该条 WARN，但随后 `All required tests passed` / `BUILD SUCCESSFUL`
-  - 根因：一般是启动环境或某依赖版本提示，**不影响代码正确性**
-  - 解法：只要 GameTest 显示 `All required tests passed` 且 `dist/*.jar` 已生成 → 视为完成，不要因为这类无害 WARN 继续绕圈。
+- **`Missing language javafml version [24,]` (may be harmless)**
+  - Symptom: WARN appears in logs but later `All required tests passed` / `BUILD SUCCESSFUL`
+  - Root cause: usually an environment/dependency version hint, does NOT affect correctness
+  - Fix: as long as GameTest shows "All required tests passed" and `dist/*.jar` exists -> treat as done; do not loop
+    on such harmless WARNs.
 
-## 10. 完成判据（防绕圈）
+## 10. Completion Criterion (prevent looping)
 
-- 当 `run_test_gametest` 输出 `All required tests passed` **并且** `dist/*.jar` 已生成时，任务即视为完成：
-  1. 立即输出最终总结；
-  2. 不要再深挖无害 WARN（如 javafml 版本提示）；
-  3. 不要反复读同一段日志；
-  4. 不要修改已经通过的结果去“验证增强”。
-- 如果构建失败/测试失败才进入修复循环；通过后禁止再“锦上添花”。
-- **不要纠结测试数量**：一个 `@GameTest` 方法内用循环校验多个物品注册即可，不要为每个物品各写一个 `@GameTest` 方法；
-  `All required tests passed` 的“1 个测试”≠ 你漏了东西，它就是所有校验都通过的意思。测试数量不是任务完成度。
+- When `run_test_gametest` prints `All required tests passed` AND `dist/*.jar` exists, the task is COMPLETE:
+  1. Write the final summary immediately;
+  2. do not dig into harmless WARNs (e.g. javafml version hints);
+  3. do not re-read the same log repeatedly;
+  4. do not touch already-passing code to "verify/enhance" it.
+- Only enter the fix loop when build/tests actually FAIL.
+- Do NOT obsess over test count: one `@GameTest` method can loop-check multiple items. "All required tests passed"
+  means all checks passed; test count is NOT the completion measure.
 
-## 追加格式
+## Append Format
 
 ```md
-- **一句话现象**
-  - 现象：...
-  - 根因：...
-  - 解法：...
+- **One-line symptom**
+  - Symptom: ...
+  - Root cause: ...
+  - Fix: ...
 ```
