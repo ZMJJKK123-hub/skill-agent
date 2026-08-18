@@ -550,6 +550,19 @@ def agent_loop(messages: list) -> str:
                 }
             )
 
+        # 完成信号：dist 目录出现 jar（MOD 产物）即视为可收尾，避免通过后继续绕圈
+        try:
+            if os.path.isdir("dist"):
+                _dist_jars = [f for f in os.listdir("dist") if f.endswith(".jar")]
+                if _dist_jars:
+                    _force_final_msg = (
+                        f"MOD jar exists: dist/{_dist_jars[0]}. Task is complete; stop calling tools and summarize."
+                    )
+                    logger.warning(_force_final_msg)
+                    continue
+        except Exception:
+            pass
+
         # 写前研究预算守卫：超过 6 次读/查还没写文件，强制提醒立即写首个文件
         if not _wrote_file and not _pre_write_warned and _pre_write_reads >= 6:
             _pre_write_warned = True
