@@ -40,9 +40,10 @@ def _project_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
-# 监管 agent 的只读工具集：当前改为无工具（只分析已提供的 run.log 尾部），
-# 避免反复 load 不存在的 skill / read_file 越界导致的噪音和死循环。
-READONLY_NAMES: set[str] = set()
+# 监管 agent 的只读工具：只能 read_file，且只允许读工作区内的相对路径
+# （docs/agent/ERROR_LIST.md、docs/agent/TOOL_GUIDE.md、KNOWN_ISSUES.md）。
+# 不提供 load_skill，避免刷技能目录。
+READONLY_NAMES: set[str] = {"read_file"}
 READONLY_TOOLS = tool_registry.schemas(include=READONLY_NAMES)
 
 

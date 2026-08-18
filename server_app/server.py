@@ -1,4 +1,4 @@
-﻿"""MOD 制作器后端 —— FastAPI 服务。
+"""MOD 制作器后端 —— FastAPI 服务。
 
 架构（会话隔离 = 每会话一个子进程）：
   POST /api/session    {api_key, game}     → 复制 mod 骨架到独立会话目录
@@ -259,6 +259,15 @@ def _copy_template(game: str, dest: Path, loader: str = "", version: str = "") -
             shutil.copytree(mc_sources, dest / "mc_java_sources", dirs_exist_ok=True)
         except OSError as e:
             print(f"[server] 复制 mc_java_sources 失败: {e}")
+
+    # 把 agent 运行参考文档（工具手册/错误名单）复制进工作区，
+    # 这样 agent 和 supervisor 都能用相对路径 read_file 读取。
+    docs_src = PROJECT_ROOT / "docs" / "agent"
+    if docs_src.is_dir():
+        try:
+            shutil.copytree(docs_src, dest / "docs" / "agent", dirs_exist_ok=True)
+        except OSError as e:
+            print(f"[server] 复制 docs/agent 失败: {e}")
 
     # 模板不存在也不报错：给 agent 一个空目录自由发挥
     return dest

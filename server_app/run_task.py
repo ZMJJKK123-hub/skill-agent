@@ -166,14 +166,15 @@ def finalize_error_list(session_dir: Path) -> None:
     new_entries = []
     seen = set()
 
-    # 1) 结构化 NEW_ERROR: 行
+    # 1) 结构化 NEW_ERROR: 行（可能在 `[reply] NEW_ERROR:` 或 `NEW_ERROR:` 中）
     for raw in lines:
-        s = raw.strip()
-        if s.upper().startswith("NEW_ERROR:"):
-            body = s[len("NEW_ERROR:"):].strip()
-            if body and body.lower() not in existing_lower and body not in seen:
-                seen.add(body)
-                new_entries.append(f"- **Auto-recorded:** {body}")
+        m = re.search(r"NEW_ERROR:\s*(.+)", raw, re.I)
+        if not m:
+            continue
+        body = m.group(1).strip()
+        if body and body.lower() not in existing_lower and body not in seen:
+            seen.add(body)
+            new_entries.append(f"- **Auto-recorded:** {body}")
 
     # 2) 兜底：常规错误信号（最多 10 条，避免刷屏）
     if not new_entries:
