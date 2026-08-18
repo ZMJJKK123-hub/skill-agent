@@ -195,7 +195,10 @@ def summarize_region(region: list) -> str:
 
 
 def auto_compact(messages: list) -> list:
-    """Layer 2：保存 transcript → 选压缩区间 → 结构化摘要 → 替换旧区间，保留最近尾部。"""
+    """Layer 2：保存 transcript → 选压缩区间 → 结构化摘要 → 替换旧区间，保留最近尾部。
+
+    额外保留初始任务锚点（第一条短 user 消息），防止关键原始指令被摘要稀释。
+    """
     pre_tokens = estimate_tokens(messages)
     filepath = save_transcript(messages)
 
@@ -214,13 +217,25 @@ def auto_compact(messages: list) -> list:
         )
         return messages
 
-    new_messages = [{
+    # 保留初始任务锚点：第一条 user 消息若较短，原样带到压缩后
+    anchor = None
+    if messages:
+        first = messages[0]
+        fc = first.get("content", "")
+        if first.get("role") == "user" and isinstance(fc, str) and len(fc) <= 1500:
+            anchor = first
+
+    new_messages = []
+    if anchor is not None:
+        new_messages.append(anchor)
+    new_messages.append({
         "role": "user",
         "content": (
             f"[Context compacted. Full transcript: {filepath}]\n\n{summary}\n\n"
             "Continue from where we left off."
         ),
-    }] + keep
+    })
+    new_messages += keep
 
     post_tokens = estimate_tokens(new_messages)
     logger.info(
