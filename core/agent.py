@@ -244,6 +244,7 @@ def agent_loop(messages: list) -> str:
             to_dict=lambda: {
                 "role": "assistant",
                 "content": content,
+                "reasoning_content": reasoning,
                 "tool_calls": ([
                     {"id": tc.id, "type": "function",
                      "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
