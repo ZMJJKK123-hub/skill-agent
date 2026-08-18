@@ -129,11 +129,12 @@ ITEMS.register(bus);
 ```java
 @GameTestNamespace("<modid>")
 public class SimpleItemTest {
-    @GameTest(template = "empty")
+    @GameTest
     public static void item_registered(GameTestHelper helper) {
+        // 1.21.11 里 ResourceLocation 已改名为 Identifier
         ResourceKey<Item> key = ResourceKey.create(Registries.ITEM,
-            ResourceLocation.fromNamespaceAndPath("<modid>", "example_item"));
-        if (!helper.getLevel().registryAccess().registryOrThrow(Registries.ITEM).containsKey(key)) {
+            Identifier.fromNamespaceAndPath("<modid>", "example_item"));
+        if (helper.getLevel().registryAccess().lookupOrThrow(Registries.ITEM).get(key).isEmpty()) {
             helper.fail("example_item 未注册");
         } else {
             helper.succeed();
@@ -141,6 +142,49 @@ public class SimpleItemTest {
     }
 }
 ```
+
+> 注意：这是 1.21.11 的正确写法。`ResourceLocation` → `Identifier`，`registryOrThrow` → `lookupOrThrow`。
+> `@GameTest` 不要带 `template = "empty"`（这个版本没有该参数）。
+
+## 3.5 复杂功能：自定义装甲 + 鞘翅（如“飞行胸甲”）
+
+1.21.11 **没有 `ArmorItem` 类**，装甲由普通 `Item` 加 `humanoidArmor(...)` 属性实现：
+
+```java
+// 注册：护甲属性用 humanoidArmor
+ITEMS.register("flying_iron_chestplate",
+    () -> new FlyingChestplateItem(ArmorMaterials.IRON,
+        ArmorType.CHESTPLATE,
+        new Item.Properties().setId(ITEMS.key("flying_iron_chestplate"))));
+
+// 自定义物品：继承 Item，拥有护甲 + 鞘翅飞行
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.equipment.ArmorMaterial;
+import net.minecraft.world.item.equipment.ArmorType;
+
+public class FlyingChestplateItem extends Item {
+    public FlyingChestplateItem(ArmorMaterial material, ArmorType type, Properties properties) {
+        super(properties.humanoidArmor(material, type));
+    }
+    @Override
+    public boolean canElytraFly(ItemStack stack, LivingEntity entity) { return true; }
+    @Override
+    public boolean elytraFlightTick(ItemStack stack, LivingEntity entity, int flightTicks) {
+        if (!entity.level().isClientSide()) {
+            int next = flightTicks + 1;
+            if (next % 10 == 0) {
+                stack.hurtAndBreak(1, entity, EquipmentSlot.CHEST);
+            }
+        }
+        return true;
+    }
+}
+```
+
+配合无序合成即可：`对应胸甲 + 鞘翅 → 飞行胸甲`。
 
 > GameTest 放在 src/test，不是 src/main；自检用 `run_test_gametest`，不要用 `run_game_test_server`。
 
@@ -150,6 +194,15 @@ public class SimpleItemTest {
 - 引用写了 `.json` / `.png` → 校验报错。
 - 配方结果写成旧格式 → 配方不加载。
 - `src/test` 有源码但无 JUnit → `gradlew build` 的 `:test` 失败：模板已加 `failOnNoDiscoveredTests=false`，不要删。
+- 1.21.11 **没有 `ArmorItem` 类**，别去 import `net.minecraft.world.item.ArmorItem`；装甲用 `Item.Properties.humanoidArmor(ArmorMaterial, ArmorType)`。
+- `ResourceLocation` 在 1.21.11 叫 **`Identifier`**，注册表用 `lookupOrThrow` 而不是 `registryOrThrow`。
+- **禁止修改 build.gradle / settings.gradle / gradle-wrapper**，除非任务明确要求更换构建系统；构建失败时不要切到 NeoGradle/NeoForge，优先排查代码错误。
+
+## 5. 构建/验证纪律（重要）
+
+- 写代码前：先 `load_skill`，确认 1.21.11 映射（必要时 `grep mc_java_sources` 里的真实方法名）。
+- 写代码后：直接 `validate_resources` → `run_mod_test_cycle` 验证，**不要反复读源码研究**。
+- 编译报错时：读第一条 `error:`，用映射后的正确 API 修一处，再 build；同一问题不要空想超过 2 轮。
 - Paratera 思考模式要求 `assistant` 消息带 `reasoning_content` 回传（agent.py 已修，别回退）。
 
 ## 5. 完成后检查

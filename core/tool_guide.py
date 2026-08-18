@@ -17,6 +17,7 @@ BASE_TOOL_GUIDE = r"""【工具使用总则（基础阶段）】
 7. 完整工具手册保存在 docs/agent/TOOL_GUIDE.md；遇到错误或思考转圈时，先 read_file docs/agent/ERROR_LIST.md，
    找不到解决方案再把新错误追加到该文件对应分类。
 8. 生成 MOD 时必须根据用户需求决定 modid/包名/类名/物品名，禁止保留模板默认名（examplemod、example_item、example_block 等）。
+9. 禁止修改 build.gradle / settings.gradle / gradle-wrapper（除非任务明确要求换构建工具）；构建失败先用错误名单，不要切 NeoGradle/NeoForge。
 
 【基础工具详细说明】
 

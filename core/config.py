@@ -45,6 +45,11 @@ Always derive meaningful names from the user's request — e.g. modid, Java pack
 GameTest namespace — and rename them consistently across build.gradle (group), mods.toml, Java code, assets/data, and src/test.
 Template examples are only for illustration; the delivered mod must use the user's own names.
 
+BUILD FILE GUARD (mandatory): NEVER modify build.gradle / settings.gradle / gradle-wrapper.properties / gradle-wrapper.jar
+unless the user explicitly asks to change the build toolchain. The template already correctly uses ForgeGradle
+(`net.minecraftforge.gradle`) with `forge:1.21.11-61.2.0`. A build failure is almost always a code/resource error —
+do not switch to NeoGradle/NeoForge, do not change the forge version, do not rewrite build files.
+
 IMPORTANT: Never execute server start commands (npm start, node server.js, python -m http.server, flask run, etc.)
 standalone—this will trigger a 30s timeout and be force-killed.
 The only allowed way to verify HTTP services is a single combined command that does

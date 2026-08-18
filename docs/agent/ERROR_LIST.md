@@ -100,6 +100,32 @@
   - 现象：`FileNotFoundException ... gradle-9.5.0-bin.zip.lck (拒绝访问)`
   - 解法：这是环境/沙箱对 `C:\Users\59639\.gradle` 写权限限制；服务端需以 full-access 运行，或先手动跑通一次 Gradle 初始化。
 
+## 9. 复杂功能 / 1.21.11 映射类
+
+- **找不到 `ArmorItem` 类**
+  - 现象：`import net.minecraft.world.item.ArmorItem; 找不到符号`
+  - 根因：1.21.11 已移除 `ArmorItem` 类，装甲用 `Item.Properties()` 的 `humanoidArmor(ArmorMaterial, ArmorType)`
+  - 解法：自定义 Item 继承 `Item`，构造器里 `super(properties.humanoidArmor(material, type))`；护甲材料用 `ArmorMaterials.IRON` 等。
+
+- **找不到 `ResourceLocation`**
+  - 现象：`import net.minecraft.resources.ResourceLocation; 找不到符号`
+  - 根因：1.21.11 中 `ResourceLocation` 改名为 `Identifier`
+  - 解法：用 `net.minecraft.resources.Identifier`，如 `Identifier.fromNamespaceAndPath(modid, name)`。
+
+- **找不到 `registryOrThrow`**
+  - 现象：`方法 registryOrThrow(ResourceKey<Registry<Item>>) 找不到`
+  - 根因：1.21.11 的 `RegistryAccess` 用 `lookupOrThrow` 而不是 `registryOrThrow`
+  - 解法：`helper.getLevel().registryAccess().lookupOrThrow(Registries.ITEM).get(key)`。
+
+- **`@GameTest` 报找不到 `template()`**
+  - 根因：该版本 `@GameTest` 没有 `template` 参数
+  - 解法：直接用 `@GameTest`，不要写 `@GameTest(template = "empty")`。
+
+- **改 build.gradle 导致构建系统损坏**
+  - 现象：agent 把 ForgeGradle 换成 NeoGradle，插件解析失败，Supervisor 反复告警
+  - 根因：无必要触动构建文件
+  - 解法：模板已正确配置 `net.minecraftforge.gradle` + `forge:1.21.11-61.2.0`；构建失败先查代码/错误名单，禁止切构建系统。
+
 ## 追加格式
 
 ```md
