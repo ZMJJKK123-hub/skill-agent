@@ -292,6 +292,7 @@ Pair it with a shapeless recipe: `corresponding chestplate + elytra -> flying ch
   GameTest annotations come from `net.minecraftforge.gametest.GameTest` / `GameTestNamespace`.
 - `ResourceLocation` is `Identifier` in 1.21.11; registry lookup uses `lookupOrThrow` not `registryOrThrow`.
 - `Registries` class is `net.minecraft.core.registries.Registries` (not `net.minecraft.core.Registries`) in 1.21.11.
+- Cooldowns: `player.getCooldowns().addCooldown(player.getItemInHand(hand), ticks)` — the first param is `ItemStack` in 1.21.11, not `Item`.
 - NEVER change build system/plugins, Forge version, or dependency versions. You ARE allowed to edit
   modid/namespace references in build.gradle/settings.gradle when renaming the mod (e.g.
   `forge.enabledGameTestNamespaces`, DataGen `--mod`, group/modId). Do not switch to NeoGradle/NeoForge.

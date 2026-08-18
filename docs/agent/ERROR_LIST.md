@@ -168,6 +168,11 @@
     (`BlockBehaviour.Properties.of().setId(...).mapColor(...).strength(...)` + `BlockItem`, plus
     blockstate/model/item/texture files).
 
+- **`player.getCooldowns().addCooldown(Item, int)` fails in 1.21.11**
+  - Symptom: compile error on `addCooldown(Item, int)`; no matching method
+  - Root cause: `ItemCooldowns.addCooldown` first parameter is now `ItemStack` (or item id), legacy `Item` overload removed
+  - Fix: use `player.getCooldowns().addCooldown(player.getItemInHand(hand), ticks)` (or the `Identifier` overload).
+
 - **`SwordItem` / `PickaxeItem` not found in 1.21.11**
   - Symptom: `cannot find SwordItem.java` / `PickaxeItem.java` in mc_java_sources; agent keeps searching
   - Root cause: 1.21.11 removed old tool classes; tools are built with `Item.Properties` methods
