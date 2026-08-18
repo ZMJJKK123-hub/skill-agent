@@ -400,6 +400,7 @@ def agent_loop(messages: list) -> str:
         # ── Layer 3: compact 工具特殊处理（模型主动触发，最后执行）──
         used_todo = False
         compact_pending = False
+        concluded_output = None
         for tc in message.tool_calls:
             # flash 适配：工具参数 JSON 可能不完整/非法，解析失败不炸主循环，
             # 而是返回温和错误文本作为该工具的结果，让模型修正后重试。
@@ -424,6 +425,10 @@ def agent_loop(messages: list) -> str:
             # M3: 统一走注册表执行管线（pre 钩子 → guard → handler → post 钩子；
             # total 函数：任何异常都转温和错误文本，不炸主循环）。
             output = tool_registry.execute(tc.function.name, args)
+            # 移植 dsh concludesTurn：工具结果带 [CONCLUDED] 标记时，本轮立即结束
+            if "[CONCLUDED]" in str(output):
+                concluded_output = str(output)
+                logger.info(f"工具 {tc.function.name} 返回 [CONCLUDED]，本轮将立即收尾")
             if tc.function.name == "todo":
                 used_todo = True
                 print(f"\n[todo]\n{output}")   # 终端显示完整 todo 清单
@@ -450,6 +455,15 @@ def agent_loop(messages: list) -> str:
                     "content": output,
                 }
             )
+
+        # 工具主动收尾：不进入下一轮 LLM 调用
+        if concluded_output is not None:
+            _force_final_msg = (
+                f"[CONCLUDED] A tool has completed the relevant work and ended this turn.\n"
+                f"Final tool output:\n{concluded_output}"
+            )
+            logger.warning(_force_final_msg)
+            continue
 
         # 防死循环：统计工具调用轮次；超限强制收尾
         if message.tool_calls:
