@@ -31,7 +31,7 @@ And update consistently:
 ## 1. Fixed Workflow (in order, don't skip)
 
 ```text
-1. load_skill (this skill / minecraft-resource-loading)
+1. (optional) load_skill for reference if needed
 2. call activate_test_mode to unlock all test tools
 3. write/edit code & resources
 4. validate_resources -> fix until 0 errors
@@ -219,12 +219,8 @@ Pair it with a shapeless recipe: `corresponding chestplate + elytra -> flying ch
 
 ## 5. Build/Verification Discipline (important)
 
-- ACTION FIRST: Within the first 2 rounds, write at least one file (even a placeholder). Do NOT plan textures/APIs
-  before writing. For textures use a simple solid-color PNG or copy vanilla textures; NEVER write pixel-art scripts.
-  Do not meta-reason about the rules; just write.
-- Before writing code: `load_skill` once, then WRITE a minimal best-effort implementation. Do NOT pre-research
-  APIs in mc_java_sources; only when a compile/test error names a specific symbol, grep mc_java_sources for THAT
-  symbol and fix one place.
+- SEARCH FREELY: you may grep/read mc_java_sources anytime, no limit. Write code as soon as you have enough.
+- Textures: placeholders are fine (simple solid-color PNG or copy vanilla textures); do NOT spend time designing pixel art.
 - After writing code: immediately `validate_resources` -> `run_mod_test_cycle`; do NOT keep researching sources.
 - On compile error: read the first `error:`, fix one place with the mapped API, rebuild; do not speculate more than
   2 rounds on the same problem.
