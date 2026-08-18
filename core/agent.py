@@ -10,6 +10,7 @@ from .tools import (
 )
 from .protocol import inject_pending_requests
 from .tools_tasks import task_manager, todo_manager
+from .agent_hooks import run_pre_step_hooks
 from .subagent import run_subagent_async
 from .compact import (
     micro_compact,
@@ -263,28 +264,9 @@ def agent_loop(messages: list) -> str:
             )
             messages = auto_compact(messages)
 
-        # ── Layer 2.5: 运行时上下文快照（移植 dsh runtime-context projection）──
-        # 用一条可替换的 <runtime-context> 消息汇总当前 todo/任务状态，
-        # 防止历史里堆积旧状态导致模型迷失。
-        _rt_parts = []
-        try:
-            if todo_manager.todos:
-                _rt_parts.append("Todo progress:\n" + todo_manager.render())
-            _tasks = task_manager.list_tasks()
-            if _tasks:
-                _rt_parts.append("Task board:\n" + "\n".join(
-                    f"- #{t.get('id')} [{t.get('status', '?')}] {t.get('subject', '')[:80]}"
-                    for t in _tasks
-                ))
-        except Exception:
-            pass
-        if _rt_parts:
-            _replace_runtime_slot(
-                messages,
-                "runtime-context",
-                "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\n"
-                + "\n\n".join(_rt_parts),
-            )
+        # ── Layer 2.5: pre-step hooks（移植 dsh agent/pre-step waterfall）──
+        # 目前默认钩子注入 <runtime-context> 快照；未来插件可再注册。
+        run_pre_step_hooks(messages)
 
         # 发给模型
         move_skills_to_end(messages)
