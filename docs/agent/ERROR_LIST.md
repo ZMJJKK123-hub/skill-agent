@@ -154,6 +154,18 @@
     side="BOTH"
     ```
 
+- **Elytra/glide does not work even though the item renders**
+  - Symptom: custom chestplate can be worn and has armor, but double-tapping space does not glide
+  - Root cause: 1.21.11 vanilla checks `DataComponents.GLIDER` to enable elytra glide; overriding `canElytraFly`
+    alone is not enough
+  - Fix: add `.component(DataComponents.GLIDER, Unit.INSTANCE)` to `Item.Properties` (imports
+    `net.minecraft.core.component.DataComponents`, `net.minecraft.util.Unit`).
+
+- **`pack.mcmeta` ERROR: supported_formats required**
+  - Symptom: `Pack declares support for format 48, but game versions supporting formats 17 to 81 require a supported_formats field`
+  - Root cause: pack.mcmeta uses min/max format without `supported_formats`
+  - Fix: use `"pack_format": 61` and `"supported_formats": [48, 81]`
+
 - **`Missing language javafml version [24,]` (may be harmless)**
   - Symptom: WARN appears in logs but later `All required tests passed` / `BUILD SUCCESSFUL`
   - Root cause: usually an environment/dependency version hint, does NOT affect correctness

@@ -115,6 +115,8 @@ public class FlyingArmorMod {{
 """)
     write(PKG_PATH / "FlyingChestplateItem.java", f"""package {PACKAGE};
 
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.util.Unit;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
@@ -124,7 +126,7 @@ import net.minecraft.world.item.equipment.ArmorType;
 
 public class FlyingChestplateItem extends Item {{
     public FlyingChestplateItem(ArmorMaterial material, ArmorType type, Properties properties) {{
-        super(properties.humanoidArmor(material, type));
+        super(properties.humanoidArmor(material, type).component(DataComponents.GLIDER, Unit.INSTANCE));
     }}
 
     @Override
@@ -217,7 +219,7 @@ def main():
     (TARGET / "src/main").mkdir(parents=True, exist_ok=True)
     (TARGET / "src/test").mkdir(parents=True, exist_ok=True)
     write("src/main/resources/pack.mcmeta", json.dumps({
-        "pack": {"description": "Flying Armor", "pack_format": 61, "min_format": 48, "max_format": 61}
+        "pack": {"description": "Flying Armor", "pack_format": 61, "supported_formats": [48, 81]}
     }, indent=2))
     write("src/main/resources/META-INF/mods.toml", f"""# Forge 1.21.11 mod metadata
 modLoader="javafml"

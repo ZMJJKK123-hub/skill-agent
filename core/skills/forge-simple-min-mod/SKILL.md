@@ -161,6 +161,8 @@ ITEMS.register("flying_iron_chestplate",
         new Item.Properties().setId(ITEMS.key("flying_iron_chestplate"))));
 
 // Custom item: extends Item, has armor + elytra flight
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.util.Unit;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
@@ -170,7 +172,8 @@ import net.minecraft.world.item.equipment.ArmorType;
 
 public class FlyingChestplateItem extends Item {
     public FlyingChestplateItem(ArmorMaterial material, ArmorType type, Properties properties) {
-        super(properties.humanoidArmor(material, type));
+        super(properties.humanoidArmor(material, type)
+            .component(DataComponents.GLIDER, Unit.INSTANCE)); // REQUIRED for elytra glide in 1.21.11
     }
     @Override
     public boolean canElytraFly(ItemStack stack, LivingEntity entity) { return true; }
@@ -186,6 +189,9 @@ public class FlyingChestplateItem extends Item {
     }
 }
 ```
+
+> 1.21.11 vanilla determines elytra flight by checking `DataComponents.GLIDER`, not just `canElytraFly`.
+> Also set `pack.mcmeta` `"supported_formats": [48, 81]` to avoid pack metadata errors.
 
 Pair it with a shapeless recipe: `corresponding chestplate + elytra -> flying chestplate`.
 
