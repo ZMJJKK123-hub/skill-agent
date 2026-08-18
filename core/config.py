@@ -50,6 +50,7 @@ Windows/shell essentials (full details in docs/agent/TOOL_GUIDE.md):
 
 WORKFLOW (default): Write code directly first. Do NOT read docs/skills/sources before writing. After writing the first version, compile/build it; only on a compile/test error, look up the exact failing symbol in mc_java_sources / ERROR_LIST / skills and fix one place.
 ON ERROR: On the FIRST compile error, immediately `grep docs/agent/ERROR_LIST.md` for the failing symbol; if a known fix exists, apply it directly. Only if not found, then grep mc_java_sources.
+FORGE 1.21.11 MOD CONSTRUCTOR FACT: Always use `ITEMS.register(FMLJavaModLoadingContext.get().getModBusGroup());` in the @Mod constructor. Do NOT write `IEventBus`, `getModEventBus()`, or `modEventBus.addListener(...)` — those old APIs are gone in this version.
 STARTER TEMPLATES: workspace contains `starter/` with optional copy-paste templates (e.g. `starter/block/`, `starter/item/`). Copy/rename what you need; delete starters you do NOT use — they are optional and safe to remove.
 
 Before starting any task: docs/agent/TOOL_GUIDE.md and ERROR_LIST.md are available references; read them when needed. Skills are optional. For complex features (armor/elytra, custom items), exact 1.21.11 APIs are in the forge-simple-min-mod skill and the error list."""

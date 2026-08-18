@@ -168,6 +168,13 @@
     (`BlockBehaviour.Properties.of().setId(...).mapColor(...).strength(...)` + `BlockItem`, plus
     blockstate/model/item/texture files).
 
+- **Purple/black missing texture icon (item works but no render)**
+  - Symptom: item shows the default purple-black missing texture icon in inventory/hand
+  - Root cause: the texture PNG is invalid; common cause: PNG generator declares `color type=6 (RGBA)` but writes only
+    3 bytes per pixel (RGB), so the PNG is malformed and Minecraft rejects it
+  - Fix: use `color type=2 (RGB)` when writing 3-byte RGB pixels; or write 4-byte RGBA pixels with RGBA scanlines.
+    Verify PNG signature + IHDR/scanline layout.
+
 - **Chinese text in JSON becomes garbled**
   - Symptom: item name in-game shows mojibake (e.g. `ըƻ`), but model/JSON structure is fine
   - Root cause: the JSON was written/encoded with the wrong charset (usually GBK from shell, or Python default encoding)

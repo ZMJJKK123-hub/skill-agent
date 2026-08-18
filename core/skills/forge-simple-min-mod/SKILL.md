@@ -132,10 +132,11 @@ Use this exact Python script to generate solid 16x16 PNG textures. Write it with
 import os, struct, zlib
 def png(path, rgb):
     w=h=16
-    raw=b''.join(b'\x00'+bytes(rgb)*w for _ in range(h))
+    raw=b''.join(b'\x00'+bytes(rgb)*w for _ in range(h))  # RGB, 3 bytes per pixel
     def chunk(t,d): return struct.pack('>I',len(d))+t+d+struct.pack('>I',zlib.crc32(t+d)&0xffffffff)
     os.makedirs(os.path.dirname(path), exist_ok=True)  # REQUIRED: creates texture dir
-    data=b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',w,h,8,6,0,0,0))+chunk(b'IDAT',zlib.compress(raw,9))+chunk(b'IEND',b'')
+    data=b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',w,h,8,2,0,0,0))+chunk(b'IDAT',zlib.compress(raw,9))+chunk(b'IEND',b'')
+    # color type = 2 (RGB), NOT 6; using type 6 with 3-byte pixels makes an invalid PNG -> purple-black missing texture
     open(path,'wb').write(data)
 
 # copper color example
