@@ -50,6 +50,16 @@ MAX_TOOL_ROUNDS = 25
 SESSION_ROOT = os.environ.get("DSH_SESSION_ROOT", "")
 
 
+def _is_context_overflow(exc: Exception) -> bool:
+    text = str(exc).lower()
+    markers = (
+        "context length", "maximum context", "context window exceeded",
+        "context_window_exceeded", "token limit", "too many tokens",
+        "maximum context length",
+    )
+    return any(m in text for m in markers)
+
+
 def _replace_runtime_slot(messages: list, tag_prefix: str, content: str) -> None:
     """Replace ephemeral runtime-context messages (official dsh runtime-context style).
 
@@ -218,13 +228,20 @@ def agent_loop(messages: list) -> str:
         # 前端 /api/events 以 log 事件实时展示（[reply] 行）；tool_calls 增量
         # 累积到完整后再执行，行为与非流式一致。最终 message 由累积结果
         # 构造，后续 skillcheck / 循环退出 / 工具执行逻辑保持不变。
-        stream = client.chat.completions.create(
-            model=MODEL,
-            messages=[{"role": "system", "content": config.SYSTEM}] + messages,
-            tools=leader_tools(),  # 阶段式：基础阶段只开放开发工具；解锁后开放全部
-            max_tokens=8000,
-            stream=True,
-        )
+        try:
+            stream = client.chat.completions.create(
+                model=MODEL,
+                messages=[{"role": "system", "content": config.SYSTEM}] + messages,
+                tools=leader_tools(),  # 阶段式：基础阶段只开放开发工具；解锁后开放全部
+                max_tokens=8000,
+                stream=True,
+            )
+        except Exception as _le:
+            if _is_context_overflow(_le):
+                logger.warning(f"上下文超限，自动压缩后重试: {_le}")
+                messages = auto_compact(messages)
+                continue
+            raise
 
         content_parts: list[str] = []
         reasoning_parts: list[str] = []
