@@ -27,6 +27,7 @@ This document records what was studied from the official `deepseek-harness` (dsh
 | Spill oversized tool results to `.spill/*.txt` | `core/agent.py` | ✅ new |
 | Summarizer receives system prompt | `core/compact.py` | ✅ new |
 | Workspace docs (`docs/agent`) copied into session | `server_app/server.py` | ✅ new |
+| AGENTS.md baseline instructions loader | `core/agent.py`, `mod_templates/.../AGENTS.md` | ✅ new |
 | Auto error sink (`NEW_ERROR:` -> ERROR_LIST) | `server_app/run_task.py` | ✅ new |
 | Supervisor can read workspace docs | `core/supervisor.py` | ✅ new |
 
