@@ -169,8 +169,14 @@ def save_transcript(messages: list) -> Path:
 
 
 def summarize_region(region: list) -> str:
-    """对要压缩的区间做一次结构化摘要（回放区间 + 追加压缩指令，对应 dsh summarizeWithLlm）。"""
-    msgs = list(region) + [{"role": "user", "content": COMPACTION_INSTRUCTION}]
+    """对要压缩的区间做一次结构化摘要（回放区间 + 追加压缩指令，对应 dsh summarizeWithLlm）。
+
+    带上当前系统提示词，和 dsh summarizer 一样让摘要模型理解角色/规则，避免摘要跑偏。
+    """
+    from . import config as _config
+    msgs = [{"role": "system", "content": _config.SYSTEM}]
+    msgs += list(region)
+    msgs.append({"role": "user", "content": COMPACTION_INSTRUCTION})
     response = client.chat.completions.create(
         model=MODEL,
         messages=msgs,
