@@ -9,6 +9,24 @@ whenToUse: "任务是让 MOD 能运行、需要一个简单物品/方块并能�
 目标：用最少步骤做出一个能构建、能通过 GameTest、物品注册与渲染都正常的 MOD。
 已在本机验证：`validate_resources` 0 错误 → `gradlew build` 成功 → `run_test_gametest` All tests passed。
 
+## 0. 命名规则（必须先做）
+
+**禁止保留模板默认名**：`examplemod`、`example_item`、`example_block`、`com.example.examplemod` 只允许出现在示例代码里。
+
+每次生成/修改 MOD 时，必须先根据用户需求确定：
+- `modid`（如 `myhero`、`enchantedtools`）
+- Java 包名（如 `com.xxx.myhero`）
+- 主类名（如 `MyHeroMod`）
+- 物品/方块 id（如 `legend_sword`）
+- 资源路径、lang key、GameTest namespace 全部跟着 modid/物品名走
+
+并且同步修改：
+- `build.gradle` 的 `group`
+- `META-INF/mods.toml` 的 `modId` / description
+- `src/main/java` 包路径与类名
+- `assets/<modid>/...` 与 `data/<modid>/...`
+- `src/test` 的包名、类名、`@GameTestNamespace`
+
 ## 1. 固定工作流（按顺序，别跳）
 
 ```text

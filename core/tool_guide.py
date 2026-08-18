@@ -16,6 +16,7 @@ BASE_TOOL_GUIDE = r"""【工具使用总则（基础阶段）】
 6. 终端（bash）是最后手段；有专用工具就用专用工具。
 7. 完整工具手册保存在 docs/agent/TOOL_GUIDE.md；遇到错误或思考转圈时，先 read_file docs/agent/ERROR_LIST.md，
    找不到解决方案再把新错误追加到该文件对应分类。
+8. 生成 MOD 时必须根据用户需求决定 modid/包名/类名/物品名，禁止保留模板默认名（examplemod、example_item、example_block 等）。
 
 【基础工具详细说明】
 

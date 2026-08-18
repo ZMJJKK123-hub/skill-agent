@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import logging
 from pathlib import Path
@@ -39,6 +39,11 @@ For multi-step tasks, ALWAYS use the todo tool first to create a plan—
 break the task into verifiable sub-steps, then update item statuses as you work through them.
 Only mark an item as completed after verifying the result.
 Only ONE item should be in_progress at a time.
+
+NAMING RULE (mandatory): NEVER keep template defaults like `examplemod`, `example_item`, `example_block`, `examplemod.example.examplemod`.
+Always derive meaningful names from the user's request — e.g. modid, Java package, class names, item/block ids, lang keys, resource paths, and
+GameTest namespace — and rename them consistently across build.gradle (group), mods.toml, Java code, assets/data, and src/test.
+Template examples are only for illustration; the delivered mod must use the user's own names.
 
 IMPORTANT: Never execute server start commands (npm start, node server.js, python -m http.server, flask run, etc.)
 standalone—this will trigger a 30s timeout and be force-killed.
