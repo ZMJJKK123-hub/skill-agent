@@ -31,20 +31,24 @@ This document records what was studied from the official `deepseek-harness` (dsh
 | Preserve initial task anchor across compaction | `core/compact.py` | ✅ new |
 | Workspace docs (`docs/agent`) copied into session | `server_app/server.py` | ✅ new |
 | AGENTS.md baseline instructions loader | `core/agent.py`, `mod_templates/.../AGENTS.md` | ✅ new |
+| Event-sourced session log + derive_messages + repair | `core/session_log.py` | ✅ new |
+| Turn/step state machine (max-tokens sticky, concludesTurn) | `core/step_machine.py`, `core/agent.py` | ✅ new |
+| Compaction events recorded in SessionLog | `core/agent.py` | ✅ new |
 | Auto error sink (`NEW_ERROR:` -> ERROR_LIST) | `server_app/run_task.py` | ✅ new |
 | Supervisor can read workspace docs | `core/supervisor.py` | ✅ new |
 
 ## Key differences identified between dsh and skill-agent
 
-1. dsh derives every request from a durable session event log; skill-agent uses an in-memory `messages` list (persisted as JSON lines but not event-sourced).
-2. dsh has a plugin/waterfall system (`agent/pre-step`, `system-prompt/assemble`) for extensibility; skill-agent has a simpler registry.
+1. dsh derives every request from a durable session event log; skill-agent now has `SessionLog` + `derive_messages()` and the agent loop syncs/repairs from it (still not the sole source of truth).
+2. dsh has a plugin/waterfall system (`agent/pre-step`, `system-prompt/assemble`) for extensibility; skill-agent has pre-step hooks and prompt sections, not full waterfall.
 3. dsh `compaction` runs between steps based on token-meter pressure; skill-agent compacts per round when estimated tokens exceed threshold.
-4. dsh tool results can `concludesTurn`; skill-agent now supports a `[CONCLUDED]` marker.
-5. dsh spills oversized results; skill-agent now spills to `.spill/`.
+4. dsh tool results can `concludesTurn`; skill-agent supports `[CONCLUDED]` and `TurnStepMachine.conclude_turn()`.
+5. dsh spills oversized results; skill-agent spills to `.spill/`.
+6. dsh tool pipeline includes pre/guard/around/post hooks; skill-agent `ToolRegistry` has pre/guard/post hooks and timeout support.
 
 ## Remaining possible future work
 
-- Event-sourced session log with `deriveMessages()` (large refactor)
-- Pre-step plugin/waterfall equivalent
-- Workspace `AGENTS.md` instruction loader
-- Per-model context-window policies in compaction
+- Make SessionLog the single source of truth in agent loop (currently messages list is still primary).
+- Full plugin/waterfall system.
+- Per-model context-window policies in compaction.
+- Session query/search (FTS5)
