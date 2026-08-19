@@ -48,7 +48,7 @@ Packets run on the network thread — wrap game work in `ctx.get().enqueueWork(.
 Forge 1.21.11 no longer uses `NetworkRegistry.newSimpleChannel` for new code. Use `ChannelBuilder`:
 
 ```java
-import net.minecraft.network.PacketFlow;
+import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.resources.Identifier;
 import net.minecraftforge.network.Channel;
 import net.minecraftforge.network.ChannelBuilder;

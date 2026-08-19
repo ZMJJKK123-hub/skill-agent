@@ -338,3 +338,17 @@
 - **`level.explode` in 1.21.11**
   - Symptom: `isClientSide` private and old explode overload not found
   - Fix: use `level.isClientSide()`; explosion call `level.explode(entity, x, y, z, radius, Level.ExplosionInteraction.BLOCK)`
+## 2026-08-20 Iteration from SwapBattle complex test
+
+- **`SubscribeEvent` package moved in Forge 1.21.11**
+  - Symptom: `import net.minecraftforge.eventbus.api.SubscribeEvent;` cannot find symbol
+  - Root cause: in this Forge 1.21.11 build the annotation is under `net.minecraftforge.eventbus.api.listener`
+  - Fix: import `net.minecraftforge.eventbus.api.listener.SubscribeEvent;` (or migrate to the typed event-bus registration pattern)
+
+- **`PacketFlow` package moved in MC 1.21.11**
+  - Symptom: `import net.minecraft.network.PacketFlow;` cannot find symbol
+  - Fix: import `net.minecraft.network.protocol.PacketFlow;`
+
+- **Client overlay classes may not be on compile classpath**
+  - Symptom: `net.minecraftforge.client.event.RegisterGuiOverlaysEvent` / `ForgeGui` / `IGuiOverlay` not found even though decompiled source contains them
+  - Note: if the local recompiled jar lacks client-only Forge classes, verify the compile classpath/jar; these classes exist in `mc_java_sources_1.21.11` under `net.minecraftforge.client.*`.
