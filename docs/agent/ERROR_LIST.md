@@ -206,6 +206,18 @@
   - Root cause: the PNG generator writes to a path whose parent directory does not exist yet
   - Fix: call `os.makedirs(os.path.dirname(path), exist_ok=True)` inside the PNG generator before writing the file.
 
+- **`Item.use(...)` signature changed in 1.21.11**
+  - Symptom: `方法不会覆盖或实现超类型的方法` on `use(ItemStack, Level, Player, InteractionHand)`
+  - Root cause: 1.21.11 `Item.use` is `public InteractionResult use(Level level, Player player, InteractionHand hand)`
+  - Fix: override `use(Level, Player, InteractionHand)`; do NOT use the old `use(ItemStack, ...)` signature.
+
+- **`ServerPlayer.teleportTo(...)` requires new parameters**
+  - Symptom: `对于 teleportTo(ServerLevel, double, double, double, float, float), 找不到合适的方法`
+  - Root cause: 1.21.11 `ServerPlayer.teleportTo` needs `Set<Relative>` and a `boolean` argument
+  - Fix:
+    `player.teleportTo(serverLevel, x, y, z, Set.of(), yaw, pitch, false);`
+    or for same-level teleport use `player.teleportTo(x, y, z);`.
+
 - **`getModEventBus()` not found / `BusGroup.addListener` missing**
   - Symptom: compile errors on `getModEventBus()` or `getModBusGroup().addListener(...)`
   - Root cause: 1.21.11 Forge uses typed event buses instead of the old event bus accessor

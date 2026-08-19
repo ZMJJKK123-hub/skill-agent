@@ -298,6 +298,8 @@ Pair it with a shapeless recipe: `corresponding chestplate + elytra -> flying ch
 - Chinese in JSON: always write UTF-8; if a script goes through Windows shell, use Unicode escapes to avoid GBK mojibake.
 - Explosion damage: use `level.explode(null, x, y, z, power, Level.ExplosionInteraction.MOB)` so entities (including the eater) take damage; `NONE` may look like an explosion without hurting the player.
 - `Level` side check: always `level.isClientSide()` (parentheses), not `level.isClientSide`.
+- Item interaction: 1.21.11 `Item.use(Level, Player, InteractionHand)`; do NOT use the old `use(ItemStack, ...)` signature.
+- ServerPlayer teleport: 1.21.11 uses `teleportTo(ServerLevel, x, y, z, Set.of(), yaw, pitch, false)` or `teleportTo(x, y, z)` for same level.
 - Lifecycle listeners in 1.21.11: use typed buses like `FMLClientSetupEvent.getBus(FMLJavaModLoadingContext.get().getModBusGroup()).addListener(this::onClientSetup);`, never `BusGroup.addListener(...)`.
 - NEVER change build system/plugins, Forge version, or dependency versions. You ARE allowed to edit
   modid/namespace references in build.gradle/settings.gradle when renaming the mod (e.g.
