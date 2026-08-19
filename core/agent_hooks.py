@@ -5,8 +5,11 @@ Plugins/agents can register callables that run before every model request.
 Each hook receives the mutable messages list and can inject/replace context.
 """
 from datetime import datetime, timezone
+import os
 
 from .tools_tasks import task_manager, todo_manager
+
+REPEAT_TOOL_THRESHOLD = int(os.environ.get("DSH_REPEAT_TOOL_THRESHOLD", "5"))
 
 PRE_STEP_HOOKS = []
 POST_STEP_HOOKS = []
@@ -78,7 +81,7 @@ def _replace_runtime_slot(messages, tag_prefix, content):
 @register_post_step_hook
 def _repeat_tool_reminder(messages, tool_counts):
     """Advisory reminder when a single step repeats the same tool too many times."""
-    too_many = [(name, cnt) for name, cnt in tool_counts.items() if cnt >= 5]
+    too_many = [(name, cnt) for name, cnt in tool_counts.items() if cnt >= REPEAT_TOOL_THRESHOLD]
     if too_many:
         details = ", ".join(f"{name} x{cnt}" for name, cnt in too_many)
         _replace_runtime_slot(
