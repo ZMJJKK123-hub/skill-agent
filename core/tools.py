@@ -192,7 +192,6 @@ TOOL_HANDLERS = {
     "run_client": lambda **kw: _gt_tool("run_client", kw),
     "run_server": lambda **kw: _gt_tool("run_server", kw),
     "run_data_gen": lambda **kw: _gt_tool("run_data_gen", kw),
-    "run_game_test_server": lambda **kw: _gt_tool("run_game_test_server", kw),
     "run_test_client": lambda **kw: _gt_tool("run_test_client", kw),
     "run_test_server": lambda **kw: _gt_tool("run_test_server", kw),
     "run_test_data": lambda **kw: _gt_tool("run_test_data", kw),

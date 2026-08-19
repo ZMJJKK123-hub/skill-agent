@@ -36,7 +36,7 @@ def run_bash(command: str) -> str:
     导致 communicate 永不返回）。
     """
     dangerous = [
-        "del /f /s", "rd /s /q", "format",
+        "format",
         "diskpart", "reg delete", "shutdown",
         # 致命：taskkill /im 会杀掉 Agent 自身进程（python.exe）
         "taskkill /f /im python.exe",
