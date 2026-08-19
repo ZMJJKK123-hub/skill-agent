@@ -4,6 +4,8 @@
 Plugins/agents can register callables that run before every model request.
 Each hook receives the mutable messages list and can inject/replace context.
 """
+from datetime import datetime, timezone
+
 from .tools_tasks import task_manager, todo_manager
 
 PRE_STEP_HOOKS = []
@@ -89,9 +91,10 @@ def _repeat_tool_reminder(messages, tool_counts):
 
 @register_pre_step_hook
 def _inject_runtime_context_snapshot(messages):
-    """Inject a single replaceable <runtime-context> snapshot of todo/task state."""
+    """Inject a single replaceable <runtime-context> snapshot of time/todo/task state."""
     parts = []
     try:
+        parts.append("Current time (UTC): " + datetime.now(timezone.utc).isoformat(timespec="seconds"))
         if todo_manager.todos:
             parts.append("Todo progress:\n" + todo_manager.render())
         tasks = task_manager.list_tasks()
