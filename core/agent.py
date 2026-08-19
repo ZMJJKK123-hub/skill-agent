@@ -606,7 +606,10 @@ def agent_loop(messages: list) -> str:
         # 完成信号：dist 目录出现 jar（MOD 产物）即视为可收尾，避免通过后继续绕圈
         try:
             if os.path.isdir("dist"):
-                _dist_jars = [f for f in os.listdir("dist") if f.endswith(".jar")]
+                _dist_jars = [
+                    f for f in os.listdir("dist")
+                    if f.endswith(".jar") and "examplemod" not in f
+                ]
                 if _dist_jars:
                     _force_final_msg = (
                         f"MOD jar exists: dist/{_dist_jars[0]}. Task is complete; stop calling tools and summarize."
