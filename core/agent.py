@@ -405,8 +405,15 @@ def agent_loop(messages: list) -> str:
             logger.info(
                 f"Layer 2 auto_compact 触发 | token={current_tokens} > 阈值 {TOKEN_THRESHOLD}"
             )
-            _session_log.append("compaction", {"reason": "auto_compact", "before_tokens": current_tokens})
+            _before_seq = max((e.seq for e in _session_log.events), default=0)
             messages = auto_compact(messages)
+            _summary_content = next(
+                (str(m.get("content", "")) for m in messages
+                 if m.get("role") == "user" and isinstance(m.get("content"), str)
+                 and "[Context compacted" in m.get("content", "")),
+                "",
+            )
+            _session_log.add_compaction(_summary_content, 1, _before_seq)
             _synced_count = 0  # 新消息列表重新同步到事件源
 
         # ── Layer 2.5: pre-step hooks（移植 dsh agent/pre-step waterfall）──
@@ -788,7 +795,14 @@ def agent_loop(messages: list) -> str:
         # compact 最后执行：替换整个 messages 列表
         if compact_pending:
             messages, _ = handle_compact(messages)
-            _session_log.append("compaction", {"reason": "manual_tool"})
+            _before_seq = max((e.seq for e in _session_log.events), default=0)
+            _summary_content = next(
+                (str(m.get("content", "")) for m in messages
+                 if m.get("role") == "user" and isinstance(m.get("content"), str)
+                 and "[Context compacted" in m.get("content", "")),
+                "",
+            )
+            _session_log.add_compaction(_summary_content, 1, _before_seq)
             _synced_count = 0
             # compact 后上下文已重置，重置 nag 计数器
             rounds_since_todo = 0

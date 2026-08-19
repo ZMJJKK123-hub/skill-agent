@@ -63,6 +63,30 @@ class SessionLog:
     def add_tool_result(self, tool_call_id: str, content: str) -> SessionEvent:
         return self.append("tool", {"tool_call_id": tool_call_id, "content": content})
 
+    def add_compaction(self, summary_content: str, start_seq: int, end_seq: int) -> SessionEvent:
+        """Record a compaction checkpoint: events [start_seq, end_seq] are replaced
+        by a summary user message in derived views (DSH surface replacement)."""
+        ev = self.append("compaction", {
+            "summary": summary_content,
+            "start": int(start_seq),
+            "end": int(end_seq),
+        })
+        return ev
+
+    def _compaction_ranges(self) -> list[dict]:
+        ranges = []
+        for ev in self.events:
+            if ev.type != "compaction":
+                continue
+            p = ev.payload
+            if "start" in p and "end" in p and "summary" in p:
+                ranges.append({
+                    "start": int(p["start"]),
+                    "end": int(p["end"]),
+                    "summary": str(p["summary"]),
+                })
+        return sorted(ranges, key=lambda r: r["start"])
+
     # ---- derivation ----------------------------------------------------
 
     def derive_messages(self) -> list[dict[str, Any]]:
@@ -70,10 +94,26 @@ class SessionLog:
 
         - assistant events with tool_calls produce assistant messages.
         - tool events are attached with their tool_call_id (just like OpenAI).
-        - Unknown/step/turn/compaction events are skipped (they are not model-visible).
+        - compaction events replace a contiguous event range with one summary
+          user message (DSH surface replacement), so derived history is compacted
+          without losing the checkpoint.
         """
+        ranges = self._compaction_ranges()
+        ri = 0
+        inside_range = False
         messages: list[dict[str, Any]] = []
         for ev in self.events:
+            # Advance past ranges fully left of this event.
+            while ri < len(ranges) and ev.seq > ranges[ri]["end"]:
+                ri += 1
+                inside_range = False
+            if ri < len(ranges) and ranges[ri]["start"] <= ev.seq <= ranges[ri]["end"]:
+                if not inside_range:
+                    messages.append({"role": "user", "content": ranges[ri]["summary"]})
+                    inside_range = True
+                continue  # skip replaced original events
+            inside_range = False
+
             if ev.type == "user":
                 messages.append({"role": "user", "content": ev.payload.get("content", "")})
             elif ev.type == "assistant":
