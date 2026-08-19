@@ -108,6 +108,7 @@ def _auto_write_starter(messages: list) -> bool:
         block_kw = ("block", "方块")
         item_kw = ("item", "food", "apple", "ingot", "gem", "物品", "食物")
         tool_kw = ("tool", "sword", "pickaxe", "axe", "工具", "剑", "镐")
+        game_kw = ("game", "minigame", "swap", "大逃杀", "游戏", "交换", "玩家")
         target_src = None
         best_score = -1
         for path in candidates:
@@ -125,6 +126,8 @@ def _auto_write_starter(messages: list) -> bool:
                 score += 7
             if any(k in task_text for k in item_kw) and ("/item/" in low_path or "rubymod" in low_path):
                 score += 5
+            if any(k in task_text for k in game_kw) and ("/swapgame/" in low_path or "swapgame" in low_path):
+                score += 9
             if score > best_score:
                 best_score = score
                 target_src = path
