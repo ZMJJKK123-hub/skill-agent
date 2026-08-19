@@ -713,7 +713,7 @@ def agent_loop(messages: list) -> str:
                 _wrote_file = True
             elif not _wrote_file and tc.function.name in (
                 "read_file", "bash", "grep", "glob",
-                "web_search", "web_fetch",
+                "web_search", "web_fetch", "search_api",
             ):
                 _pre_write_reads += 1
             # flash 适配：工具参数 JSON 可能不完整/非法，解析失败不炸主循环，
