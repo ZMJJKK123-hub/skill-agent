@@ -18,7 +18,9 @@ The vanilla system for syncing entity data: create a `static final EntityDataAcc
 
 # Networking
 
-## SimpleImpl (SimpleChannel)
+> **IMPORTANT for Forge 1.21.11+:** use the `ChannelBuilder` API in the "1.21.11+ current networking API" section below. The old `NetworkRegistry.newSimpleChannel` API in the legacy section is for older Forge versions and may not compile here.
+
+## Legacy SimpleChannel (older Forge, not 1.21.11)
 
 Create the channel in a handler class:
 
