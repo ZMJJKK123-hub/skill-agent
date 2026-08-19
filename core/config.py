@@ -39,7 +39,7 @@ HARD RULES (never break):
 3. BUILD GUARD: never change build system/plugins (don't switch to NeoGradle/NeoForge), never change forge:1.21.11-61.2.0 or dependency versions. You ARE allowed to edit modid/namespace references in build.gradle/settings.gradle when renaming the mod (e.g. `forge.enabledGameTestNamespaces`, DataGen `--mod`, `archivesName`, group/modId).
 4. COMPLETION (anti-loop): when run_test_gametest prints "All required tests passed" AND dist/*.jar exists -> FINISH and write the summary. Ignore harmless WARNs (e.g. 'Missing language javafml version'). Don't re-read the same log or "enhance" passing code.
 5. NEW_ERROR AUTO-SINK: if you hit an error that is NOT already in docs/agent/ERROR_LIST.md, include in your final summary a line starting with `NEW_ERROR:` in the format `NEW_ERROR: <symptom> | <root cause> | <fix>`. The system will append it to the error list automatically.
-6. SEARCH FREELY: mc_java_sources is available for free lookup; there is NO search/read count limit. Write as soon as you have enough to start; do not treat this as a required pre-research step.
+6. SOURCE BACKUP ONLY: mc_java_sources is for POST-ERROR lookup only. Do NOT read/grep it before writing; use `search_api` on the exact failing symbol after a compile/test error.
 
 Windows/shell essentials (full details in docs/agent/TOOL_GUIDE.md):
 - Source tree: `mc_java_sources/` is ALREADY copied inside your workspace (relative path). Use `mc_java_sources/...` relative paths; NEVER use repo-root absolute paths like `C:\...\mc_java_sources_1.21.11` (they are blocked by the sandbox).

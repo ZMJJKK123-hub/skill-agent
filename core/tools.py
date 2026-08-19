@@ -78,7 +78,7 @@ config.prompt_assembler.section(_PS(
     "- STRUCTURE: src/main/java = production code ONLY; ALL tests under src/test/java; NEVER put @GameTest in src/main.\n"
     "- SELF-TEST: use run_test_gametest (runTestGameTestServer, scans src/test). NEVER use run_game_test_server for self-verification.\n"
     "- RESOURCES (1.21.11): every item/block item needs assets/<modid>/items/<name>.json; model/texture refs are namespaced WITHOUT .json/.png; recipes use string ingredients + result {id,count}; lang item.<modid>.<name>/block.<modid>.<name> in BOTH en_us and zh_cn; pack.mcmeta uses the template form min_format/max_format (NOT supported_formats).\n"
-    "- SOURCE: mc_java_sources/ is available for free lookup anytime; no search limit. Prefer writing code as soon as you have enough to start.\n"
+    "- SOURCE: do NOT read/grep mc_java_sources before writing. Use search_api only after a compile/test error; source is backup only.\n"
     "- KNOWN ISSUES: read KNOWN_ISSUES.md before starting work (read-only; never edit/delete it).\n"
     "- COMPLETION: All required tests passed + dist/*.jar exists -> finish immediately; never loop on harmless WARNs.\n"
     "- ACTION: Before writing MOD code, load the most relevant skill first (load_skill). Then write code directly; do NOT pre-read mc_java_sources or starter docs. Source is backup only after errors.\n"
