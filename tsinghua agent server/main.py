@@ -258,11 +258,12 @@ def _probe_json_response():
 # API 端点
 # ---------------------------------------------------------------------------
 @app.get("/v1/models")
+@app.get("/models")
 def list_models(
     authorization: str | None = Header(default=None),
     x_api_key: str | None = Header(default=None, alias="x-api-key"),
 ):
-    """清小搭连通性/凭证校验端点。"""
+    """清小搭连通性/凭证校验端点（兼容 /models 和 /v1/models）。"""
     _check_auth(authorization, x_api_key)
     return {
         "object": "list",
@@ -323,6 +324,17 @@ async def chat_completions(
         }],
         "usage": _usage_zero(),
     })
+
+
+# 容错：兼容不带 /v1、或尾部带 / 的探测路径
+@app.post("/chat/completions")
+@app.post("/v1/chat/completions/")
+async def chat_completions_alias(
+    request: Request,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None, alias="x-api-key"),
+):
+    return await chat_completions(request, authorization, x_api_key)
 
 
 def _stream_agent(messages: list, session_id: str):
