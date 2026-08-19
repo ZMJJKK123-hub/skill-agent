@@ -86,6 +86,23 @@ _SESSION_CACHE_MAX = 100
 
 
 # ---------------------------------------------------------------------------
+# 请求日志：方便定位清小搭实际请求了哪个路径、返回什么状态码
+# ---------------------------------------------------------------------------
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    method = request.method
+    path = request.url.path
+    print(f"[req] {method} {path}", flush=True)
+    try:
+        response = await call_next(request)
+    except Exception as e:
+        print(f"[req] {method} {path} -> EXCEPTION {e}", flush=True)
+        raise
+    print(f"[req] {method} {path} -> {response.status_code}", flush=True)
+    return response
+
+
+# ---------------------------------------------------------------------------
 # 鉴权
 # ---------------------------------------------------------------------------
 def _check_auth(authorization: str | None, x_api_key: str | None) -> None:
