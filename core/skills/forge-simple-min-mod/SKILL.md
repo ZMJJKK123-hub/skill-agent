@@ -274,7 +274,7 @@ public class FlyingChestplateItem extends Item {
 ```
 
 > 1.21.11 vanilla determines elytra flight by checking `DataComponents.GLIDER`, not just `canElytraFly`.
-> Also set `pack.mcmeta` `"supported_formats": [48, 81]` to avoid pack metadata errors.
+> Also keep `pack.mcmeta` in the template `min_format`/`max_format` form (`max_format: 94`, `min_format: [94, 1]`) to avoid pack metadata errors.
 
 Pair it with a shapeless recipe: `corresponding chestplate + elytra -> flying chestplate`.
 

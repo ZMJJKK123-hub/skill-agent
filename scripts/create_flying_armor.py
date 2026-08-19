@@ -253,7 +253,7 @@ def main():
     (TARGET / "src/main").mkdir(parents=True, exist_ok=True)
     (TARGET / "src/test").mkdir(parents=True, exist_ok=True)
     write("src/main/resources/pack.mcmeta", json.dumps({
-        "pack": {"description": "Flying Armor", "pack_format": 61, "supported_formats": [48, 81]}
+        "pack": {"description": "Flying Armor", "max_format": 94, "min_format": [94, 1]}
     }, indent=2))
     write("src/main/resources/META-INF/mods.toml", f"""# Forge 1.21.11 mod metadata
 modLoader="javafml"

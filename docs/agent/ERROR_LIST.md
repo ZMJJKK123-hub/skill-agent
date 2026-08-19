@@ -213,10 +213,11 @@
     `net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext`. For GameTest, use
     `net.minecraftforge.gametest.GameTest` / `net.minecraftforge.gametest.GameTestNamespace`.
 
-- **`pack.mcmeta` ERROR: supported_formats required**
+- **`pack.mcmeta` ERROR: supported_formats required (older versions only, not 1.21.11)**
   - Symptom: `Pack declares support for format 48, but game versions supporting formats 17 to 81 require a supported_formats field`
-  - Root cause: pack.mcmeta uses min/max format without `supported_formats`
-  - Fix: use `"pack_format": 61` and `"supported_formats": [48, 81]`
+  - Root cause: an old pack.mcmeta form; **DO NOT** apply this to 1.21.11 Forge mods
+  - Fix for 1.21.11 Forge: keep the template `min_format`/`max_format` form. Using `pack_format` + `supported_formats`
+    on 1.21.11 triggers the newer `missing min_format/max_format` warning.
 
 - **`pack.mcmeta` WARN/ERROR: missing min_format / max_format**
   - Symptom: `Couldn't load mod:<modid> pack metadata: Pack declares support for version newer than 64, but is missing mandatory fields min_format and max_format`
