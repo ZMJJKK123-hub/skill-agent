@@ -405,7 +405,9 @@ def agent_loop(messages: list) -> str:
             logger.info(
                 f"Layer 2 auto_compact 触发 | token={current_tokens} > 阈值 {TOKEN_THRESHOLD}"
             )
+            _session_log.append("compaction", {"reason": "auto_compact", "before_tokens": current_tokens})
             messages = auto_compact(messages)
+            _synced_count = 0  # 新消息列表重新同步到事件源
 
         # ── Layer 2.5: pre-step hooks（移植 dsh agent/pre-step waterfall）──
         # 目前默认钩子注入 <runtime-context> 快照；未来插件可再注册。
@@ -776,6 +778,8 @@ def agent_loop(messages: list) -> str:
         # compact 最后执行：替换整个 messages 列表
         if compact_pending:
             messages, _ = handle_compact(messages)
+            _session_log.append("compaction", {"reason": "manual_tool"})
+            _synced_count = 0
             # compact 后上下文已重置，重置 nag 计数器
             rounds_since_todo = 0
             logger.info("compact 执行完毕，messages 已被替换，跳过本轮 nag reminder")
