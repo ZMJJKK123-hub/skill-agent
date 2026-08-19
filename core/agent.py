@@ -18,6 +18,8 @@ from .compact import (
     estimate_tokens,
     TOKEN_THRESHOLD,
 )
+from .session_log import SessionLog, repair_missing_tool_results
+from .step_machine import TurnStepMachine
 from .skillcheck import init_per_loop, run_loop_check, move_skills_to_end
 from .supervisor import supervisor_manager
 from .tool_gate import leader_tools
@@ -201,6 +203,43 @@ def _drain_interjections(messages: list) -> None:
         logger.warning(f"排队消息注入失败: {e}")
 
 
+def _sync_messages_to_log(log: SessionLog, messages: list, synced_count: int) -> int:
+    """Append messages[+synced_count:] into the event-sourced SessionLog.
+
+    Returns the new number of messages that have been logged.
+    """
+    try:
+        while synced_count < len(messages):
+            m = messages[synced_count]
+            role = m.get("role")
+            if role == "user":
+                log.add_user(str(m.get("content", "")), source="messages")
+            elif role == "assistant":
+                log.add_assistant(
+                    content=m.get("content"),
+                    tool_calls=m.get("tool_calls"),
+                    reasoning=m.get("reasoning_content"),
+                )
+            elif role == "tool":
+                log.add_tool_result(str(m.get("tool_call_id", "")), str(m.get("content", "")))
+            synced_count += 1
+    except Exception as e:
+        logger.warning(f"sync messages to log failed: {e}")
+    return synced_count
+
+
+def _save_session_log(log: SessionLog) -> None:
+    """Persist the event-sourced session log for replay/debug (DSH JSONL backend)."""
+    try:
+        path = os.path.join(".chat", "session_events.jsonl")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(log.to_jsonl())
+        logger.info(f"SessionLog saved: {path} events={len(log.events)}")
+    except Exception as e:
+        logger.warning(f"save session log failed: {e}")
+
+
 def _dump_round_messages(round_idx: int, messages: list, tool_counts: dict) -> None:
     """每轮调试快照：打印消息概览 + 工具统计，并落盘完整 JSONL。
 
@@ -259,6 +298,10 @@ def agent_loop(messages: list) -> str:
     _force_final_msg = None
     _round_idx = 0
     _round_tool_counts = {}
+    _session_log = SessionLog()
+    _step_machine = TurnStepMachine(_session_log)
+    _synced_count = 0
+    _step_machine.start_turn()
     while True:
         _round_idx += 1
         _round_tool_counts = {}
@@ -279,6 +322,8 @@ def agent_loop(messages: list) -> str:
 
         if _force_final_msg is not None:
             logger.warning(_force_final_msg)
+            _step_machine.complete_turn()
+            _save_session_log(_session_log)
             if IS_MOD_MODE:
                 supervisor_manager.stop()
             return _force_final_msg
@@ -365,6 +410,14 @@ def agent_loop(messages: list) -> str:
         # ── Layer 2.5: pre-step hooks（移植 dsh agent/pre-step waterfall）──
         # 目前默认钩子注入 <runtime-context> 快照；未来插件可再注册。
         run_pre_step_hooks(messages)
+
+        # 事件源同步 + 崩溃修复（DSH deriveMessages/repair）
+        _synced_count = _sync_messages_to_log(_session_log, messages, _synced_count)
+        messages = repair_missing_tool_results(_session_log, messages)
+        _synced_count = _sync_messages_to_log(_session_log, messages, _synced_count)
+
+        # Turn/step 状态机：每个模型请求是一个 step
+        _step_machine.start_step()
 
         # 每轮调试快照：输出消息概览/工具统计，并落盘 .chat/debug/round_messages.jsonl
         _dump_round_messages(_round_idx, messages, _round_tool_counts)
@@ -473,6 +526,8 @@ def agent_loop(messages: list) -> str:
         if choice.finish_reason != "tool_calls" and IS_MOD_MODE:
             if not run_loop_check("main", message.content, messages):
                 continue
+        if choice.finish_reason == "length":
+            _step_machine.record_max_tokens()
         logger.info(f"finish_reason={choice.finish_reason}")
 
         # 退出条件：模型不再调工具
@@ -498,6 +553,8 @@ def agent_loop(messages: list) -> str:
 
             # ── chat 模式：普通对话直接返回（不核查 GameTest、不构建 jar/zip）──
             if not IS_MOD_MODE:
+                _step_machine.complete_turn()
+                _save_session_log(_session_log)
                 return message.content
 
             # ── GameTest 强制核查（C 组合：未跑通 GameTest 自循环则禁止完成）──
@@ -576,6 +633,8 @@ def agent_loop(messages: list) -> str:
             if IS_MOD_MODE:
                 supervisor_manager.stop()
 
+            _step_machine.complete_turn()
+            _save_session_log(_session_log)
             return message.content
 
         # 执行工具，收集结果
