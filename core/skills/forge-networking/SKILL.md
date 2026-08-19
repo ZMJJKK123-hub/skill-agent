@@ -92,3 +92,11 @@ public static void handle(MyPacket pkt, net.minecraftforge.event.network.CustomP
     // client-side: use DistExecutor or check ctx.getSender() == null
 }
 ```
+**Important:** in this build `PROTOCOL_VERSION` is an `int`, and `Channel.VersionTest.exact(int)` takes an int:
+
+```java
+private static final int PROTOCOL_VERSION = 1;
+...
+.networkProtocolVersion(PROTOCOL_VERSION)
+.clientAcceptedVersions(Channel.VersionTest.exact(PROTOCOL_VERSION))
+```
