@@ -592,7 +592,7 @@ def agent_loop(messages: list) -> str:
             ):
                 _wrote_file = True
             elif not _wrote_file and tc.function.name in (
-                "read_file", "bash", "grep", "glob", "load_skill",
+                "read_file", "bash", "grep", "glob",
                 "web_search", "web_fetch",
             ):
                 _pre_write_reads += 1
@@ -686,10 +686,10 @@ def agent_loop(messages: list) -> str:
             messages.append({
                 "role": "user",
                 "content": (
-                    "<write-first-stop> 你已反复读取文档/starter 但没有写任何文件。"
-                    "立即停止研究：先用 write_file 写出第一个最小实现文件（哪怕是不完整的骨架），"
-                    "然后直接 build/compile，让编译错误指导下一步。"
-                    "不要继续 read_file/grep/load_skill。</write-first-stop>"
+                    "<write-first-stop> 你已反复阅读 mc_java_sources/starter 但没有写文件。"
+                    "立即停止阅读源码。如果还没加载相关技能，先调用一次 load_skill 加载最相关技能"
+                    "（例如 forge-simple-min-mod）；然后立刻用 write_file 写出第一个最小 Java 文件，"
+                    "再 build/compile 根据报错处理。不要继续 read_file/grep mc_java_sources。</write-first-stop>"
                 ),
             })
             continue

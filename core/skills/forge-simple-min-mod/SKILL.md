@@ -311,14 +311,15 @@ Pair it with a shapeless recipe: `corresponding chestplate + elytra -> flying ch
 
 ## 5. Build/Verification Discipline (important)
 
-- WRITE FIRST: Write code directly before reading docs/skills/sources. After the first version, compile/build it;
-  only on a compile/test error look up the exact failing symbol in mc_java_sources / ERROR_LIST / skills.
+- SKILL FIRST: Load the most relevant skill first via load_skill. Then write code/resources directly from the skill.
+  After the first version, compile/build it; only on a compile/test error look up the exact failing symbol in
+  ERROR_LIST / search_api / skills.
 - ON ERROR: On the first compile error, grep `docs/agent/ERROR_LIST.md` for the failing symbol FIRST; if found,
   apply the known fix directly. Only if not found, use `search_api` with the exact symbol (default searches
   mc_java_sources and returns 10 short lines). Never read whole source files to 'learn' APIs.
 - STARTER TEMPLATES: `starter/` in the workspace contains optional copy-paste templates (e.g. block). Copy/rename
   what you need; delete starters you do NOT use — they are optional and safe to remove.
-- SEARCH FREELY: you may grep/read mc_java_sources anytime, no limit. Write code as soon as you have enough.
+- SOURCE BACKUP ONLY: do NOT read/grep mc_java_sources before writing. Use search_api only after a compile/test error.
 - Textures: placeholders are fine (simple solid-color PNG or copy vanilla textures); do NOT spend time designing pixel art.
 - pack.mcmeta: keep the template's `min_format`/`max_format` form; do not replace with only `supported_formats`, otherwise the mod resource pack metadata is rejected with a WARN/ERROR.
 - After writing code: immediately `validate_resources` -> `run_mod_test_cycle`; do NOT keep researching sources.

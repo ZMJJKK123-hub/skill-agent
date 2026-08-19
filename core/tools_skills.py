@@ -228,10 +228,10 @@ CATALOG_MARKER = "<available-skills>"
 
 # 目录消息中的路由指引（与旧 system prompt skill:catalog section 文案一致）
 CATALOG_ROUTING = (
-    "Skills are OPTIONAL reference material. Write code directly first; use load_skill only if you need "
-    "a specific API/pattern, or when a compile/test error tells you a skill would help. "
-    "There is NO mandatory load_skill step before writing MOD code.\n"
-    "本目录仅含技能摘要（name + 首行描述），不可凭记忆执行技能内容；需要时再加载对应技能全文。"
+    "For Minecraft MOD development, load the most relevant skill FIRST with load_skill before writing any "
+    "Java/resource file (e.g. forge-simple-min-mod). Skills are the PRIMARY reference. Do NOT read "
+    "mc_java_sources or starter/docs before writing; source is backup only after a compile/test error.\n"
+    "本目录仅含技能摘要（name + 首行描述），须先加载对应技能全文再写 MOD 代码。"
 )
 
 

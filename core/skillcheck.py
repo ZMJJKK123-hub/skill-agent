@@ -79,8 +79,8 @@ def move_skills_to_end(messages: list) -> None:
             "role": "user",
             "content": (
                 f"<active-skills>\n{active}\n</active-skills>\n"
-                "以上为当前已加载的技能全文（最新参考）。技能是可选参考：写代码可用也可不用；"
-                "编译/测试报错需要查 API 时可再从技能或 mc_java_sources 查。"
+                "以上为当前已加载的技能全文（主要参考）。写 MOD 代码前应先加载并依据技能；"
+                "编译/测试报错需要查 API 时再从 ERROR_LIST / search_api / 技能查，mc_java_sources 仅作后备。"
             ),
         }
     )
