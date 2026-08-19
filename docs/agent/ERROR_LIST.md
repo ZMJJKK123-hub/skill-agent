@@ -367,3 +367,10 @@
 - **Do not use Linux `head` in bash on Windows**
   - Symptom: `'head' is not recognized as an internal or external command`
   - Fix: use Windows syntax: `type file`, `powershell Get-Content file -TotalCount N`, or the `read_file` tool with `limit`.
+## 2026-08-20 Forge client overlay classes missing from compile classpath
+
+- **`net.minecraftforge.client.*` overlay/GUI classes missing while vanilla client classes exist**
+  - Symptom: `RegisterGuiOverlaysEvent`, `ForgeGui`, `IGuiOverlay` cannot be resolved, even though they exist in `mc_java_sources`
+  - Root cause in this environment: the local recompiled Forge jar appears to be server-side / lacks pure-client Forge classes; vanilla `net.minecraft.client.*` classes are still available
+  - Workaround for HUD: do not depend on Forge overlay APIs. Implement the HUD by subclassing vanilla `net.minecraft.client.gui.Gui` (or injecting into `Minecraft.gui` via reflection) and override the render method; keep the class in `src/main` only if it compiles against vanilla client classes.
+  - GameTest runs server-side; a client HUD class only needs to compile, not run, in the test loop.
