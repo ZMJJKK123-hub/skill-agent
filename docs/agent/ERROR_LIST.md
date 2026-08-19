@@ -358,3 +358,12 @@
   - Symptom: `MinecraftForge.EVENT_BUS` / `@SubscribeEvent` / `@Mod.EventBusSubscriber` APIs missing or unclear
   - Root cause: this Forge build exposes each event as a class with a static `EventBus<T> BUS = EventBus.create(T.class)` (cancellable events use `CancellableEventBus`)
   - Fix: subscribe with `SomeEvent.BUS.addListener(handler)`; for nested events use the nested class's `BUS` (e.g. `TickEvent.ServerTickEvent.Pre.BUS`)
+## 2026-08-20 EventBus source location and Windows pitfall
+
+- **EventBus API classes are NOT in mc_java_sources**
+  - Symptom: `net.minecraftforge.eventbus.api.*` classes not found when searching `mc_java_sources`
+  - Fix: the Forge eventbus is a separate dependency; find its sources jar under `~/.gradle/caches/modules-2/files-2.1/net.minecraftforge/eventbus/*/...-sources.jar`, or use `javap` on the binary jar, then inspect `EventBus` / `CancellableEventBus` / event characteristic interfaces.
+
+- **Do not use Linux `head` in bash on Windows**
+  - Symptom: `'head' is not recognized as an internal or external command`
+  - Fix: use Windows syntax: `type file`, `powershell Get-Content file -TotalCount N`, or the `read_file` tool with `limit`.
