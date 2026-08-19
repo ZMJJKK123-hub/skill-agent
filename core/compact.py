@@ -144,23 +144,11 @@ def _find_tool_name(messages: list, tool_call_id: str) -> str:
 
 
 def micro_compact(messages: list, keep_recent: int = 3) -> None:
-    """保留最近 keep_recent 轮完整内容，更早的 tool_result 替换为占位符。"""
-    assistant_indices = [
-        i for i, m in enumerate(messages) if m.get("role") == "assistant"
-    ]
-    if len(assistant_indices) <= keep_recent:
-        return
-    cutoff_index = assistant_indices[-keep_recent]
-    for i, msg in enumerate(messages):
-        if i >= cutoff_index:
-            break
-        if msg.get("role") != "tool":
-            continue
-        content = msg.get("content", "")
-        if not isinstance(content, str):
-            continue
-        tool_name = _find_tool_name(messages, msg.get("tool_call_id", ""))
-        msg["content"] = f"[Previous: used {tool_name}]"
+    """Disabled: the old aggressive per-round tool-result pruner hid build/error logs
+    (replaced them with '[Previous: used X]'), which prevented the agent from reading
+    error logs. DSH-style compaction does NOT prune every old tool result;
+    it only triggers on token pressure and preserves the recent tail intact."""
+    return
 
 
 # ── Layer 2/3: 结构化摘要压缩 ─────────────────────────────
