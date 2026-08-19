@@ -463,9 +463,13 @@ def main() -> int:
         except Exception as e:
             print(f"[run_task] 加载对话历史失败（继续，仅当前 prompt）: {e}", flush=True)
             messages = []
-        # 把当前 prompt 作为本轮 user 消息（历史已在步骤 2.5 提前写入，
-        # 这里只组装进模型上下文，不重复 append）
-        messages.append({"role": "user", "content": task_prompt})
+        # 把当前 prompt 作为本轮 user 消息（历史已在步骤 2.5 提前写入）。
+        # 修复：如果历史最后一条已经是这条 prompt，就不再重复追加，
+        # 否则会出现 `hi` + `hi` 两条完全相同的 user 消息。
+        if messages and messages[-1].get("role") == "user" and messages[-1].get("content") == task_prompt:
+            print("[run_task] 历史已包含当前 prompt，跳过重复追加", flush=True)
+        else:
+            messages.append({"role": "user", "content": task_prompt})
 
     # 5. 跑完整 agent 循环（首轮）
     _run_one_round(messages, session_dir, session_root_path, mode)
