@@ -201,6 +201,42 @@ def _drain_interjections(messages: list) -> None:
         logger.warning(f"排队消息注入失败: {e}")
 
 
+def _dump_round_messages(round_idx: int, messages: list, tool_counts: dict) -> None:
+    """每轮调试快照：打印消息概览 + 工具统计，并落盘完整 JSONL。
+
+    用途：
+    - 观察消息是否被压缩/丢信息
+    - 观察工具调用是否合理
+    """
+    try:
+        from .compact import estimate_tokens as _est
+        tokens = _est(messages)
+        counts = ", ".join(f"{k}:{v}" for k, v in sorted(tool_counts.items()))
+        print(f"\n[round] #{round_idx} messages={len(messages)} tokens≈{tokens} tools=[{counts}]", flush=True)
+        for i, m in enumerate(messages):
+            role = m.get("role", "?")
+            content = m.get("content", "")
+            if isinstance(content, list):
+                content = json.dumps(content, ensure_ascii=False)
+            content = str(content)
+            preview = content[:180].replace("\n", "\\n")
+            tool_calls = m.get("tool_calls")
+            tc_note = f" tool_calls={len(tool_calls)}" if tool_calls else ""
+            print(f"  [{i}] {role}{tc_note} len={len(content)} | {preview}", flush=True)
+        # 完整快照（限制单条内容长度，避免文件爆炸；完整内容仍可从 run.log 工具结果看）
+        snap_dir = os.path.join(".chat", "debug")
+        os.makedirs(snap_dir, exist_ok=True)
+        snap_path = os.path.join(snap_dir, "round_messages.jsonl")
+        with open(snap_path, "a", encoding="utf-8") as f:
+            record = {"round": round_idx, "tokens": tokens, "tool_counts": tool_counts,
+                      "messages": [{ "role": m.get("role"), "content": str(m.get("content", ""))[:5000],
+                                     "tool_call_ids": [tc.get("id") for tc in (m.get("tool_calls") or [])] }
+                                   for m in messages]}
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except Exception as e:
+        logger.warning(f"round dump failed: {e}")
+
+
 def agent_loop(messages: list) -> str:
     rounds_since_todo = 0
     # ── 第 13 课：代码强制派发监管 Agent（不依赖主 agent 主动调 task）──
@@ -221,7 +257,11 @@ def agent_loop(messages: list) -> str:
     _pre_write_warned = False
     _starter_auto_written = False
     _force_final_msg = None
+    _round_idx = 0
+    _round_tool_counts = {}
     while True:
+        _round_idx += 1
+        _round_tool_counts = {}
         # ── Layer 0s: 排空监管信箱（第 13 课）──
         # 后台监管线程发现异常会写信箱；这里读后即删，按严重度
         # 以 <supervisor-advice>（温和）或 <supervisor-alert>（警告）注入。
@@ -325,6 +365,9 @@ def agent_loop(messages: list) -> str:
         # ── Layer 2.5: pre-step hooks（移植 dsh agent/pre-step waterfall）──
         # 目前默认钩子注入 <runtime-context> 快照；未来插件可再注册。
         run_pre_step_hooks(messages)
+
+        # 每轮调试快照：输出消息概览/工具统计，并落盘 .chat/debug/round_messages.jsonl
+        _dump_round_messages(_round_idx, messages, _round_tool_counts)
 
         # 发给模型
         move_skills_to_end(messages)
@@ -541,6 +584,7 @@ def agent_loop(messages: list) -> str:
         compact_pending = False
         concluded_output = None
         for tc in message.tool_calls:
+            _round_tool_counts[tc.function.name] = _round_tool_counts.get(tc.function.name, 0) + 1
             # 写前研究预算：没写任何 Java 源码前，禁止无休止读文档
             if tc.function.name in ("write_file", "edit_file") and (
                 "src/main/java" in (tc.function.arguments or "")
