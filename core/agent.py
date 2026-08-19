@@ -420,6 +420,7 @@ def agent_loop(messages: list) -> str:
 
         # Turn/step 状态机：每个模型请求是一个 step
         _step_machine.start_step()
+        _save_session_log(_session_log)
 
         # 每轮调试快照：输出消息概览/工具统计，并落盘 .chat/debug/round_messages.jsonl
         _dump_round_messages(_round_idx, messages, _round_tool_counts)

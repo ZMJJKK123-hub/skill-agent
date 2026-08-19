@@ -133,16 +133,6 @@ def select_cutoff(messages: list) -> int:
 
 
 # ── Layer 1: micro_compact（模型无关裁剪，对应 tool-result-pruner）──
-def _find_tool_name(messages: list, tool_call_id: str) -> str:
-    for msg in messages:
-        if msg.get("role") != "assistant":
-            continue
-        for tc in msg.get("tool_calls", []) or []:
-            if tc.get("id") == tool_call_id:
-                return tc.get("function", {}).get("name", "unknown")
-    return "unknown"
-
-
 def micro_compact(messages: list, keep_recent: int = 3) -> None:
     """Disabled: the old aggressive per-round tool-result pruner hid build/error logs
     (replaced them with '[Previous: used X]'), which prevented the agent from reading
