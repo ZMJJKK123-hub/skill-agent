@@ -44,3 +44,32 @@ Listening to a parent event class receives all subclasses (e.g. all `PlayerEvent
 ## Mod event bus
 
 Used for lifecycle events implementing `IModBusEvent`. Lifecycle events run in parallel — defer cross-mod work to `#enqueueWork` or use `InterModComms`. Common lifecycle events: `FMLCommonSetupEvent`, `FMLClientSetupEvent`/`FMLDedicatedServerSetupEvent`, `InterModEnqueueEvent`, `InterModProcessEvent`. Non-parallel mod-bus events: `RegisterColorHandlersEvent`, `ModelEvent$BakingCompleted`, `TextureStitchEvent`, `RegisterEvent`. Rule of thumb: mod-bus events handle mod initialization.
+
+## 1.21.11+ current event bus (verified from mc_java_sources)
+
+In this Forge build, events are **typed record events with a static `BUS` field** instead of the old global `MinecraftForge.EVENT_BUS` + `@SubscribeEvent` pattern.
+
+Each event class exposes:
+
+```java
+public static final EventBus<MyEvent> BUS = EventBus.create(MyEvent.class);
+// cancellable events:
+public static final CancellableEventBus<MyEvent> BUS = CancellableEventBus.create(MyEvent.class);
+```
+
+Subscribe directly:
+
+```java
+MyEvent.BUS.addListener((MyEvent event) -> {
+    // handle
+});
+```
+
+Common examples:
+- `TickEvent.ServerTickEvent` / nested `Pre`/`Post` use `TickEvent.ServerTickEvent.BUS` or nested `TickEvent.ServerTickEvent.Pre.BUS`.
+- `ServerTickEvent.Pre.BUS.addListener(...)`
+- `RegisterCommandsEvent.BUS.addListener(...)`
+- `LivingDeathEvent.BUS.addListener(...)` (cancellable via `CancellableEventBus`)
+- `BuildCreativeModeTabContentsEvent.BUS.addListener(...)`
+
+Prefer reading the exact event class first; the bus field name and type are always visible in `mc_java_sources`.
