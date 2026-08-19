@@ -82,3 +82,13 @@ Send with:
 CHANNEL.send(msg, PacketDistributor.PLAYER.with(player)); // server -> one client
 CHANNEL.send(msg, PacketDistributor.SERVER.noArg());      // client -> server
 ```
+### Handler signature
+
+Packet handlers in 1.21.11 receive the packet and a `CustomPayloadEvent.Context`:
+
+```java
+public static void handle(MyPacket pkt, net.minecraftforge.event.network.CustomPayloadEvent.Context ctx) {
+    // ctx.getSender() -> ServerPlayer (SERVERBOUND), or null on client
+    // client-side: use DistExecutor or check ctx.getSender() == null
+}
+```
