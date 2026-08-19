@@ -67,6 +67,17 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from core.agent import agent_loop
 
+# 挂载原有 server_app 网页服务：这样同一个端口既能服务清小搭，也能访问原网站。
+# server_app 内部使用 `import auth_store` 这种同目录绝对导入，因此把 server_app 目录也加入 sys.path。
+sys.path.insert(0, str(PROJECT_ROOT / "server_app"))
+try:
+    from server_app.server import app as web_app
+    WEB_APP_AVAILABLE = True
+except Exception as _web_err:
+    print(f"[warn] server_app web app import failed: {_web_err}", flush=True)
+    web_app = None
+    WEB_APP_AVAILABLE = False
+
 # ---------------------------------------------------------------------------
 # FastAPI 实例
 # ---------------------------------------------------------------------------
@@ -385,14 +396,21 @@ def _stream_agent(messages: list, session_id: str):
 
 
 # ---------------------------------------------------------------------------
-# 根路径：方便浏览器直接看到服务说明
+# 健康检查：原网页由挂载的 server_app 负责根路径 /
 # ---------------------------------------------------------------------------
-@app.get("/")
-def root():
+@app.get("/health")
+def health():
     return {
         "service": "Tsinghua Agent Server",
         "status": "running",
         "endpoints": ["/v1/models", "/v1/chat/completions"],
+        "web": "mounted at / from server_app",
         "auth": "Bearer <TSINGHUA_API_KEY>",
-        "note": "这是给清小搭接入的 OpenAI 兼容服务，不是网页前端。",
     }
+
+
+# 把原有网站挂到根路径，保证：
+#   /v1/*             -> 清小搭 OpenAI 兼容接口
+#   / 和 /api/*        -> 原有 server_app 网页
+if WEB_APP_AVAILABLE and web_app is not None:
+    app.mount("/", web_app)
