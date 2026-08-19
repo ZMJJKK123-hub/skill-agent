@@ -812,3 +812,7 @@ private void clientSetup(FMLClientSetupEvent event) {
 [component]: ../concepts/internationalization.md#translatablecontents
 [keymapping]: ../misc/keymappings.md#inside-a-gui
 [modbus]: ../concepts/events.md#mod-event-bus
+
+## HUD overlay when Forge client overlay classes are missing
+
+In this local Forge 1.21.11 environment, `net.minecraftforge.client.*` overlay classes may not be on the compile classpath even though they exist in `mc_java_sources`. If `ForgeGui` / `IGuiOverlay` / `RegisterGuiOverlaysEvent` cannot be resolved, implement the HUD with a vanilla `net.minecraft.client.gui.Gui` subclass and inject it into `Minecraft.gui` via reflection. The class only needs to compile for GameTest (server-side), so avoid depending on Forge client-only APIs.
