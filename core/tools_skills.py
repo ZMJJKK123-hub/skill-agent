@@ -228,21 +228,10 @@ CATALOG_MARKER = "<available-skills>"
 
 # 目录消息中的路由指引（与旧 system prompt skill:catalog section 文案一致）
 CATALOG_ROUTING = (
-    "When a task involves a specific domain (testing, git, security, etc.), "
-    "use the load_skill tool to load the relevant guidelines before proceeding.\n"
-    "MANDATORY for Minecraft MOD development: This session ALWAYS generates Minecraft "
-    "MODs. Before writing ANY code or JSON resources, you MUST call load_skill to "
-    "load the relevant Forge guideline skill. Examples:\n"
-    "- Registering items/blocks/entities -> load forge-concept-registries, forge-blocks, forge-items\n"
-    "- Writing model/blockstate/loot/recipe/tag JSON -> load forge-resources-client, forge-resources-server\n"
-    "- Networking/packets -> load forge-networking\n"
-    "- Data storage/capabilities -> load forge-datastorage-capabilities, forge-datastorage-codecs\n"
-    "- Block entities / renderers -> load forge-blockentities\n"
-    "- Sound/particles -> load forge-gameeffects-sounds, forge-gameeffects-particles\n"
-    "- GUI/menus -> load forge-gui\n"
-    "- General lifecycle/events/sides -> load forge-concept-lifecycle, forge-concept-events, forge-concept-sides\n"
-    "Load the skill FIRST, then follow its rules exactly. Do NOT skip this step.\n"
-    "本目录仅含技能摘要（name + 首行描述），加载前不得推断或凭记忆执行技能内容。"
+    "Skills are OPTIONAL reference material. Write code directly first; use load_skill only if you need "
+    "a specific API/pattern, or when a compile/test error tells you a skill would help. "
+    "There is NO mandatory load_skill step before writing MOD code.\n"
+    "本目录仅含技能摘要（name + 首行描述），不可凭记忆执行技能内容；需要时再加载对应技能全文。"
 )
 
 
