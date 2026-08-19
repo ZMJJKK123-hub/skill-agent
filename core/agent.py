@@ -792,6 +792,7 @@ def agent_loop(messages: list) -> str:
                 f"[CONCLUDED] A tool has completed the relevant work and ended this turn.\n"
                 f"Final tool output:\n{concluded_output}"
             )
+            _step_machine.conclude_turn()
             logger.warning(_force_final_msg)
             continue
 
