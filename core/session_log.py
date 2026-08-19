@@ -156,6 +156,24 @@ class SessionLog:
             ))
         return log
 
+    @classmethod
+    def from_messages(cls, messages: list[dict[str, Any]]) -> "SessionLog":
+        """Build a SessionLog from an existing OpenAI-format messages list."""
+        log = cls()
+        for m in messages:
+            role = m.get("role")
+            if role == "user":
+                log.add_user(str(m.get("content", "")), source="messages")
+            elif role == "assistant":
+                log.add_assistant(
+                    content=m.get("content"),
+                    tool_calls=m.get("tool_calls"),
+                    reasoning=m.get("reasoning_content"),
+                )
+            elif role == "tool":
+                log.add_tool_result(str(m.get("tool_call_id", "")), str(m.get("content", "")))
+        return log
+
     def __repr__(self) -> str:
         return f"<SessionLog events={len(self.events)} seq={self._seq}>"
 
