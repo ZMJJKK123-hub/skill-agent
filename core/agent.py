@@ -9,7 +9,7 @@ from .tools import (
     tool_registry,
 )
 from .protocol import inject_pending_requests
-from .agent_hooks import run_post_step_hooks, run_pre_step_hooks
+from .agent_hooks import run_post_step_hooks, run_pre_step_hooks, run_request_error_hooks
 from .subagent import run_subagent_async
 from .compact import (
     micro_compact,
@@ -440,6 +440,9 @@ def agent_loop(messages: list) -> str:
                 stream=True,
             )
         except Exception as _le:
+            _extra = run_request_error_hooks(_le, messages)
+            for _e in _extra:
+                messages.append({"role": "user", "content": str(_e)})
             if _is_context_overflow(_le):
                 logger.warning(f"上下文超限，自动压缩后重试: {_le}")
                 messages = auto_compact(messages)
@@ -476,6 +479,9 @@ def agent_loop(messages: list) -> str:
                         if tc.function and tc.function.arguments:
                             entry["args"] += tc.function.arguments
         except Exception as _le2:
+            _extra2 = run_request_error_hooks(_le2, messages)
+            for _e2 in _extra2:
+                messages.append({"role": "user", "content": str(_e2)})
             if _is_context_overflow(_le2):
                 logger.warning(f"流式上下文超限，自动压缩后重试: {_le2}")
                 messages = auto_compact(messages)

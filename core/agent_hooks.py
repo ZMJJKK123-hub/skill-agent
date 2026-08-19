@@ -8,6 +8,7 @@ from .tools_tasks import task_manager, todo_manager
 
 PRE_STEP_HOOKS = []
 POST_STEP_HOOKS = []
+REQUEST_ERROR_HOOKS = []
 
 
 def register_pre_step_hook(fn):
@@ -19,6 +20,12 @@ def register_pre_step_hook(fn):
 def register_post_step_hook(fn):
     """Register a hook fn(messages, tool_counts) -> None, run after a step/tool round."""
     POST_STEP_HOOKS.append(fn)
+    return fn
+
+
+def register_request_error_hook(fn):
+    """Register a hook fn(exc, messages) -> list[str] | None (extra user messages to inject)."""
+    REQUEST_ERROR_HOOKS.append(fn)
     return fn
 
 
@@ -38,6 +45,19 @@ def run_post_step_hooks(messages, tool_counts):
             fn(messages, tool_counts)
         except Exception:
             continue
+
+
+def run_request_error_hooks(exc, messages):
+    """Run all registered request-error hooks; collect extra user messages to inject."""
+    extra = []
+    for fn in REQUEST_ERROR_HOOKS:
+        try:
+            out = fn(exc, messages)
+            if out:
+                extra.extend(out)
+        except Exception:
+            continue
+    return extra
 
 
 def _replace_runtime_slot(messages, tag_prefix, content):
