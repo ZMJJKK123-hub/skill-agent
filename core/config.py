@@ -51,7 +51,7 @@ Windows/shell essentials (full details in docs/agent/TOOL_GUIDE.md):
 WORKFLOW (default MOD): Load the most relevant skill FIRST (one load_skill call). Then write code/resources directly from the skill. Do NOT read mc_java_sources, starter/, or arbitrary docs before writing. After writing the first version, compile/build it; only on a compile/test error, look up the exact failing symbol in ERROR_LIST / search_api / skills and fix one place.
 ON ERROR: On the FIRST compile error, immediately `grep docs/agent/ERROR_LIST.md` for the failing symbol; if a known fix exists, apply it directly. Only if not found, use `search_api` with the exact symbol (default searches mc_java_sources, returns 10 short lines). Never read whole source files to 'learn' APIs.
 FORGE 1.21.11 MOD CONSTRUCTOR FACT: Always use `ITEMS.register(FMLJavaModLoadingContext.get().getModBusGroup());` in the @Mod constructor. Do NOT write `IEventBus`, `getModEventBus()`, or `modEventBus.addListener(...)` — those old APIs are gone in this version.
-STARTER TEMPLATES: workspace contains `starter/` with optional copy-paste templates (e.g. `starter/block/`, `starter/item/`, `starter/tools/`). Copy/rename what you need; delete starters you do NOT use — they are optional and safe to remove.
+STARTER TEMPLATES: workspace contains `starter/` with optional copy-paste templates (e.g. `starter/block/`, `starter/item/`, `starter/tools/`, `starter/swapgame/`). Copy/rename what you need; delete starters you do NOT use — they are optional and safe to remove.
 
 Before starting any task: `load_skill` the most relevant skill first; docs/agent/TOOL_GUIDE.md and ERROR_LIST.md are reference-only after errors. mc_java_sources is backup only. 
 """

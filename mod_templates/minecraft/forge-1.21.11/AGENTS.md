@@ -19,6 +19,7 @@ This file is copied into every session workspace. The agent should read it once 
 ## Common pitfalls
 - For a tool set, copy `starter/tools/CopperToolsMod.java` into `src/main/java` and rename — do not write tool registration from scratch.
 - For a simple item, copy `starter/item/RubyMod.java` into `src/main/java` and rename — do not write item registration from scratch.
+- For the SwapGame minigame, copy `starter/swapgame/SwapGameMod.java` into `src/main/java` first, then expand.
 - 1.21.11 has no `SwordItem`/`ArmorItem`; use `Item.Properties` methods.
 - `ResourceLocation` is `Identifier`; `Registries` is `net.minecraft.core.registries.Registries`.
 - Mod constructor uses `FMLJavaModLoadingContext.get().getModBusGroup()`.
