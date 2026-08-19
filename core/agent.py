@@ -99,20 +99,39 @@ def _auto_write_starter(messages: list) -> bool:
                 break
         if not modid:
             return False
-        # 2) find starter java containing this modid
+        # 2) score starter java files by task keywords + modid match
         candidates = _glob.glob(os.path.join(os.getcwd(), "starter", "**", "*.java"), recursive=True)
+        task_text = "\n".join(
+            str(m.get("content", "")) for m in messages
+            if isinstance(m.get("content"), str)
+        ).lower()
+        block_kw = ("block", "方块")
+        item_kw = ("item", "food", "apple", "ingot", "gem", "物品", "食物")
+        tool_kw = ("tool", "sword", "pickaxe", "axe", "工具", "剑", "镐")
         target_src = None
+        best_score = -1
         for path in candidates:
             try:
-                text = open(path, "r", encoding="utf-8").read()
+                content = open(path, "r", encoding="utf-8").read()
             except OSError:
                 continue
-            if modid in text.lower():
+            low_path = path.lower().replace("\\", "/")
+            score = 0
+            if modid in content.lower():
+                score += 1
+            if any(k in task_text for k in block_kw) and "/block/" in low_path:
+                score += 6
+            if any(k in task_text for k in tool_kw) and ("/tools/" in low_path or "tool" in low_path):
+                score += 7
+            if any(k in task_text for k in item_kw) and ("/item/" in low_path or "rubymod" in low_path):
+                score += 5
+            if score > best_score:
+                best_score = score
                 target_src = path
-                break
+                best_content = content
         if not target_src:
             return False
-        text = open(target_src, "r", encoding="utf-8").read()
+        text = best_content
         # 3) derive package path
         pm = _re.search(r"package\s+([\w\.]+)\s*;", text)
         if not pm:

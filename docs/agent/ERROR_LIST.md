@@ -326,3 +326,15 @@
 ## 2026-08-19 Auto-recorded from runtime
 
 - **Auto-recorded:** - **资源（1.21.11）**：每个物品/方块物品需要 `assets/<modid>/items/<name>.json`；模型/贴图引用是命名空间形式**不带**.json/.png；配方用字符串 ingredient + result {id,count}；lang 键 `item.<modid>.<name>` / `block.<modid>.<name>` 必须**同时有 en_us 和 zh_cn**；pack.mcm
+
+
+## 2026-08-20 Iteration from Explosive Apple test
+
+- **Custom food item (1.21.11)**
+  - Symptom: agent guessed old FoodProperties accessors / could not find `getFoodProperties`
+  - Root cause: 1.21.11 uses `Item.Properties().food(FoodProperties)` + `DataComponents.FOOD`; old item food API changed
+  - Fix: register with `new Item.Properties().setId(...).food(new FoodProperties.Builder().alwaysEdible().nutrition(4).saturationModifier(2.4F).build())`; in GameTest check `DataComponents.FOOD` and `food.nutrition()`
+
+- **`level.explode` in 1.21.11**
+  - Symptom: `isClientSide` private and old explode overload not found
+  - Fix: use `level.isClientSide()`; explosion call `level.explode(entity, x, y, z, radius, Level.ExplosionInteraction.BLOCK)`
