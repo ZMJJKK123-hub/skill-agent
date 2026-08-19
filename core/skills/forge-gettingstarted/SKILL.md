@@ -290,7 +290,7 @@ public class Example {
 
   public Example(FMLJavaModLoadingContext context) {
     // Initialize logic here
-    var modBus = context.getModEventBus();
+    var modBus = context.getModBusGroup(); // 1.21.11: use getModBusGroup()
 
     // ...
   }
