@@ -396,6 +396,10 @@ def agent_loop(messages: list) -> str:
                     id=d["id"], type="function",
                     function=_NS(name=d["name"], arguments=d["args"]),
                 ))
+        # 防 400：OpenAI 不允许 assistant 同时没有 content 和 tool_calls
+        if content is None and not tool_calls:
+            logger.warning("模型返回空内容且无工具调用，补占位内容后继续")
+            content = "No additional output. Continuing the task based on the available context."
         message = _NS(
             content=content,
             reasoning_content=reasoning,
