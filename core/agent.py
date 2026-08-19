@@ -299,6 +299,18 @@ def agent_loop(messages: list) -> str:
     _round_idx = 0
     _round_tool_counts = {}
     _session_log = SessionLog()
+    # 恢复：如果调用方没给初始消息，但存在事件日志，则从事件源重建历史（DSH replay）
+    if not messages:
+        try:
+            _event_path = os.path.join(".chat", "session_events.jsonl")
+            if os.path.exists(_event_path):
+                with open(_event_path, "r", encoding="utf-8") as f:
+                    _session_log = SessionLog.from_jsonl(f.read())
+                messages = _session_log.derive_messages()
+                _synced_count = 0
+                logger.info(f"从 SessionLog 恢复 {len(messages)} 条消息")
+        except Exception as _re:
+            logger.warning(f"SessionLog 恢复失败: {_re}")
     _step_machine = TurnStepMachine(_session_log)
     _synced_count = 0
     _step_machine.start_turn()
