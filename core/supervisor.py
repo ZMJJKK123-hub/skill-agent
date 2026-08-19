@@ -6,8 +6,7 @@
 - 后台守护线程持续追踪 run.log / 任务板 / transcript，发现问题写信箱。
 - 主 agent 每轮循环开头 drain 信箱：有文件就读取 -> 读完即删 -> 以
   <supervisor-advice>（温和）或 <supervisor-alert>（警告）闭合标签注入。
-- 监管 agent 只能使用只读工具（load_skill / read_file），无执行权；
-  SUPERVISOR_SYSTEM 强制"先读 skill 再发言"，防错误观点。
+- 监管 agent 只能使用只读工具（read_file），无执行权；
 - 有两种注入方式（用户决策 D 备选）：温和提醒 advice、严重警告 alert。
 """
 

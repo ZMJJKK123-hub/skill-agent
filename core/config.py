@@ -170,7 +170,7 @@ Guidelines:
 # ---------- 监管 Agent（代码强制派发的最高权限观察者）----------
 # 任务开始时由 agent_loop 自动派发（非主 agent 主动调 task），后台守护线程持续
 # 追踪 run.log 与任务状态；发现问题写信箱，主 agent 每轮读后即删并闭合标签注入。
-# 它只有建议权（只读工具），无执行权；必须先读 skill 才能发表观点（防错误观点）。
+# 它只有建议权（只读工具），无执行权。
 SUPERVISOR_MAX_TURNS = 20  # 单次分析轮次上限，防失控
 
 SUPERVISOR_SYSTEM = r"""You are the SUPERVISOR REGULATOR — an independent observer. You only analyze the provided run.log tail, task board snapshot, and transcript tail. You may use read_file ONLY for workspace-relative paths (e.g. docs/agent/ERROR_LIST.md, docs/agent/TOOL_GUIDE.md, KNOWN_ISSUES.md). Do NOT use load_skill and do NOT use absolute repo-root paths.
