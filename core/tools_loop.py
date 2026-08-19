@@ -31,7 +31,7 @@ def parse_build_output(log_path=None, raw_text=None, base=None):
     errors = []
     failed_tasks = []
     for line in lines:
-        if re.search(r"(?i)\berror:\s*[^\n]+", line) or re.search(r"\.java:\d+:\s*error", line):
+        if re.search(r"(?i)\berror:\s*[^\n]+", line) or re.search(r"\.java:\d+:\s*error", line) or "错误:" in line or "找不到符号" in line or "无法解析" in line or "does not exist" in line or "cannot find symbol" in line:
             errors.append(line.strip())
         elif re.search(r">\s*Task\s+:.*\bFAILED\b", line):
             failed_tasks.append(line.strip())
