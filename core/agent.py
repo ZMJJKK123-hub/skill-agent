@@ -560,6 +560,7 @@ def agent_loop(messages: list) -> str:
 
         # 退出条件：模型不再调工具
         if choice.finish_reason != "tool_calls":
+            _step_machine.end_step(reason="completed")
             # ── 队友检测：有队友还在 working 就不退出 ──
             working_teammates = [
                 name for name, cfg in teammate_manager.team.items()
@@ -740,6 +741,7 @@ def agent_loop(messages: list) -> str:
 
         # post-step hooks（DSH agent/turn-stopping 扩展点）
         run_post_step_hooks(messages, _round_tool_counts)
+        _step_machine.end_step(reason="completed")
 
         # 完成信号：dist 目录出现 jar（MOD 产物）即视为可收尾，避免通过后继续绕圈
         try:
