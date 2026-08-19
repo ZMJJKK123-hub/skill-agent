@@ -42,3 +42,7 @@ server_app/web/assets
 # ---- React 重构前遗留产物 ----
 server_app/web/css/
 server_app/web/js/
+
+# ---- 清小搭接入服务运行时 ----
+tsinghua agent server/.runtime/
+smoke_test_tools.log

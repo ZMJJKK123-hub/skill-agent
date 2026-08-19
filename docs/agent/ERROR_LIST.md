@@ -322,3 +322,7 @@
 ## 2026-08-19 Auto-recorded from runtime
 
 - **Auto-recorded:** `import net.minecraft.core.Registries` cannot resolve symbol in 1.21.11 | `Registries` class moved to package `net.minecraft.core.registries` | import `net.minecraft.core.registries.Registries` instead for `Registries.ITEM` registry-key lookups
+
+## 2026-08-19 Auto-recorded from runtime
+
+- **Auto-recorded:** - **资源（1.21.11）**：每个物品/方块物品需要 `assets/<modid>/items/<name>.json`；模型/贴图引用是命名空间形式**不带**.json/.png；配方用字符串 ingredient + result {id,count}；lang 键 `item.<modid>.<name>` / `block.<modid>.<name>` 必须**同时有 en_us 和 zh_cn**；pack.mcm
