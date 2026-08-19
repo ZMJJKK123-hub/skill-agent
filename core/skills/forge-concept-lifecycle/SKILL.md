@@ -55,3 +55,7 @@ If data generators run, `GatherDataEvent` fires last (synchronously) to register
 Cross-mod messages: `InterModEnqueueEvent` (send via `InterModComms#sendTo` with mod id, key, and a supplier of data) and `InterModProcessEvent` (receive via `InterModComms#getMessages`, optionally filtered by key predicate; returns `IMCMessage`s). Backed by a `ConcurrentMap`, safe during lifecycle events.
 
 Also: `FMLConstructModEvent` (after mod construction, before `RegisterEvent`) and `FMLLoadCompleteEvent` (after InterModComms, when loading completes).
+
+## 1.21.11+ mod lifecycle note
+
+In this Forge build, do NOT use `context.getModEventBus()` or `FMLJavaModLoadingContext.get().getModEventBus()`. Use `FMLJavaModLoadingContext.get().getModBusGroup()` and typed event buses. For lifecycle listeners, read the event class's static `BUS` field or use the typed bus registration shown in the current event API guidance.

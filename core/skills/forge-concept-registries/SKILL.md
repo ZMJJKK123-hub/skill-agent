@@ -64,3 +64,9 @@ Use `RegistryBuilder` via `NewRegistryEvent` or `DeferredRegister`:
 ## Missing entries
 
 `MissingMappingsEvent` (fired on the **Forge** bus) handles removed registry objects: `#getMappings(registryKey, modid)` / `#getAllMappings`. Per `Mapping`, choose: `IGNORE` (abandon), `WARN` (log warning), `FAIL` (block world load), `REMAP` (remap to an existing non-null object). Default action asks the user whether to load the world.
+
+## 1.21.11+ registry note
+
+- `ResourceLocation` is renamed to `Identifier` (`net.minecraft.resources.Identifier`) in 1.21.11.
+- Use `FMLJavaModLoadingContext.get().getModBusGroup()` (not `getModEventBus()`) to register `DeferredRegister`s.
+- Registry lookups use `lookupOrThrow`, not `registryOrThrow`.
