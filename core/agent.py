@@ -561,6 +561,7 @@ def agent_loop(messages: list) -> str:
         # 退出条件：模型不再调工具
         if choice.finish_reason != "tool_calls":
             _step_machine.end_step(reason="completed")
+            run_post_step_hooks(messages, _round_tool_counts)
             # ── 队友检测：有队友还在 working 就不退出 ──
             working_teammates = [
                 name for name, cfg in teammate_manager.team.items()
