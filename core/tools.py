@@ -24,7 +24,7 @@ from .tools_cleanup import cleanup_workspace
 from .tools_crash import analyze_crash, read_crash_report
 from .tools_download import download_file, extract_archive
 from .tools_env import detect_environment
-from .tools_fs import run_edit, run_glob, run_grep, run_read, run_write
+from .tools_fs import run_edit, run_glob, run_grep, run_read, run_search_api, run_write
 from .tools_game import (
     game_input,
     press_key,
@@ -93,6 +93,8 @@ TOOL_HANDLERS = {
     "bash":         lambda **kw: run_bash(kw["command"]),
     "grep":         lambda **kw: run_grep(kw["pattern"], kw.get("path", "."),
                                           kw.get("glob_filter"), kw.get("max_results", 50)),
+    "search_api":   lambda **kw: run_search_api(kw["symbol"], kw.get("path", "mc_java_sources"),
+                                                kw.get("max_results", 10)),
     "glob":         lambda **kw: run_glob(kw["pattern"]),
     "web_search":   lambda **kw: run_web_search(kw["query"], kw.get("max_results", 5)),
     "search_minecraft_docs": lambda **kw: run_search_minecraft_docs(kw["query"], kw.get("max_results", 5)),
@@ -227,6 +229,22 @@ TOOLS = [
                     "max_results": {"type": "integer", "description": "Max matches to return (default 50)"},
                 },
                 "required": ["pattern"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_api",
+            "description": "Focused API dictionary lookup: search MC/Forge source for a symbol and return up to 10 short match lines. USE THIS FIRST on compile errors instead of reading whole files. Do NOT call read_file on large source files to 'learn' APIs.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "symbol": {"type": "string", "description": "Exact class/method/field name or error symbol, e.g. isClientSide or FMLClientSetupEvent.getBus"},
+                    "path": {"type": "string", "description": "Directory to search (default mc_java_sources)"},
+                    "max_results": {"type": "integer", "description": "Max match lines to return (default 10)"},
+                },
+                "required": ["symbol"],
             },
         },
     },
@@ -973,6 +991,7 @@ _TOOL_META: dict = {
     # 只读 + 并行安全（supervisor 与并行调度用）
     "read_file": {"readonly": True, "concurrency_safe": True},
     "grep": {"readonly": True, "concurrency_safe": True},
+    "search_api": {"readonly": True, "concurrency_safe": True},
     "glob": {"readonly": True, "concurrency_safe": True},
     "load_skill": {"readonly": True},
     "web_search": {"readonly": True, "concurrency_safe": True},

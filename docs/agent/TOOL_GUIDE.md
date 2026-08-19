@@ -7,7 +7,7 @@
 ## General Rules
 
 1. Prefer existing tools; use `bash` only when no dedicated tool exists.
-2. Use `read_file` / `write_file` / `edit_file` / `glob` / `grep` for files; never write files via bash redirection.
+2. Use `read_file` / `write_file` / `edit_file` / `glob` / `grep` / `search_api` for files; never write files via bash redirection.
 3. Staged tools: initially only base development tools are unlocked. To build/test/verify in-game, call
    `activate_test_mode` to unlock everything.
 4. On any error or thinking loop, first read `docs/agent/ERROR_LIST.md`; if not solved, resolve and append.
@@ -20,7 +20,7 @@
 
 ### Base development tools (initially unlocked)
 
-Files/code: `read_file` `write_file` `edit_file` `glob` `grep`
+Files/code: `read_file` `write_file` `edit_file` `glob` `grep` `search_api`
 Shell: `bash` `run_in_background`
 Worktrees: `worktree_create` `worktree_list` `worktree_use` `worktree_remove` `worktree_run` `worktree_recover`
 Search: `web_search` `web_fetch` `search_minecraft_docs`

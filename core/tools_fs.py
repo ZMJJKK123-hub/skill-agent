@@ -103,6 +103,21 @@ def run_glob(pattern: str) -> str:
         return f"Error: {e}"
 
 
+def run_search_api(symbol: str, path: str = "mc_java_sources", max_results: int = 10) -> str:
+    """Focused API-lookup helper (mirrors how a human searches a dictionary).
+
+    Searches only the given path (default MC/Forge sources) for the exact symbol,
+    returns at most `max_results` short match lines, and explicitly does NOT read
+    whole files. Use this FIRST on compile errors before read_file.
+    """
+    try:
+        out = run_grep(symbol, path=path, glob_filter="*.java", max_results=max_results)
+        prefix = f"[search_api] Searching '{symbol}' in {path} (max {max_results} lines):\n"
+        return prefix + out
+    except Exception as e:
+        return f"Error: {e}"
+
+
 def run_grep(pattern: str, path: str = ".", glob_filter: str = None,
              max_results: int = 50) -> str:
     """正则搜索文件内容，返回 '相对路径:行号: 行内容'（跳过运行时目录）。"""

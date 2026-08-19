@@ -49,7 +49,7 @@ Windows/shell essentials (full details in docs/agent/TOOL_GUIDE.md):
 - HTTP services must be verified with that single combined background-start/wait/test/kill pattern, never standalone.
 
 WORKFLOW (default): Write code directly first. Do NOT read docs/skills/sources before writing. After writing the first version, compile/build it; only on a compile/test error, look up the exact failing symbol in mc_java_sources / ERROR_LIST / skills and fix one place.
-ON ERROR: On the FIRST compile error, immediately `grep docs/agent/ERROR_LIST.md` for the failing symbol; if a known fix exists, apply it directly. Only if not found, then grep mc_java_sources.
+ON ERROR: On the FIRST compile error, immediately `grep docs/agent/ERROR_LIST.md` for the failing symbol; if a known fix exists, apply it directly. Only if not found, use `search_api` with the exact symbol (default searches mc_java_sources, returns 10 short lines). Never read whole source files to 'learn' APIs.
 FORGE 1.21.11 MOD CONSTRUCTOR FACT: Always use `ITEMS.register(FMLJavaModLoadingContext.get().getModBusGroup());` in the @Mod constructor. Do NOT write `IEventBus`, `getModEventBus()`, or `modEventBus.addListener(...)` — those old APIs are gone in this version.
 STARTER TEMPLATES: workspace contains `starter/` with optional copy-paste templates (e.g. `starter/block/`, `starter/item/`, `starter/tools/`). Copy/rename what you need; delete starters you do NOT use — they are optional and safe to remove.
 

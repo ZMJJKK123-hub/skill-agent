@@ -29,6 +29,7 @@ BASE_TOOL_NAMES = {
     "respond_to_request",
     "run_in_background",
     "search_minecraft_docs",
+    "search_api",
     "send_to_teammate",
     "set_auto_mode",
     "shutdown_teammate",
