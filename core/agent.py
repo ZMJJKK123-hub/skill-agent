@@ -9,7 +9,7 @@ from .tools import (
     tool_registry,
 )
 from .protocol import inject_pending_requests
-from .agent_hooks import run_pre_step_hooks
+from .agent_hooks import run_post_step_hooks, run_pre_step_hooks
 from .subagent import run_subagent_async
 from .compact import (
     micro_compact,
@@ -711,6 +711,9 @@ def agent_loop(messages: list) -> str:
                     "content": output,
                 }
             )
+
+        # post-step hooks（DSH agent/turn-stopping 扩展点）
+        run_post_step_hooks(messages, _round_tool_counts)
 
         # 完成信号：dist 目录出现 jar（MOD 产物）即视为可收尾，避免通过后继续绕圈
         try:
