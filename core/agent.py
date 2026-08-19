@@ -614,29 +614,38 @@ def agent_loop(messages: list) -> str:
             try:
                 from pathlib import Path as _P
                 _base = _P.cwd()
-                # 1) 是否在 src/test/java 创建了 @GameTest 测试类
+                # 1) 只扫描 src/test/java 中的 @GameTest，绝不把 mc_java_sources 里的源码当成测试
+                _test_root = _base / "src" / "test" / "java"
                 _has_test = False
-                for _fp in _base.rglob("*.java"):
-                    try:
-                        if "@GameTest" in _fp.read_text(encoding="utf-8", errors="replace"):
-                            _has_test = True
-                            break
-                    except OSError:
+                if _test_root.exists():
+                    for _fp in _test_root.rglob("*.java"):
+                        try:
+                            if "@GameTest" in _fp.read_text(encoding="utf-8", errors="replace"):
+                                _has_test = True
+                                break
+                        except OSError:
+                            continue
+                # 2) 只有“实际调用过 GameTest/测试循环工具且对应工具结果包含成功标记”才算跑过
+                _gt_tool_names = {"run_test_gametest", "run_game_test_server", "run_mod_test_cycle"}
+                _gt_call_ids = set()
+                for _m in messages:
+                    if _m.get("role") == "assistant":
+                        for _tc in (_m.get("tool_calls") or []):
+                            if _tc.get("function", {}).get("name") in _gt_tool_names:
+                                _gt_call_ids.add(_tc.get("id", ""))
+                _ran_gt = False
+                for _m in messages:
+                    if _m.get("role") != "tool":
                         continue
-                # 2) 是否调用过 run_game_test_server（工具返回以 [gametest] 开头 / 或出现过该 tool_call）
-                _ran_gt = any(
-                    (m.get("role") == "tool" and (
-                        str(m.get("content", "")).lstrip().startswith("[gametest]")
-                        or "All required tests passed" in str(m.get("content", ""))
-                        or "GAME TESTS COMPLETE" in str(m.get("content", ""))
-                    ))
-                    or (m.get("role") == "assistant" and any(
-                        tc.get("function", {}).get("name") in (
-                            "run_test_gametest", "run_game_test_server", "run_mod_test_cycle",
-                        )
-                        for tc in (m.get("tool_calls") or [])))
-                    for m in messages
-                )
+                    if _m.get("tool_call_id") not in _gt_call_ids:
+                        continue
+                    _content = str(_m.get("content", ""))
+                    if (_content.lstrip().startswith("[gametest]")
+                            or "All required tests passed" in _content
+                            or "GAME TESTS COMPLETE" in _content
+                            or "RESULT: PASS" in _content):
+                        _ran_gt = True
+                        break
                 if not (_has_test and _ran_gt):
                     _gametest_ok = False
                     messages.append({"role": "user", "content":
