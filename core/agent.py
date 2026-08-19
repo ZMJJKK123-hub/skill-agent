@@ -45,7 +45,7 @@ LEADER_TOOLS = tool_registry.schemas(exclude={"submit_plan"})
 IS_MOD_MODE = MODE == "mod"
 
 # 防死循环：同一 agent_loop 内允许的最大工具调用轮次（每轮可能含多个 tool_call）
-MAX_TOOL_ROUNDS = 60
+MAX_TOOL_ROUNDS = int(os.environ.get("DSH_MAX_TOOL_ROUNDS", "100"))
 
 # 超大工具结果阈值：超过则落盘 spill 文件，模型只看到前后预览
 MAX_INLINE_TOOL_CHARS = 3000
