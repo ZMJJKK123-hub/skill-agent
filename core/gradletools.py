@@ -56,7 +56,7 @@ def _fail(res, summary, etype=None, emsg=None, loc=""):
 
 def _dev_err(res):
     txt = res.get("raw", "")
-    m = re.search(r"(error:\s*[^\n]+|> Task :[^\n]*(?:FAILED|failed))", txt)
+    m = re.search(r"(error:\s*[^\n]+|错误:\s*[^\n]+|> Task :[^\n]*(?:FAILED|failed))", txt)
     lm = re.search(r"([A-Za-z0-9_/.\\<>]+\.java:\d+)", txt)
     return ("compile_error", m.group(1) if m else "BUILD FAILED", lm.group(1) if lm else "")
 
