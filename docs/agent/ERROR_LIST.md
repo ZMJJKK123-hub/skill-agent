@@ -218,6 +218,22 @@
   - Root cause: pack.mcmeta uses min/max format without `supported_formats`
   - Fix: use `"pack_format": 61` and `"supported_formats": [48, 81]`
 
+- **`pack.mcmeta` WARN/ERROR: missing min_format / max_format**
+  - Symptom: `Couldn't load mod:<modid> pack metadata: Pack declares support for version newer than 64, but is missing mandatory fields min_format and max_format`
+  - Severity: not fatal (game still starts), but the mod's resource-pack metadata is rejected; may cause resource/texture loading issues
+  - Root cause: 1.21.11 Forge mod pack.mcmeta must declare `min_format` and `max_format`
+  - Fix: use the template form:
+    ```json
+    {
+      "pack": {
+        "description": "<modid> resources",
+        "max_format": 94,
+        "min_format": [94, 1]
+      }
+    }
+    ```
+    Do NOT replace it with only `pack_format`/`supported_formats` in a mod jar.
+
 - **Build Guard too strict: agent refuses to update modid namespace in build.gradle**
   - Symptom: agent wants to rename modid but gets stuck because `forge.enabledGameTestNamespaces` still says
     `examplemod`, and it believes modifying build.gradle is forbidden; it loops researching workarounds

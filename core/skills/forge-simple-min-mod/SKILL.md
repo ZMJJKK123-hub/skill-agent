@@ -317,6 +317,7 @@ Pair it with a shapeless recipe: `corresponding chestplate + elytra -> flying ch
   what you need; delete starters you do NOT use — they are optional and safe to remove.
 - SEARCH FREELY: you may grep/read mc_java_sources anytime, no limit. Write code as soon as you have enough.
 - Textures: placeholders are fine (simple solid-color PNG or copy vanilla textures); do NOT spend time designing pixel art.
+- pack.mcmeta: keep the template's `min_format`/`max_format` form; do not replace with only `supported_formats`, otherwise the mod resource pack metadata is rejected with a WARN/ERROR.
 - After writing code: immediately `validate_resources` -> `run_mod_test_cycle`; do NOT keep researching sources.
 - On compile error: read the first `error:`, fix one place with the mapped API, rebuild; do not speculate more than
   2 rounds on the same problem.
