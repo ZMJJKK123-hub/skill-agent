@@ -374,3 +374,10 @@
   - Root cause in this environment: the local recompiled Forge jar appears to be server-side / lacks pure-client Forge classes; vanilla `net.minecraft.client.*` classes are still available
   - Workaround for HUD: do not depend on Forge overlay APIs. Implement the HUD by subclassing vanilla `net.minecraft.client.gui.Gui` (or injecting into `Minecraft.gui` via reflection) and override the render method; keep the class in `src/main` only if it compiles against vanilla client classes.
   - GameTest runs server-side; a client HUD class only needs to compile, not run, in the test loop.
+## 2026-08-20 SwapBattle GameTest passed after client-dist fix
+
+- **Common item class referencing client Screen causes DEDICATED_SERVER class load failure**
+  - Symptom: `Attempted to load class net/minecraft/client/gui/screens/Screen for invalid dist DEDICATED_SERVER` at item registration (`new XxxItem(...)`) even though the client code is inside a `DistExecutor` lambda
+  - Root cause: the common item class's bytecode still directly references client-only classes; Forge's RuntimeDistCleaner rejects it when the class is loaded on a dedicated server
+  - Fix: remove compile-time references to client classes from the common item; e.g. open the client screen via reflection (`Class.forName("...Screen")`, `Minecraft.getInstance()` via reflection) or delegate to a client-only proxy class with `@OnlyIn(Dist.CLIENT)`
+  - Verified: after this fix `runTestGameTestServer` reached `All 1 required tests passed :)` and `BUILD SUCCESSFUL`
