@@ -77,6 +77,58 @@ def _maybe_spill(name: str, output: str) -> str:
         return output
 
 
+def _auto_write_starter(messages: list) -> bool:
+    """If the agent refuses to write, auto-copy a matching starter Java file.
+
+    Scans messages for `modid`/`MODID`, then finds a starter/*.java whose content
+    contains that modid and writes it under src/main/java/<package path>.
+    Returns True if a file was written.
+    """
+    import glob as _glob
+    import re as _re
+    try:
+        # 1) infer modid from user messages
+        modid = None
+        for m in messages:
+            c = m.get("content", "") if isinstance(m.get("content"), str) else ""
+            m2 = _re.search(r"modid[ =:]+([a-zA-Z0-9_\-]+)", c)
+            if m2:
+                modid = m2.group(1).lower()
+                break
+        if not modid:
+            return False
+        # 2) find starter java containing this modid
+        candidates = _glob.glob(os.path.join(os.getcwd(), "starter", "**", "*.java"), recursive=True)
+        target_src = None
+        for path in candidates:
+            try:
+                text = open(path, "r", encoding="utf-8").read()
+            except OSError:
+                continue
+            if modid in text.lower():
+                target_src = path
+                break
+        if not target_src:
+            return False
+        text = open(target_src, "r", encoding="utf-8").read()
+        # 3) derive package path
+        pm = _re.search(r"package\s+([\w\.]+)\s*;", text)
+        if not pm:
+            return False
+        pkg_path = pm.group(1).replace(".", "/")
+        class_name = os.path.basename(target_src)
+        dest = os.path.join(os.getcwd(), "src", "main", "java", pkg_path, class_name)
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        if not os.path.exists(dest):
+            with open(dest, "w", encoding="utf-8") as f:
+                f.write(text)
+            logger.warning(f"auto-wrote starter Java file: {dest}")
+            return True
+    except Exception:
+        return False
+    return False
+
+
 def _is_context_overflow(exc: Exception) -> bool:
     text = str(exc).lower()
     markers = (
@@ -167,6 +219,7 @@ def agent_loop(messages: list) -> str:
     _wrote_file = False
     _pre_write_reads = 0
     _pre_write_warned = False
+    _starter_auto_written = False
     _force_final_msg = None
     while True:
         # ── Layer 0s: 排空监管信箱（第 13 课）──
@@ -566,6 +619,18 @@ def agent_loop(messages: list) -> str:
         # 写前研究预算守卫：超过 6 次读/查还没写文件，强制提醒立即写首个文件
         if not _wrote_file and not _pre_write_warned and _pre_write_reads >= 6:
             _pre_write_warned = True
+            if not _starter_auto_written and _auto_write_starter(messages):
+                _starter_auto_written = True
+                _wrote_file = True
+                logger.warning("已自动从 starter 写入 Java 文件，继续任务")
+                messages.append({
+                    "role": "user",
+                    "content": (
+                        "<auto-starter> 系统已自动复制合适的 starter Java 文件到 src/main/java。"
+                        "请基于该文件继续完成剩余资源/测试，不要再阅读 starter 文档。</auto-starter>"
+                    ),
+                })
+                continue
             logger.warning(f"写前研究超预算（{_pre_write_reads}），强制提醒写文件")
             messages.append({
                 "role": "user",
