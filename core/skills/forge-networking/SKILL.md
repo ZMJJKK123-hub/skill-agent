@@ -42,3 +42,41 @@ Packets run on the network thread — wrap game work in `ctx.get().enqueueWork(.
 
 - To the server: `INSTANCE.sendToServer(new MyMessage())`.
 - To clients: `INSTANCE.send(PacketDistributor.PLAYER.with(serverPlayer), msg)`, `TRACKING_CHUNK.with(levelChunk)`, `ALL.noArg()`, or directly via `HANDLER.sendTo(msg, connection, NetworkDirection.PLAY_TO_CLIENT)`.
+
+## 1.21.11+ current networking API (verified from mc_java_sources)
+
+Forge 1.21.11 no longer uses `NetworkRegistry.newSimpleChannel` for new code. Use `ChannelBuilder`:
+
+```java
+import net.minecraft.network.PacketFlow;
+import net.minecraft.resources.Identifier;
+import net.minecraftforge.network.Channel;
+import net.minecraftforge.network.ChannelBuilder;
+import net.minecraftforge.network.PacketDistributor;
+import net.minecraftforge.network.SimpleChannel;
+
+public static final SimpleChannel CHANNEL = ChannelBuilder
+    .named(Identifier.fromNamespaceAndPath(MODID, "main"))
+    .networkProtocolVersion(PROTOCOL_VERSION)
+    .clientAcceptedVersions(Channel.VersionTest.exact(PROTOCOL_VERSION))
+    .serverAcceptedVersions(Channel.VersionTest.exact(PROTOCOL_VERSION))
+    .simpleChannel();
+```
+
+Register messages with the builder chain:
+
+```java
+CHANNEL.messageBuilder(MyPacket.class)
+    .direction(PacketFlow.CLIENTBOUND) // or SERVERBOUND
+    .encoder(MyPacket::encode)
+    .decoder(MyPacket::decode)
+    .consumerMainThread(MyPacket::handle)
+    .add();
+```
+
+Send with:
+
+```java
+CHANNEL.send(msg, PacketDistributor.PLAYER.with(player)); // server -> one client
+CHANNEL.send(msg, PacketDistributor.SERVER.noArg());      // client -> server
+```

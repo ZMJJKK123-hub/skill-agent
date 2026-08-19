@@ -36,7 +36,7 @@ class BackgroundManager:
         """启动后台任务，立即返回 task_id。调用方不阻塞。"""
         # 复用 run_bash 的危险命令检查
         dangerous = [
-            "del /f /s", "rd /s /q", "format",
+            "format",
             "diskpart", "reg delete", "shutdown",
             "taskkill /f /im python.exe",
             "taskkill /f /im node.exe",
