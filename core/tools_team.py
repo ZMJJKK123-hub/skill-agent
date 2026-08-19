@@ -422,7 +422,7 @@ class TeammateManager:
         # 团队成员/子代理不可用（重工具主 agent 独占）：
         #   run_game_test_server / read_game_test_log —— GameTest 进程重、会互踩 run 目录
         excluded = {"spawn_teammate", "send_to_teammate", "team_status", "task",
-                    "request_shutdown", "ask_user_question", "run_game_test_server", "read_game_test_log", "run_client", "run_server", "run_data_gen", "run_game_test_server", "run_test_client", "run_test_server", "run_test_data", "run_test_gametest"}
+                    "request_shutdown", "ask_user_question", "run_game_test_server", "read_game_test_log", "run_client", "run_server", "run_data_gen", "run_test_client", "run_test_server", "run_test_data", "run_test_gametest"}
         teammate_tools = [t for t in TOOLS if t["function"]["name"] not in excluded]
 
         logger.info(f"=== 队友 Agent 启动 | agent={agent_id} | task={task[:200]} ===")
