@@ -206,6 +206,24 @@
   - Root cause: the PNG generator writes to a path whose parent directory does not exist yet
   - Fix: call `os.makedirs(os.path.dirname(path), exist_ok=True)` inside the PNG generator before writing the file.
 
+- **`getModEventBus()` not found / `BusGroup.addListener` missing**
+  - Symptom: compile errors on `getModEventBus()` or `getModBusGroup().addListener(...)`
+  - Root cause: 1.21.11 Forge uses typed event buses instead of the old event bus accessor
+  - Fix: register DeferredRegisters with `FMLJavaModLoadingContext.get().getModBusGroup()`;
+    register lifecycle listeners with typed getters, e.g.
+    `FMLClientSetupEvent.getBus(FMLJavaModLoadingContext.get().getModBusGroup()).addListener(this::onClientSetup);`
+
+- **`isClientSide` is private in `Level`**
+  - Symptom: `错误: isClientSide 在 Level 中是 private 访问控制` / `cannot find symbol isClientSide`
+  - Root cause: in 1.21.11 `Level.isClientSide` is a private field; the public accessor is a method
+  - Fix: use `level.isClientSide()` (with parentheses), not `level.isClientSide`.
+
+- **Block entity / menu patterns (1.21.11)**
+  - Register: `DeferredRegister.create(ForgeRegistries.BLOCK_ENTITY_TYPES, MODID)` and
+    `DeferredRegister.create(ForgeRegistries.MENU_TYPES, MODID)`.
+  - BlockEntityType: `new BlockEntityType<>(Factory, Set.of(block))` (the FeatureFlags overload is for MenuType).
+  - Save/load: `saveAdditional(ValueOutput)` / `loadAdditional(ValueInput)` with `ContainerHelper.saveAllItems/loadAllItems`.
+
 - **`FMLJavaModLoadingContext.get().getModEventBus()` not found**
   - Symptom: compile error `getModEventBus()` not found / deprecated-removal warnings on mod constructor
   - Root cause: 1.21.11 Forge uses `BusGroup` instead of the old event bus accessor

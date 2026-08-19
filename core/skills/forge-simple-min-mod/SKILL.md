@@ -297,6 +297,8 @@ Pair it with a shapeless recipe: `corresponding chestplate + elytra -> flying ch
 - Cooldowns: `player.getCooldowns().addCooldown(player.getItemInHand(hand), ticks)` — the first param is `ItemStack` in 1.21.11, not `Item`.
 - Chinese in JSON: always write UTF-8; if a script goes through Windows shell, use Unicode escapes to avoid GBK mojibake.
 - Explosion damage: use `level.explode(null, x, y, z, power, Level.ExplosionInteraction.MOB)` so entities (including the eater) take damage; `NONE` may look like an explosion without hurting the player.
+- `Level` side check: always `level.isClientSide()` (parentheses), not `level.isClientSide`.
+- Lifecycle listeners in 1.21.11: use typed buses like `FMLClientSetupEvent.getBus(FMLJavaModLoadingContext.get().getModBusGroup()).addListener(this::onClientSetup);`, never `BusGroup.addListener(...)`.
 - NEVER change build system/plugins, Forge version, or dependency versions. You ARE allowed to edit
   modid/namespace references in build.gradle/settings.gradle when renaming the mod (e.g.
   `forge.enabledGameTestNamespaces`, DataGen `--mod`, group/modId). Do not switch to NeoGradle/NeoForge.
