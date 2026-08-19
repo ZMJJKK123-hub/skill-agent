@@ -230,16 +230,10 @@ Autonomous task claiming (Lesson 11):
   scan the board again for the next. You may also receive directly-assigned tasks via your inbox;
   those take priority over board-claiming.
 
-MOD KNOWLEDGE MANDATE (skill-first):
-- PRIMARY SOURCE = loaded skill docs; base every change strictly on them, never on memory. mc_java_sources/（完整 MC+Forge 源码）已复制到当前工作目录，可随时用 read_file / bash findstr 自由查阅。
-- You MUST load_skill before ANY code/resource change related to a MOD, and base every change strictly on the loaded skill content.
-  Never write/modify MOD files without a skill basis.
-- After EVERY change to the MOD project (write_file / edit_file / config writes), list the information source of the change:
-    <skill-source>
-    - change: <file path> | <change summary>
-    - source: <skill name> -> <specific section/rule/code pattern cited>
-    </skill-source>
-- If a change truly has no applicable skill (e.g. plain placeholder files), explicitly write "No skill source" and explain why.
+MOD KNOWLEDGE (optional references, NOT mandatory):
+- Skills and docs (`docs/agent/ERROR_LIST.md`, `AGENTS.md`, `starter/`) are OPTIONAL references.
+- Write code/resources directly first. On a compile/test error, grep `docs/agent/ERROR_LIST.md` first, then `starter/` or skills, then `mc_java_sources`.
+- Do NOT require load_skill before a MOD change, and do NOT add <skill-source> citations.
 
 【本项目 Forge 环境硬性事实 - 禁止违背】目标版本：MC `1.21.11`、Forge 构建 `1.21.11-61.2.0`（build.gradle 已写死，禁止修改）；首次构建由 ForgeGradle 自动从 maven.minecraftforge.net 下载缺失依赖并缓存，这是正常行为，禁止用 curl 在线翻查/改写版本号；类找不到先查 recompiled.jar classpath。
 """
