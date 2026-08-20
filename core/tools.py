@@ -92,9 +92,11 @@ config.SYSTEM = config.build_system_prompt()
 TOOL_HANDLERS = {
     "bash":         lambda **kw: run_bash(kw["command"]),
     "grep":         lambda **kw: run_grep(kw["pattern"], kw.get("path", "."),
-                                          kw.get("glob_filter"), kw.get("max_results", 50)),
+                                          kw.get("glob_filter"), kw.get("max_results", 50),
+                                          kw.get("context_lines", 0)),
     "search_api":   lambda **kw: run_search_api(kw["symbol"], kw.get("path", "mc_java_sources"),
-                                                kw.get("max_results", 10)),
+                                                kw.get("max_results", 10),
+                                                kw.get("context_lines", 0)),
     "glob":         lambda **kw: run_glob(kw["pattern"]),
     "web_search":   lambda **kw: run_web_search(kw["query"], kw.get("max_results", 5)),
     "search_minecraft_docs": lambda **kw: run_search_minecraft_docs(kw["query"], kw.get("max_results", 5)),
@@ -150,7 +152,7 @@ TOOL_HANDLERS = {
         kw.get("modid"), kw.get("validate", True), kw.get("build", True), kw.get("run_tests", True),
         kw.get("build_timeout", 900), kw.get("test_timeout", 180), kw.get("base")),
     "ask_user_question": lambda **kw: run_ask_user(kw.get("questions") or kw.get("question", ""), kw.get("options", [])),
-    "read_file":    lambda **kw: run_read(kw["path"], kw.get("limit")),
+    "read_file":    lambda **kw: run_read(kw["path"], kw.get("limit"), kw.get("offset", 0)),
     "write_file":   lambda **kw: run_write(kw["path"], kw["content"]),
     "edit_file":    lambda **kw: run_edit(kw["path"], kw["old_text"],
                                           kw["new_text"]),
@@ -235,13 +237,14 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "search_api",
-            "description": "Focused API dictionary lookup: search MC/Forge source for a symbol and return up to 10 short match lines. USE THIS FIRST on compile errors instead of reading whole files. Do NOT call read_file on large source files to 'learn' APIs.",
+            "description": "Focused API dictionary lookup: search MC/Forge source for a literal symbol (auto regex-escaped) and return match lines. Set context_lines>0 to see surrounding lines. If you need the full constructor/method/record signature, DO use read_file on the reported .java file — full source reading is allowed in the fix loop.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "symbol": {"type": "string", "description": "Exact class/method/field name or error symbol, e.g. isClientSide or FMLClientSetupEvent.getBus"},
                     "path": {"type": "string", "description": "Directory to search (default mc_java_sources)"},
                     "max_results": {"type": "integer", "description": "Max match lines to return (default 10)"},
+                    "context_lines": {"type": "integer", "description": "Number of surrounding lines to include per match (default 0)"},
                 },
                 "required": ["symbol"],
             },
@@ -337,12 +340,13 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "read_file",
-            "description": "Read file contents.",
+            "description": "Read file contents. Supports offset (1-based first line) and limit. Full MC/Forge source files under mc_java_sources are allowed; use this to inspect complete constructor/method signatures after a compile error.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "path": {"type": "string"},
-                    "limit": {"type": "integer"},
+                    "path": {"type": "string", "description": "File path (workspace-relative; mc_java_sources/... allowed)"},
+                    "limit": {"type": "integer", "description": "Max lines to return (default all)"},
+                    "offset": {"type": "integer", "description": "1-based first line to read (default 1)"},
                 },
                 "required": ["path"],
             },

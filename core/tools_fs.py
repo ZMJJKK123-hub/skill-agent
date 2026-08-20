@@ -12,15 +12,21 @@ from .tools_runtime import worktree_manager
 from .tools_shell import _sandbox_mode
 
 
-def run_read(path: str, limit: int = None) -> str:
+def run_read(path: str, limit: int = None, offset: int = 0) -> str:
+    """Read a file. offset is 1-based first line; limit caps line count.
+
+    Full source files (mc_java_sources) are allowed by safe_path; use this
+    instead of search_api when you need constructor/method/record signatures.
+    """
     try:
-        # 第 12 课：基座跟随线程 session（worktree_use 后落在 worktree 内）
         base = worktree_manager.resolve_dir() if worktree_manager else None
         text = safe_path(path, base).read_text(encoding="utf-8")
         lines = text.splitlines()
-        if limit and limit < len(lines):
-            lines = lines[:limit] + [f"... ({len(lines) - limit} more lines)"]
-        return "\n".join(lines)[:50000]
+        if offset and offset > 0:
+            lines = lines[offset - 1:]
+        if limit and limit > 0:
+            lines = lines[:limit]
+        return "\n".join(lines)[:120000]
     except Exception as e:
         return f"Error: {e}"
 
@@ -103,43 +109,49 @@ def run_glob(pattern: str) -> str:
         return f"Error: {e}"
 
 
-def run_search_api(symbol: str, path: str = "mc_java_sources", max_results: int = 10) -> str:
-    """Focused API-lookup helper (mirrors how a human searches a dictionary).
+def run_search_api(symbol: str, path: str = "mc_java_sources", max_results: int = 10, context_lines: int = 0) -> str:
+    """Focused API-lookup helper.
 
-    Searches only the given path (default MC/Forge sources) for the exact symbol,
-    returns at most `max_results` short match lines, and explicitly does NOT read
-    whole files. Use this AFTER checking skills and ERROR_LIST.md.
+    Searches the given path (default MC/Forge sources) for the exact symbol.
+    symbol is treated as literal text (auto regex-escaped). Set context_lines>0
+    to see surrounding lines; if you need the full signature, use read_file on
+    the reported .java file instead.
     """
-    from .skillcheck import any_loaded
-    if not any_loaded():
-        return (
-            "Hint: You have not loaded any skill yet. Please load_skill first "
-            "(e.g. forge-items, forge-networking, forge-concept-events) — skills "
-            "are condensed and authoritative. If the skill does not contain the "
-            "answer, grep docs/agent/ERROR_LIST.md. Only if still not found, "
-            "call search_api again to search mc_java_sources.\n\n"
-            "To proceed with this search anyway, call search_api again after "
-            "loading at least one skill."
-        )
+    import re as _re
+    escaped = _re.escape(symbol)
     try:
-        out = run_grep(symbol, path=path, glob_filter="*.java", max_results=max_results)
-        prefix = f"[search_api] Searching '{symbol}' in {path} (max {max_results} lines):\n"
+        out = run_grep(escaped, path=path, glob_filter="*.java",
+                       max_results=max_results, context_lines=context_lines)
+        prefix = f"[search_api] Searching literal '{symbol}' in {path} (max {max_results} lines, context {context_lines}):\n"
         return prefix + out
     except Exception as e:
         return f"Error: {e}"
 
 
 def run_grep(pattern: str, path: str = ".", glob_filter: str = None,
-             max_results: int = 50) -> str:
-    """正则搜索文件内容，返回 '相对路径:行号: 行内容'（跳过运行时目录）。"""
+             max_results: int = 50, context_lines: int = 0) -> str:
+    """正则搜索文件内容，返回 '相对路径:行号: 行内容'（跳过运行时目录）。
+
+    context_lines>0 时每个匹配附带前后 context_lines 行，方便确认签名/上下文。
+    """
     try:
         base = Path(_search_base()).resolve()
         root = (base / path).resolve() if not Path(path).is_absolute() else Path(path).resolve()
         # 沙箱：非 full-access 禁止搜工作区之外
         if _sandbox_mode() != "full-access" and not str(root).startswith(str(base)):
             return "Error: grep 路径越出工作区"
-        rx = re.compile(pattern)
+        try:
+            rx = re.compile(pattern)
+        except re.error as e:
+            return f"Error: invalid regex '{pattern}': {e}"
         results = []
+
+        def _emit(rel, src_lines, idx):
+            ctx = context_lines if context_lines and context_lines > 0 else 0
+            lo = max(0, idx - 1 - ctx)
+            hi = min(len(src_lines), idx + ctx)
+            for n in range(lo, hi):
+                results.append(f"{rel}:{n + 1}: {src_lines[n][:300]}")
 
         def _walk(directory: Path):
             for dirpath, dirnames, filenames in os.walk(str(directory)):
@@ -149,16 +161,16 @@ def run_grep(pattern: str, path: str = ".", glob_filter: str = None,
                         continue
                     fp = Path(dirpath) / fname
                     try:
-                        text = fp.read_text(encoding="utf-8", errors="replace")
+                        src = fp.read_text(encoding="utf-8", errors="replace").splitlines()
                     except OSError:
                         continue
-                    for i, line in enumerate(text.splitlines(), 1):
+                    for i, line in enumerate(src, 1):
                         if rx.search(line):
                             try:
                                 rel = str(fp.relative_to(base))
                             except ValueError:
                                 rel = str(fp)
-                            results.append(f"{rel}:{i}: {line[:300]}")
+                            _emit(rel, src, i)
                             if len(results) >= max_results:
                                 return
 
@@ -166,12 +178,12 @@ def run_grep(pattern: str, path: str = ".", glob_filter: str = None,
             _walk(root)
         elif root.is_file():
             try:
-                text = root.read_text(encoding="utf-8", errors="replace")
+                src = root.read_text(encoding="utf-8", errors="replace").splitlines()
             except OSError:
                 return "(no matches)"
-            for i, line in enumerate(text.splitlines(), 1):
+            for i, line in enumerate(src, 1):
                 if rx.search(line):
-                    results.append(f"{path}:{i}: {line[:300]}")
+                    _emit(str(path), src, i)
                     if len(results) >= max_results:
                         break
         out = "\n".join(results) if results else "(no matches)"
