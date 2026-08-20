@@ -420,3 +420,15 @@ The agent successfully wrote a very complex MOD (17 Java files + 92 resource fil
 - `AttributeModifier` is now a record
 
 Post-write research budget (`build-now-stop`) was not active because the agent was started before that fix was deployed.
+## 2026-08-20 More 1.21.11 class moves (from Skyforge compile)
+
+- `IronGolem` -> `net.minecraft.world.entity.animal.golem.IronGolem`
+- `SmallFireball` -> `net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball`
+- `RangedAttackMob` -> `net.minecraft.world.entity.monster.RangedAttackMob`
+- Heightmap enum -> `net.minecraft.world.level.levelgen.Heightmap.Types` (not HeightmapTypes)
+- `Block#useWithoutItem(BlockState, Level, BlockPos, Player, BlockHitResult)` (BlockHitResult, not InteractionHand)
+- `Block#entityInside(BlockState, Level, BlockPos, Entity, InsideBlockEffectApplier, boolean)`
+- ServerLevel spawn pos via `ServerLevel#getRespawnData().globalPos().pos()` (no getSharedSpawnPos)
+- Entity cross-dimension teleport uses `Entity#teleport(TeleportTransition)` / `Entity#teleportTo(ServerLevel, ...)`, not `changeDimension`
+- `PersistentData#getLong` returns `Optional<Long>` (use `.orElse(0L)`)
+- Equipment asset key: `ResourceKey.create(EquipmentAssets.ROOT_ID, Identifier.fromNamespaceAndPath(...))`, not `Registries.EQUIPMENT_ASSET`
