@@ -591,10 +591,19 @@ def agent_loop(messages: list) -> str:
                     id=d["id"], type="function",
                     function=_NS(name=d["name"], arguments=d["args"]),
                 ))
-        # 防 400：OpenAI 不允许 assistant 同时没有 content 和 tool_calls
+        # 防 400：OpenAI 不允许 assistant 同时没有 content 和 tool_calls。
+        # 关键修复：不要把“No additional output”占位符写回历史，否则模型会把它当成自己
+        # 的真实回复，下一轮继续返回空内容，形成死循环。改为注入用户警告并直接重试。
         if content is None and not tool_calls:
-            logger.warning("模型返回空内容且无工具调用，补占位内容后继续")
-            content = "No additional output. Continuing the task based on the available context."
+            logger.warning("模型返回空内容且无工具调用，不写占位符，注入空响应警告后重试")
+            messages.append({
+                "role": "user",
+                "content": (
+                    "<empty-response> 模型返回为空且没有工具调用。你必须调用一个工具继续任务，"
+                    "禁止输出空文本或“No additional output”之类的话。</empty-response>"
+                ),
+            })
+            continue
         message = _NS(
             content=content,
             reasoning_content=reasoning,
