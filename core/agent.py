@@ -320,6 +320,11 @@ def agent_loop(messages: list) -> str:
     _write_strikes = 0
     _forced_write = False
     _post_write_research = 0
+    _existing_java = any(
+        (Path.cwd() / "src" / "main" / "java").rglob("*.java")
+    ) or any(
+        (Path.cwd() / "src" / "test" / "java").rglob("*.java")
+    )
     _force_final_msg = None
     _round_idx = 0
     _round_tool_counts = {}
@@ -715,6 +720,7 @@ def agent_loop(messages: list) -> str:
             ):
                 _wrote_file = True
                 _forced_write = False
+                _existing_java = True
             elif not _wrote_file and tc.function.name in (
                 "read_file", "bash", "grep", "glob",
                 "web_search", "web_fetch", "search_api",
@@ -820,7 +826,7 @@ def agent_loop(messages: list) -> str:
             pass
 
         # 写前研究预算守卫：超过 6 次读/查还没写文件，强制提醒立即写首个文件
-        if not _wrote_file and not _pre_write_warned and _pre_write_reads >= 6:
+        if not _wrote_file and not _existing_java and not _pre_write_warned and _pre_write_reads >= 6:
             _pre_write_warned = True
             _write_strikes += 1
             if _write_strikes >= 2:
