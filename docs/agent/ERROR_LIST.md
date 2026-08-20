@@ -505,3 +505,11 @@ Post-write research budget (`build-now-stop`) was not active because the agent w
 - Root cause: model tries to inline large file content as a tool argument; JSON escaping breaks.
 - Fix guidance: continue to force "large files must use Python generator script"; when a `write_file` JSON parse error occurs, the agent should immediately switch to a generated Python script instead of retrying the same inline write.
 - Known repeating count in itertest8: many rounds repeat the same invalid write_file + supervisor advice about jar name before recovery.
+## 2026-08-21 itertest8 Death Swap completed - new 1.21.11 API facts
+
+- **`GameTestHelper.makeMockPlayer(PlayerType.SERVER)` fails** (`PlayerType` removed):
+  - Use `(ServerPlayer) helper.makeMockPlayer(GameType.SURVIVAL)`; return type is `Player`, not `ServerPlayer`.
+- **`ServerPlayer.serverLevel()` / 6-arg `teleportTo` missing**:
+  - Use `(ServerLevel) p.level()` and 8-arg `player.teleportTo(targetLevel, x, y, z, Set.of(), yRot, xRot, true)`.
+- **Multiple `@GameTest` methods in one class: only first is collected** by this Forge GameTestServer:
+  - Merge all assertions into one `@GameTest` method executed sequentially; still satisfies `All required tests passed`.
