@@ -18,11 +18,17 @@ OpenAI 兼容端点：
 运行方式（在项目根目录执行）：
   cd "tsinghua agent server"
   ..\\venv\\Scripts\\python.exe -m uvicorn main:app --host 0.0.0.0 --port 8001
+
+  本服务与 server_app 网页服务完全独立：
+    - 8000 端口：server_app/server.py（你自己的网页）
+    - 8001 端口：本服务（清小搭 OpenAI 兼容接口）
 """
 
 import copy
 import json
+import mimetypes
 import os
+import queue
 import sys
 import threading
 import time
@@ -63,20 +69,22 @@ except Exception:
 VALID_KEY = os.environ.get("TSINGHUA_API_KEY", "sk-test-123")
 
 from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+
+# 工作区目录：agent 的所有文件操作/产物都发生在这里（与 server_app 网页隔离）
+WORKSPACE = SERVICE_DIR / ".runtime"
+WORKSPACE.mkdir(parents=True, exist_ok=True)
+
+# 关键：必须在导入 core 之前把 cwd 切到 WORKSPACE，
+# 这样 core/config.WORKDIR 与工具的文件操作基座都落在 .runtime，
+# agent 生成的文件才会出现在我们能收集/提供下载的地方。
+os.chdir(WORKSPACE)
 
 from core.agent import agent_loop
 
-# 挂载原有 server_app 网页服务：这样同一个端口既能服务清小搭，也能访问原网站。
-# server_app 内部使用 `import auth_store` 这种同目录绝对导入，因此把 server_app 目录也加入 sys.path。
-sys.path.insert(0, str(PROJECT_ROOT / "server_app"))
-try:
-    from server_app.server import app as web_app
-    WEB_APP_AVAILABLE = True
-except Exception as _web_err:
-    print(f"[warn] server_app web app import failed: {_web_err}", flush=True)
-    web_app = None
-    WEB_APP_AVAILABLE = False
+# 2026-08-xx：已按用户要求与 server_app 完全解耦。
+# 本服务只负责清小搭 OpenAI 兼容接口（8001 端口），不再挂载 server_app 网页。
+# server_app 网页由单独的 `server_app/server.py` 运行在 8000 端口。
 
 # ---------------------------------------------------------------------------
 # FastAPI 实例
@@ -132,9 +140,36 @@ def _check_auth(authorization: str | None, x_api_key: str | None) -> None:
 
 # ---------------------------------------------------------------------------
 # 消息规范化：把清小搭/OpenAI 请求转成 core.agent 可用的纯文本消息
+# 支持 file / image_url：下载到工作区 inputs/，让 agent 能用 read_file 等工具读取。
 # ---------------------------------------------------------------------------
-def _content_to_text(content) -> str:
-    """content 可能是 str，也可能是多模态数组；本服务按文本处理。"""
+def _safe_input_name(filename: str, fallback_ext: str = "") -> str:
+    name = Path(filename or "").name.strip()
+    if not name:
+        name = f"file_{uuid.uuid4().hex[:8]}{fallback_ext}"
+    return name
+
+
+def _download_remote_file(url: str, filename: str, inputs_dir: Path) -> tuple[str, bool]:
+    """下载清小搭 OSS 上的文件/图片 URL 到工作区 inputs/，返回 (相对路径, 是否成功)。"""
+    try:
+        inputs_dir.mkdir(parents=True, exist_ok=True)
+        import httpx
+        r = httpx.get(url, timeout=60, follow_redirects=True)
+        r.raise_for_status()
+        safe_name = _safe_input_name(filename)
+        target = inputs_dir / safe_name
+        counter = 1
+        while target.exists():
+            target = inputs_dir / f"{Path(safe_name).stem}_{counter}{Path(safe_name).suffix}"
+            counter += 1
+        target.write_bytes(r.content)
+        return f"inputs/{target.name}", True
+    except Exception as e:
+        return f"下载失败: {e}", False
+
+
+def _content_to_text(content, inputs_dir: Path) -> str:
+    """content 可能是 str，也可能是多模态数组；文本原样，文件/图片下载后给路径。"""
     if isinstance(content, str):
         return content
     if isinstance(content, list):
@@ -147,21 +182,36 @@ def _content_to_text(content) -> str:
             if t == "text":
                 parts.append(str(item.get("text", "")))
             elif t == "image_url":
-                parts.append("[图片输入]")
+                url = ((item.get("image_url") or {}).get("url") or "")
+                if url:
+                    raw_name = Path(url.split("?")[0]).name or "image.png"
+                    rel, ok = _download_remote_file(url, raw_name, inputs_dir)
+                    parts.append(f"[图片已保存: {rel}]" if ok else f"[图片输入{rel}]")
+                else:
+                    parts.append("[图片输入]")
             elif t == "input_audio":
-                parts.append("[音频输入]")
+                parts.append("[音频输入暂不支持]")
             elif t == "file":
-                filename = (item.get("file") or {}).get("filename", "")
-                parts.append(f"[文件输入:{filename}]" if filename else "[文件输入]")
+                file_obj = item.get("file") or {}
+                url = file_obj.get("url") or ""
+                filename = file_obj.get("filename") or ""
+                if url:
+                    rel, ok = _download_remote_file(url, filename, inputs_dir)
+                    parts.append(f"[文件已保存: {rel}]" if ok else f"[文件输入{rel}]")
+                elif file_obj.get("file_id"):
+                    parts.append("[文件输入(file_id)暂不支持]")
+                else:
+                    parts.append(f"[文件输入:{filename}]" if filename else "[文件输入]")
         return "\n".join(p for p in parts if p)
     return str(content)
 
 
-def _normalize_messages(messages: list | None) -> list[dict]:
+def _normalize_messages(messages: list | None, session_id: str = "") -> list[dict]:
     """过滤掉 tool 消息/多模态数组，保留纯文本 system/user/assistant 序列。"""
     if not isinstance(messages, list):
         return []
 
+    inputs_dir = WORKSPACE / "inputs"
     out: list[dict] = []
     for m in messages:
         if not isinstance(m, dict):
@@ -169,7 +219,7 @@ def _normalize_messages(messages: list | None) -> list[dict]:
         role = m.get("role", "")
         if role not in ("system", "user", "assistant"):
             continue
-        content = _content_to_text(m.get("content", ""))
+        content = _content_to_text(m.get("content", ""), inputs_dir)
         out.append({"role": role, "content": content})
 
     if not out:
@@ -188,7 +238,7 @@ def _usage_zero() -> dict:
     return {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
 
-def _sse_frame(cid: str, created: int, delta: dict, finish_reason=None, usage=None, error=None) -> str:
+def _sse_frame(cid: str, created: int, delta: dict, finish_reason=None, usage=None, error=None, extra=None) -> str:
     choice = {"index": 0, "delta": delta, "finish_reason": finish_reason}
     chunk = {
         "id": cid,
@@ -201,14 +251,118 @@ def _sse_frame(cid: str, created: int, delta: dict, finish_reason=None, usage=No
         chunk["usage"] = usage
     if error is not None:
         chunk["error"] = error
+    if extra is not None:
+        chunk.update(extra)
     return f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+
+
+# ---------------------------------------------------------------------------
+# 文件产物：收集 agent 生成的可交付文件，并通过 /files/... 公网下载
+# ---------------------------------------------------------------------------
+# 网页版完整地址（对话结尾提示用户用）
+WEB_URL = os.environ.get("DSH_WEB_URL", "http://49.232.37.238:8000/").rstrip("/")
+
+_ATTACHMENT_EXCLUDE_DIRS = {
+    ".chat", ".tasks", ".team", ".worktrees", ".transcripts", ".spill",
+    ".supervisor", "__pycache__", ".git", "node_modules", "venv",
+    "data", "core", "server_app", "mod_templates", "mc_java_sources",
+    "docs", "frontend", "web", "assets", "screenshots", "inputs",
+}
+
+_ATTACHMENT_EXTS = {
+    ".zip", ".jar", ".tar", ".gz", ".7z",
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+    ".txt", ".md", ".csv", ".rtf",
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg",
+}
+
+_ATTACHMENT_FILE_TYPE = {
+    ".zip": "archive", ".jar": "file", ".tar": "archive", ".gz": "archive", ".7z": "archive",
+    ".pdf": "pdf", ".doc": "word", ".docx": "word",
+    ".xls": "excel", ".xlsx": "excel", ".ppt": "ppt", ".pptx": "ppt",
+    ".txt": "text", ".md": "text", ".csv": "text", ".rtf": "text",
+    ".png": "image", ".jpg": "image", ".jpeg": "image", ".gif": "image",
+    ".webp": "image", ".bmp": "image", ".svg": "image",
+}
+
+
+def _guess_mime(path: Path) -> str:
+    mime, _ = mimetypes.guess_type(str(path))
+    return mime or "application/octet-stream"
+
+
+def _collect_attachments(start_ts: float, base_url: str, limit: int = 10) -> list[dict]:
+    """收集 start_ts 之后生成的可交付文件，构造清小搭 x_soda.attachments。"""
+    if not WORKSPACE.exists():
+        return []
+    attachments: list[dict] = []
+    seen: set[str] = set()
+    for p in sorted(WORKSPACE.rglob("*")):
+        if not p.is_file():
+            continue
+        try:
+            rel = p.relative_to(WORKSPACE)
+        except ValueError:
+            continue
+        parts = rel.parts
+        if any(part in _ATTACHMENT_EXCLUDE_DIRS for part in parts):
+            continue
+        if p.suffix.lower() not in _ATTACHMENT_EXTS:
+            continue
+        try:
+            if p.stat().st_mtime < start_ts - 1:
+                continue
+        except OSError:
+            continue
+        key = rel.as_posix()
+        if key in seen:
+            continue
+        seen.add(key)
+        try:
+            size = p.stat().st_size
+        except OSError:
+            size = 0
+        attachments.append({
+            "fileUrl": f"{base_url}/files/{key}",
+            "fileName": p.name,
+            "fileType": _ATTACHMENT_FILE_TYPE.get(p.suffix.lower(), "file"),
+            "mimeType": _guess_mime(p),
+            "fileSize": size,
+        })
+        if len(attachments) >= limit:
+            break
+    return attachments
+
+
+@app.get("/files/{file_path:path}")
+def serve_attachment(file_path: str):
+    """提供 agent 生成文件的公网下载（清小搭 attachments 的 fileUrl 指向这里）。"""
+    root = WORKSPACE.resolve()
+    target = (root / file_path).resolve()
+    if not target.is_relative_to(root) or not target.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(str(target))
+
+
+def _append_web_hint(text: str) -> str:
+    """在对话回复末尾提示用户可访问完整网页版。"""
+    hint = (
+        f"\n\n> 💡 清小搭内提供对话/附件等精简功能；"
+        f"如需文件树、实时事件、设置等更完整的功能，可访问网页版：{WEB_URL}"
+    )
+    return text + hint
 
 
 # ---------------------------------------------------------------------------
 # 核心：调用本项目 Agent 引擎
 # ---------------------------------------------------------------------------
-def _run_agent(messages: list, session_id: str) -> str:
-    """调用 agent_loop 获取最终回复。串行化保证 demo 安全。"""
+def _run_agent(messages: list, session_id: str, base_url: str,
+               reasoning_sink=None) -> tuple[str, list]:
+    """调用 agent_loop 获取最终回复，并收集本次生成的附件。串行化保证 demo 安全。
+
+    reasoning_sink: 可选回调，agent_loop 收到模型 reasoning_content 增量时实时调用，
+    用于清小搭流式展示思考过程。非流式请求传 None 即可。
+    """
     # 缓存 session 最近消息（便于调试；当前仍优先使用请求里的全量 messages）
     if session_id:
         _session_cache[session_id] = copy.deepcopy(messages)
@@ -217,17 +371,30 @@ def _run_agent(messages: list, session_id: str) -> str:
             for k in list(_session_cache.keys())[:len(_session_cache) - _SESSION_CACHE_MAX]:
                 _session_cache.pop(k, None)
 
+    start_ts = time.time()
     with _agent_lock:
-        # agent_loop 会把 .chat/session_events.jsonl 等写到当前 cwd；
-        # 临时切到服务自己的 .runtime 目录，避免污染项目根目录。
         _prev_cwd = Path.cwd()
-        os.chdir(SERVICE_DIR / ".runtime")
+        os.chdir(WORKSPACE)
         try:
+            # 仅在本次调用期间设置 reasoning 转发，避免并发请求串线
+            from core.agent import get_reasoning_sink, set_reasoning_sink
+            _prev_sink = get_reasoning_sink()
+            if reasoning_sink is not None:
+                set_reasoning_sink(reasoning_sink)
             # deepcopy：agent_loop 会原地改写 messages
             final = agent_loop(copy.deepcopy(messages))
         finally:
+            try:
+                from core.agent import get_reasoning_sink, set_reasoning_sink
+                set_reasoning_sink(_prev_sink)
+            except Exception:
+                pass
             os.chdir(_prev_cwd)
-    return str(final) if final is not None else "(no response)"
+
+    text = str(final) if final is not None else "(no response)"
+    text = _append_web_hint(text)
+    attachments = _collect_attachments(start_ts, base_url)
+    return text, attachments
 
 
 # ---------------------------------------------------------------------------
@@ -319,7 +486,10 @@ async def chat_completions(
     stream = body.get("stream") is True
     max_tokens = body.get("max_tokens")
     session_id = str(body.get("sessionId") or "")
-    messages = _normalize_messages(body.get("messages"))
+    messages = _normalize_messages(body.get("messages"), session_id)
+
+    # 公网 URL 基址：附件 fileUrl 用它拼出（可用 DSH_PUBLIC_BASE_URL 覆盖）
+    base_url = os.environ.get("DSH_PUBLIC_BASE_URL") or str(request.base_url).rstrip("/")
 
     # 清小搭探测最小对话：快速回复，不启动完整 Agent
     if _is_probe_request(messages, max_tokens):
@@ -329,18 +499,18 @@ async def chat_completions(
 
     if stream:
         return StreamingResponse(
-            _stream_agent(messages, session_id),
+            _stream_agent(messages, session_id, base_url),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
 
     # 非流式：完整 Agent 跑完再返回
     try:
-        final = _run_agent(messages, session_id)
+        final, attachments = _run_agent(messages, session_id, base_url)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"agent error: {e}")
 
-    return JSONResponse({
+    payload = {
         "id": _new_id(),
         "object": "chat.completion",
         "created": int(time.time()),
@@ -351,7 +521,10 @@ async def chat_completions(
             "finish_reason": "stop",
         }],
         "usage": _usage_zero(),
-    })
+    }
+    if attachments:
+        payload["x_soda"] = {"attachments": attachments}
+    return JSONResponse(payload)
 
 
 # 容错：兼容不带 /v1、或尾部带 / 的探测路径
@@ -365,52 +538,90 @@ async def chat_completions_alias(
     return await chat_completions(request, authorization, x_api_key)
 
 
-def _stream_agent(messages: list, session_id: str):
-    """流式 Agent：先发 role/思考帧，再跑 agent_loop，最后逐块吐内容。"""
+def _stream_agent(messages: list, session_id: str, base_url: str):
+    """流式 Agent：后台线程跑 agent_loop，实时转发 delta.reasoning，最后逐块吐内容。"""
     cid = _new_id()
     created = int(time.time())
 
     yield _sse_frame(cid, created, {"role": "assistant"})
-    # 可选 L1 思考帧，让前端显示“思考中”
+    # 可选 L1 思考帧，让前端先有“思考中”反馈
     yield _sse_frame(cid, created, {"reasoning": "正在调用自研 Agent 引擎…"})
 
-    try:
-        final = _run_agent(messages, session_id)
-    except Exception as e:
-        # 已发出 HTTP 头：按清小搭 §5.6 发送 error + stop 帧
-        yield _sse_frame(
-            cid, created, {},
-            finish_reason="stop",
-            error={"type": "upstream_error", "message": str(e)},
-        )
-        yield "data: [DONE]\n\n"
-        return
+    q: queue.Queue = queue.Queue()
+
+    def _worker():
+        try:
+            # reasoning_sink 只作用于本次 agent_loop 调用，避免并发请求串线
+            final, attachments = _run_agent(
+                messages, session_id, base_url,
+                reasoning_sink=lambda text: q.put(("reasoning", text)),
+            )
+            q.put(("final", final, attachments))
+        except Exception as e:
+            q.put(("error", str(e)))
+
+    thread = threading.Thread(target=_worker, daemon=True)
+    thread.start()
+
+    final = None
+    attachments = []
+    while True:
+        try:
+            item = q.get(timeout=0.3)
+        except queue.Empty:
+            if not thread.is_alive():
+                break
+            continue
+        kind = item[0]
+        if kind == "reasoning":
+            yield _sse_frame(cid, created, {"reasoning": item[1]})
+        elif kind == "final":
+            final, attachments = item[1], item[2]
+            break
+        elif kind == "error":
+            yield _sse_frame(
+                cid, created, {},
+                finish_reason="stop",
+                error={"type": "upstream_error", "message": item[1]},
+            )
+            yield "data: [DONE]\n\n"
+            return
 
     # 将完整回复按小块流式输出，保证界面逐字展示
     step = 8
-    for i in range(0, len(final), step):
-        yield _sse_frame(cid, created, {"content": final[i:i + step]})
+    for i in range(0, len(final or ""), step):
+        yield _sse_frame(cid, created, {"content": (final or "")[i:i + step]})
 
-    yield _sse_frame(cid, created, {}, finish_reason="stop", usage=_usage_zero())
+    extra = {}
+    if attachments:
+        extra["x_soda"] = {"attachments": attachments}
+    yield _sse_frame(cid, created, {}, finish_reason="stop", usage=_usage_zero(), extra=extra)
     yield "data: [DONE]\n\n"
 
 
 # ---------------------------------------------------------------------------
-# 健康检查：原网页由挂载的 server_app 负责根路径 /
+# 健康检查 / 根路径说明
+# 本服务（8001）只提供服务清小搭用的 OpenAI 兼容接口；
+# 网页前端由 server_app/server.py 单独运行在 8000 端口。
 # ---------------------------------------------------------------------------
+@app.get("/")
+def root():
+    return {
+        "service": "Tsinghua Agent Server",
+        "status": "running",
+        "note": "这是给清小搭接入的 OpenAI 兼容服务，不是网页前端。",
+        "endpoints": ["/v1/models", "/v1/chat/completions"],
+        "web": "请访问 http://<server>:8000/",
+        "auth": "Bearer <TSINGHUA_API_KEY>",
+    }
+
+
 @app.get("/health")
 def health():
     return {
         "service": "Tsinghua Agent Server",
         "status": "running",
         "endpoints": ["/v1/models", "/v1/chat/completions"],
-        "web": "mounted at / from server_app",
+        "web": "独立运行于 server_app/server.py（8000 端口）",
         "auth": "Bearer <TSINGHUA_API_KEY>",
     }
-
-
-# 把原有网站挂到根路径，保证：
-#   /v1/*             -> 清小搭 OpenAI 兼容接口
-#   / 和 /api/*        -> 原有 server_app 网页
-if WEB_APP_AVAILABLE and web_app is not None:
-    app.mount("/", web_app)

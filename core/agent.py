@@ -56,6 +56,22 @@ MAX_INLINE_TOOL_CHARS = 3000
 # 因此这里显式读取环境变量而不是依赖 Path.cwd()。
 SESSION_ROOT = os.environ.get("DSH_SESSION_ROOT", "")
 
+# 流式思考转发钩子：由外部接入层（如清小搭 8001 服务）设置。
+# 收到模型 delta.reasoning_content 时会实时调用 callback(text)；
+# 未设置时保持原有行为（仅累积到完整 reasoning 后打印/记录）。
+REASONING_SINK = None
+
+
+def set_reasoning_sink(fn):
+    """设置/清除 reasoning 实时回调。fn 可为 None 表示关闭。"""
+    global REASONING_SINK
+    REASONING_SINK = fn
+
+
+def get_reasoning_sink():
+    """返回当前 reasoning 实时回调（用于调用方临时覆盖后恢复）。"""
+    return REASONING_SINK
+
 
 def _maybe_spill(name: str, output: str) -> str:
     """Spill oversized plain-text tool results to disk, return preview+locator."""
@@ -516,6 +532,12 @@ def agent_loop(messages: list) -> str:
                     continue
                 if getattr(delta, "reasoning_content", None):
                     reasoning_parts.append(delta.reasoning_content)
+                    # 流式思考转发：外部接入层（清小搭 8001）可实时收到 delta
+                    if REASONING_SINK is not None:
+                        try:
+                            REASONING_SINK(delta.reasoning_content)
+                        except Exception:
+                            pass
                 if getattr(delta, "content", None):
                     content_parts.append(delta.content)
                     # 过程可见：回复增量实时落盘（run.log → /api/events）

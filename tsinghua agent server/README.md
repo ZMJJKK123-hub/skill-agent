@@ -6,6 +6,10 @@
 它**不替代** `server_app/` 里的网站。`server_app/` 是你的网页前端；本文件夹是给清小搭
 探测/试聊用的 API 服务。
 
+> 端口约定（已按需求解耦）：
+> - `8000` 端口：运行 `server_app/server.py`，打开你自己的网页。
+> - `8001` 端口：运行本服务，只提供清小搭 OpenAI 兼容接口，不再挂载网页。
+
 ---
 
 ## 1. 这个服务实现了什么
@@ -22,8 +26,11 @@
 - Bearer Token 鉴权（也兼容 `x-api-key`）
 - 清小搭探测的 `max_tokens:1` 快速通道，避免探测超时
 - `sessionId` 会话支持
-- 文本消息归一化：图片/音频/文件输入暂时降级为占位文字，不影响文本对话
 - 流式帧规范：`role` 帧 → `content` 帧 → `stop` 帧 → `data: [DONE]`
+- **文件产物下载（L2 attachments）**：agent 生成的 zip/jar/pdf/图片/文档等会收集到 `x_soda.attachments`，通过 `GET /files/{path}` 公网下载
+- **文件/图片输入**：`file` / `image_url` 的 OSS URL 会自动下载到工作区 `inputs/`，agent 可用 `read_file` 等工具读取
+- **流式思考（L1 reasoning）**：`core/agent.py` 收到模型 `reasoning_content` 时实时转发为 `delta.reasoning`，清小搭可显示“思考中”
+- **对话结尾引导**：回复末尾提示用户可访问网页版 `http://49.232.37.238:8000/`（可用环境变量 `DSH_WEB_URL` 覆盖）
 
 ---
 
@@ -34,6 +41,20 @@ tsinghua agent server/
 ├── main.py        # FastAPI 服务本体
 └── README.md      # 本说明
 ```
+
+### 2.1 新增的文件能力
+
+| 能力 | 说明 |
+|---|---|
+| `GET /files/{path}` | 公网下载 agent 生成的可交付文件；路径相对于服务工作区 `.runtime/` |
+| `x_soda.attachments` | agent 运行结束后自动收集本次新生成的可交付文件（zip/jar/pdf/图片/文档等），非流式放在响应顶层，流式放在 stop 帧 |
+| `file` / `image_url` 输入 | 清小搭传来的 OSS URL 会自动下载到 `.runtime/inputs/`，agent 通过 `read_file` 等工具读取 |
+| 流式思考 `delta.reasoning` | `core/agent.py` 实时回调 reasoning，流式响应中转发为 `reasoning` 帧 |
+| 对话结尾提示 | 自动追加“完整功能见网页版”的提示，可用 `DSH_WEB_URL` 修改地址 |
+
+> 可配置环境变量：
+> - `DSH_PUBLIC_BASE_URL`：附件 `fileUrl` 的公开基地址（默认取当前请求的 base_url）
+> - `DSH_WEB_URL`：回复末尾引导用户访问的网页地址（默认 `http://49.232.37.238:8000/`）
 
 ---
 
