@@ -446,5 +446,14 @@ def inject_pending_requests(messages: list, agent_id: str) -> None:
     if not parts:
         return
 
+    # 替换旧的 pending-requests 块，避免多轮重复堆积
+    messages[:] = [
+        m for m in messages
+        if not (
+            m.get("role") == "user"
+            and isinstance(m.get("content"), str)
+            and m["content"].lstrip().startswith("<pending-requests>")
+        )
+    ]
     messages.append({"role": "user", "content": "\n".join(["<pending-requests>"] + parts + ["</pending-requests>"])})
     logger.info(f"inject_pending_requests | {agent_id} | 注入 {len(parts)} 条协议请求")

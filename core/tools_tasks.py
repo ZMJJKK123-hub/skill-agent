@@ -125,27 +125,28 @@ class TaskManager:
 
     def create(self, subject: str, blocked_by: list[int] | None = None) -> dict:
         """创建一个新任务，可选指定依赖。校验依赖任务必须存在。"""
-        blocked_by = blocked_by or []
-        logger.info(
-            f"TaskManager.create | subject={subject} | blocked_by={blocked_by}"
-        )
-        task = {
-            "id": self._next_id,
-            "subject": subject,
-            "status": "pending",
-            "blockedBy": blocked_by,
-            "owner": None,
-        }
-        # 校验依赖的任务确实存在
-        for dep_id in task["blockedBy"]:
-            if self._read_task(dep_id) is None:
-                error_msg = f"Dependency task {dep_id} does not exist"
-                logger.warning(f"TaskManager.create 失败: {error_msg}")
-                return {"error": error_msg}
-        self._write_task(task)
-        self._next_id += 1
-        logger.info(f"TaskManager.create 成功 | task={json.dumps(task, ensure_ascii=False)}")
-        return task
+        with self._lock:
+            blocked_by = blocked_by or []
+            logger.info(
+                f"TaskManager.create | subject={subject} | blocked_by={blocked_by}"
+            )
+            task = {
+                "id": self._next_id,
+                "subject": subject,
+                "status": "pending",
+                "blockedBy": blocked_by,
+                "owner": None,
+            }
+            # 校验依赖的任务确实存在
+            for dep_id in task["blockedBy"]:
+                if self._read_task(dep_id) is None:
+                    error_msg = f"Dependency task {dep_id} does not exist"
+                    logger.warning(f"TaskManager.create 失败: {error_msg}")
+                    return {"error": error_msg}
+            self._write_task(task)
+            self._next_id += 1
+            logger.info(f"TaskManager.create 成功 | task={json.dumps(task, ensure_ascii=False)}")
+            return task
 
     def update(self, task_id: int, status: str, owner: str | None = None) -> dict:
         """更新任务状态。当任务完成时自动解锁后续任务。"""

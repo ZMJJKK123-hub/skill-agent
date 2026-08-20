@@ -406,12 +406,12 @@ def _run_agent(messages: list, session_id: str, base_url: str,
     mod_related = _is_mod_request(messages)
     start_ts = time.time()
     session_root = _session_workdir(session_id)
-    _prev_cwd = Path.cwd()
-    _prev_root = os.environ.get("DSH_SESSION_ROOT")
-    os.environ["DSH_SESSION_ROOT"] = str(session_root)
-    os.chdir(session_root)
 
     with _agent_lock:
+        _prev_cwd = Path.cwd()
+        _prev_root = os.environ.get("DSH_SESSION_ROOT")
+        os.environ["DSH_SESSION_ROOT"] = str(session_root)
+        os.chdir(session_root)
         try:
             # 仅在本次调用期间设置 reasoning 转发，避免并发请求串线
             from core.agent import get_reasoning_sink, set_reasoning_sink

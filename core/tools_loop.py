@@ -23,6 +23,8 @@ def parse_build_output(log_path=None, raw_text=None, base=None):
         path = Path(log_path)
         if not path.is_absolute():
             path = Path(base) / path
+        if not path.resolve().is_relative_to(Path(base).resolve()):
+            return f"Error: log_path 越出工作区: {path}"
         if path.exists():
             text = path.read_text(encoding="utf-8", errors="replace")
     if not text:

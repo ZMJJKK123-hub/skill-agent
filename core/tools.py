@@ -228,6 +228,7 @@ TOOLS = [
                     "path": {"type": "string", "description": "Directory or file to search (default workspace root)"},
                     "glob_filter": {"type": "string", "description": "Optional filename glob filter, e.g. *.java"},
                     "max_results": {"type": "integer", "description": "Max matches to return (default 50)"},
+                    "context_lines": {"type": "integer", "description": "Number of surrounding lines to include per match (default 0)"},
                 },
                 "required": ["pattern"],
             },

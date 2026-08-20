@@ -43,7 +43,7 @@ def _is_mod_file(path: str) -> bool:
 def run_write(path: str, content: str) -> str:
     if _sandbox_mode() == "read-only":
         return "Error: read-only 模式禁止写入文件"
-    # 已按用户要求关闭“必须先 load_skill 才能写 MOD 文件”的限制，允许先写后验证
+    # 提示词要求先加载最相关技能，但运行时不强制前置拦截；写和验证优先
     try:
         # 第 12 课：基座跟随线程 session（worktree_use 后落在 worktree 内）
         base = worktree_manager.resolve_dir() if worktree_manager else None
@@ -57,7 +57,7 @@ def run_write(path: str, content: str) -> str:
 def run_edit(path: str, old_text: str, new_text: str) -> str:
     if _sandbox_mode() == "read-only":
         return "Error: read-only 模式禁止修改文件"
-    # 已按用户要求关闭“必须先 load_skill 才能改 MOD 文件”的限制，允许先写后验证
+    # 提示词要求先加载最相关技能，但运行时不强制前置拦截；写和验证优先
     try:
         # 第 12 课：基座跟随线程 session（worktree_use 后落在 worktree 内）
         base = worktree_manager.resolve_dir() if worktree_manager else None

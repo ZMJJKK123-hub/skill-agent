@@ -46,8 +46,11 @@ def verify_artifact(jar_path: str = None) -> str:
     jars = []
     if jar_path:
         p = Path(jar_path)
-        if p.is_absolute() and p.exists():
-            jars = [p]
+        if p.is_absolute():
+            if not p.resolve().is_relative_to(base.resolve()):
+                return "Error: jar_path 越出工作区"
+            if p.exists():
+                jars = [p]
         elif (base / jar_path).exists():
             jars = [base / jar_path]
     elif dist.is_dir():

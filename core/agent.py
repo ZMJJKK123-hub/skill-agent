@@ -797,7 +797,7 @@ def agent_loop(messages: list) -> str:
                 _existing_java = True
             elif not _wrote_file and tc.function.name in (
                 "read_file", "bash", "grep", "glob",
-                "web_search", "web_fetch", "search_api",
+                "web_search", "web_fetch", "search_api", "load_skill",
             ):
                 _pre_write_reads += 1
             elif _wrote_file and tc.function.name in (
@@ -809,7 +809,7 @@ def agent_loop(messages: list) -> str:
                 _forced_post_write = False
             elif _wrote_file and tc.function.name in (
                 "read_file", "bash", "grep", "glob",
-                "web_search", "web_fetch", "search_api",
+                "web_search", "web_fetch", "search_api", "load_skill",
             ):
                 _post_write_research += 1
             # flash 适配：工具参数 JSON 可能不完整/非法，解析失败不炸主循环，

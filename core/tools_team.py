@@ -75,7 +75,15 @@ class MessageBus:
             # 读完即清
             with open(path, "w", encoding="utf-8") as f:
                 pass  # truncate to empty
-        msgs = [json.loads(l) for l in lines if l.strip()]
+        msgs = []
+        for l in lines:
+            if not l.strip():
+                continue
+            try:
+                msgs.append(json.loads(l))
+            except json.JSONDecodeError:
+                logger.warning(f"MessageBus.read_inbox | {name} | 跳过损坏消息行")
+                continue
         logger.info(f"MessageBus.read_inbox | {name} | 读取 {len(msgs)} 条消息")
         return msgs
 
@@ -474,8 +482,8 @@ class TeammateManager:
                     sub_messages.append({"role": "tool", "tool_call_id": tc.id,
                         "content": f"Error: Invalid tool arguments JSON for {tc.function.name}: {e}. Please retry with valid JSON."})
                     continue
-                # 第 10 课：submit_plan 需要记录发起方（队友身份）
-                if tc.function.name == "submit_plan":
+                # 第 10/11 课：submit_plan / claim_task 需要记录发起方（队友身份）
+                if tc.function.name in ("submit_plan", "claim_task"):
                     args["_agent_id"] = agent_id
                 handler = TOOL_HANDLERS.get(tc.function.name)
                 output = handler(**args) if handler else f"Unknown tool: {tc.function.name}"

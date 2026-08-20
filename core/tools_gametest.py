@@ -29,9 +29,12 @@ def _tail(path: Path, max_chars: int = 400_000) -> str:
 def parse_gametest_results(lines: int = 200, log_path: str = None) -> str:
     """Parse the tail of the GameTest log and return a concise pass/fail summary."""
     base = _base_dir()
+    base_resolved = Path(base).resolve()
     path = Path(log_path) if log_path else Path(base) / DEFAULT_LOG
     if not path.is_absolute():
         path = Path(base) / path
+    if not path.resolve().is_relative_to(base_resolved):
+        return f"Error: log_path 越出工作区: {path}"
     if not path.exists():
         return f"Error: GameTest log not found: {path}"
 

@@ -16,6 +16,9 @@ mod_material/
 Documentation/
 deepseek-harness/
 .supervisor/inbox
+服务器重启命令.txt
+screenshots/
+bugaudit/
 
 # ---- 运行时日志 ----
 server_out*.log

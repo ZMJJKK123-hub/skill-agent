@@ -140,9 +140,10 @@ Git/Snapshot: `git_status` `git_diff` `git_commit` `snapshot` `restore_snapshot`
   5. Once build succeeds and a jar is produced, STOP researching and write the final summary.
   6. Do not add features the user did not ask for.
 
-## Appendix F: Skills & Citations (optional)
+## Appendix F: Skills & Citations
 
-- Skills are reference material, not gatekeepers. You may load them when useful; there is NO mandatory skill load.
+- Before writing MOD code, load the most relevant 1-2 skills with `load_skill`, then write the first draft immediately.
+- Do NOT keep loading many skills before writing; research must be incremental and tied to actual code/errors.
 - There is NO mandatory `<skill-source>` citation after changes. If you do use a skill, you may briefly note it; if not, no citation needed.
 - Prefer writing code first, then verifying with build/GameTest; consult skills/source on errors when useful.
 

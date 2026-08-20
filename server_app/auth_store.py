@@ -14,6 +14,7 @@
 import hashlib
 import json
 import os
+import re
 import secrets
 import time
 from pathlib import Path
@@ -62,6 +63,8 @@ def register(username: str, password: str) -> dict:
         raise ValueError("用户名不能为空")
     if len(name) > 32:
         raise ValueError("用户名过长（最多 32 字符）")
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", name):
+        raise ValueError("用户名只能包含字母、数字、下划线或短横线")
     if len(password) < 6:
         raise ValueError("密码至少 6 位")
 

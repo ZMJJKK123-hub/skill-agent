@@ -37,9 +37,12 @@ def wait_for_port(port, host="127.0.0.1", timeout=60):
 
 def tail_log(log_path=None, lines=80, base=None):
     base = base or _base_dir()
+    base_resolved = Path(base).resolve()
     path = Path(log_path) if log_path else Path(base) / "run/logs/latest.log"
     if not path.is_absolute():
         path = Path(base) / path
+    if not path.resolve().is_relative_to(base_resolved):
+        return f"Error: log_path 越出工作区: {path}"
     if not path.exists():
         return f"Log not found: {path}"
     try:

@@ -25,7 +25,7 @@ def _is_mutating(command: str) -> bool:
 
 def _escapes_workspace(command: str) -> bool:
     """检测 cd / pushd 到工作区之外（..、根目录、盘符）。"""
-    return bool(re.search(r"\b(?:cd|pushd)\s+(?:\.\.|[/\\]|[a-z]:)", command.lower()))
+    return bool(re.search(r"\b(?:cd|pushd)\s+[\"\']?(?:\.\.|[/\\]|[a-z]:)", command.lower()))
 
 
 def run_bash(command: str) -> str:
@@ -64,10 +64,8 @@ def run_bash(command: str) -> str:
     try:
         out, _ = proc.communicate(timeout=30)
     except subprocess.TimeoutExpired:
-        subprocess.run(
-            f"taskkill /f /t /pid {proc.pid}",
-            shell=True, capture_output=True,
-        )
+        from .process_manager import kill_pid
+        kill_pid(proc.pid)
         try:
             out, _ = proc.communicate(timeout=5)
         except subprocess.TimeoutExpired:

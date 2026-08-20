@@ -156,9 +156,12 @@ def game_input(action: str, key: str = None, text: str = None) -> str:
 def wait_for_log(pattern: str, timeout: int = 60, log_path: str = None) -> str:
     """Wait until a regex pattern appears in a log file (default run/logs/latest.log)."""
     base = _base_dir()
+    base_resolved = Path(base).resolve()
     path = Path(log_path) if log_path else Path(base) / "run/logs/latest.log"
     if not path.is_absolute():
         path = Path(base) / path
+    if not path.resolve().is_relative_to(base_resolved):
+        return f"Error: log_path 越出工作区: {path}"
     deadline = time.time() + max(1, int(timeout))
     rx = re.compile(pattern, re.I)
     while time.time() < deadline:

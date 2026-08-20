@@ -45,6 +45,15 @@ class BackgroundManager:
         if any(d in command.lower() for d in dangerous):
             return "Error: Dangerous command blocked"
 
+        # 沙箱：与 run_bash 保持一致，禁止越出工作区/read-only 写操作
+        from .tools_shell import _escapes_workspace, _is_mutating, _sandbox_mode
+        mode = _sandbox_mode()
+        if mode != "full-access":
+            if _escapes_workspace(command):
+                return "Error: 沙箱模式禁止越出工作区（cd .. / cd 绝对路径）"
+            if mode == "read-only" and _is_mutating(command):
+                return "Error: read-only 模式禁止修改性操作"
+
         task_id = f"bg_{len(self.tasks)}_{int(time.time())}"
         task = BackgroundTask(task_id=task_id, command=command)
         with self.lock:

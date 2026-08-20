@@ -18,6 +18,7 @@
 """
 
 import os
+import re
 import json
 import shutil
 import subprocess
@@ -298,8 +299,19 @@ def _purge_session(sess: Session) -> None:
     auth_store.prune_expired()
 
 
+def _is_safe_session_id(session_id: str) -> bool:
+    """校验 session_id 是否可作为目录名，防止路径穿越/目录删除。"""
+    if not isinstance(session_id, str) or not session_id:
+        return False
+    if session_id in (".", ".."):
+        return False
+    return bool(re.fullmatch(r"[A-Za-z0-9_-]{1,64}", session_id))
+
+
 def _purge_session_dir(session_id: str) -> None:
     """按 ID 清理会话目录（会话不在内存时用，如历史遗留脏目录）。"""
+    if not _is_safe_session_id(session_id):
+        return
     sess_dir = SESSIONS_DIR / session_id
     if sess_dir.exists():
         shutil.rmtree(sess_dir, ignore_errors=True)
@@ -1282,6 +1294,8 @@ def delete_history(session_id: str = "", authorization: str = Header(default="")
     username = _auth_username(authorization)
     if session_id:
         # 单条删除：清历史 + 清会话目录（校验归属后彻底清理）
+        if not _is_safe_session_id(session_id):
+            raise HTTPException(status_code=400, detail="非法 session_id")
         auth_store.remove_history(username, session_id)
         sess = sessions.get(session_id)
         if sess and sess.owner == username:
@@ -1309,6 +1323,8 @@ def delete_history_batch(req: HistoryBatchDelete, authorization: str = Header(de
     """批量删除历史：每个 session_id 清历史 + 同步清会话目录。"""
     username = _auth_username(authorization)
     for sid in req.session_ids:
+        if not _is_safe_session_id(sid):
+            raise HTTPException(status_code=400, detail="非法 session_id")
         auth_store.remove_history(username, sid)
         sess = sessions.get(sid)
         if sess and sess.owner == username:
