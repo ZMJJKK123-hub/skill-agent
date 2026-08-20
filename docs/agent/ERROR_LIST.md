@@ -477,3 +477,17 @@ Post-write research budget (`build-now-stop`) was not active because the agent w
   2. Run a real client (`run_client` / start_mc_client) or at least a client smoke test that summons/renders the entity.
   3. Add a visual/screenshot check for spawn egg icons and entity rendering.
 - This exact bug was found only after a real PCL client crash: `NullPointerException: entityrenderer is null`.
+## 2026-08-20 Skyforge client load failure: renderer registered before registry objects exist
+
+- Symptom: real client mod loading screen fails with `Mod Loading has failed`; detail:
+  `NullPointerException: Registry Object not present: skyforge:sky_golem`
+  at `SkyforgeClient.registerRenderers` -> `SkyforgeMod.<init>`
+- Root cause: calling `EntityRenderers.register(SkyforgeEntities.SKY_GOLEM.get(), ...)` inside the mod constructor (even via `DistExecutor`) is TOO EARLY: DeferredRegister entries are not in the registry yet, so `RegistryObject.get()` returns null.
+- Fix: defer client renderer registration to `FMLClientSetupEvent`:
+  ```java
+  FMLClientSetupEvent.getBus(FMLJavaModLoadingContext.get().getModBusGroup())
+      .addListener(event -> event.enqueueWork(() ->
+          DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+              () -> SkyforgeClient::registerRenderers)));
+  ```
+- Rule: never call `.get()` on a RegistryObject for EntityType/Block/Item registration-time APIs inside `@Mod` constructor; use lifecycle events (`FMLClientSetupEvent` etc.) after registries are populated.
