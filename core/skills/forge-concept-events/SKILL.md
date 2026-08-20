@@ -8,9 +8,15 @@ whenToUse: "Use when listening to Forge events or firing custom events."
 
 # Events
 
-Forge uses an event bus that lets mods intercept vanilla and mod behaviors. The main bus is `MinecraftForge#EVENT_BUS`; the mod-specific bus is `FMLJavaModLoadingContext#getModEventBus`.
+Forge uses an event bus that lets mods intercept vanilla and mod behaviors.
 
-## Creating an event handler
+> ⚠️ **IMPORTANT (1.21.11):** the old `MinecraftForge.EVENT_BUS`, `FMLJavaModLoadingContext#getModEventBus`, `@SubscribeEvent`, and `@Mod.EventBusSubscriber` patterns below are LEGACY and generally NOT available in this Forge version. Use the **typed event bus** `SomeEvent.BUS.addListener(...)` shown in the "1.21.11+ current event bus" section at the bottom. Do NOT copy the legacy examples.
+
+## Legacy event handler patterns (older Forge, not 1.21.11)
+
+The main bus is `MinecraftForge#EVENT_BUS`; the mod-specific bus is `FMLJavaModLoadingContext#getModEventBus`.
+
+## Creating an event handler (legacy)
 
 Handlers are single-parameter methods returning void, registered with `IEventBus#addListener` (or `#addGenericListener` for `GenericEvent<T>`, specifying the generic class) inside the mod constructor:
 

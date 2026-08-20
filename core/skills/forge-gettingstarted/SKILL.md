@@ -8,12 +8,14 @@ whenToUse: "Use when setting up a Forge mod project or build.gradle."
 
 ## ⚠️ Hard Facts About This Project's Environment (Must Not Be Violated)
 
-The following are the deployed Forge build environment facts on this machine. **When a build fails, judge by this section first — do not use old Forge knowledge to conclude a version "does not exist".**
+> ✅ **CURRENT ACTUAL ENVIRONMENT (authoritative):** this workspace uses **Minecraft 1.21.11 / Forge 1.21.11-61.2.0**. The `26.2-65.1.x` notes below are OUTDATED text from an older environment and must NOT be used to conclude versions or edit build.gradle.
+
+The following are the deployed Forge build environment facts on this machine (historical notes). **When a build fails, judge by this section first — do not use old Forge knowledge to conclude a version "does not exist".**
 
 ### Version Number Format (new scheme)
-- This project's Forge dependency version format is `26.2-65.1.x`: **`26.2` is the Minecraft version number (new naming), `65.1.x` is the Forge build number**.
+- ~~This project's Forge dependency version format is `26.2-65.1.x`~~ — OUTDATED, do not use.
 - This is a **valid modern version number**, not an "old format" or a "typo". Even though it looks like the `1.12`-era format, it is **forbidden** to judge it as "version does not exist".
-- Old knowledge (e.g. `1.20.1`=47.x, `1.21`=52.x) **does not apply** to this project; do not "fix" build.gradle based on it.
+- Old knowledge (e.g. `1.20.1`=47.x, `1.21`=52.x) **does not apply**; the current project is `1.21.11-61.2.0`. Do not "fix" build.gradle based on these notes.
 
 ### Locally Cached Versions (no online downloads)
 The local Gradle cache already contains the following Forge versions (`C:\Users\59639\.gradle\caches\minecraftforge\forgegradle\mavenizer\caches\forge\net\minecraftforge\forge\`):

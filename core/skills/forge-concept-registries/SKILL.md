@@ -21,8 +21,10 @@ private static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(Fo
 public static final RegistryObject<Block> ROCK_BLOCK = BLOCKS.register("rock", () -> new Block(BlockBehaviour.Properties.of().mapColor(MapColor.STONE)));
 
 public ExampleMod(FMLJavaModLoadingContext context) {
-  BLOCKS.register(context.getModEventBus());
+  // 1.21.11: use getModBusGroup() (NOT getModEventBus)
+  BLOCKS.register(FMLJavaModLoadingContext.get().getModBusGroup());
 }
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 ```
 
 ### RegisterEvent
@@ -31,7 +33,7 @@ Fired for each registry after mod constructors, before config loading. Register 
 
 ```java
 event.register(ForgeRegistries.Keys.BLOCKS, helper -> {
-  helper.register(ResourceLocation.fromNamespaceAndPath(MODID, "example_block_1"), new Block(...));
+  helper.register(Identifier.fromNamespaceAndPath(MODID, "example_block_1"), new Block(...));
 });
 ```
 
