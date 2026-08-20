@@ -317,6 +317,8 @@ def agent_loop(messages: list) -> str:
     _pre_write_reads = 0
     _pre_write_warned = False
     _starter_auto_written = False
+    _write_strikes = 0
+    _forced_write = False
     _force_final_msg = None
     _round_idx = 0
     _round_tool_counts = {}
@@ -711,6 +713,7 @@ def agent_loop(messages: list) -> str:
                 or "src/test/java" in (tc.function.arguments or "")
             ):
                 _wrote_file = True
+                _forced_write = False
             elif not _wrote_file and tc.function.name in (
                 "read_file", "bash", "grep", "glob",
                 "web_search", "web_fetch", "search_api",
@@ -734,6 +737,22 @@ def agent_loop(messages: list) -> str:
             if tc.function.name == "compact":
                 compact_pending = True
                 logger.info("Layer 3 compact 工具被模型主动调用 | 先跳过，等其他工具执行完")
+                continue
+
+            # 强制写代码模式：反复研究但没写 Java 时，暂时禁用研究类工具
+            if _forced_write and not _wrote_file and tc.function.name in (
+                "read_file", "bash", "grep", "glob",
+                "web_search", "web_fetch", "search_api",
+            ):
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.id,
+                    "content": (
+                        "Error: Forced write mode is active. You must call write_file/edit_file "
+                        "to create or edit a Java file under src/main/java or src/test/java before "
+                        "using research tools. Research tools are temporarily disabled."
+                    ),
+                })
                 continue
 
             # M3: 统一走注册表执行管线（pre 钩子 → guard → handler → post 钩子；
@@ -794,6 +813,9 @@ def agent_loop(messages: list) -> str:
         # 写前研究预算守卫：超过 6 次读/查还没写文件，强制提醒立即写首个文件
         if not _wrote_file and not _pre_write_warned and _pre_write_reads >= 6:
             _pre_write_warned = True
+            _write_strikes += 1
+            if _write_strikes >= 2:
+                _forced_write = True
             if not _starter_auto_written and _auto_write_starter(messages):
                 _starter_auto_written = True
                 # 自动复制的 starter 不算“已主动写代码”：
