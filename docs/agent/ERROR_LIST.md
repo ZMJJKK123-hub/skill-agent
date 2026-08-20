@@ -432,3 +432,20 @@ Post-write research budget (`build-now-stop`) was not active because the agent w
 - Entity cross-dimension teleport uses `Entity#teleport(TeleportTransition)` / `Entity#teleportTo(ServerLevel, ...)`, not `changeDimension`
 - `PersistentData#getLong` returns `Optional<Long>` (use `.orElse(0L)`)
 - Equipment asset key: `ResourceKey.create(EquipmentAssets.ROOT_ID, Identifier.fromNamespaceAndPath(...))`, not `Registries.EQUIPMENT_ASSET`
+## 2026-08-20 Skyforge Realm runtime fixes (after GameTest pass)
+
+- `Block`/`Item` properties in 1.21.11 runtime require `.setId(...)`:
+  - `BlockBehaviour.Properties.of().setId(BLOCKS.key("name"))`
+  - `new Item.Properties().setId(ITEMS.key("name"))`
+  - `BlockItem` also needs `.setId(ITEMS.key(name))`
+- Forge config values cannot be read during `EntityAttributeCreationEvent` before config load:
+  - Guard with `ModConfig.COMMON.isLoaded() ? value.get() : fallback`
+- `pack.mcmeta` with `pack_format: 61` must include `"supported_formats": [61, 81]`
+- `dimension_type` JSON requires `monster_spawn_light_level` (IntProvider, e.g. `{"type":"minecraft:constant","value":7}`) and `monster_spawn_block_light_limit` (int)
+- Custom dimension `generator.settings` should reference existing noise settings (`minecraft:overworld`); `minecraft:the_end` may fail to resolve
+- Structure JSON must be at `data/<ns>/worldgen/structure/<name>.json` (NOT `data/<ns>/structure/...`)
+- Forge `@GameTest` annotation has no `template`/`timeoutTicks` attributes; use bare `@GameTest`
+- Test source package must NOT be same as main mod package or JPMS fails `Modules skyforge and test export package ...`; use `com.<mod>.test`
+- `HolderLookup.RegistryLookup#get(key)` returns `Optional<Holder.Reference<T>>`; use `.value()`
+- `GameTestHelper#spawnWithNoFreeWill(EntityType<E>, BlockPos)` requires `E extends Mob`; cast to concrete entity type
+- Forge GameTest imports: `net.minecraftforge.gametest.GameTest`, `net.minecraftforge.gametest.GameTestNamespace`, `net.minecraft.gametest.framework.GameTestHelper`
