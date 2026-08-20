@@ -319,6 +319,7 @@ def agent_loop(messages: list) -> str:
     _starter_auto_written = False
     _write_strikes = 0
     _forced_write = False
+    _post_write_research = 0
     _force_final_msg = None
     _round_idx = 0
     _round_tool_counts = {}
@@ -719,6 +720,14 @@ def agent_loop(messages: list) -> str:
                 "web_search", "web_fetch", "search_api",
             ):
                 _pre_write_reads += 1
+            elif _wrote_file and tc.function.name in (
+                "read_file", "bash", "grep", "glob",
+                "web_search", "web_fetch", "search_api",
+            ) and tc.function.name not in (
+                "build_mod_jar_forge", "run_test_gametest", "run_mod_test_cycle",
+                "validate_resources", "parse_build_output", "read_game_test_log",
+            ):
+                _post_write_research += 1
             # flash 适配：工具参数 JSON 可能不完整/非法，解析失败不炸主循环，
             # 而是返回温和错误文本作为该工具的结果，让模型修正后重试。
             try:
@@ -840,6 +849,21 @@ def agent_loop(messages: list) -> str:
                     "再 build/compile 根据报错处理。不要继续 read_file/grep mc_java_sources。</write-first-stop>"
                 ),
             })
+            continue
+
+        # 写后研究预算：已写代码但仍反复查 API 不编译/测试
+        if _wrote_file and _post_write_research >= 8 and not _pre_write_warned:
+            logger.warning(f"写后研究超预算（{_post_write_research}），强制提醒编译/测试")
+            messages.append({
+                "role": "user",
+                "content": (
+                    "<build-now-stop> 你已经写完了 Java 代码，但还在反复查 API 不编译。"
+                    "立即停止研究。调用 validate_resources 检查资源，"
+                    "然后调用 run_mod_test_cycle 或 build_mod_jar_forge 编译。"
+                    "编译报错再查具体符号。不要继续 read_file/grep/search_api。</build-now-stop>"
+                ),
+            })
+            _post_write_research = 0
             continue
 
         # 工具主动收尾：不进入下一轮 LLM 调用
