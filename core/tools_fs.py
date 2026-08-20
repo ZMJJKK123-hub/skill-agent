@@ -108,8 +108,19 @@ def run_search_api(symbol: str, path: str = "mc_java_sources", max_results: int 
 
     Searches only the given path (default MC/Forge sources) for the exact symbol,
     returns at most `max_results` short match lines, and explicitly does NOT read
-    whole files. Use this FIRST on compile errors before read_file.
+    whole files. Use this AFTER checking skills and ERROR_LIST.md.
     """
+    from .skillcheck import any_loaded
+    if not any_loaded():
+        return (
+            "Hint: You have not loaded any skill yet. Please load_skill first "
+            "(e.g. forge-items, forge-networking, forge-concept-events) — skills "
+            "are condensed and authoritative. If the skill does not contain the "
+            "answer, grep docs/agent/ERROR_LIST.md. Only if still not found, "
+            "call search_api again to search mc_java_sources.\n\n"
+            "To proceed with this search anyway, call search_api again after "
+            "loading at least one skill."
+        )
     try:
         out = run_grep(symbol, path=path, glob_filter="*.java", max_results=max_results)
         prefix = f"[search_api] Searching '{symbol}' in {path} (max {max_results} lines):\n"
