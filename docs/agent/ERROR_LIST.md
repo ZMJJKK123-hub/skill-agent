@@ -407,3 +407,16 @@ public record ArmorMaterial(
     ResourceKey<EquipmentAsset> assetId
 )
 ```
+## 2026-08-20 Skyforge Realm (itertest6) findings
+
+The agent successfully wrote a very complex MOD (17 Java files + 92 resource files + GameTest) within ~33 minutes using forced-write mode. However, compile-fix phase exceeded 30 minutes due to many 1.21.11 API changes:
+
+- `InteractionResult` is now a sealed interface with records (`Success`, `Fail`, `Pass`, `TryEmptyHandInteraction`, `ItemContext`) — not an enum anymore
+- `SpawnEggItem` constructor takes only `Item.Properties` (no EntityType parameter in 1.21.11)
+- `customServerAiStep` signature changed in `Mob`
+- `EntitySpawnReason` is a new enum replacing some spawn parameters
+- `BossEvent` API is unchanged but `ServerBossEvent` constructor takes Component + BossBarColor + BossBarOverlay
+- `Tool` is now a record with Codec/StreamCodec, not an interface
+- `AttributeModifier` is now a record
+
+Post-write research budget (`build-now-stop`) was not active because the agent was started before that fix was deployed.
