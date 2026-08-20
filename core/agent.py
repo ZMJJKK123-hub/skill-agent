@@ -701,7 +701,11 @@ def agent_loop(messages: list) -> str:
                         "②调用 run_test_gametest 运行测试（扫描 src/test；禁止用 run_game_test_server 自检——它只扫 src/main）；"
                         "③可用 read_game_test_log 查看日志）。"
                         "按 skill-first 纪律，未跑通 GameTest 不得宣布 MOD 完成。请先补测试并运行，通过后再结束。"})
-                    logger.info("gametest-check FAILED: 缺少 @GameTest 或未运行 run_test_gametest")
+                    messages.append({"role": "user", "content":
+                        "<tool-call-required> 任务未完成，禁止只输出纯文本。你必须立即调用一个工具："
+                        "write_file / edit_file / build_mod_jar_forge / run_test_gametest / run_mod_test_cycle / validate_resources。"
+                        "不要回复“No additional output”之类的话。</tool-call-required>"})
+                    logger.info("gametest-check FAILED + tool-call-required 注入")
             except Exception as _e:
                 logger.info(f"gametest-check 跳过: {_e}")
             if not _gametest_ok:
