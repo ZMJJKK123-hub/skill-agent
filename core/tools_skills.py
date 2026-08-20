@@ -229,8 +229,12 @@ CATALOG_MARKER = "<available-skills>"
 # 目录消息中的路由指引（与旧 system prompt skill:catalog section 文案一致）
 CATALOG_ROUTING = (
     "For Minecraft MOD development, load the most relevant skill FIRST with load_skill before writing any "
-    "Java/resource file (e.g. forge-simple-min-mod). Skills are the PRIMARY reference. Do NOT read "
-    "mc_java_sources or starter/docs before writing; source is backup only after a compile/test error.\n"
+    "Java/resource file. For a COMPLEX mod (dimensions/entities/worldgen/armor/structures/GameTest), batch-load "
+    "this skill bundle in ONE turn before writing code: forge-simple-min-mod, forge-items, forge-blocks, "
+    "forge-concept-registries, forge-concept-events, forge-gettingstarted, forge-networking, minecraft-entity-type, "
+    "minecraft-dimension-type, minecraft-dimension, minecraft-structure, minecraft-structure-set, "
+    "minecraft-equipment-asset, minecraft-data-component, minecraft-test-instance. Skills are the PRIMARY reference. "
+    "Do NOT read mc_java_sources or starter/docs before writing; source is backup only after a compile/test error.\n"
     "本目录仅含技能摘要（name + 首行描述），须先加载对应技能全文再写 MOD 代码。"
 )
 
