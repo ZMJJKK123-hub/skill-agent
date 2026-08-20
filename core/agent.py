@@ -337,11 +337,19 @@ def agent_loop(messages: list) -> str:
     _write_strikes = 0
     _forced_write = False
     _post_write_research = 0
-    _existing_java = any(
-        (Path.cwd() / "src" / "main" / "java").rglob("*.java")
-    ) or any(
-        (Path.cwd() / "src" / "test" / "java").rglob("*.java")
-    )
+    def _has_custom_java():
+        # 模板包 com/example 不算“已有自己写的代码”，否则 forced-write 永远不触发。
+        def is_template(p: Path) -> bool:
+            parts = [x.lower() for x in p.parts]
+            return "com" in parts and "example" in parts and "examplemod" in parts
+        main = Path.cwd() / "src" / "main" / "java"
+        test = Path.cwd() / "src" / "test" / "java"
+        return any(
+            p.suffix == ".java" and not is_template(p)
+            for root in (main, test) if root.exists()
+            for p in root.rglob("*.java")
+        )
+    _existing_java = _has_custom_java()
     _force_final_msg = None
     _round_idx = 0
     _round_tool_counts = {}
