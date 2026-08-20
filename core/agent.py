@@ -56,6 +56,11 @@ MAX_INLINE_TOOL_CHARS = 3000
 # 因此这里显式读取环境变量而不是依赖 Path.cwd()。
 SESSION_ROOT = os.environ.get("DSH_SESSION_ROOT", "")
 
+
+def _current_session_root() -> str:
+    """动态读取当前会话根目录（支持按 sessionId 隔离对话历史）。"""
+    return os.environ.get("DSH_SESSION_ROOT", "")
+
 # 流式思考转发钩子：由外部接入层（如清小搭 8001 服务）设置。
 # 收到模型 delta.reasoning_content 时会实时调用 callback(text)；
 # 未设置时保持原有行为（仅累积到完整 reasoning 后打印/记录）。
@@ -200,11 +205,12 @@ def _replace_runtime_slot(messages: list, tag_prefix: str, content: str) -> None
 
 def _save_checkpoint(messages: list) -> None:
     """把当前轮 messages 存为断点（每轮循环开头）。"""
-    if not SESSION_ROOT:
+    session_root = _current_session_root()
+    if not session_root:
         return
     try:
         from .conversation import save_working
-        save_working(SESSION_ROOT, messages)
+        save_working(session_root, messages)
     except Exception as e:
         logger.warning(f"断点保存失败: {e}")
 
@@ -216,11 +222,12 @@ def _drain_interjections(messages: list) -> None:
     load_recent_history 可能已包含它——这里按 (role, content) 去重，
     避免同一条消息被注入两次。
     """
-    if not SESSION_ROOT:
+    session_root = _current_session_root()
+    if not session_root:
         return
     try:
         from .conversation import drain_pending
-        pending = drain_pending(SESSION_ROOT)
+        pending = drain_pending(session_root)
         if pending:
             existing = {
                 (m.get("role"), m.get("content"))

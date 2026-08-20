@@ -29,6 +29,7 @@ import json
 import mimetypes
 import os
 import queue
+import re
 import sys
 import threading
 import time
@@ -356,6 +357,14 @@ def _append_web_hint(text: str) -> str:
 # ---------------------------------------------------------------------------
 # 核心：调用本项目 Agent 引擎
 # ---------------------------------------------------------------------------
+def _session_workdir(session_id: str) -> Path:
+    """为每个清小搭 sessionId 分配独立工作目录，用于隔离对话历史/断点。"""
+    safe = re.sub(r"[^A-Za-z0-9_.-]", "_", session_id or "")[:64].strip("._") or "default"
+    d = WORKSPACE / "sessions" / safe
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
 def _run_agent(messages: list, session_id: str, base_url: str,
                reasoning_sink=None) -> tuple[str, list]:
     """调用 agent_loop 获取最终回复，并收集本次生成的附件。串行化保证 demo 安全。
@@ -372,9 +381,13 @@ def _run_agent(messages: list, session_id: str, base_url: str,
                 _session_cache.pop(k, None)
 
     start_ts = time.time()
+    session_root = _session_workdir(session_id)
+    _prev_cwd = Path.cwd()
+    _prev_root = os.environ.get("DSH_SESSION_ROOT")
+    os.environ["DSH_SESSION_ROOT"] = str(session_root)
+    os.chdir(session_root)
+
     with _agent_lock:
-        _prev_cwd = Path.cwd()
-        os.chdir(WORKSPACE)
         try:
             # 仅在本次调用期间设置 reasoning 转发，避免并发请求串线
             from core.agent import get_reasoning_sink, set_reasoning_sink
@@ -390,6 +403,10 @@ def _run_agent(messages: list, session_id: str, base_url: str,
             except Exception:
                 pass
             os.chdir(_prev_cwd)
+            if _prev_root is None:
+                os.environ.pop("DSH_SESSION_ROOT", None)
+            else:
+                os.environ["DSH_SESSION_ROOT"] = _prev_root
 
     text = str(final) if final is not None else "(no response)"
     text = _append_web_hint(text)

@@ -31,6 +31,7 @@
 - **文件/图片输入**：`file` / `image_url` 的 OSS URL 会自动下载到工作区 `inputs/`，agent 可用 `read_file` 等工具读取
 - **流式思考（L1 reasoning）**：`core/agent.py` 收到模型 `reasoning_content` 时实时转发为 `delta.reasoning`，清小搭可显示“思考中”
 - **对话结尾引导**：回复末尾提示用户可访问网页版 `http://49.232.37.238:8000/`（可用环境变量 `DSH_WEB_URL` 覆盖）
+- **按 sessionId 隔离会话**：每个清小搭 `sessionId` 使用独立工作目录 `.runtime/sessions/<sessionId>/`，对话历史/断点/事件不串号
 
 ---
 
