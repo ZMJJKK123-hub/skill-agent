@@ -142,10 +142,21 @@ def write_stdin(handle: str, text: str) -> bool:
         return False
 
 
-def stop(handle: str, force: bool = True) -> dict:
+def stop(handle: str, force: bool = True, base: str = None) -> dict:
     """Stop a tracked process (tree kill on Windows). Returns result dict."""
     info = _PROCESSES.get(handle)
     result = {"handle": handle, "ok": False, "message": f"No tracked process '{handle}'"}
+    if not info and base is not None:
+        manifest = _load_manifest(base)
+        data = manifest.get(handle)
+        if data:
+            pid = int(data.get("pid", 0))
+            if pid and _pid_alive(pid):
+                kill_pid(pid, force=force)
+                manifest.pop(handle, None)
+                _save_manifest(base)
+                result.update({"ok": True, "message": f"Stopped orphan '{handle}' (pid={pid})"})
+                return result
     if not info:
         return result
     proc = info["proc"]

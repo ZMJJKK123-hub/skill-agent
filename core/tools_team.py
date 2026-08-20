@@ -2,6 +2,7 @@
 """MessageBus / TeammateManager / protocol dispatch implementations (moved from core/tools.py)."""
 import json
 import os
+import re
 import threading
 import time
 from dataclasses import dataclass
@@ -11,6 +12,10 @@ from .config import logger
 from .protocol import coordinator, inject_pending_requests, parse_protocol_flag
 from .skillcheck import move_skills_to_end, run_loop_check
 from .tools_tasks import task_manager
+
+def _is_safe_agent_name(name: str) -> bool:
+    return bool(name and re.fullmatch(r"[A-Za-z0-9_-]{1,64}", name))
+
 
 # ---------- MessageBus（第 9 课：JSONL 收件箱，drain-on-read）----------
 class MessageBus:
@@ -46,6 +51,9 @@ class MessageBus:
 
     def send(self, from_name: str, to_name: str, content: str):
         """往目标队友的收件箱追加一条消息。"""
+        if not _is_safe_agent_name(to_name):
+            logger.warning(f"MessageBus.send | 非法 to_name={to_name!r}，已忽略")
+            return
         msg = {
             "from": from_name,
             "to": to_name,
@@ -213,6 +221,8 @@ class TeammateManager:
 
     def spawn(self, name: str, system_prompt: str) -> str:
         """创建队友并启动守护线程。已存在的 idle 队友会重启线程。"""
+        if not _is_safe_agent_name(name):
+            return "Error: 队友名只能包含字母、数字、下划线或短横线"
         with self._lock:
             if name in self.team:
                 if self.team[name].status == "shutdown":

@@ -33,6 +33,9 @@ def cleanup_workspace(mode: str = "cache") -> str:
       cache (default): build/, .gradle/, __pycache__/, agent.log
       all: cache + run/, run-data/, .worktrees/, .team/, .tasks/, .transcripts/
     """
+    from .tools_shell import _sandbox_mode
+    if _sandbox_mode() == "read-only":
+        return "Error: read-only 模式禁止清理/删除文件"
     base = Path(_base_dir())
     removed = []
 

@@ -219,10 +219,12 @@ export async function poll() {
   if (!sid) return
   try {
     const ev = await api.getEvents(sid, state.cursor ?? undefined)
+    if (state.sessionId !== sid) return
     if (ev.events.length > 0) {
       setState({ events: [...state.events, ...ev.events], cursor: ev.cursor })
     }
     const st = await api.getStatus(sid)
+    if (state.sessionId !== sid) return
     setState({
       elapsed: st.elapsed,
       hasJar: st.has_jar,
@@ -243,12 +245,19 @@ export async function poll() {
     }
     // 当前轮正常跑完 + 有排队消息 → 自动续跑处理排队消息
     if (st.finished && !st.paused && (st.pending ?? 0) > 0) {
-      const prompts = [...state.prompts, `（自动续跑：处理 ${st.pending} 条排队消息）`]
-      setState({ prompts, phase: 'running', pending: 0 })
-      await api.startTask(sid, '', state.mode ?? 'chat', true)
-      void loadHistory()
+      try {
+        await api.startTask(sid, '', state.mode ?? 'chat', true)
+        if (state.sessionId !== sid) return
+        const prompts = [...state.prompts, `（自动续跑：处理 ${st.pending} 条排队消息）`]
+        setState({ prompts, phase: 'running', pending: 0 })
+        void loadHistory()
+      } catch (e) {
+        if (state.sessionId !== sid) return
+        setState({ phase: 'finished', error: String((e as Error)?.message || e) })
+      }
     }
     const q = await api.getQuestion(sid)
+    if (state.sessionId !== sid) return
     if (q.status === 'pending' && q.questions && q.questions.length > 0) {
       // 多题：agent 一次问多个
       const qs = q.questions.map((it) => ({ question: it.question, options: it.options ?? [] }))

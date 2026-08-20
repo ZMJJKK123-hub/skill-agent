@@ -12,6 +12,7 @@
   - 事件对象统一结构：{id, ts, type, source, content, ...extras}
 """
 
+import itertools
 import time
 from pathlib import Path
 from typing import Optional
@@ -105,7 +106,7 @@ def _parse_run_block(text: str) -> list[dict]:
             status = "success" if rest.startswith("success") else "failed"
             content = "\n".join(block)
             events.append(_ev("tool_result", content, seq, status=status)); seq += 1
-            i = j
+            i = j - 1
         elif stripped.startswith("[tool]"):
             # [tool] <工具名> <参数JSON/命令>
             rest = _after(stripped, "[tool]")
@@ -133,7 +134,7 @@ def _parse_run_block(text: str) -> list[dict]:
                 block.append(lines[j].rstrip("\r"))
                 j += 1
             events.append(_ev("todo", "\n".join(block), seq)); seq += 1
-            i = j
+            i = j - 1
         else:
             events.append(_ev("log", stripped, seq)); seq += 1
         i += 1
@@ -190,6 +191,9 @@ def _parse_agent_block(text: str) -> list[dict]:
 
 # ---------- 增量流 ----------
 
+_ID_COUNTER = itertools.count(1)
+
+
 def build_event_stream(session_dir: Path, cursor: Optional[dict] = None) -> dict:
     """读取两条日志的新增内容，合并为事件列表。
 
@@ -207,10 +211,12 @@ def build_event_stream(session_dir: Path, cursor: Optional[dict] = None) -> dict
 
     if run_log.exists():
         size = run_log.stat().st_size
+        if size < run_off:
+            run_off = 0  # 文件被截断/重建，游标重置
         if size > run_off:
             with open(run_log, "r", encoding="utf-8", errors="replace") as f:
                 f.seek(run_off)
-                chunk = f.read()
+                chunk = f.read(size - run_off)
             next_cursor["run"] = size
             events.extend(_parse_run_block(chunk))
     else:
@@ -218,18 +224,20 @@ def build_event_stream(session_dir: Path, cursor: Optional[dict] = None) -> dict
 
     if agent_log.exists():
         size = agent_log.stat().st_size
+        if size < agent_off:
+            agent_off = 0  # 文件被截断/重建，游标重置
         if size > agent_off:
             with open(agent_log, "r", encoding="utf-8", errors="replace") as f:
                 f.seek(agent_off)
-                chunk = f.read()
+                chunk = f.read(size - agent_off)
             next_cursor["agent"] = size
             events.extend(_parse_agent_block(chunk))
     else:
         next_cursor["agent"] = 0
 
-    # 统一重新编号，保证 id 全局唯一
-    for idx, ev in enumerate(events):
-        ev["id"] = f"ev-{idx}"
+    # 统一重新编号，使用进程内单调计数器，保证 id 跨轮唯一
+    for ev in events:
+        ev["id"] = f"ev-{next(_ID_COUNTER)}"
 
     return {"events": events, "cursor": next_cursor}
 

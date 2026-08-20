@@ -92,10 +92,8 @@ class BackgroundManager:
             result = (out or "").strip()[:50000] or "(no output)"
             status = "completed"
         except subprocess.TimeoutExpired:
-            subprocess.run(
-                f"taskkill /f /t /pid {proc.pid}",
-                shell=True, capture_output=True,
-            )
+            from .process_manager import kill_pid
+            kill_pid(proc.pid)
             try:
                 proc.communicate(timeout=5)
             except:

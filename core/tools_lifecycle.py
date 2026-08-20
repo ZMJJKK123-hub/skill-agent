@@ -119,7 +119,7 @@ def stop_mc_process(handle="all", force=True):
     base = _base_dir()
     if str(handle).lower() == "all":
         return pm.stop_all(base, force=force)
-    r = pm.stop(handle, force=force)
+    r = pm.stop(handle, force=force, base=base)
     return r["message"]
 
 

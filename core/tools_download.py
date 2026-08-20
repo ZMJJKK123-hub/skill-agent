@@ -17,10 +17,13 @@ def download_file(url: str, dest_path: str) -> str:
     """Download a URL to a workspace path (UTF-8 binary safe)."""
     try:
         import httpx
+        from .tools_web import _is_ssrf_blocked
+        if _is_ssrf_blocked(url):
+            return "Error: URL 被 SSRF 防护拦截（不允许访问内网/私网地址）"
         base = _base_dir()
         dest = safe_path(dest_path, base)
         dest.parent.mkdir(parents=True, exist_ok=True)
-        r = httpx.get(url, timeout=60, follow_redirects=True)
+        r = httpx.get(url, timeout=60, follow_redirects=False)
         r.raise_for_status()
         dest.write_bytes(r.content)
         return f"Downloaded {len(r.content)} bytes to {dest}"

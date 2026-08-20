@@ -437,14 +437,13 @@ def _session_stats(sess: Session) -> dict:
     file_count = 0
     total_bytes = 0
     try:
-        for p in sess.mod_dir.rglob("*"):
-            if p.is_file() and not any(
-                part in (".worktrees", ".team", ".tasks", ".transcripts",
-                         "__pycache__", ".git", "mc_java_sources")
-                for part in p.relative_to(sess.mod_dir).parts
-            ):
+        _skip_dirs = {".worktrees", ".team", ".tasks", ".transcripts",
+                      "__pycache__", ".git", "mc_java_sources"}
+        for _root, _dirs, _files in os.walk(sess.mod_dir):
+            _dirs[:] = [d for d in _dirs if d not in _skip_dirs]
+            for _fn in _files:
                 file_count += 1
-                total_bytes += p.stat().st_size
+                total_bytes += (Path(_root) / _fn).stat().st_size
     except OSError:
         pass
 
@@ -862,8 +861,12 @@ def get_status(session_id: str, authorization: str = Header(default="")):
     finished = stats["finished"]
     log_tail = ""
     if sess.log_path.exists():
-        # 尾部预览取末尾 20000 字符（调试需要更完整上下文）
-        log_tail = sess.log_path.read_text(encoding="utf-8", errors="replace")[-20000:]
+        # 尾部预览取末尾 20000 字符（只读尾部，避免全量读大日志）
+        log_size = sess.log_path.stat().st_size
+        with open(sess.log_path, "r", encoding="utf-8", errors="replace") as _f:
+            if log_size > 20000:
+                _f.seek(log_size - 20000)
+            log_tail = _f.read()
         if finished and sess.result is None:
             sess.result = log_tail  # 简单起见：日志尾部即结果（可优化）
             sess.finished_at = time.time()
@@ -894,7 +897,8 @@ def get_result(session_id: str, authorization: str = Header(default="")):
     username = _auth_username(authorization)
     sess = _get_session(session_id)
     _assert_owner(sess, username)
-    if sess.proc is None or sess.proc.poll() is None:
+    stats = _session_stats(sess)
+    if not stats["finished"]:
         return {"status": "running", "result": None}
     return {"status": "finished", "result": sess.result or ""}
 
