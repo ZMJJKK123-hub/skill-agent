@@ -791,31 +791,8 @@ def agent_loop(messages: list) -> str:
                 logger.info("Layer 3 compact 工具被模型主动调用 | 先跳过，等其他工具执行完")
                 continue
 
-            # 强制写代码/强制编译模式：反复研究不写/不编译时，暂时禁用研究类工具
-            if tc.function.name in (
-                "read_file", "bash", "grep", "glob",
-                "web_search", "web_fetch", "search_api",
-            ) and (
-                (_forced_write and not _wrote_file) or _forced_post_write
-            ):
-                if _forced_post_write:
-                    msg = (
-                        "Error: Post-write forced build mode is active. You have researched too many "
-                        "rounds without compiling. Research tools are temporarily disabled until you "
-                        "call validate_resources / build_mod_jar_forge / run_mod_test_cycle / run_test_gametest."
-                    )
-                else:
-                    msg = (
-                        "Error: Forced write mode is active. You must call write_file/edit_file "
-                        "to create or edit a Java file under src/main/java or src/test/java before "
-                        "using research tools. Research tools are temporarily disabled."
-                    )
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tc.id,
-                    "content": msg,
-                })
-                continue
+            # force-write / force-build 硬禁用已取消：不再拦截研究类工具。
+            # 只保留 write-first-stop / build-now-stop 软提醒。
 
             # M3: 统一走注册表执行管线（pre 钩子 → guard → handler → post 钩子；
             # total 函数：任何异常都转温和错误文本，不炸主循环）。
@@ -876,8 +853,7 @@ def agent_loop(messages: list) -> str:
         if not _wrote_file and not _existing_java and not _pre_write_warned and _pre_write_reads >= 6:
             _pre_write_warned = True
             _write_strikes += 1
-            if _write_strikes >= 2:
-                _forced_write = True
+            # force-write 硬禁用已取消：只保留软提醒，避免模型被工具锁定。
             if not _starter_auto_written and _auto_write_starter(messages):
                 _starter_auto_written = True
                 # 自动复制的 starter 不算“已主动写代码”：
@@ -910,11 +886,7 @@ def agent_loop(messages: list) -> str:
         # 写后研究预算：已写代码但仍反复查 API 不编译/测试
         if _wrote_file and _post_write_research >= 8 and not _pre_write_warned:
             _post_write_strikes += 1
-            if _post_write_strikes >= 3:
-                _forced_post_write = True
-                logger.warning(f"写后研究超预算（第{_post_write_strikes}次），禁用研究工具直到编译/测试")
-            else:
-                logger.warning(f"写后研究超预算（{_post_write_research}），强制提醒编译/测试")
+            logger.warning(f"写后研究超预算（{_post_write_research}），软性提醒编译/测试")
             messages.append({
                 "role": "user",
                 "content": (
