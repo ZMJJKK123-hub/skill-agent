@@ -513,3 +513,21 @@ Post-write research budget (`build-now-stop`) was not active because the agent w
   - Use `(ServerLevel) p.level()` and 8-arg `player.teleportTo(targetLevel, x, y, z, Set.of(), yRot, xRot, true)`.
 - **Multiple `@GameTest` methods in one class: only first is collected** by this Forge GameTestServer:
   - Merge all assertions into one `@GameTest` method executed sequentially; still satisfies `All required tests passed`.
+## 2026-08-21 itertest9 Tree Feller - faster-hit API notes
+
+- **`ResourceLocation` not found on first compile**:
+  - Symptom: `import net.minecraft.resources.ResourceLocation; 找不到符号`
+  - Fix: always use `net.minecraft.resources.Identifier`, e.g. `Identifier.fromNamespaceAndPath(modid, name)`.
+  - Lesson: in new sessions, write `Identifier` from the very first import; do not write `ResourceLocation`.
+
+- **`ItemStack.hurtAndBreak` Consumer<Item> method-reference trap**:
+  - Symptom: `stack.hurtAndBreak(1, serverLevel, serverPlayer, ItemStack::getItem);` fails:
+    `无法将 类 ItemStack中的 方法 getItem应用到给定类型; 需要: 没有参数; 找到: Item`
+  - Root cause: the last parameter is `Consumer<Item>`; `ItemStack::getItem` is `() -> Item`, not `(Item) -> void`.
+  - Fix: pass an empty lambda: `stack.hurtAndBreak(1, serverLevel, serverPlayer, item -> {});`
+  - Lesson: use a lambda `item -> {}` for durability onBreak callback; do not use `ItemStack::getItem`.
+
+- **Hand-rolled PNG writer causes “Corrupt PNG” in client**:
+  - Symptom: Minecraft client says `Could not load image: Corrupt PNG` for a generated item texture.
+  - Root cause: custom PNG writer omitted the per-scanline filter byte (`0x00` before each row), producing invalid PNG.
+  - Fix: when generating PNG manually, write `b"\x00" + row_bytes` for every scanline; or use PIL and validate with a PNG checker.
