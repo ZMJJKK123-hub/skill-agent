@@ -459,3 +459,21 @@ Post-write research budget (`build-now-stop`) was not active because the agent w
   - Register in client class: `EntityRenderers.register(EntityType, Renderer::new)`.
   - Call from mod constructor via `DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> ClientClass::register);`.
 - Also: spawn egg item icon shows default/blank if `assets/<modid>/items/<egg>.json` points to `minecraft:item/template_spawn_egg` but no custom texture is supplied. Fix by pointing to custom `skyforge:item/<egg>` generated model + texture.
+## Why GameTest passed despite client-side crashes (important lesson)
+
+- `run_test_gametest` / `runTestGameTestServer` runs a **dedicated server only**; it never starts the client renderer pipeline.
+- Server-side GameTest CAN verify:
+  - entities registered, spawnable, attributes exist
+  - items/blocks/recipes/loot tables/advancements load
+  - dimension/structure registry loads
+- GameTest CANNOT verify:
+  - `EntityRenderers.register(...)` was called (client-only)
+  - client renderer classes compile/load correctly
+  - item icons/models/textures actually resolve and render
+  - spawn egg right-click spawns without client NPE (server spawn works, but renderer missing only crashes on client)
+- Therefore a MOD can pass `All required tests passed` + produce a jar, yet still hard-crash in the real client when the entity is rendered.
+- Required additional verification for entity mods:
+  1. Register client renderers via `DistExecutor.unsafeRunWhenOn(Dist.CLIENT, ...)`.
+  2. Run a real client (`run_client` / start_mc_client) or at least a client smoke test that summons/renders the entity.
+  3. Add a visual/screenshot check for spawn egg icons and entity rendering.
+- This exact bug was found only after a real PCL client crash: `NullPointerException: entityrenderer is null`.
