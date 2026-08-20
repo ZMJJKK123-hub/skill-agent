@@ -844,16 +844,26 @@ def agent_loop(messages: list) -> str:
         run_post_step_hooks(messages, _round_tool_counts)
         _step_machine.end_step(reason="completed")
 
-        # 完成信号：dist 目录出现 jar（MOD 产物）即视为可收尾，避免通过后继续绕圈
+        # 完成信号：dist 出现 jar 且 GameTest 已通过才算可收尾；只出 jar 不算完成。
         try:
-            if os.path.isdir("dist"):
+            _gt_pass_markers = (
+                "All required tests passed",
+                "GAME TESTS COMPLETE",
+                "RESULT: PASS",
+                "[gametest]",
+            )
+            _gt_passed = any(
+                str(m.get("content", "")).lstrip().startswith(_gt_pass_markers)
+                for m in messages if m.get("role") == "tool"
+            )
+            if os.path.isdir("dist") and _gt_passed:
                 _dist_jars = [
                     f for f in os.listdir("dist")
                     if f.endswith(".jar") and "examplemod" not in f
                 ]
                 if _dist_jars:
                     _force_final_msg = (
-                        f"MOD jar exists: dist/{_dist_jars[0]}. Task is complete; stop calling tools and summarize."
+                        f"MOD jar exists: dist/{_dist_jars[0]} and GameTest passed. Task is complete; stop calling tools and summarize."
                     )
                     logger.warning(_force_final_msg)
                     continue
