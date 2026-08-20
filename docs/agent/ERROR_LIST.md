@@ -491,3 +491,17 @@ Post-write research budget (`build-now-stop`) was not active because the agent w
               () -> SkyforgeClient::registerRenderers)));
   ```
 - Rule: never call `.get()` on a RegistryObject for EntityType/Block/Item registration-time APIs inside `@Mod` constructor; use lifecycle events (`FMLClientSetupEvent` etc.) after registries are populated.
+## 2026-08-20 itertest8 Death Swap: supervisor/agent can't read repo docs from session workspace
+
+- Symptom: supervisor repeatedly logs:
+  `Error: [Errno 2] No such file or directory: '<session>/mod/docs/agent/ERROR_LIST.md'`
+  and the agent cannot use `grep docs/agent/ERROR_LIST.md` from the mod workspace.
+- Root cause: `run_simple.py` chdirs into `mod/`, so `read_file`/`grep` resolve `docs/agent/...` relative to `mod/`; but the repo docs are not copied into the session workspace.
+- Fix: copy `ERROR_LIST.md`, `TOOL_GUIDE.md`, `CLIENT_VERIFY.md` from `<repo>/docs/agent` into `<session>/mod/docs/agent` at session start (added to run_simple.py).
+
+## 2026-08-20 itertest8: repeated `Invalid tool arguments JSON for write_file: Unterminated string`
+
+- Symptom: agent repeatedly calls `write_file` with malformed JSON (Unterminated string), especially before generating large Python/resource files.
+- Root cause: model tries to inline large file content as a tool argument; JSON escaping breaks.
+- Fix guidance: continue to force "large files must use Python generator script"; when a `write_file` JSON parse error occurs, the agent should immediately switch to a generated Python script instead of retrying the same inline write.
+- Known repeating count in itertest8: many rounds repeat the same invalid write_file + supervisor advice about jar name before recovery.
