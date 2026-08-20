@@ -337,6 +337,8 @@ def agent_loop(messages: list) -> str:
     _write_strikes = 0
     _forced_write = False
     _post_write_research = 0
+    _post_write_strikes = 0
+    _forced_post_write = False
     def _has_custom_java():
         # 模板包 com/example 不算“已有自己写的代码”，否则 forced-write 永远不触发。
         def is_template(p: Path) -> bool:
@@ -758,11 +760,15 @@ def agent_loop(messages: list) -> str:
             ):
                 _pre_write_reads += 1
             elif _wrote_file and tc.function.name in (
-                "read_file", "bash", "grep", "glob",
-                "web_search", "web_fetch", "search_api",
-            ) and tc.function.name not in (
                 "build_mod_jar_forge", "run_test_gametest", "run_mod_test_cycle",
                 "validate_resources", "parse_build_output", "read_game_test_log",
+            ):
+                _post_write_research = 0
+                _post_write_strikes = 0
+                _forced_post_write = False
+            elif _wrote_file and tc.function.name in (
+                "read_file", "bash", "grep", "glob",
+                "web_search", "web_fetch", "search_api",
             ):
                 _post_write_research += 1
             # flash 适配：工具参数 JSON 可能不完整/非法，解析失败不炸主循环，
@@ -785,19 +791,29 @@ def agent_loop(messages: list) -> str:
                 logger.info("Layer 3 compact 工具被模型主动调用 | 先跳过，等其他工具执行完")
                 continue
 
-            # 强制写代码模式：反复研究但没写 Java 时，暂时禁用研究类工具
-            if _forced_write and not _wrote_file and tc.function.name in (
+            # 强制写代码/强制编译模式：反复研究不写/不编译时，暂时禁用研究类工具
+            if tc.function.name in (
                 "read_file", "bash", "grep", "glob",
                 "web_search", "web_fetch", "search_api",
+            ) and (
+                (_forced_write and not _wrote_file) or _forced_post_write
             ):
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tc.id,
-                    "content": (
+                if _forced_post_write:
+                    msg = (
+                        "Error: Post-write forced build mode is active. You have researched too many "
+                        "rounds without compiling. Research tools are temporarily disabled until you "
+                        "call validate_resources / build_mod_jar_forge / run_mod_test_cycle / run_test_gametest."
+                    )
+                else:
+                    msg = (
                         "Error: Forced write mode is active. You must call write_file/edit_file "
                         "to create or edit a Java file under src/main/java or src/test/java before "
                         "using research tools. Research tools are temporarily disabled."
-                    ),
+                    )
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.id,
+                    "content": msg,
                 })
                 continue
 
@@ -893,7 +909,12 @@ def agent_loop(messages: list) -> str:
 
         # 写后研究预算：已写代码但仍反复查 API 不编译/测试
         if _wrote_file and _post_write_research >= 8 and not _pre_write_warned:
-            logger.warning(f"写后研究超预算（{_post_write_research}），强制提醒编译/测试")
+            _post_write_strikes += 1
+            if _post_write_strikes >= 3:
+                _forced_post_write = True
+                logger.warning(f"写后研究超预算（第{_post_write_strikes}次），禁用研究工具直到编译/测试")
+            else:
+                logger.warning(f"写后研究超预算（{_post_write_research}），强制提醒编译/测试")
             messages.append({
                 "role": "user",
                 "content": (
