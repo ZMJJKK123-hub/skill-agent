@@ -51,6 +51,10 @@ os.chdir(PROJECT_ROOT)
 # 使用 chat 模式：不触发 MOD 专属的 GameTest / 构建 / 监管线程逻辑
 os.environ.setdefault("DSH_MODE", "chat")
 
+# 沙箱保护：只允许在服务工作区 .runtime/ 内写文件，禁止越出项目根目录
+# （清小搭接口绝不能修改 /opt/skill-agent 下的项目源文件）
+os.environ["DSH_SANDBOX_MODE"] = "workspace-write"
+
 # 全自动模式：agent 若想 ask_user_question，不会在 HTTP 请求里永久阻塞
 os.environ.setdefault("DSH_AUTO_MODE", "1")
 
@@ -345,11 +349,30 @@ def serve_attachment(file_path: str):
     return FileResponse(str(target))
 
 
-def _append_web_hint(text: str) -> str:
-    """在对话回复末尾提示用户可访问完整网页版。"""
+def _is_mod_request(messages: list) -> bool:
+    """判断用户这次是否涉及 MOD 制作/修改需求。"""
+    for m in messages:
+        if not isinstance(m, dict):
+            continue
+        if m.get("role") not in ("user", "system"):
+            continue
+        content = m.get("content", "")
+        if not isinstance(content, str):
+            continue
+        low = content.lower()
+        if any(k in low for k in ("mod", "/mod", "模组", "我的世界", "forge")):
+            return True
+    return False
+
+
+def _append_web_hint(text: str, mod_related: bool = False) -> str:
+    """仅在用户涉及 MOD 需求时，在回复末尾提示移步网页版完整功能。"""
+    if not mod_related:
+        return text
     hint = (
-        f"\n\n> 💡 清小搭内提供对话/附件等精简功能；"
-        f"如需文件树、实时事件、设置等更完整的功能，可访问网页版：{WEB_URL}"
+        f"\n\n> ⚠️ 轻小搭平台上的对话功能暂时比较匮乏，仅支持 Chat 模式，"
+        f"不支持修改文件或制作 MOD。\n"
+        f"> 如有做 MOD 的需求，请移步至完整版网站：{WEB_URL}"
     )
     return text + hint
 
@@ -380,6 +403,7 @@ def _run_agent(messages: list, session_id: str, base_url: str,
             for k in list(_session_cache.keys())[:len(_session_cache) - _SESSION_CACHE_MAX]:
                 _session_cache.pop(k, None)
 
+    mod_related = _is_mod_request(messages)
     start_ts = time.time()
     session_root = _session_workdir(session_id)
     _prev_cwd = Path.cwd()
@@ -409,7 +433,7 @@ def _run_agent(messages: list, session_id: str, base_url: str,
                 os.environ["DSH_SESSION_ROOT"] = _prev_root
 
     text = str(final) if final is not None else "(no response)"
-    text = _append_web_hint(text)
+    text = _append_web_hint(text, mod_related)
     attachments = _collect_attachments(start_ts, base_url)
     return text, attachments
 
