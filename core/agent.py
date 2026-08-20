@@ -346,6 +346,7 @@ def agent_loop(messages: list) -> str:
     _post_write_research = 0
     _post_write_strikes = 0
     _forced_post_write = False
+    _no_tool_strikes = 0
     def _has_custom_java():
         # 模板包 com/example 不算“已有自己写的代码”，否则 forced-write 永远不触发。
         def is_template(p: Path) -> bool:
@@ -705,6 +706,21 @@ def agent_loop(messages: list) -> str:
                         "<tool-call-required> 任务未完成，禁止只输出纯文本。你必须立即调用一个工具："
                         "write_file / edit_file / build_mod_jar_forge / run_test_gametest / run_mod_test_cycle / validate_resources。"
                         "不要回复“No additional output”之类的话。</tool-call-required>"})
+                    _no_tool_strikes += 1
+                    if _no_tool_strikes >= 2:
+                        # 兜底：连续空转时自动执行一次构建，避免模型不调用工具导致死循环。
+                        logger.warning("连续空转，自动调用 build_mod_jar_forge 推进")
+                        try:
+                            from .tools import _forge_build_jar
+                            _auto = _forge_build_jar({})
+                        except Exception as _e:
+                            _auto = f"Error: auto build failed: {_e}"
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": f"auto-{os.urandom(4).hex()}",
+                            "content": _auto,
+                        })
+                        _no_tool_strikes = 0
                     logger.info("gametest-check FAILED + tool-call-required 注入")
             except Exception as _e:
                 logger.info(f"gametest-check 跳过: {_e}")
@@ -755,6 +771,7 @@ def agent_loop(messages: list) -> str:
         used_todo = False
         compact_pending = False
         concluded_output = None
+        _no_tool_strikes = 0
         for tc in message.tool_calls:
             _round_tool_counts[tc.function.name] = _round_tool_counts.get(tc.function.name, 0) + 1
             # 写前研究预算：没写任何 Java 源码前，禁止无休止读文档
