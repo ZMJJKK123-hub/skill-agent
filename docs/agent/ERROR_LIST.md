@@ -449,3 +449,13 @@ Post-write research budget (`build-now-stop`) was not active because the agent w
 - `HolderLookup.RegistryLookup#get(key)` returns `Optional<Holder.Reference<T>>`; use `.value()`
 - `GameTestHelper#spawnWithNoFreeWill(EntityType<E>, BlockPos)` requires `E extends Mob`; cast to concrete entity type
 - Forge GameTest imports: `net.minecraftforge.gametest.GameTest`, `net.minecraftforge.gametest.GameTestNamespace`, `net.minecraft.gametest.framework.GameTestHelper`
+## 2026-08-20 Skyforge client crash: spawn egg entity renderer missing
+
+- Symptom: using custom spawn egg in client crashes:
+  `NullPointerException: entityrenderer is null` at `EntityRenderDispatcher.shouldRender`
+- Root cause: custom entity types were registered but no client renderer was registered via `EntityRenderers.register(...)`.
+- Fix:
+  - Create client-only renderer classes extending `MobRenderer<T, HumanoidRenderState, HumanoidModel<HumanoidRenderState>>` (constructor: `(Context, new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER)), shadowRadius)`).
+  - Register in client class: `EntityRenderers.register(EntityType, Renderer::new)`.
+  - Call from mod constructor via `DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> ClientClass::register);`.
+- Also: spawn egg item icon shows default/blank if `assets/<modid>/items/<egg>.json` points to `minecraft:item/template_spawn_egg` but no custom texture is supplied. Fix by pointing to custom `skyforge:item/<egg>` generated model + texture.
