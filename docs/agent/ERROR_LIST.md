@@ -381,3 +381,11 @@
   - Root cause: the common item class's bytecode still directly references client-only classes; Forge's RuntimeDistCleaner rejects it when the class is loaded on a dedicated server
   - Fix: remove compile-time references to client classes from the common item; e.g. open the client screen via reflection (`Class.forName("...Screen")`, `Minecraft.getInstance()` via reflection) or delegate to a client-only proxy class with `@OnlyIn(Dist.CLIENT)`
   - Verified: after this fix `runTestGameTestServer` reached `All 1 required tests passed :)` and `BUILD SUCCESSFUL`
+## 2026-08-20 Complex MOD API quick reference (Skyforge Realm research)
+
+- **EntityType registration**
+  - Use builder chain: `EntityType.Builder.of(MyEntity::new, MobCategory.CREATURE).sized(w,h).clientTrackingRange(10)` then `build(...)`.
+- **ServerBossEvent**
+  - Constructor: `new ServerBossEvent(Component.translatable("boss.skyforge.title"), BossEvent.BossBarColor.PURPLE, BossEvent.BossBarOverlay.PROGRESS)`.
+- **Feature/ConfiguredFeature registration**
+  - Registries live under `net.minecraft.core.registries.BuiltInRegistries` (e.g. `BuiltInRegistries.FEATURE`), and features are referred via `Holder`/codec registries in 1.21.11.
