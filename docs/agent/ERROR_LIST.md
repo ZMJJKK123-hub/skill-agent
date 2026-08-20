@@ -394,3 +394,16 @@
 - `ArmorMaterial` is in `net.minecraft.world.item.equipment.ArmorMaterial` as a record.
 - `ToolMaterial` is in `net.minecraft.world.item.ToolMaterial` as a record: `(TagKey<Block> incorrectBlocksForDrops, int durability, float speed, float attackDamageBonus, int enchantmentValue, TagKey<Item> repairItems)`.
 - `SpawnEggItem` constructor is `public SpawnEggItem(Item.Properties)`; vanilla spawn eggs are registered as normal items.
+Full `ArmorMaterial` record fields in 1.21.11:
+```java
+public record ArmorMaterial(
+    int durability,
+    Map<ArmorType, Integer> defense,
+    int enchantmentValue,
+    Holder<SoundEvent> equipSound,
+    float toughness,
+    float knockbackResistance,
+    TagKey<Item> repairIngredient,
+    ResourceKey<EquipmentAsset> assetId
+)
+```
