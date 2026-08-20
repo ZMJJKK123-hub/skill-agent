@@ -796,7 +796,9 @@ def agent_loop(messages: list) -> str:
             _pre_write_warned = True
             if not _starter_auto_written and _auto_write_starter(messages):
                 _starter_auto_written = True
-                _wrote_file = True
+                # 自动复制的 starter 不算“已主动写代码”：
+                # 保持 _wrote_file=False，下一轮继续 nag，直到模型真正写/改 src/main|test 文件。
+                _pre_write_warned = False
                 logger.warning("已自动从 starter 写入 Java 文件，继续任务")
                 messages.append({
                     "role": "user",
