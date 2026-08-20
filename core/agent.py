@@ -447,7 +447,11 @@ def agent_loop(messages: list) -> str:
                 "<mandatory-first-step> 开工前必须先 run_read KNOWN_ISSUES.md "
                 "（mod 工程根目录的事实来源，优先级高于技能描述）。读完按其中适用条目执行，"
                 "尤其注意：GameTest 自检必须用 run_test_gametest（扫描 src/test/java），"
-                "禁止用 run_game_test_server 做自检。未读取前不要写任何代码/资源。</mandatory-first-step>"
+                "禁止用 run_game_test_server 做自检。未读取前不要写任何代码/资源。\n"
+                "如果本 MOD 涉及自定义实体、刷怪蛋或物品图标，你还必须 run_read "
+                "C:/Users/59639/Desktop/skill-agent/docs/agent/CLIENT_VERIFY.md "
+                "（客户端验证指导，服务器/GameTest 发现不了客户端渲染与图标问题），"
+                "并在完成前按其中固定流程执行客户端验证；未满足客户端验证不得宣布完成。</mandatory-first-step>"
             )})
 
         # ── Layer 0b3: 首次读取并注入 AGENTS.md（移植 dsh agent-instructions 的 baseline）──
