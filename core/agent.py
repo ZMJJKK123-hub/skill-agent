@@ -849,6 +849,9 @@ def agent_loop(messages: list) -> str:
                     "再 build/compile 根据报错处理。不要继续 read_file/grep mc_java_sources。</write-first-stop>"
                 ),
             })
+            # 重要：允许再次进入写前研究预算守卫，
+            # 这样 _write_strikes 能累加到 2，从而触发 forced-write 模式。
+            _pre_write_warned = False
             continue
 
         # 写后研究预算：已写代码但仍反复查 API 不编译/测试
