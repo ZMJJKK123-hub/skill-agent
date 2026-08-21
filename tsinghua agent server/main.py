@@ -779,6 +779,27 @@ def _session_persona_command(messages: list) -> tuple[str, str] | None:
     return None
 
 
+def _append_conversation(session_id: str, messages, final_text: str) -> None:
+    """把最新一轮 user 和 assistant 回复追加到会话 .chat/conversation.jsonl（不含思考）。"""
+    try:
+        session_root = _session_workdir(session_id)
+        chat_dir = session_root / ".chat"
+        chat_dir.mkdir(parents=True, exist_ok=True)
+        conv_file = chat_dir / "conversation.jsonl"
+        user = _last_user_content(messages)
+        entries = []
+        if user:
+            entries.append({"role": "user", "content": user})
+        if final_text:
+            entries.append({"role": "assistant", "content": final_text})
+        if entries:
+            with conv_file.open("a", encoding="utf-8") as f:
+                for e in entries:
+                    f.write(json.dumps(e, ensure_ascii=False) + "\n")
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _session_workdir(session_id: str) -> Path:
     """为每个清小搭 sessionId 分配独立工作目录，用于隔离对话历史/断点。"""
     safe = re.sub(r"[^A-Za-z0-9_.-]", "_", session_id or "")[:64].strip("._") or "default"
@@ -861,6 +882,7 @@ def _run_agent(messages: list, session_id: str, base_url: str,
     text = _append_web_hint(text, mod_related)
     text = _append_service_notice(text)
     text = _append_persona_guide(text, messages)
+    _append_conversation(session_id, messages, text)
     attachments = _collect_attachments(start_ts, base_url, scope=session_root)
     return text, attachments
 
@@ -1087,6 +1109,7 @@ def _stream_agent(messages: list, session_id: str, base_url: str):
                     raise RuntimeError(data["error"])
                 final = data.get("text") or "(no response)"
                 final = _append_persona_guide(final, messages)
+                _append_conversation(session_id, messages, final)
                 break
             if daemon_proc is not None and daemon_proc.poll() is not None:
                 raise RuntimeError("AI 服务进程已退出，请检查服务配置")
