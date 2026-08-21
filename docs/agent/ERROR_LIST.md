@@ -531,3 +531,13 @@ Post-write research budget (`build-now-stop`) was not active because the agent w
   - Symptom: Minecraft client says `Could not load image: Corrupt PNG` for a generated item texture.
   - Root cause: custom PNG writer omitted the per-scanline filter byte (`0x00` before each row), producing invalid PNG.
   - Fix: when generating PNG manually, write `b"\x00" + row_bytes` for every scanline; or use PIL and validate with a PNG checker.
+## 2026-08-21 itertest10 Auto Smelter Pickaxe - new API facts
+
+- **`net.minecraftforge.common.ModLoadingContext` not found**:
+  - 1.21.11 moved `ModLoadingContext` to `net.minecraftforge.fml.ModLoadingContext`.
+  - Fix: `import net.minecraftforge.fml.ModLoadingContext;` (get() is deprecated but compiles).
+- **Forge GameTest annotation attributes changed**:
+  - `@GameTest(template=...)` / `@GameTestHolder` do NOT exist; `@GameTest` uses `structure()` (default `forge:empty3x3x3`).
+  - Fix: use `@GameTestNamespace(value=modid)` on class + `@GameTest` / `@GameTest(structure="...")` on method.
+- **Test-count observation (not a hard error)**:
+  - This Forge runner only registers/runs 1 `@GameTest` method per class even when multiple annotated methods exist; use one aggregate `@GameTest` covering all assertions (already in ERROR_LIST as merge-all advice).
