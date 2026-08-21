@@ -28,6 +28,7 @@ session_dir.mkdir(parents=True, exist_ok=True)
 
 os.environ["DSH_SESSION_ROOT"] = str(session_dir)
 os.environ.setdefault("DSH_MODE", "chat")
+os.environ.setdefault("DSH_SKILL_CATALOG_DISABLED", "1")
 os.environ["DSH_AUTO_MODE"] = "1"
 os.environ.setdefault("DSH_SANDBOX_MODE", "workspace-write")
 os.environ["DSH_SESSION_ROOT"] = str(session_dir)

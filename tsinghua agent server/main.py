@@ -51,6 +51,7 @@ os.chdir(PROJECT_ROOT)
 
 # 使用 chat 模式：不触发 MOD 专属的 GameTest / 构建 / 监管线程逻辑
 os.environ.setdefault("DSH_MODE", "chat")
+os.environ.setdefault("DSH_SKILL_CATALOG_DISABLED", "1")
 
 # 沙箱保护：只允许在服务工作区 .runtime/ 内写文件，禁止越出项目根目录
 # （清小搭接口绝不能修改 /opt/skill-agent 下的项目源文件）

@@ -458,8 +458,9 @@ def agent_loop(messages: list) -> str:
         # ── Layer 0c3: 技能目录 digest 注入（M2，对齐 DSH tool-skill catalog）──
         # 目录（name+首行描述）以 user 消息注入：digest 变化才追加，不变零开销；
         # 会话中新增/编辑 SKILL.md 下一轮即生效。正文仍由 load_skill 按需加载。
-        if IS_MOD_MODE or _messages_hint_mod(messages):
-            maybe_inject_skill_catalog(messages)
+        if not os.environ.get("DSH_SKILL_CATALOG_DISABLED"):
+            if IS_MOD_MODE or _messages_hint_mod(messages):
+                maybe_inject_skill_catalog(messages)
 
         # ── Layer 0: 排空后台通知（第 8 课）──
         # 在 micro_compact 之前注入，让通知作为新数据参与后续 compact 估算
