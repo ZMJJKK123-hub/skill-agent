@@ -39,29 +39,37 @@ class DataTuring extends BaseGame {
     addAdder.textContent = '+ Adder';
     addAdder.style.cssText = 'padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--cyan);cursor:pointer;font-family:inherit;font-size:.75em';
     addAdder.onclick = () => this.addNode('adder');
+    var addMult = document.createElement('button');
+    addMult.textContent = '+ x2';
+    addMult.style.cssText = 'padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--orange);cursor:pointer;font-family:inherit;font-size:.75em';
+    addMult.onclick = () => this.addNode('multiplier');
     btnRow.appendChild(addSplit);
     btnRow.appendChild(addAdder);
+    btnRow.appendChild(addMult);
     c.appendChild(btnRow);
     this.reset();
   }
 
   reset() {
+    // Randomize target: even or odd
+    this.target = Math.random() < 0.5 ? 'even' : 'odd';
     this.nodes = [
-      { x: 80, y: 80, type: 'source', label: 'SRC' },
-      { x: 80, y: 320, type: 'target', label: 'TGT' },
-      { x: 300, y: 120, type: 'splitter', label: 'even?' },
-      { x: 300, y: 280, type: 'adder', label: '+1' }
+      { x: 80, y: this.h / 2, type: 'source', label: 'SRC' },
+      { x: 560, y: this.h / 2, type: 'target', label: 'TGT' },
+      { x: 300, y: 120, type: 'splitter', label: '/2' },
+      { x: 300, y: 280, type: 'adder', label: '+1' },
+      { x: 420, y: 200, type: 'multiplier', label: 'x2' },
     ];
     this.connections = [
       { from: 0, to: 2 },
       { from: 0, to: 3 },
       { from: 2, to: 1 },
-      { from: 3, to: 1 }
+      { from: 3, to: 4 },
+      { from: 4, to: 1 },
     ];
     this.balls = [];
     this.score = 0;
     this.runningSim = false;
-    this.target = 'even';
     this.mouseX = 0;
     this.mouseY = 0;
     this.dragging = null;
@@ -70,14 +78,14 @@ class DataTuring extends BaseGame {
     this.fail = false;
     this.bestScore = parseInt(localStorage.getItem('dtBest') || '0');
     this.trailParticles = [];
+    this.level = 1;
+    this.puzzleSolved = 0;
   }
 
   addNode(type) {
     var idx = this.nodes.length;
-    var label = type === 'splitter' ? 'even?' : '+1';
-    this.nodes.push({ x: rnd(100, 500), y: rnd(60, 340), type: type, label: label });
-    // Connect from source or last node to this new node
-    var src = this.connections.length > 0 ? this.connections[this.connections.length - 1].to : 0;
+    var labels = { 'splitter': '/2', 'adder': '+1', 'multiplier': 'x2', 'negate': 'n!' };
+    this.nodes.push({ x: rnd(150, 480), y: rnd(60, 340), type: type, label: labels[type] || type });
     this.connections.push({ from: 0, to: idx });
     this.connections.push({ from: idx, to: 1 });
     toast('Added ' + type);
@@ -131,10 +139,12 @@ class DataTuring extends BaseGame {
         var node = self.nodes[conn.to];
         if (node.type === 'splitter') b.val = Math.floor(b.val / 2);
         if (node.type === 'adder') b.val += 1;
+        if (node.type === 'multiplier') b.val *= 2;
+        if (node.type === 'negate') b.val = b.val * -1 + 1;
         if (node.type === 'target') {
           b.done = true;
-          if (self.target === 'even' && b.val % 2 === 0) { self.score += 10; b.color = '#00ff9f'; }
-          else if (self.target === 'odd' && b.val % 2 === 1) { self.score += 10; b.color = '#00ff9f'; }
+          var correct = (self.target === 'even' && b.val % 2 === 0) || (self.target === 'odd' && b.val % 2 === 1);
+          if (correct) { self.score += 10 * self.level; b.color = '#00ff9f'; }
           else { b.color = '#ff3355'; self.fail = true; }
         }
         return;
@@ -184,7 +194,8 @@ class DataTuring extends BaseGame {
       c.fillText(b.val, b.x, b.y);
     });
     this.nodes.forEach(function(n) {
-      c.fillStyle = n.type === 'source' ? '#00ff9f' : (n.type === 'target' ? '#ffcc00' : (n.type === 'splitter' ? '#bb44ff' : '#00d4ff'));
+      var colors = { source: '#00ff9f', target: '#ffcc00', splitter: '#bb44ff', adder: '#00d4ff', multiplier: '#ff8800', negate: '#ff44aa' };
+      c.fillStyle = colors[n.type] || '#00d4ff';
       c.beginPath();
       c.arc(n.x, n.y, 22, 0, Math.PI * 2);
       c.fill();
@@ -200,24 +211,51 @@ class DataTuring extends BaseGame {
     c.fillStyle = '#5a6a7a';
     c.font = '11px monospace';
     c.textAlign = 'left';
-    c.fillText('Target: ' + (this.target === 'even' ? 'Even numbers' : 'Odd numbers') + '  Score: ' + this.score, 8, 18);
+    c.fillText('Target: ' + (this.target === 'even' ? 'Only EVEN' : 'Only ODD') + '  Score: ' + this.score + '  Lv.' + this.level, 8, 18);
     c.fillStyle = '#3a4a5a';
     c.font = '9px monospace';
     c.textAlign = 'right';
     c.fillText('Best: ' + this.bestScore, this.w - 8, 18);
     c.textAlign = 'left';
-    c.fillText('Drag nodes to route, click RUN', 8, 34);
-    if (this.success) { c.fillStyle = '#00ff9f'; c.font = '20px monospace'; c.textAlign = 'center'; c.fillText('CORRECT!', this.w / 2, this.h / 2); }
-    if (this.fail) { c.fillStyle = '#ff3355'; c.font = '20px monospace'; c.textAlign = 'center'; c.fillText('WRONG OUTPUT', this.w / 2, this.h / 2); }
+    c.fillText('Drag nodes to route, click RUN, add nodes below', 8, 34);
+    if (this.success) {
+      c.fillStyle = '#00ff9f'; c.font = '20px monospace'; c.textAlign = 'center';
+      c.fillText('CORRECT! Lv.' + this.level, this.w / 2, this.h / 2);
+    }
+    if (this.fail) {
+      c.fillStyle = '#ff3355'; c.font = '20px monospace'; c.textAlign = 'center';
+      c.fillText('WRONG OUTPUT', this.w / 2, this.h / 2);
+      c.fillStyle = '#5a6a7a'; c.font = '10px monospace';
+      c.fillText('Rearrange nodes and try again', this.w / 2, this.h / 2 + 24);
+    }
   }
 
   checkResult() {
     this.runningSim = false;
-    if (this.fail) { sfx('lose'); }
-    else {
+    if (this.fail) {
+      sfx('lose');
+      this.fail = false; // allow retry
+    } else {
       this.success = true; sfx('win');
+      this.puzzleSolved++;
+      this.level++;
       if (this.score > this.bestScore) { this.bestScore = this.score; localStorage.setItem('dtBest', this.bestScore); }
-      toast('Logic verified!');
+      toast('Logic verified! Lv.' + this.level);
+      // Auto-advance to next puzzle after delay
+      var self = this;
+      setTimeout(function() {
+        self.success = false;
+        self.fail = false;
+        self.balls = [];
+        self.target = Math.random() < 0.5 ? 'even' : 'odd';
+        // Shuffle node positions
+        self.nodes.forEach(function(n) {
+          if (n.type !== 'source' && n.type !== 'target') {
+            n.x = rnd(150, 480);
+            n.y = rnd(60, 340);
+          }
+        });
+      }, 2000);
     }
   }
 
