@@ -114,6 +114,19 @@ app = FastAPI(
 _session_daemons: dict[str, subprocess.Popen] = {}
 _daemon_lock = threading.Lock()
 
+
+def _cleanup_daemons() -> None:
+    """服务退出时终止所有常驻 daemon 子进程，避免残留。"""
+    for proc in list(_session_daemons.values()):
+        try:
+            proc.terminate()
+        except Exception:  # noqa: BLE001
+            pass
+    _session_daemons.clear()
+
+
+atexit.register(_cleanup_daemons)
+
 # ---------------------------------------------------------------------------
 # 请求日志：方便定位清小搭实际请求了哪个路径、返回什么状态码
 # ---------------------------------------------------------------------------
