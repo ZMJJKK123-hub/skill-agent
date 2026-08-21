@@ -393,6 +393,14 @@ def _easter_egg_response(messages: list) -> str | None:
             return "pong 🏓（彩蛋：Ping-Pong！）"
         if c in ("彩蛋", "easter egg", "easteregg"):
             return "🎉 你发现了一个彩蛋！谢谢你的好奇，祝你今天也开开心心～"
+        if c in ("help", "帮助", "你能做什么", "你会什么"):
+            return ("✨ 我能做很多事：\n"
+                    "· 普通聊天、答疑\n"
+                    "· 写代码 / 改代码\n"
+                    "· 读写文件、搜索资料\n"
+                    "· 截图识图（需开启识图模式）\n"
+                    "· 生成附件并下载\n\n"
+                    "如果你想让我切换人格，可以告诉我，比如：切换成喵娘模式 🐱")
     return None
 
 
@@ -406,6 +414,8 @@ def _friendly_agent_error(e: Exception) -> str:
         return "⚠️ AI 服务配置错误：DeepSeek API Key 无效或未授权。"
     if "connection refused" in low or "connect" in low or "network" in low:
         return "⚠️ AI 服务连接失败，请检查网络或稍后再试。"
+    if "429" in low or "rate limit" in low:
+        return "⚠️ AI 服务请求过于频繁（限流），请稍后再试。"
     if "timeout" in low or "响应超时" in msg:
         return "⚠️ AI 服务响应超时，请稍后再试。"
     if "初始化失败" in msg or "进程已退出" in msg:
