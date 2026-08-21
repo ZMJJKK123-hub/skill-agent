@@ -695,3 +695,7 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **Agentic-loop stability is markedly worse than DeepSeek-V4-Flash so far**: within ~10 minutes the first GLM session produced 3 empty responses, ignored write-first-stop twice, then HARD-HUNG twice (zero log output, process alive = LLM call without timeout; same failure shape as itertest26).
   - Recovery used: kill session python + `run_task.py` relaunch with `DSH_RESUME=1`.
   - Recommendation: add an HTTP timeout + retry to the OpenAI client in core/config.py; keep DeepSeek as fallback default until GLM-5.2 completes a full MOD unattended.
+## 2026-08-21 model verdict - reverted to DeepSeek-V4-Flash-0731
+
+- **GLM-5.2 experiment CLOSED**: first session never produced a single file in ~20 minutes (4+ empty responses, 2 hard hangs needing kill+resume). Reverted default to `DeepSeek-V4-Flash-0731` in both `.env` and `core/config.py`; post-revert session wrote its main class within 1 minute.
+- Keep the earlier GLM notes for future retries; prerequisites before retrying: HTTP timeout+retry on the OpenAI client, and verify GLM tool-call streaming shape matches our delta parser.
