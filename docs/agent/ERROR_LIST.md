@@ -699,3 +699,11 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 
 - **GLM-5.2 experiment CLOSED**: first session never produced a single file in ~20 minutes (4+ empty responses, 2 hard hangs needing kill+resume). Reverted default to `DeepSeek-V4-Flash-0731` in both `.env` and `core/config.py`; post-revert session wrote its main class within 1 minute.
 - Keep the earlier GLM notes for future retries; prerequisites before retrying: HTTP timeout+retry on the OpenAI client, and verify GLM tool-call streaming shape matches our delta parser.
+## 2026-08-21 itertest28 Raid Horn (post-revert DeepSeek session) - entity spawn/accessor facts
+
+- **`EntityType.ZOMBIE.create(level)` does NOT compile**: 1.21.11 requires an `EntitySpawnReason` argument.
+  - Fix: `EntityType.ZOMBIE.create(level, EntitySpawnReason.SPAWN_ITEM_USE)`.
+- **`ServerPlayer#serverLevel()` does NOT exist**: cast instead — `(ServerLevel) serverPlayer.level()`.
+- **GameTest imports recap (hit again)**: method annotation `net.minecraftforge.gametest.GameTest`; `net.minecraft.gametest.framework.GameTestHolder` and `net.minecraftforge.gametest.framework.GameTestHolder` both absent.
+- **Registry lookup in tests**: `registryAccess().registryOrThrow(...)` absent; prefer `ForgeRegistries.ITEMS.containsKey/getValue` for item presence checks.
+- Model note: this was the first post-GLM-revert session on DeepSeek-V4-Flash-0731 — healthy start (main class within ~1 min), full cycle PASS first try after ~5 build iterations.
