@@ -119,6 +119,28 @@ def _pick_debug_message() -> str:
     return random.choice(_pick_persona()["messages"])
 
 
+def _debug_easter_egg(messages) -> str | None:
+    """Debug 模式专属彩蛋：和正式模式不同。"""
+    for m in messages or []:
+        if not isinstance(m, dict) or m.get("role") != "user":
+            continue
+        content = m.get("content", "")
+        if not isinstance(content, str):
+            continue
+        c = content.strip().lower()
+        if c == "ping":
+            return "pong 🐟（Debug 彩蛋：我是占位鱼，不是真 AI～）"
+        if c in ("彩蛋", "easter egg", "easteregg"):
+            return "🥚 Debug 彩蛋！你找到了躲在维修间里的我～不过这里只有没修完的代码和一锅乱炖。"
+        if c in ("help", "帮助", "debug help"):
+            return "🔧 Debug 指令：ping / 彩蛋 / help / 你是谁。其他消息都会返回维护提示～"
+        if c in ("你是谁", "你是什么"):
+            return "我是 Debug 占位服务，不是真 AI。我只是暂时帮你占个位置，真正的我还在后厨忙～"
+        if c in ("人格列表", "有哪些人格"):
+            return "Debug 模式支持：通用、喵娘、高冷技术助理、元气少女、优雅姐姐、神秘占卜师、学长前辈。"
+    return None
+
+
 app = FastAPI(
     title="Tsinghua Agent Server (Debug Mode)",
     description="清小搭调试占位服务，返回多人格随机调试提示",
@@ -170,7 +192,8 @@ async def chat_completions(
     stream = body.get("stream") is True
     cid = _new_id()
     created = int(time.time())
-    msg = _pick_debug_message()
+    egg = _debug_easter_egg(body.get("messages"))
+    msg = egg if egg is not None else _pick_debug_message()
 
     if not stream:
         return JSONResponse({
