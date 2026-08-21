@@ -707,3 +707,8 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **GameTest imports recap (hit again)**: method annotation `net.minecraftforge.gametest.GameTest`; `net.minecraft.gametest.framework.GameTestHolder` and `net.minecraftforge.gametest.framework.GameTestHolder` both absent.
 - **Registry lookup in tests**: `registryAccess().registryOrThrow(...)` absent; prefer `ForgeRegistries.ITEMS.containsKey/getValue` for item presence checks.
 - Model note: this was the first post-GLM-revert session on DeepSeek-V4-Flash-0731 — healthy start (main class within ~1 min), full cycle PASS first try after ~5 build iterations.
+## 2026-08-21 itertest29 Magnet Charm - flow defect: over-broad cleanup
+
+- **FLOW DEFECT — self-deletion by cleanup**: `rmdir /s /q src\\main\\java\\com` (meant to remove template packages) deleted the agent's OWN new classes under the same `com` tree, costing ~17 rebuild iterations.
+  - Fix guidance: delete exact template paths (`src/main/java/com/example`, `src/main/java/com/swapgame`) — never the shared `com` root; or move new code to a non-`com` root package.
+- End-to-end RESULT: PASS after recovery; jar `magnet_charm-1.0.0.jar`.
