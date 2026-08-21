@@ -576,3 +576,11 @@ Post-write research budget (`build-now-stop`) was not active because the agent w
   - Use `Entity#isShiftKeyDown()` or `Entity#isCrouching()`.
 - **`PlayerEvent.PlayerRespawnEvent#getPlayer()` not found**:
   - The typed event is a record accessor: use `event.getEntity()` (same for `LivingDeathEvent`).
+## 2026-08-21 itertest16 Chunk Loader - new API facts
+
+- **`Block#onRemove` no longer exists (compile: method does not override / cannot find symbol)**:
+  - 1.21.11 `BlockBehaviour` split the old `onRemove` into `affectNeighborsAfterRemoval(BlockState, ServerLevel, BlockPos, boolean)` (called via `ServerLevel#updateNeighboursOnBlockSet` when old state is replaced).
+  - Fix: override `protected void affectNeighborsAfterRemoval(BlockState, ServerLevel, BlockPos, boolean)` and put release/cleanup logic there.
+- **`import net.minecraft.gametest.framework.GameTest` cannot find symbol**:
+  - Forge 1.21.11 `@GameTest` lives in `net.minecraftforge.gametest.GameTest` (attribute is `structure()`, default `forge:empty3x3x3`; no `template()`).
+  - Fix: `import net.minecraftforge.gametest.GameTest;`
