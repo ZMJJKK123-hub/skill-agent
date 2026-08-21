@@ -99,11 +99,23 @@ class TerminalHacker extends BaseGame {
       if (this.threat && ans === this.threat.word) { this.success(); }
       else { this.out('WRONG! Expected: ' + (this.threat ? this.threat.word : '?'), 'red'); this.fail(); }
     } else if (cmd === 'help') {
-      this.out('Commands: block <text> | hint | skip', 'cyan');
+      this.out('Commands:', 'cyan');
+      this.out('  block <text>     - Block a threat');
+      this.out('  hint             - Get a hint');
+      this.out('  agent init       - Launch multi-agent repair');
+      this.out('  grep <pattern>   - Search encrypted log');
+      this.out('  solve <uuid>     - Submit entity ID');
+      this.out('  skip             - Skip current threat');
       this.newLine();
     } else if (cmd === 'hint') {
       this.out('Hint: ' + (this.threat ? this.threat.word[0] + '***' : '?'), 'yellow');
       this.newLine();
+    } else if (cmd === 'agent init') {
+      this.startMultiAgent();
+    } else if (cmd.startsWith('grep ')) {
+      this.grepLog(cmd.slice(5));
+    } else if (cmd.startsWith('solve ')) {
+      this.solveUUID(cmd.slice(6).trim());
     } else if (cmd === 'skip') { this.fail(); }
     else { this.out('Unknown command. Type: help', 'dim'); this.newLine(); }
   }
@@ -119,6 +131,94 @@ class TerminalHacker extends BaseGame {
     this.newLine();
     var self = this;
     setTimeout(function() { self.spawnThreat(); }, 500);
+  }
+
+  startMultiAgent() {
+    clearInterval(this.threatTimer);
+    this.out('', '');
+    this.out('=== MULTI-AGENT REPAIR PROTOCOL ===', 'purple');
+    this.out('Launching 3 AI agents...', 'cyan');
+    var self = this;
+    var agents = ['[Agent-Alpha]', '[Agent-Beta]', '[Agent-Gamma]'];
+    var messages = [
+      'Scanning log files for entity references...',
+      'Found encrypted log dump with UUID embedded.',
+      'Analyzing packet headers... suspicious pattern detected.',
+    ];
+    agents.forEach(function(a, i) {
+      setTimeout(function() {
+        self.out(a + ' ' + messages[i], 'cyan');
+      }, i * 800);
+    });
+    setTimeout(function() {
+      self.uuid = self.genUUID();
+      self.encryptedLog = self.genEncryptedLog(self.uuid);
+      self.out('', '');
+      self.out('=== ENCRYPTED LOG DUMP ===', 'yellow');
+      self.out(self.encryptedLog, 'dim');
+      self.out('', '');
+      self.out('Use: grep <pattern> to find the UUID', 'cyan');
+      self.out('Then: solve <uuid>', 'cyan');
+      self.newLine();
+    }, 2800);
+  }
+
+  genUUID() {
+    var hex = '0123456789abcdef';
+    var parts = [];
+    for (var i = 0; i < 32; i++) {
+      if (i === 8 || i === 12 || i === 16 || i === 20) parts.push('-');
+      parts.push(hex[rnd(0, 15)]);
+    }
+    return parts.join('');
+  }
+
+  genEncryptedLog(uuid) {
+    var garbage = ['0xDEADBEEF', 'ERR_TIMEOUT', '0xCAFEBABE', 'STACK_OVERFLOW', 'NULL_REF', 'SEGFAULT', 'HEAP_CORRUPT', '0xBEEF42', 'RACE_COND', 'DEADLOCK'];
+    var lines = [];
+    for (var i = 0; i < 8; i++) {
+      if (i === 4) {
+        lines.push('[CRITICAL] entity_id=' + uuid + ' status=corrupted');
+      } else {
+        lines.push('[' + (i % 2 === 0 ? 'WARN' : 'INFO') + '] ' + garbage[rnd(0, garbage.length - 1)] + ' offset=0x' + rnd(0, 65535).toString(16).toUpperCase());
+      }
+    }
+    lines = lines.sort(function() { return Math.random() - 0.5; });
+    return lines.join('\n');
+  }
+
+  grepLog(pattern) {
+    if (!this.encryptedLog) { this.out('No log to grep. Run "agent init" first.', 'dim'); this.newLine(); return; }
+    var lines = this.encryptedLog.split('\n');
+    var matches = lines.filter(function(l) { return l.toLowerCase().indexOf(pattern.toLowerCase()) >= 0; });
+    if (matches.length > 0) {
+      this.out('=== GREP RESULTS ===', 'green');
+      matches.forEach(function(m) { this.out(m, 'green'); }.bind(this));
+    } else {
+      this.out('No matches found for: ' + pattern, 'red');
+    }
+    this.newLine();
+  }
+
+  solveUUID(answer) {
+    if (!this.uuid) { this.out('No active UUID challenge. Run "agent init" first.', 'dim'); this.newLine(); return; }
+    if (answer === this.uuid) {
+      this.out('', '');
+      this.out('########## UUID VERIFIED ##########', 'green');
+      this.out('All agents confirmed entity resolution.', 'cyan');
+      this.score += 500;
+      this.defended++;
+      this.out('Score: ' + this.score + ' Defended: ' + this.defended, 'cyan');
+      this.uuid = null;
+      this.encryptedLog = null;
+      this.out('', '');
+      this.newLine();
+      var self = this;
+      setTimeout(function() { self.spawnThreat(); }, 500);
+    } else {
+      this.out('INCORRECT UUID. Try again or use grep.', 'red');
+      this.newLine();
+    }
   }
 
   fail() {

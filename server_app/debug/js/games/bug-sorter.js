@@ -18,6 +18,16 @@ class BugSorter extends BaseGame {
       else if (k === 'd') this.hit(2);
     };
     addEventListener('keydown', this._kd);
+    this._click = e => {
+      if (!this.cleanupIcon) return;
+      var r = this.canvas.getBoundingClientRect();
+      var mx = (e.clientX - r.left) * (this.w / r.width);
+      var my = (e.clientY - r.top) * (this.h / r.height);
+      if (dist(mx, my, this.cleanupIcon.x, this.cleanupIcon.y) < this.cleanupIcon.r + 10) {
+        this.globalCleanup();
+      }
+    };
+    this.canvas.addEventListener('click', this._click);
     this.reset();
   }
 
@@ -39,6 +49,9 @@ class BugSorter extends BaseGame {
     this.judgeText = [];
     this.fireIntensity = 0;
     this.health = 100;
+    this.bugCount = 0;
+    this.cleanupIcon = null;
+    this.cleanupParticles = [];
   }
 
   update() {
@@ -60,6 +73,22 @@ class BugSorter extends BaseGame {
       }
     });
     this.notes = this.notes.filter(n => !n.dead && n.y < this.h + 20);
+
+    // Check if context window is overloaded
+    this.bugCount = this.notes.length;
+    if (this.bugCount >= 8 && !this.cleanupIcon) {
+      // Spawn global cleanup variable icon
+      this.cleanupIcon = { x: this.w / 2, y: this.h / 2, r: 20, life: 300 };
+    }
+    if (this.cleanupIcon) {
+      this.cleanupIcon.life--;
+      if (this.cleanupIcon.life <= 0) this.cleanupIcon = null;
+    }
+
+    // Update cleanup particles
+    this.cleanupParticles.forEach(function(p) { p.x += p.vx; p.y += p.vy; p.life--; });
+    this.cleanupParticles = this.cleanupParticles.filter(function(p) { return p.life > 0; });
+
     this.judgeText.forEach(j => { j.y -= 1; j.life--; });
     this.judgeText = this.judgeText.filter(j => j.life > 0);
     this.fireIntensity = clamp(this.miss * 2, 0, 100);
@@ -128,6 +157,36 @@ class BugSorter extends BaseGame {
       c.fillText(j.text, j.x, j.y - 20);
       c.globalAlpha = 1;
     });
+    // Render cleanup particles
+    this.cleanupParticles.forEach(function(p) {
+      c.fillStyle = p.color;
+      c.globalAlpha = p.life / 40;
+      c.beginPath();
+      c.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      c.fill();
+      c.globalAlpha = 1;
+    });
+    // Render global cleanup icon
+    if (this.cleanupIcon) {
+      var pulse = 0.7 + 0.3 * Math.sin(this.tick * 0.2);
+      c.fillStyle = 'rgba(0,255,159,' + pulse + ')';
+      c.beginPath();
+      c.arc(this.cleanupIcon.x, this.cleanupIcon.y, this.cleanupIcon.r, 0, Math.PI * 2);
+      c.fill();
+      c.strokeStyle = '#00ff9f';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.arc(this.cleanupIcon.x, this.cleanupIcon.y, this.cleanupIcon.r + 5, 0, Math.PI * 2);
+      c.stroke();
+      c.fillStyle = '#050810';
+      c.font = '14px monospace';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillText('GC', this.cleanupIcon.x, this.cleanupIcon.y);
+      c.fillStyle = '#00ff9f';
+      c.font = '8px monospace';
+      c.fillText('CLICK ME!', this.cleanupIcon.x, this.cleanupIcon.y + 30);
+    }
     if (this.fireIntensity > 0) {
       for (var i = 0; i < 3; i++) {
         var x = i * 160 + 80;
@@ -154,6 +213,25 @@ class BugSorter extends BaseGame {
     c.fillRect(30, 28, this.health, 6);
   }
 
+  globalCleanup() {
+    // Massive combo + particle explosion
+    var bonus = this.notes.length * 50;
+    this.score += bonus;
+    this.combo += this.notes.length;
+    this.maxCombo = Math.max(this.maxCombo, this.combo);
+    this.judgeText.push({ text: 'GLOBAL CLEANUP +' + bonus, x: this.w / 2, y: this.h / 2, life: 60, color: '#00ff9f' });
+    sfx('win');
+    // Spawn explosion particles
+    for (var i = 0; i < 50; i++) {
+      var ang = (i / 50) * Math.PI * 2;
+      var spd = 3 + Math.random() * 5;
+      this.cleanupParticles.push({ x: this.cleanupIcon.x, y: this.cleanupIcon.y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, life: 40, color: ['#00ff9f', '#00d4ff', '#ffcc00'][rnd(0, 2)], r: 2 + Math.random() * 3 });
+    }
+    this.notes = [];
+    this.cleanupIcon = null;
+    this.health = Math.min(100, this.health + 20);
+  }
+
   endGame() {
     this.stop(); sfx('lose');
     var c = this.ctx;
@@ -168,5 +246,5 @@ class BugSorter extends BaseGame {
     c.fillText('Score: ' + this.score + '  Max Combo: ' + this.maxCombo + 'x', this.w / 2, this.h / 2 + 10);
   }
 
-  stop() { super.stop(); removeEventListener('keydown', this._kd); }
+  stop() { super.stop(); removeEventListener('keydown', this._kd); this.canvas.removeEventListener('click', this._click); }
 }

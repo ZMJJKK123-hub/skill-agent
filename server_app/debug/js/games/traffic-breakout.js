@@ -137,17 +137,25 @@ class TrafficBreakout extends BaseGame {
       c.globalAlpha = 1;
     });
     if (this.tunnel.in.active) {
+      // Pulsing tunnel portals
+      var pulse = 0.7 + 0.3 * Math.sin(this.tunnelTimer * 0.2);
       c.strokeStyle = '#00d4ff';
       c.lineWidth = 2;
       c.setLineDash([4, 4]);
+      // IN portal
+      c.globalAlpha = pulse;
       c.beginPath(); c.arc(this.tunnel.in.x, this.tunnel.in.y, 18, 0, Math.PI * 2); c.stroke();
+      c.beginPath(); c.arc(this.tunnel.in.x, this.tunnel.in.y, 14, 0, Math.PI * 2); c.stroke();
+      // OUT portal
       c.beginPath(); c.arc(this.tunnel.out.x, this.tunnel.out.y, 18, 0, Math.PI * 2); c.stroke();
+      c.beginPath(); c.arc(this.tunnel.out.x, this.tunnel.out.y, 14, 0, Math.PI * 2); c.stroke();
       c.setLineDash([]);
+      c.globalAlpha = 1;
       c.fillStyle = '#00d4ff';
       c.font = '8px monospace';
       c.textAlign = 'center';
-      c.fillText('IN', this.tunnel.in.x, this.tunnel.in.y);
-      c.fillText('OUT', this.tunnel.out.x, this.tunnel.out.y);
+      c.fillText('PORT:8000', this.tunnel.in.x, this.tunnel.in.y - 24);
+      c.fillText('ROUTE', this.tunnel.out.x, this.tunnel.out.y - 24);
     }
     c.fillStyle = '#00ff9f';
     c.fillRect(this.paddle.x, this.paddle.y, this.paddle.w, this.paddle.h);
