@@ -119,6 +119,7 @@ class Snake2048 extends BaseGame {
 
   autoPath() {
     var head = this.snake[0];
+    // Priority 1: find food with same value as head
     var target = null, td = 999;
     this.foods.forEach(f => {
       if (f.v === head.v) {
@@ -126,7 +127,10 @@ class Snake2048 extends BaseGame {
         if (d < td) { td = d; target = f; }
       }
     });
+    // Priority 2: find any food
     if (!target) target = this.foods[0];
+    // Priority 3: avoid walls — move toward center
+    if (!target) return;
     if (!target) return;
     var dx = target.x - head.x, dy = target.y - head.y;
     if (Math.abs(dx) > Math.abs(dy)) {
@@ -134,11 +138,21 @@ class Snake2048 extends BaseGame {
       else if (dx < 0 && this.dir.x !== 1) this.ndir = { x: -1, y: 0 };
       else if (dy > 0 && this.dir.y !== -1) this.ndir = { x: 0, y: 1 };
       else if (dy < 0 && this.dir.y !== 1) this.ndir = { x: 0, y: -1 };
+      else { // No valid direction, try to avoid wall
+        if (head.x <= 1) this.ndir = { x: 1, y: 0 };
+        else if (head.x >= this.cols - 2) this.ndir = { x: -1, y: 0 };
+        else this.ndir = { x: 0, y: this.dir.y === 0 ? (Math.random() < 0.5 ? 1 : -1) : this.dir.y };
+      }
     } else {
       if (dy > 0 && this.dir.y !== -1) this.ndir = { x: 0, y: 1 };
       else if (dy < 0 && this.dir.y !== 1) this.ndir = { x: 0, y: -1 };
       else if (dx > 0 && this.dir.x !== -1) this.ndir = { x: 1, y: 0 };
       else if (dx < 0 && this.dir.x !== 1) this.ndir = { x: -1, y: 0 };
+      else {
+        if (head.y <= 1) this.ndir = { x: 0, y: 1 };
+        else if (head.y >= this.rows - 2) this.ndir = { x: 0, y: -1 };
+        else this.ndir = { x: this.dir.x === 0 ? (Math.random() < 0.5 ? 1 : -1) : this.dir.x, y: 0 };
+      }
     }
   }
 

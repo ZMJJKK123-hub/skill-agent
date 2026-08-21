@@ -43,15 +43,21 @@ class TrafficBreakout extends BaseGame {
 
   makeBricks(lvl) {
     this.bricks = [];
-    var rows = Math.min(3 + lvl, 5);
+    var rows = Math.min(3 + lvl, 6);
     var cols = 8;
     var pad = 4;
     var bw = (this.w - pad * (cols + 1)) / cols;
     var bh = 14;
     for (var r = 0; r < rows; r++) {
       for (var c = 0; c < cols; c++) {
-        var type = Math.random() < 0.15 ? 'fork' : (Math.random() < 0.1 ? 'cache' : 'normal');
-        this.bricks.push({ x: pad + c * (bw + pad), y: 30 + r * (bh + pad), w: bw, h: bh, alive: true, hp: type === 'cache' ? 3 : 1, type: type, maxHp: type === 'cache' ? 3 : 1 });
+        var roll = Math.random();
+        var type;
+        if (roll < 0.15) type = 'fork';
+        else if (roll < 0.25) type = 'cache';
+        else if (roll < 0.28 && lvl >= 2) type = 'strong';
+        else type = 'normal';
+        var hp = type === 'cache' ? 3 : (type === 'strong' ? 2 : 1);
+        this.bricks.push({ x: pad + c * (bw + pad), y: 30 + r * (bh + pad), w: bw, h: bh, alive: true, hp: hp, type: type, maxHp: hp });
       }
     }
     this.bricksLeft = this.bricks.length;
@@ -133,7 +139,7 @@ class TrafficBreakout extends BaseGame {
     c.fillRect(0, 0, this.w, this.h);
     this.bricks.forEach(function(b) {
       if (!b.alive) return;
-      c.fillStyle = b.type === 'fork' ? '#bb44ff' : (b.type === 'cache' ? '#ffcc00' : '#ff3355');
+      c.fillStyle = b.type === 'fork' ? '#bb44ff' : (b.type === 'cache' ? '#ffcc00' : (b.type === 'strong' ? '#ff8800' : '#ff3355'));
       if (b.hp < b.maxHp) c.globalAlpha = 0.5 + b.hp / b.maxHp * 0.5;
       c.fillRect(b.x, b.y, b.w, b.h);
       c.globalAlpha = 1;
@@ -141,7 +147,7 @@ class TrafficBreakout extends BaseGame {
       c.font = '7px monospace';
       c.textAlign = 'center';
       c.textBaseline = 'middle';
-      c.fillText(b.type === 'fork' ? 'FORK' : (b.type === 'cache' ? 'CACHE' : 'BUG'), b.x + b.w / 2, b.y + b.h / 2);
+      c.fillText(b.type === 'fork' ? 'FORK' : (b.type === 'cache' ? 'CACHE' : (b.type === 'strong' ? 'TUFF' : 'BUG')), b.x + b.w / 2, b.y + b.h / 2);
     });
     this.particles.forEach(function(p) {
       c.fillStyle = p.color;

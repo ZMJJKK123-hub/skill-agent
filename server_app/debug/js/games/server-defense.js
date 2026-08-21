@@ -162,16 +162,22 @@ class ServerDefense extends BaseGame {
     else { x = rnd(0, this.w); y = this.h; }
     var roll = Math.random();
     var type;
-    if (roll < 0.15 && this.level >= 3) type = '500';
-    else if (roll < 0.4) type = '502';
+    if (roll < 0.12 && this.level >= 3) type = '500';
+    else if (roll < 0.35) type = '502';
     else type = '404';
     var cfg = {
-      '404': { r: 10, hp: 1, spd: 1.2, pts: 1 },
-      '502': { r: 14, hp: 3, spd: 0.6, pts: 3 },
-      '500': { r: 18, hp: 6, spd: 0.4, pts: 8 },
+      '404': { r: 10, hp: 1, spd: 1.2 + this.level * 0.05, pts: 1 },
+      '502': { r: 14, hp: 3, spd: 0.6 + this.level * 0.03, pts: 3 },
+      '500': { r: 18, hp: 6, spd: 0.4 + this.level * 0.02, pts: 8 },
     };
     var c = cfg[type];
-    this.enemies.push({ x: x, y: y, r: c.r, hp: c.hp, spd: c.spd, type: type, pts: c.pts, maxHp: c.hp });
+    // Multiple spawn at high level
+    var count = this.level >= 5 ? rnd(1, 2) : 1;
+    for (var si = 0; si < count; si++) {
+      var px = x + (si > 0 ? rnd(-30, 30) : 0);
+      var py = y + (si > 0 ? rnd(-30, 30) : 0);
+      this.enemies.push({ x: px, y: py, r: c.r, hp: c.hp, spd: c.spd, type: type, pts: c.pts, maxHp: c.hp });
+    }
   }
 
   spawnParticle(x, y, vx, vy, life, color, r) {
