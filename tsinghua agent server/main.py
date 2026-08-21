@@ -24,6 +24,7 @@ OpenAI 兼容端点：
     - 8001 端口：本服务（清小搭 OpenAI 兼容接口）
 """
 
+import atexit
 import json
 import mimetypes
 import os
@@ -251,7 +252,7 @@ def _normalize_messages(messages: list | None, session_id: str = "") -> list[dic
     if not out:
         out = [{"role": "user", "content": "你好"}]
 
-    persona_key = os.environ.get("DSH_PERSONA", "").strip().lower()
+    persona_key = _resolve_persona_key(session_id)
     if persona_key in PERSONA_PROMPTS:
         instruction = f"[人格设定] {PERSONA_PROMPTS[persona_key]} 请始终以这个人格回应。"
         if not any(isinstance(m, dict) and "[人格设定]" in str(m.get("content", "")) for m in out):
@@ -459,6 +460,59 @@ def _append_web_hint(text: str, mod_related: bool = False) -> str:
 # ---------------------------------------------------------------------------
 # 核心：调用本项目 Agent 引擎
 # ---------------------------------------------------------------------------
+def _persona_file(session_root: Path) -> Path:
+    return session_root / "persona.txt"
+
+
+def _resolve_persona_key(session_id: str) -> str:
+    """返回当前会话应使用的人格 key：先取会话文件，再取环境变量。"""
+    session_root = _session_workdir(session_id)
+    pfile = _persona_file(session_root)
+    if pfile.exists():
+        try:
+            key = pfile.read_text(encoding="utf-8").strip().lower()
+            if key in PERSONA_PROMPTS:
+                return key
+        except OSError:
+            pass
+    return os.environ.get("DSH_PERSONA", "").strip().lower()
+
+
+def _set_persona(session_id: str, persona_key: str) -> bool:
+    if persona_key not in PERSONA_PROMPTS:
+        return False
+    session_root = _session_workdir(session_id)
+    try:
+        _persona_file(session_root).write_text(persona_key, encoding="utf-8")
+        return True
+    except OSError:
+        return False
+
+
+def _session_persona_command(messages: list) -> tuple[str, str] | None:
+    """检测用户是否想切换人格，返回 (persona_key, 显示名)；无则 None。"""
+    alias = {
+        "喵娘": "meow", "喵娘模式": "meow", "猫娘": "meow",
+        "高冷": "cool", "高冷技术助理": "cool",
+        "元气": "cheer", "元气少女": "cheer",
+        "优雅": "elegant", "优雅姐姐": "elegant",
+        "神秘": "mystic", "神秘占卜师": "mystic", "占卜师": "mystic",
+        "学长": "senpai", "前辈": "senpai", "学长前辈": "senpai",
+        "默认": "default", "通用": "default",
+    }
+    for m in messages:
+        if not isinstance(m, dict) or m.get("role") != "user":
+            continue
+        content = m.get("content", "")
+        if not isinstance(content, str):
+            continue
+        c = content.strip()
+        for label, key in alias.items():
+            if f"切换{label}" in c or f"切换成{label}" in c or f"人格{label}" in c:
+                return key, label
+    return None
+
+
 def _session_workdir(session_id: str) -> Path:
     """为每个清小搭 sessionId 分配独立工作目录，用于隔离对话历史/断点。"""
     safe = re.sub(r"[^A-Za-z0-9_.-]", "_", session_id or "")[:64].strip("._") or "default"
@@ -586,6 +640,38 @@ async def chat_completions(
 
     # 公网 URL 基址：附件 fileUrl 用它拼出（可用 DSH_PUBLIC_BASE_URL 覆盖）
     base_url = os.environ.get("DSH_PUBLIC_BASE_URL") or str(request.base_url).rstrip("/")
+
+    # 人格切换命令：先于 agent 返回确认
+    persona_cmd = _session_persona_command(messages)
+    if persona_cmd is not None:
+        key, label = persona_cmd
+        reply = f"🎭 人格已切换为：{label}！接下来我会用这个人格陪你聊天～"
+        if not _set_persona(session_id, key):
+            reply = "⚠️ 人格切换失败，请稍后再试。"
+        if stream:
+            cmd_cid = _new_id()
+            cmd_created = int(time.time())
+
+            def cmd_gen():
+                yield _sse_frame(cmd_cid, cmd_created, {"role": "assistant"})
+                for i in range(0, len(reply), 8):
+                    yield _sse_frame(cmd_cid, cmd_created, {"content": reply[i:i + 8]})
+                yield _sse_frame(cmd_cid, cmd_created, {}, finish_reason="stop", usage=_usage_zero())
+                yield "data: [DONE]\n\n"
+
+            return StreamingResponse(cmd_gen(), media_type="text/event-stream")
+        return JSONResponse({
+            "id": _new_id(),
+            "object": "chat.completion",
+            "created": int(time.time()),
+            "model": "tsinghua-agent",
+            "choices": [{
+                "index": 0,
+                "message": {"role": "assistant", "content": reply},
+                "finish_reason": "stop",
+            }],
+            "usage": _usage_zero(),
+        })
 
     # 轻量彩蛋：先于 agent 返回，保证快速、有趣
     egg = _easter_egg_response(messages)
