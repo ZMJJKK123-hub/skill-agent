@@ -712,3 +712,10 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **FLOW DEFECT — self-deletion by cleanup**: `rmdir /s /q src\\main\\java\\com` (meant to remove template packages) deleted the agent's OWN new classes under the same `com` tree, costing ~17 rebuild iterations.
   - Fix guidance: delete exact template paths (`src/main/java/com/example`, `src/main/java/com/swapgame`) — never the shared `com` root; or move new code to a non-`com` root package.
 - End-to-end RESULT: PASS after recovery; jar `magnet_charm-1.0.0.jar`.
+## 2026-08-21 itertest30 Ender Pocket - container storage facts (116-build grind)
+
+- **`ItemContainerContents` API renamed**: no `fromStacks(List)` / `getStackInSlot(int)`.
+  - Serialize: `ItemContainerContents.fromItems(List<ItemStack>)`; read back: `contents.copyInto(NonNullList.withSize(...))`.
+- **`RegistryAccess.registryOrThrow(ResourceKey)` definitively gone**: only `lookup(ResourceKey<? extends Registry<? extends E>>) -> Optional<Registry<E>>` remains.
+- **GameTest annotation recap**: Forge ships `net.minecraftforge.gametest.GameTest` (method-level, `structure` default); `template="empty"` from vanilla and both GameTestHolder paths do not exist.
+- Heaviest session yet: ~116 compile iterations on the container/Menu zone; end-to-end RESULT: PASS.
