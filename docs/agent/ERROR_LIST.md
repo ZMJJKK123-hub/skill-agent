@@ -541,3 +541,11 @@ Post-write research budget (`build-now-stop`) was not active because the agent w
   - Fix: use `@GameTestNamespace(value=modid)` on class + `@GameTest` / `@GameTest(structure="...")` on method.
 - **Test-count observation (not a hard error)**:
   - This Forge runner only registers/runs 1 `@GameTest` method per class even when multiple annotated methods exist; use one aggregate `@GameTest` covering all assertions (already in ERROR_LIST as merge-all advice).
+## 2026-08-21 itertest11 Void Miner - new API facts
+
+- **`DirectionProperty` not found**:
+  - `net.minecraft.world.level.block.state.properties.DirectionProperty` removed in 1.21.11.
+  - Fix: declare facing field as `Property<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;`.
+- **`BlockState#getDrops` signature changed to LootParams.Builder**:
+  - Old `getDrops(ServerLevel, BlockPos, BlockEntity)` / `getDrops(LootContext.Builder)` no longer exist.
+  - Fix: build `LootParams.Builder` with ORIGIN/TOOL/BLOCK_ENTITY params, then call `state.getDrops(builder)`.
