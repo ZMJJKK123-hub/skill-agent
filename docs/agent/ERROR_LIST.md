@@ -604,3 +604,13 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 
 - **`ArmorItem` class not found**:
   - 1.21.11 wearable items use `Item.Properties().equippable(EquipmentSlot.HEAD)` (internally `Equippable.builder(...).build()`); no ArmorMaterial needed for basic equipping.
+## 2026-08-21 itertest17 Remote Lever - networking/event API facts (high value)
+
+- **Event bus class changed**: use `net.minecraftforge.eventbus.api.bus.BusGroup` (obtained via `FMLJavaModLoadingContext.get().getModBusGroup()`); old `IEventBus`-style imports fail.
+- **`PacketFlow` lives in `net.minecraft.network.protocol`**, not the network package.
+- **`Identifier.of(ns, path)` does NOT exist** (compile-proven): use `Identifier.fromNamespaceAndPath(ns, path)` (Identifier.java:39).
+- **`Player#sendSystemMessage(MutableComponent)` not found**: use `displayClientMessage(Component, boolean)` (Player.java:1379).
+- **`Level.isClientSide` is a PRIVATE field** in this mapping: call the method `level.isClientSide()` instead.
+- **ItemStack NBT round-trip**: use `ItemStack.CODEC.encodeStart(...)` / `.parse(...)`; old `stack.save/addTag` patterns are gone.
+- **Channel construction (new network layer)**: `ChannelBuilder.named(Identifier)...payloadChannel()` + `Channel.send(payload, PacketDistributor.SERVER.noArg())`; `SimpleChannel` still exists but the payload-channel path is the modern one.
+- **Template restoration trap (flow defect)**: template files under `src/main/java/com/example` can be auto-restored WITH `@Mod("examplemod")` → FML fails with `constructed N mods: [BROKEN, ...] but had M mods specified`. Robust fix: rewrite template classes as EMPTY classes WITHOUT `@Mod` AND delete stale `build/sourceSets/main` leftovers. (Recreating empty no-@Mod stubs also unblocks tests, but clean both is better.)
