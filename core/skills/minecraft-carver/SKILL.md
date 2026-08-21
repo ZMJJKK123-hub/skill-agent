@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-carver
-description: "Configured carver definition JSON: CONFIGURED_CARVER registry, carver types and configs."
+description: "Minecraft Configured Carver 配置雕刻器定义：CONFIGURED_CARVER 注册表、data/<namespace>/worldgen/configured_carver/ 数据包路径（26.3 后改为 worldgen/carver/）、JSON 格式（type 雕刻器类型、config 配置）、Config 参数（probability 生成概率 0-1、replaceable 可替换方块、y 高度提供器、lava_level 岩浆水位、debug_settings 调试设置、air_state/water_state/lava_state/barrier_state 替换方块状态、yScale 垂直缩放）、Carver Types 雕刻器类型（cave 洞穴圆形房间和隧道、canyon 峡谷、nether_cave 地狱洞穴 垂直更大/忽略含水层/填充岩浆）、Cave Config 洞穴配置（horizontal_radius_multiplier/vertical_radius_multiplier/floor_level）、Canyon Config 峡谷配置（vertical_rotation/shape distance_factor/thickness/horizontal_radius_factor/vertical_radius_default_factor/vertical_radius_center_factor/width_smoothness）、服务器启动加载（/reload 不重新加载）。"
 whenToUse: "Use when writing datapack worldgen carver definitions or custom cave/canyon carving."
 
 ---

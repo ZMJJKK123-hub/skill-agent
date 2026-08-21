@@ -1,7 +1,7 @@
 ---
 
 name: advanced-access-transformers
-description: "Forge Access Transformers (ATs): making classes, fields, and methods accessible to mod code."
+description: "Forge Access Transformers (ATs) 机制：类、字段、方法访问修饰符修改（public/protected/default/private）、final修饰符控制（+f/-f）、JVM类型描述符规范、SRG名称使用、build.gradle配置、META-INF/accesstransformer.cfg路径规范、开发环境与生产环境差异、访问指令语法、类/字段/方法目标指定、内部类表示、方法参数与返回类型描述符、Java虚拟机规范引用。"
 whenToUse: "Use when access-transforming vanilla or mod classes/fields/methods."
 
 ---

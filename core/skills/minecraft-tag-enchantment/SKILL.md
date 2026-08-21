@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tag-enchantment
-description: "Enchantment tags: acquisition, exclusivity, loot, villager trades."
+description: "Enchantment tags: #non_treasure (36 entries), #treasure (7 entries), #exclusive_set/* (armor/boots/bow/crossbow/damage/mining/riptide), #in_enchanting_table, #on_random_loot, #on_mob_spawn_equipment, #tooltip_order, and villager trade balancing tags for desert/jungle/plains/savanna/snow/swamp/taiga librarians."
 whenToUse: "Use when handling enchantment acquisition, exclusivity, loot, or villager trades via enchantment tags (#treasure, #non_treasure etc.)."
 
 ---

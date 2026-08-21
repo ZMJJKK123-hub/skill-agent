@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-model
-description: "Model format — baked models, inheritance, elements, transforms, dispatch, tinting."
+description: "Minecraft Model 模型格式：Model Categories 模型类别（Baked model 烘焙模型 几何固定、Dynamic model 动态模型 几何可变；Block model 方块模型、Item model 物品模型、Entity model 实体模型）、Baked Models 烘焙模型文件（assets/<namespace>/models/、JSON parent/ambientocclusion/textures/elements/display/gui_light）、Model Inheritance 模型继承（子模型缺少字段使用父值、display模式继承、textures合并解析、循环继承检测和中断、缺失父模型重定向）、Texture Variables 纹理变量（命名变量代替直接路径、#前缀引用其他变量、缺失→缺失纹理）、Elements 元素（矩形长方体 from/to 端点、rotation 旋转 origin/rescale/axis/angle、shade 着色、light_emission 自发光 0-15、faces 面 texture/uv/rotation/tintindex/cullface）、Display Transforms 显示变换（thirdperson_lefthand/righthand、firstperson_lefthand/righthand、head、gui、ground、fixed、on_shelf；scale/rotation/translation 应用顺序 scale→rotation→translation）、Invalid Model 无效模型 builtin/missing 缺失纹理）、Blockstate Dispatch 方块状态分派（assets/<namespace>/blockstates/、variants 直接映射 prop=value 键、multipart 组合 when条件 AND/OR 属性组）、Candidate Models 候选模型（model/uvlock/x/y/z/weight 选择权重）、Face Culling 面剔除（cullface 方向 occlusion shape 覆盖判断）、Block Particle Texture Variable 方块粒子纹理变量（particle 纹理变量 用于block/block_marker/dust_pillar粒子）、Block Tinting 方块着色（硬编码着色 草/树叶 植物群系颜色、水 水颜色、红石线 power着色、南瓜/西瓜茎 age着色）、Item Models 物品模型（Inheriting block model 继承方块模型、Built-in generation builtin/generated 平面物品模型 layer0-layer4 着色索引）、Dynamic Models 动态模型（几何不可资源包修改、模型部分树结构、部分变换传播）。"
 whenToUse: "Use when authoring or editing resource pack block/item models, blockstate JSON, or item model definitions."
 
 ---

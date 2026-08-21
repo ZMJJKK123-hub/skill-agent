@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-sherd-pattern
-description: "Decorated pot pattern definition JSON: DECORATED_POT_PATTERN registry."
+description: "Minecraft Decorated Pot Pattern 装饰罐图案定义：DECORATED_POT_PATTERN 注册表、data/<namespace>/decorated_pot_pattern/ 数据包路径、tags/decorated_pot_pattern/ 标签、JSON 格式（asset_id 图案纹理 assets/<namespace>/textures/entity/decorated_pot/<path>.png）、Definition Behavior 定义行为（服务器启动加载一次、/reload 不重新加载）、Rendering 渲染（读取每个面的物品、无物品或无 provides_pottery_pattern 组件则渲染纯色 minecraft:decorated_pot_side、有组件则渲染组件指定图案的精灵）。"
 whenToUse: "Use when writing datapack decorated_pot_pattern definitions or custom pot patterns."
 
 ---

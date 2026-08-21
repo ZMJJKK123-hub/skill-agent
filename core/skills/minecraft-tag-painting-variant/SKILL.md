@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tag-painting-variant
-description: "The placeable painting variant tag and its members."
+description: "Painting variant tags: #placeable tag listing all 47 painting variants offered in the creative inventory, including those placed randomly by painting items and those in the Functional Blocks tab."
 whenToUse: "Use when writing datapacks or custom paintings that reference the placeable painting variant tag."
 
 ---

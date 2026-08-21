@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-fluid
-description: "Fluids — properties, depth, spreading, flow direction, droplets, interactions."
+description: "Minecraft Fluid 流体系统：Overview 概述（water 和 lava 两种液体、source blocks 源方块、confined sources 限制源 不流动 静态渲染、flowing blocks 流动方块 深度随距离变浅、液体相互作用 推动实体/物品）、Mechanics 机制（Depth 深度：源方块0 水平流动每方块+1 最大7 垂直流动0 岩浆最大深度主世界/末地3 地狱7；Spreading 扩散：源放置后加入扩散队列 形成溪流 4方向深度限制 扩散规则：空气替换/含水方块停止/流体影响方块尝试掉落物品/固体方块扩散4面/液体混合/同液体源停止/4邻居固体停止；Flow Direction 流动方向：5方块/水平流动距离内检查空气/纯液体/可冲刷方块 形成溪流；水源转换 water_source_conversion 游戏规则 相邻≥2水源方块 含水块）、Droplets 水滴（粒子 液体下方方块形成滴落粒子 岩浆水滴不伤害/点燃 新放置液体需数秒渗透）、Block Updates 方块更新（NC更新 PP更新 结构生成从不更新液体）、Liquid Interactions 液体交互（touch 相邻和 flow-in 同方块 流入需先接触；岩浆源水平/上方遇水→黑曜石、岩浆源/流动下方遇水→无反应、岩浆流动水平/上方遇水→圆石、岩浆向下流入水→石头、岩浆接触灵魂土+蓝冰→玄武岩；所有反应发生在岩浆侧）。"
 whenToUse: "Use when working with water/lava mechanics (spreading, source conversion, fluid interactions)."
 
 ---

@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-chicken
-description: "Chicken — spawning, chicken jockeys, drops, egg laying, breeding, sound variants, variants, NBT."
+description: "Minecraft Chicken 鸡：Spawning 生成（biome-based variants 温带/寒冷/温暖、自然生成 grass blocks/2 blocks air/light≥9、森林/干旱/平原/沼泽/风袭山丘生物群系）、Chicken Jockeys 鸡骑士（幼年僵尸/溺尸/尸壳/僵尸村民/僵尸猪灵骑乘鸡）、Egg Spawning 鸡蛋生成（1/8 概率1只小鸡、1/32 概率额外4只）、Sound Variants 声音变体（Classic 和 Picky 各50%）、Drops 掉落（鸡肉 生/熟、羽毛、1-3 XP 鸡骑士10 XP）、Behavior 行为（漫游/游泳/拍翅膀减速下落、成年鸡5-10分钟下1蛋、鸡骑士不下蛋、小麦/甜菜/南瓜/西瓜种子/仙人掌种子/豌豆荚跟随和繁殖、10/16方块跟随距离）、Breeding 繁殖（爱心模式、1只幼崽、1-7 XP、5分钟冷却、幼崽继承父母变体、20分钟成长、金蒲公英控制生长）、Data Values 数据（EggLayTime 下蛋倒计时6000-12000、IsChickenJockey 鸡骑士标志 10 XP、sound_variant/variant 组件）。"
 whenToUse: "Use when working with chickens (breeding, egg farms, jockeys, variants)."
 
 ---

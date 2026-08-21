@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tutorial-line-of-sight
-description: "Tutorial — sight magic datapack: raycast, explosion, bee inspection."
+description: "Minecraft Tutorial: Sight Magic 视线魔法数据包教程（Java 1.21.2+）：Goal 目标（右键物品在玩家注视的方块处触发事件：爆炸+蜂巢/蜂箱检查成年/幼蜂数量）、Raycast Improvements 射线投射改进（步长0.5 减少递归、#raycast_check_times计数器 对比#raycast_max_check_times 1000、方块停止检查 #generic:raycast/can_pass、实体检查 @n[dx=0,dy=0,dz=0] 微小盒子、从执行者眼睛位置开始 anchored eyes、可选调试粒子/交互实体）、Right-Click Detection 右键检测（minecraft:consume_item 进度 custom_data 匹配 {listen_event:'right_click'}、奖励函数 revoke进度 模拟协程 存储执行者和手持物品 等待1刻 恢复物品不真正消耗）、Sight Explosion Magic 视线爆炸魔法（爆炸在瞄准点：召唤TNT或苦力怕、generic/tags/function/right_click.json 函数标签接口、function right_click.mcfunction 守卫条件 域标志对 按手持物品分支）、Bee Finder Magic 蜜蜂查找魔法（相同骨架 cause_event:'get_bees' start/end、读取方块实体 /data get block bees 计数 成年/幼蜂 Age -1=幼蜂 输出 tellraw）、Carrot-on-a-Stick Toggle 胡萝卜钓竿切换（可选 记分板切换 胡萝卜钓竿作为遥控器 consume_item 进度方法更优）。"
 whenToUse: "Use when building datapack spells/raycasts triggered by right-click items (Java 1.21.2+)."
 
 ---

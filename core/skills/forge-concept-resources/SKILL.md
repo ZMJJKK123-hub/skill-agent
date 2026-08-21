@@ -1,7 +1,7 @@
 ---
 
 name: forge-concept-resources
-description: "Forge resource systems guide: assets vs data, resource packs, ResourceLocation namespaces and paths."
+description: "Forge 资源系统：assets 目录（客户端视觉资源：模型、纹理、本地化）、data 目录（服务端游戏逻辑：配方、战利品表）、资源包（Resource Packs）控制 assets、数据包（Datapacks）控制 data、ResourceLocation 命名空间与路径（namespace:path）、默认命名空间 minecraft、modid 命名空间使用、资源合并规则（覆盖与合并）、snake_case 路径规范、src/main/resources 目录结构、资源包禁用/覆盖机制、数据包 /datapack 命令、资源唯一标识、注册表使用。"
 whenToUse: "Use when understanding Minecraft resource systems, ResourceLocation naming, or where to place mod assets/data."
 
 ---

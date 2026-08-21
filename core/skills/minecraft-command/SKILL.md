@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-command
-description: "Commands — usage, syntax notation, restrictions, parsing/execution, output, results."
+description: "Minecraft Command 命令系统：Usage 使用方式（聊天 T/、命令方块、服务器控制台、functions 数据包、run_command 文本组件点击）、Syntax Notation 语法符号（Java [] 可选参数 (grant|revoke) 选择字面量 <targets> 必需参数、Bedrock <size: int> 必需参数）、Restrictions 限制（权限等级、单人作弊启用、多人操作员、命令方块无限制）、Parameter Types 参数类型（坐标、目标选择器 SNBT、文本组件）、Parsing and Execution 解析执行（客户端解析提供补全和早期错误、函数加载时全部解析、宏行运行时解析）、Output 输出（Success count 成功计数 比较器读取、Stored values 存储值 /execute store success/result）、Results 结果（Unparseable 不可解析、Error 错误、Void 空函数、Interrupted 中断 /execute、Success/failure 成功/失败）、Debug Commands 调试命令（MC_DEBUG_DEV_COMMANDS/MC_DEBUG_CHASE_COMMAND）、Removed Commands 已移除命令、April Fools Commands 愚人节命令。"
 whenToUse: "Use when writing or debugging commands, command blocks, or functions."
 
 ---

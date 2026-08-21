@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-test-environment
-description: "Test environment definition format — environment types and batch behavior."
+description: "Test environment definition format: environment types including all_of (recursive), clock_time, difficulty, function (setup/teardown), game_rules, timeline_attributes, and weather; batch behavior for switching environments between test runs."
 whenToUse: "Use when authoring test environment JSON files for game tests."
 
 ---

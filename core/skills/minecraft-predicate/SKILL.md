@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-predicate
-description: "Predicate (loot predicate) format — types with context requirements."
+description: "Minecraft Predicate 谓词（战利品谓词）格式：Definition 定义（data/<namespace>/predicate/ JSON文件、单个对象 condition+字段 或谓词对象列表 所有必须通过 等同all_of、命令内联SNBT）、Invocation 调用（Target selectors predicate= 过滤实体 每个实体调用一次、/execute if predicate 执行位置调用、reference 谓词类型 谓用谓词文件返回结果、其他数据包文件内使用）、Predicate Types 谓词类型（all_of/any_of terms 所有/任一 必须通过 任何上下文可调用、block_state_property 检查block_state上下文 block+properties 属性值或范围、damage_source_properties 检查damage_source+origin 上下文 predicate 伤害源谓词、enchantment_active_check 检查enchantment_active上下文 active bool、entity_properties entity this/attacker/direct_attacker/attacking_player/target_entity/interacting_entity+predicate 实体谓词、entity_scores entity+scores 目标→范围 所有必须通过、environment_attribute_check attribute+value 精确类型值 origin上下文 非维度范围、inverted term 取反、killed_by_player last_damage_player上下文存在、location_check offsetX/Y/Z+offset+predicate 位置谓词 origin+偏移、match_tool predicate 工具上下文、random_chance chance 0-1 随机<chance、random_chance_with_enchanted_bonus attacking_entity enchantment+enchanted_chance+unenchanted_chance、reference name 谓词ID、survives_explosion explosion_radius上下文 概率1/爆炸半径、table_bonus enchantment+chances 按工具附魔等级选择概率、time_check clock+value+period 游戏时间模运算、value_check value vs range、weather_check raining/thundering bool）、Removed Predicates 已移除谓词（random_chance_with_looting killer上下文 1.20.5移除 替换为random_chance_with_enchanted_bonus）。"
 whenToUse: "Use when writing predicate JSON files or inline loot predicates in commands."
 
 ---

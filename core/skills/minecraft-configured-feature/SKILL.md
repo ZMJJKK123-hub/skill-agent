@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-configured-feature
-description: "Configured feature format — JSON in data packs; all feature types and configs."
+description: "Minecraft Configured Feature 配置特性定义：Definition Format 定义格式（CONFIGURED_FEATURE/FEATURE 注册表、data/<namespace>/worldgen/configured_feature/ 或 worldgen/feature/ 数据包路径、JSON type+config）、Behavior 行为（服务器启动加载、/reload 不重新加载）、Feature Types 特性类型列表（bamboo/basalt_columns/basalt_pillar/block_blob/block_column/block_pile/blue_ice/bonus_chest/chorus_plant/coral_claw/coral_mushroom/coral_tree/delta_feature/desert_well/disk/dripstone_cluster/end_gateway/end_island/end_platform/end_spike/fallen_tree/fill_layer/fossil/freeze_top_layer/geode/glowstone_blob/huge_brown_mushroom/huge_fungus/huge_red_mushroom/iceberg/kelp/lake/large_dripstone/monster_room/multiface_growth/nether_forest_vegetation/netherrack_replace_blobs/no_op/ore/random_boolean_selector/random_selector/replace_single_block/root_system/scattered_ore/sculk_patch/seagrass/sea_pickle/sequence/simple_block/simple_random_selector/speleothem/speleothem_cluster/spike/spring_feature/template/tree/twisting_vines/underwater_maga/vegetation_patch/vines/void_start_platform/waterlogged_vegetation_patch/weeping_vines）、Tree Sub-formats 树子格式（Trunk Placers 干放置器、Foliage Placers 叶放置器、Root Placers 根放置器、Tree Decorators 树装饰器、Minimum Size 最小尺寸 two_layers/three_layers）。"
 whenToUse: "Use when authoring worldgen configured features, features, or related tags in data packs."
 
 ---

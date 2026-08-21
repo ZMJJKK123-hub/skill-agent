@@ -1,7 +1,7 @@
 ---
 
 name: forge-concept-events
-description: "Forge events: buses, handler registration, @EventBusSubscriber, cancellation, results, priority."
+description: "Forge 事件系统：事件总线（MinecraftForge#EVENT_BUS、FMLJavaModLoadingContext#getModEventBus、typed EventBus<T>）、事件处理程序注册（IEventBus#addListener、addGenericListener、@SubscribeEvent、@Mod.EventBusSubscriber）、事件取消（@Cancelable、Event#setCanceled）、事件结果（@HasResult、Event$Result DENY/DEFAULT/ALLOW）、事件优先级（EventPriority HIGHEST/MONITOR）、子事件继承、模组事件总线（IModBusEvent、FMLCommonSetupEvent、FMLClientSetupEvent、InterModEnqueueEvent）、1.21.11+类型化记录事件（static BUS 字段、CancellableEventBus）、TickEvent.ServerTickEvent、RegisterCommandsEvent、LivingDeathEvent、BuildCreativeModeTabContentsEvent。"
 whenToUse: "Use when listening to Forge events or firing custom events."
 
 ---

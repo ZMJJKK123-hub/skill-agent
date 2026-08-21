@@ -1,7 +1,7 @@
 ---
 
 name: forge-rendering-modelloaders
-description: "Forge custom model loaders: BakedModel — getOverrides, AO, gui3d, custom renderer, particle icon."
+description: "Forge 自定义模型加载器：BakedModel 接口（#getOverrides ItemOverrides、#useAmbientOcclusion 环境光遮蔽、#isGui3d GUI 3D 渲染、#isCustomRenderer 自定义渲染器 BEWLR、#getParticleIcon 粒子纹理、#getQuads BakedQuad 列表、#applyTransform 变换）、ItemOverrides 物品覆盖（#resolve 动态模型、#getOverrides BakedOverride 列表）、BakedOverride 物品覆盖匹配（ItemOverrides$PropertyMatcher、predicate 属性匹配）、ItemDisplayContext 显示上下文（NONE/THIRD_PERSON_LEFT_HAND/THIRD_PERSON_RIGHT_HAND/FIRST_PERSON_LEFT_HAND/FIRST_PERSON_RIGHT_HAND/HEAD/GUI/GROUND/FIXED）、ItemTransforms 变换容器、ItemTransform 旋转/平移/缩放、Custom Model Loaders 自定义加载器（IGeometryLoader、IUnbakedGeometry#bake）、WaveFront OBJ 模型（forge:obj 加载器、.obj/.mtl 文件、flip_v V轴翻转）、ModelData 模型数据、ModelProperty 模型属性、CompositeModel$Data 复合模型数据、RenderShape#ENTITYBLOCK_ANIMATED、BlockEntityWithoutLevelRenderer BEWLR 渲染。"
 whenToUse: "Use when implementing custom model loaders or BakedModel logic."
 
 ---

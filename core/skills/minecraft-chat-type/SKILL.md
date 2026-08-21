@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-chat-type
-description: "Chat type definition JSON: CHAT_TYPE registry, chat/narration decorations, params."
+description: "Minecraft Chat Type 聊天类型定义：CHAT_TYPE 注册表、data/<namespace>/chat_type/ 数据包路径、tags/<namespace>/tags/chat_type/ 标签、JSON 格式（chat 聊天框显示样式、narration 旁白文本）、Decoration 装饰格式（translation_key 翻译键、parameters 参数列表 sender/target/content、style 文本样式 不影响旁白）、7种原版聊天类型（data pack 可覆盖但不能调用新类型）、Placeholder Parameters 占位符参数（sender 发送者名称、target 接收者玩家/队伍名称、content 聊天消息）、服务器启动加载（/reload 不重新加载）、聊天类型标签无效果、装饰参数替换文本组件。"
 whenToUse: "Use when overriding the 7 vanilla chat types in datapacks to control chat display style and narration."
 
 ---

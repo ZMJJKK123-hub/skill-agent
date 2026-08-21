@@ -1,7 +1,7 @@
 ---
 
 name: forge-concept-sides
-description: "Forge logical/physical sides: isClientSide, DistExecutor, thread groups, FMLEnvironment.dist."
+description: "Forge 客户端/服务器侧面机制：物理客户端/物理服务器、逻辑客户端/逻辑服务器、Level#isClientSide 检查、Dist 物理侧面、LogicalSide 逻辑侧面、DistExecutor（runWhenOn/callWhenOn、safe/unsafe 变体）、SidedThreadGroups.SERVER 线程组、FMLEnvironment#dist 物理侧面检测、@OnlyIn 限制、跨侧面操作风险（网络包使用）、单人游戏 JVM 共享问题、单侧面 mod 加载（DistExecutor#runWhenOn）、mods.toml displayTest 配置（MATCH_VERSION/IGNORE_SERVER_VERSION/IGNORE_ALL_VERSION/NONE）、IExtensionPoint.DisplayTest 扩展点。"
 whenToUse: "Use when writing side-aware Forge code or avoiding common client/server crashes."
 
 ---

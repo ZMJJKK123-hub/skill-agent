@@ -1,7 +1,7 @@
 ---
 
 name: forge-networking
-description: "Forge networking: SimpleChannel packets, spawn data, data parameters, sending and security."
+description: "Forge 网络系统：IEntityAdditionalSpawnData 实体生成数据（#writeSpawnData/#readSpawnData）、EntityDataAccessor 数据参数（SynchedEntityData#defineId、EntityDataSerializers、Entity#defineSynchedData、entityData 自动同步）、SimpleChannel 网络通道（NetworkRegistry.newSimpleChannel 旧版、ChannelBuilder 新版 1.21.11+）、消息注册（#registerMessage、messageBuilder、encoder/decoder/consumerMainThread）、数据包发送（sendToServer、PacketDistributor.PLAYER/TRACKING_CHUNK/ALL/SERVER）、数据包处理（网络线程、enqueueWork 主线程包装、ctx.setPacketHandled）、版本协商（PROTOCOL_VERSION、Channel.VersionTest.exact、ABSENT/ACCEPTVANILLA 元版本）、DistExecutor 客户端处理、Level#hasChunkAt 安全检查、CustomPayloadEvent.Context 上下文、PacketFlow 方向（CLIENTBOUND/SERVERBOUND）、FriendlyByteBuf 缓冲区。"
 whenToUse: "Use when implementing network packets or entity data sync in a Forge mod."
 
 ---

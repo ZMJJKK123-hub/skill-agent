@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-dimension
-description: "Dimension definition JSON: LEVEL_STEM registry, chunk generators, biome sources."
+description: "Minecraft Dimension Definition 维度定义：LEVEL_STEM 注册表、data/<namespace>/dimension/ 数据包路径、tags/dimension/ 标签、JSON 格式（type 维度类型、generator 块生成器）、Chunk Generators 块生成器类型（debug 调试网格、flat 超平坦 settings、noise 噪声 biome_source+settings 海平面/最小建造高度/总高度）、Biome Sources 生物群系源（checkerboard 棋盘格 biomes+scale、fixed 固定生物群系、multi_noise 多噪声 preset 参数列表 或 biomes 参数点列表 用于主世界和地狱、the_end 末地）、Multi-noise Parameter Lists 多噪声参数列表（data/<namespace>/worldgen/multi_noise_biome_source_parameter_list preset 参数）、Definition Behavior 定义行为（服务器启动加载一次、/reload 不重新加载、动态加载所有可用维度、禁用数据包移除维度 禁止创建后添加/移除维度 可能损坏存档）、Vanilla 维度（无维度文件 通过世界预设注册 维度文件覆盖世界预设定义）。"
 whenToUse: "Use when writing datapack dimension definitions or custom world generation dimensions."
 
 ---

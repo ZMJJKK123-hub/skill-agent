@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-attribute
-description: "Attributes — base/modifiers, operations (add_value, add_multiplied_base, add_multiplied_total)."
+description: "Minecraft 属性系统：Attribute 属性定义（generic.max_health/generic.attack_damage/generic.movement_speed/generic.scale 等、范围/类型/适用实体/默认值）、Per-entity 属性数据（base 基础值 + modifiers 修饰符）、Modifiers 修饰符（id、type 属性、operation 操作、amount 数量）、Modifier Sources 来源（items 物品、enchantments 附魔、status effects 状态效果、location 位置、entity data 实体数据）、Modifier Persistence 持久化（非持久化 enchantment/item modifiers、持久化 status effect modifiers）、Operations 操作类型（Op0 add_value 加值、Op1 add_multiplied_base 基础乘算、Op2 add_multiplied_total 总乘算、计算公式 base + ΣOp0 × (1 + ΣOp1) × ∏(1 + Op2)）、Tooltip Display 工具提示显示（attribute_modifiers 组件、2位小数、base_attack_damage/base_attack_speed 深绿色渲染）、Buffs Buffs 系统（Bedrock 瞬时/临时 buff）、/attribute 命令、/summon attributes NBT、attribute_modifiers 物品组件。"
 whenToUse: "Use when working with attributes and attribute modifiers (items, enchantments, /attribute, /summon attributes)."
 
 ---

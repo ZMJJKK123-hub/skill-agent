@@ -1,7 +1,7 @@
 ---
 
 name: forge-rendering-modelextensions
-description: "Forge model extensions: per-element face data — color, light, AO, origin, translation, rotation."
+description: "Forge 模型扩展：Face Data 面数据（forge_data 字段、color ARGB 颜色调制、block_light/sky_light 光照覆盖 0-15、ambient_occlusion 环境光遮蔽）、Elements Model 元素模型（元素级/面级数据继承、forge:item_layers 加载器）、Generated Item Model 生成物品模型（纹理层索引映射）、Render Type 渲染类型（render_type 字段、NamedRenderTypeManager、vanilla 值 minecraft:solid/cutout/cutout_mipped/cutout_mipped_all/translucent/tripwire、ForgeRenderTypes 实体渲染类型、RegisterNamedRenderTypesEvent 自定义注册、RenderType.chunkBufferLayers、DefaultVertexFormat.NEW_ENTITY）、Root Transforms 根变换（IGeometryBakingContext#getRootTransform、origin 原点 corner/center/opposing-corner、translation 平移、left_rotation/right_rotation 旋转、scale 缩放、matrix 3x4 矩阵、四元数旋转）、Part Visibility 部件可见性（visibility 字段、composite 模型、OBJ 模型、BakedModel 烘焙）。"
 whenToUse: "Use when adding per-face color, light, AO, or transform data to vanilla elements models."
 
 ---

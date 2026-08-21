@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-entity-data-format
-description: "Java entity NBT formats: common tags plus per-entity fields for all mobs."
+description: "Minecraft Entity Data Format 实体数据格式：Common Entity Tags 通用实体标签（id/Air/CustomName/CustomNameVisible/data/fall_distance/Fire/Glowing/HasVisualFire/Invulnerable/invulnerable_time/Motion/NoGravity/OnGround/Passengers/PortalCooldown/Pos/Rotation/Silent/Tags/TicksFrozen/UUID）、Mobs 生物标签（继承链 entity→living→mob→breedable→animal→tameable；各生物特有字段如 Allay/Armadillo/Armor Stand/Axolotl/Bat/Bee/Camel/Cat/Chicken/Cow/Creeper/Dolphin/Ender Dragon/Enderman/Frog/Fox/Ghast/Goat/Hoglin/Horse/Iron Golem/Llama/Magma Cube/Mannequin/Mooshroom/Ocelot/Panda/Parrot/Phantom/Pig/Piglin/Pillager/Pufferfish/Rabbit/Ravager/Sheep/Shulker/Skeleton/Slime/Snow Golem/Sniffer/Squid/Strider/Sulfur Cube/Tadpole/Turtle/Vex/Villager/Warden/Wither/Wolf/Zombie/Zombie Villager）、Trade Offers 交易报价（buy/buyB/sell/demand/maxUses/priceMultiplier/rewardExp/specialPrice/uses/xp）、Projectiles 投射物（Arrow/Fireball/Ender Pearl/Trident/Wind Charge/Wither Skull 等）、Vehicles 载具（Boat/Minecart variants）、Other Entities 其他实体（Area Effect Cloud/Display entities billboard/brightness/transformation/view_range/item display/block display/text display/End Crystal/Evoker Fangs/Experience Orb/Eye of Ender/Falling Block/Firework Rocket/Interaction/Item entity/Item Frame/Leash Knot/Lightning Bolt/Marker/Ominous Item Spawner/Painting/Primed TNT）、Storage Format 存储格式（区域文件 entities/ 文件夹 DataVersion/Position/Entities 列表）。"
 whenToUse: "Use when writing or parsing entity NBT data (summon commands, datapacks, saves)."
 
 ---

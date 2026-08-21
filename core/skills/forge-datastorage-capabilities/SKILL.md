@@ -1,7 +1,7 @@
 ---
 
 name: forge-datastorage-capabilities
-description: "Forge capabilities: obtaining/exposing, AttachCapabilitiesEvent, persistence, sync."
+description: "Forge Capabilities 能力系统：ICapabilityProvider#getCapability 获取、CapabilityManager#get CapabilityToken、LazyOptional 可选值、Forge-provided capabilities（IItemHandler/IFluidHandler/IEnergyStorage）、Capability 暴露（#getCapability 重写、LazyOptional.of、Capability#orEmpty）、AttachCapabilitiesEvent 事件（Entity/BlockEntity/ItemStack/Level/LevelChunk 5种泛型类型、#addCapability、ICapabilitySerializable 持久化）、RegisterCapabilitiesEvent 注册、@AutoRegisterCapability 注解、LevelChunk/BlockEntity 持久化（标记脏位、setChanged）、客户端同步（网络包发送）、PlayerEvent$Clone 玩家死亡数据持久化、Direction 面向特定实例、Capability#isRegistered 注册检查。"
 whenToUse: "Use when adding capabilities to items, entities, block entities, levels, or chunks."
 
 ---

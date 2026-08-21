@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-pack-mcmeta
-description: "pack.mcmeta — pack metadata, version validation, overlays, filters, languages."
+description: "Minecraft pack.mcmeta 包元数据：Resource Pack Metadata 资源包元数据（description 描述文本组件 最大2行 格式化代码、min_format/max_format 版本范围 [major, minor] 数组、overlays 子包 目录+min_format/max_format 顺序重要、language 额外语言 bidirectional/name/region 文件 assets/<ns>/lang/<code>.json、filter block 过滤 位置依赖 namespace/path 正则）、Data Pack Metadata 数据包元数据（同上核心字段+overlays 目录字符a-z0-9_-、filter block 文件忽略模式、features enabled 实验性功能命名空间ID）、Version Validation 版本验证（两个格式时代：1.21.8边界 数据包81 资源包64；仅post-1.21.8 必须指定min_format+max_format 禁用pack_format/supported_formats；仅up to 1.21.8 必须指定pack_format 禁用min_format/max_format；两个时代兼容 四个字段必需 交叉验证；overlays 目标pre-1.21.8需formats）、Min version 2147483647或验证失败显示"(broken or incompatible)"）、Format Version List 格式版本列表（Minecraft Wiki Pack format 页面）。"
 whenToUse: "Use when writing pack.mcmeta for resource packs or data packs."
 
 ---

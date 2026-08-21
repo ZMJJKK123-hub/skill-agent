@@ -1,7 +1,7 @@
 ---
 
 name: forge-blockentities
-description: "Forge BlockEntity guide: registration, data storage, ticking, client sync, and BlockEntityRenderers."
+description: "Forge BlockEntity 机制：BlockEntityType 注册（RegistryObject、BlockEntityType$BlockEntitySupplier、Set<Block>）、EntityBlock#newBlockEntity 创建、CompoundTag 数据存储（saveAdditional/load/setChanged）、BlockEntityTicker tick 功能、客户端同步（getUpdateTag/handleUpdateTag/getUpdatePacket/ClientboundBlockEntityDataPacket/SimpleChannel）、BlockEntityRenderer 渲染（BlockEntityRenderer<T>、render 方法参数、EntityRenderersEvent$RegisterRenderers 注册）、性能优化建议。"
 whenToUse: "Use when implementing Forge block entities or block entity renderers."
 
 ---

@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-snbt-format
-description: "SNBT format — numbers, suffixes, strings, arrays, lists, compounds, operations."
+description: "Minecraft SNBT Format SNBT格式（Stringified Named Binary Tag NBT文本形式、/data get 打印语法高亮SNBT、nbt文本组件类型也可输出高亮SNBT）：Data Types 数据类型（Numbers 数字：下划线分隔数字 不能在开头/结尾；Floats 无后缀十进制为double 科学记数法 NaN/Inf不支持；Integers 无后缀为int 十六进制0x/二进制0b前缀 除0外不能以0开头；Booleans 布尔 0/1 true/false→1b/0b）、Type Suffixes 类型后缀（b byte/s short/i int/l long/f float/d double 可选前缀 s/S有符号 u/U无符号 有符号补码存储）、Strings 字符串（引号双引号/单引号 同引号内需转义、无引号 仅0-9/a-zA-Z/./_/+/- 不能以数字/.开头/+/−开头 true/false解析为布尔、转义序列 \"'/\\\/\b\f\n\r\t \uXXXX Unicode）、Arrays 数组 [B;...]/[I;...]/[L;...] 无后缀取数组类型 小类型扩展）、Lists 列表（异构元素允许 尾部逗号允许 嵌套≤512层）、Compounds 复合标签（键值映射 尾部逗号允许 嵌套≤512层）、SNBT Operations SNBT操作（函数式语法 parse时计算 不能保留或高亮：bool(arg) 布尔转换、uuid(str) UUID字符串→int数组）、Conversion 转换（SNBT永不直接存储→转换为NBT→程序对象）。"
 whenToUse: "Use when writing SNBT in commands, NBT components, or .snbt files."
 
 ---

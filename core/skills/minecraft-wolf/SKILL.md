@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-wolf
-description: "Wolf — variants, sound variants, taming, breeding, teleporting, armor, NBT."
+description: "Minecraft Wolf 狼：Spawning 生成（森林/针叶林/桦木林/丛林/黑森林/沼泽/红树沼泽生物群系）、Sound Variants 声音变体（Classic/Howl 各50%）、Drops 掉落（生狼肉 烧死时变熟、皮革、1-3 XP）、Behavior 行为（漫游/避免悬崖/岩浆/受伤逃跑、攻击敌人保护主人、游泳）、Taming 驯服（骨头1/3概率 平均2根、坐下/站立交互、跟随主人10/16方块）、Breeding 繁殖（肉/熟肉/生鲑鱼/熟鲑鱼 爱心模式 1只幼崽 1-7 XP 5分钟冷却、20分钟成长、金蒲公英控制生长）、Teleporting 传送（12方块外传送）、Wolf Armor 狼盔甲（犰狳鳞甲制作、6点耐久、剪刀移除）、Data Values 数据（CollarColor 项圈颜色 variant 变体 sound_variant 声音变体）。"
 whenToUse: "Use when working with wolves (taming, breeding, wolf armor, variant/sound-variant data)."
 
 ---

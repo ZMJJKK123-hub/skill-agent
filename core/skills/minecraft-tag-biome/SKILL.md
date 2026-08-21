@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tag-biome
-description: "Biome tags and their members, controlling structure generation, mob spawning, and other mechanics."
+description: "Biome tags controlling structure generation, mob spawning, and game mechanics. Includes #has_structure/* tags for structure generation (abandoned_camp, ancient_city, bastion_remnant, etc.), #is_* classification tags (is_badlands, is_beach, is_forest, etc.), spawning tags (#spawns_cold_variant_farm_animals, #spawns_warm_variant_frogs), and gameplay tags (#allows_surface_slime_spawns, #without_zombie_sieges)."
 whenToUse: "Use when querying or using biome tags for structure generation or mob spawning."
 
 ---

@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-banner-pattern
-description: "Banner pattern definition JSON format: BANNER_PATTERN registry, asset_id, translation keys."
+description: "Minecraft Banner Pattern 旗帜图案定义：BANNER_PATTERN 注册表、data/<namespace>/banner_pattern/ 数据包路径、tags/<namespace>/tags/banner_pattern/ 标签、JSON 格式（asset_id 纹理资源 ID、translation_key 翻译键前缀）、纹理路径（assets/<namespace>/textures/entity/banner/<path>.png 旗帜、assets/<namespace>/textures/entity/shield/<path>.png 盾牌）、translation_key 完整格式（<value>.<color name> 颜色后缀）、服务器启动加载（/reload 不重新加载）、图案层渲染（列表顺序、后层覆盖前层）、层名称派生（translation_key + color）。"
 whenToUse: "Use when writing datapack banner_pattern definitions or custom banner/shield patterns."
 
 ---

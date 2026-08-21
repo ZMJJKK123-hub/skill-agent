@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-trial-spawner-config
-description: "Trial spawner config format — loot ejection, spawn counts, potentials."
+description: "Minecraft Trial Spawner Config 试炼生成器配置：TRIAL_SPAWNER_CONFIG 注册表、data/<namespace>/trial_spawner/ 数据包路径、tags/trial_spawner/ 标签、JSON 格式（items_to_drop_when_ominous 不祥物品生成器掉落战利品表 默认spawners/trial_chamber/items_to_drop_when_ominous、loot_tables_to_eject 试炼后奖励加权列表 data+weight 默认spawners/trial_chamber/consumables+key 一张表抽取后每个参与玩家弹出一次、simultaneous_mobs 同时存活最小数量 默认2、simultaneous_mobs_added_per_player 每玩家同时存活增加 默认1 最大=t+p(n-1)、spawn_potentials 生成潜力加权列表 data+weight 每次生成后选择下一个、spawn_range 生成范围 切比雪夫距离 1-128 默认4 越近越可能、total_mobs 总生成最小数量 默认6、total_mobs_added_per_player 每玩家总生成增加 默认2 总计=t+p(n-1)、ticks_between_spawn 生成间隔最小刻数 默认40）、Behavior 行为（服务器启动加载一次、配置在试炼生成器方块实体中 normal_config ominous=false 或 ominous_config ominous=true 未设置字段使用默认值）、Loot Ejection 战利品弹出（使用empty战利品上下文 表格不能使用任何战利品上下文参数、不祥物品生成器：1个物品 计数1、试炼后奖励：一张表抽取 每个参与玩家弹出一次）。"
 whenToUse: "Use when authoring trial spawner config JSON files in data/trial_spawner/."
 
 ---

@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tag-superflat-preset
-description: "Flat level generator preset tags controlling the flat world screen."
+description: "Flat level generator preset tags: #visible (9 entries) controlling which presets appear on the superflat world creation screen, including classic_flat, tunnelers_dream, water_world, overworld, snowy_kingdom, bottomless_pit, desert, redstone_ready, and the_void."
 whenToUse: "Use when writing datapacks or understanding flat world generator presets and the #visible tag."
 
 ---

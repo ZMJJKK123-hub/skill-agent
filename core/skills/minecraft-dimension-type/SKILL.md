@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-dimension-type
-description: "Dimension type definition JSON: DIMENSION_TYPE registry and all its fields."
+description: "Minecraft Dimension Type 维度类型定义：DIMENSION_TYPE 注册表、data/<namespace>/dimension_type/ 数据包路径、tags/dimension_type/ 标签、JSON 格式（has_fixed_time 固定时间、has_skylight 天空光、has_ceiling 天花板、has_ender_dragon_fight 末影龙战斗、ambient_light 环境光、coordinate_scale 坐标缩放、infiniburn 无限燃烧方块、min_y 最低建造高度、height 总建造高度、logical_height 逻辑高度、monster_spawn_block_light_limit 怪物生成方块光照限制、monster_spawn_light_level 怪物生成光照等级 int provider、attributes 维度环境属性映射、timelines 时间线、skybox 天空盒 none/end/overworld、cardinal_light 方向光照 default/nether、default_clock 世界时钟）、Definition Behavior 定义行为（服务器启动加载一次、/reload 不重新加载、内联维度类型支持但无法加载）、Dimension Behaviors 维度行为（has_fixed_time 禁用昼夜逻辑/沉溺者敌对/商队停止/巡逻生成/末影人/狐狸/僵尸围城/亡灵避光、has_skylight 控制天空光/幻翼生成/天气、has_ceiling 控制动物生成/玩家生成偏好看重力映射/天气缺失）、Hardcoded Behaviors 硬编码行为（玩家总是生成在主世界、下界传送门维度缩放、末地传送门、霜冰融化、末地无天气、下界地图玩家图标随机旋转）、Built-in Dimension Types 内置维度类型（overworld/the_nether/the_end/overworld_caves）。"
 whenToUse: "Use when writing datapack dimension_type definitions or custom dimension behaviors."
 
 ---

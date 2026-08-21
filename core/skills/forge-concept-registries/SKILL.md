@@ -1,7 +1,7 @@
 ---
 
 name: forge-concept-registries
-description: "Forge registries: DeferredRegister, RegisterEvent, RegistryObject, @ObjectHolder, custom registries."
+description: "Forge 注册机制：DeferredRegister（DeferredRegister.create、RegistryObject）、RegisterEvent（RegisterEvent#register）、RegistryObject（#get 方法）、@ObjectHolder 注入、ForgeRegistries 注册表、ResourceLocation/Identifier 键、自定义注册表（RegistryBuilder、NewRegistryEvent、DataPackRegistryEvent$NewRegistry）、动态注册表（数据文件注册）、静态注册表（Registries.LOOT_CONDITION_TYPE）、MissingMappingsEvent 映射处理（IGNORE/WARN/FAIL/REMAP）、注册表查找（lookupOrThrow）、1.21.11+ getModBusGroup()、注册名唯一性、覆盖机制。"
 whenToUse: "Use when registering Forge objects (items, blocks, etc.) or referencing registered objects."
 
 ---

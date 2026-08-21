@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tutorial-raycasting
-description: "Tutorial — datapack raycasting: eye ray loop, passability, bee counter."
+description: "Minecraft Tutorial: Datapack Raycasting 数据包射线投射教程（Java 1.21+）：Basic Method 基本方法（从玩家眼睛位置开始 沿视线方向步进 当前方块可通行则前进 在第一个固体方块停止 最大步数限制避免无限递归）、Datapack Implementation 数据包实现（generic/function/raycast/start.mcfunction 初始化计数器 return run generic:raycast/shoot、generic/function/raycast/shoot.mcfunction 步进循环 粒子可视化 #raycast_check_times 检查次数 块标签 #test:raycan_pass 可通行方块 递归 位置前移0.1方块）、generic/function/raycast/end.mcfunction 射线击中方块 执行上下文在击中方块位置 挂接效果、generic/function/raycast/dispatcher.mcfunction 接口 检查标志标签 转发上下文 扩展命名空间插件）、Using Third-Party Package 使用第三方包（Bookshelf Raycast模块 #bs.raycast:run）、Example: Counting Bees 示例：计数蜜蜂（蜂巢/蜂箱方块实体 bees列表 entity_data.Age Age≥0=成年 Age<0=幼年、实现：移除标志 检查方块 复制bees列表 初始化计数器 循环处理 Age≤-1幼年+1 否则成年+1 tellraw输出）、Polish and Improvements 完善改进（Filter players 过滤玩家 谓词门控 execute as @a[predicate=...]、Localization 本地化 translate组件 with参数 %s/%n$s 占位符 语言文件 assets/<ns>/lang/）。"
 whenToUse: "Use when implementing raycasts (aim-point detection) in datapacks, Java 1.21+."
 
 ---

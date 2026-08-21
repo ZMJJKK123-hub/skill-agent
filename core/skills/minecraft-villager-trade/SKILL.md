@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-villager-trade
-description: "Villager trade definition format — wants/gives, pricing, modifiers."
+description: "Minecraft Villager Trade 村民交易定义：VILLAGER_TRADE 注册表、data/<namespace>/villager_trade/ 数据包路径、tags/villager_trade/ 标签、JSON 格式（wants 第一购买物品 id+可选components+count 基础数量 number provider、additional_wants 第二购买物品 同格式、gives 出售物品模板、given_item_modifiers 出售物品修改器 仅内联无文件引用 最终堆栈为空则不生成报价、max_uses 最大交易次数 默认4 锁定前、reputation_discount 价格乘数 float 默认0、xp 经验 默认1、merchant_predicate 村民战利品谓词 仅内联 失败则无报价、double_trade_price_enchantments 附魔ID/列表/标签 出售物品stored_enchantments包含则购买额外数量翻倍）、Behavior 行为（服务器启动加载一次、交易通过交易集引用生成实际报价）、Pricing 定价（第一购买物品count=基础数量count+额外数量 additional_trade_cost组件、enchant_with_levels include_additional_cost_component=true 设置为附魔等级、enchant_randomly 设置2+random(0,5+level×10)+3×level、组件修改后移除 成为额外数量 价格翻倍检查匹配则额外翻倍、最终count=基础+额外 钳制[1,最大堆叠大小]）、Generation 生成（使用villager_trade战利品上下文：this_entity 村民、origin 村民脚位置、additional_cost_component_allowed）。"
 whenToUse: "Use when authoring villager/wandering trader trade JSON files in data/villager_trade/."
 
 ---

@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tag-point-of-interest-type
-description: "Point of interest (POI) type tags and their members, used when writing datapacks or custom POIs."
+description: "POI type tags: #acquirable_job_site (13 entries for villager professions), #bee_home (2 entries: beehive, bee_nest), #village (3 entries: acquirable_job_site, home, meeting) for village structure requirements."
 whenToUse: "Use when referencing POI type tags (acquirable_job_site, bee_home, village etc.)."
 
 ---

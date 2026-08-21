@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-data-pack
-description: "Data pack — usage, directory structure, pack.mcmeta, loading, experimental features."
+description: "Minecraft Data Pack 数据包：Usage 使用（datapacks 文件夹/.zip 归档、创建世界界面配置顺序/启用/搜索、加载 每次存档加载、/reload 重载进度/配方/函数/战利品表/谓词/物品修改器、服务器启动加载内容 世界生成/附魔/盔甲装饰/唱片等）、Experimental Features 实验性功能（pack 内容标记、警告屏幕）、Directory Structure 目录结构（pack.mcmeta 元数据、pack.png 图标、data/<namespace>/function/.mcfunction、structure/.nbt、JSON 注册表 advancement/banner_pattern/cat_variant/chat_type/chicken_variant/cow_variant/damage_type/dimension/dimension_type/enchantment/...、tags/<registry>/<path>.json # 前缀引用）、pack.mcmeta 格式（description 描述、min_format/max_format 支持版本号 [major, minor]、overlays 子包 directory/min_format/max_format、filter block 命名空间/路径正则忽略、features enabled 实验性功能命名空间ID）、Data Pack Icon 数据包图标（pack.png 根目录、fallback unknown_pack.png）、Data Pack Versions 数据包版本号（pack_format 递增 48→81→88→107）。"
 whenToUse: "Use when creating or managing data packs (pack.mcmeta, structure, reloading)."
 
 ---

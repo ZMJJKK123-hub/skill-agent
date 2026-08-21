@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-chunk-format
-description: "Java Edition save format — locations, folder structure, dimension dirs, region files."
+description: "Minecraft Java Edition Save Format 保存格式：Save Locations 保存位置（客户端 .minecraft/saves/、服务器 --universe/--world）、Save Structure 保存结构（Dimension-Independent Files 维度无关文件：icon.png/level.dat/resourcepacks/session.lock/players/advancements/data/stats/data/minecraft/maps/command_storage.dat/custom_boss_events.dat/game_rules.dat/random_sequences.dat/scheduled_events.dat/scoreboard.dat/stopwatches.dat/wandering_trader.dat/weather.dat/world_clocks.dat/world_gen_settings.dat/datapacks/generated/）、Dimension Directories 维度目录（Overworld 根目录、Nether DIM-1、End DIM1、data/minecraft/chunk_tickets.dat/raids.dat/ender_dragon_fight.dat/world_border.dat）、Region Files 区域文件（entities/poi/region r.<X>.<Z>.mca/.mcc 额外文件）、Storage History 存储历史（Alpha 单文件、Beta 1.3 MCRegion、12w07a Anvil 32x32 区块区域）。"
 whenToUse: "Use when locating or reading world save files (level.dat, region files, player data)."
 
 ---

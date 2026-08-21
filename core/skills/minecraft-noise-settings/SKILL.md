@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-noise-settings
-description: "Noise settings JSON: NOISE_SETTINGS registry, sea level, aquifers, noise router."
+description: "Minecraft Noise Settings 噪声设置定义：NOISE_SETTINGS 注册表、data/<namespace>/worldgen/noise_settings/ 数据包路径、tags/noise_settings/ 标签、JSON 格式（sea_level 海平面 int、aquifers_enabled 含水层生成 bool、ore_veins_enabled 矿脉生成 bool、disable_mob_generation 禁用初始动物生成 bool、legacy_random_source 使用pre-1.18随机源 bool、default_block 默认方块状态、default_fluid 默认流体状态、spawn_target 玩家生成条件 生物群系参数范围 采样2560方块内点 计算距离指数）、Noise 世界噪声参数（min_y 最低地形高度 -2032..2031、height 总地形高度、size_horizontal 水平单元格大小 1-4、size_vertical 垂直单元格大小 1-4、noise_router 噪声路由器 绑定密度函数到世界生成：preliminary_surface_level 初步表面高度、final_density 最终密度 >0默认方块 <0空气、barrier 含水层屏障方块概率、fluid_level_floodedness 流体洪水概率 0-1、fluid_level_spread 流体扩散、lava 岩浆放置条件 Y=-58到海平面 |value|>0.3、vein_toggle 矿脉类型切换、vein_ridged 矿脉块、vein_gap 矿脉放置控制、temperature/vegetation/continents/erosion/depth/ridges/initial_density/final_density 标准噪声路由函数）、Definition Behavior 定义行为（服务器启动加载一次、/reload 不重新加载）、Terrain Generation 地形生成（final_density >0默认方块 <0空气、默认方块被矿脉和表面规则替换、Y=-58以下海平面上方空气被含水层替换、Y=-58以下空气总是岩浆）、Built-in Noise Settings 内置噪声设置（minecraft:overworld/amplified/large_biomes/nether/caves/end/floating_islands）。"
 whenToUse: "Use when writing datapack worldgen noise_settings definitions or custom terrain generation."
 
 ---

@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-formatting-code
-description: "Legacy § formatting codes: colors, formats, input, usage in motd and names."
+description: "Minecraft Formatting Code 格式化代码（Legacy § 格式化系统、已弃用 仍可用但不推荐、Java文本系统和Bedrock Ore UI不再支持）：Usage 使用（§ 后跟字符格式化文本、十六进制数字切换颜色、Java颜色代码重置先前格式代码、Bedrock格式代码在颜色代码后仍有效、§r 重置样式）、Color Codes 颜色代码（§0-§f 黑色/深蓝/深绿/深青/深红/深紫/金色/灰色/深灰/蓝色/绿色/青色/红色/浅紫/黄色/白色、§g Minecoin金色）、Format Codes 格式代码（§k 乱码/§l 粗体/§m 删除线/§n 下划线/§o 斜体/§r 重置）、Input 输入（Windows Alt+Numpad 21/0167/Alt+Numpad+A7、Mac ⌥Option+6/⌥Option+00a7、Linux Compose so/Ctrl+Shift+U 00a7、文本组件 \u00A7）、Java 兼容性（仅标志牌可输入§ 通过粘贴 §§技巧）、Usage in Files 文件使用（server.properties motd/pack.mcmeta 使用 \u00A7 不是§、语言文件格式代码 应用到字符串、世界名称 level.dat LevelName 标签、服务器名称 servers.dat Name）。"
 whenToUse: "Use when applying legacy § formatting to text, motd, world names, or language files (deprecated in favor of text components)."
 
 ---

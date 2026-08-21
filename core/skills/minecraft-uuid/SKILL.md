@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-uuid
-description: "UUID representations in Minecraft: formats, int-array, version 4 usage."
+description: "Minecraft UUID 表示：UUID定义 128位数字 区分对象实例、Representations 表示形式（Hyphenated hexadecimal RFC 9562 8-4-4-4-12组 前导零可省略、Hexadecimal 无连字符零不可省略、Most/Least 高/低64位两个long pre-1.16 仅 int数组格式替代、Int array 4个32位数字 [I;...]）、Versions and variants 版本和变体（5个版本 1/2时间+MAC 3/5字符串哈希 4完全随机、版本半字节位置A、变体位置B：0xx Apollo NCS、10x RFC 4122 variant 1 Java variant 2、110 旧微软 Java variant 6、111 保留 Java variant 7）、In Minecraft Minecraft中（Java Edition 使用版本4 变体1 RFC UUID 完全随机 通过UUID.randomUUID()生成）。"
 whenToUse: "Use when reading or writing UUIDs in commands, NBT, or datapacks."
 
 ---

@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-processor-list
-description: "Processor list format — all processor types and behavior."
+description: "Minecraft Processor List 处理器列表格式：Definition Format 定义格式（PROCESSOR_LIST 注册表、data/<namespace>/worldgen/processor_list/ 数据包路径、tags/worldgen/processor_list/ 标签、根数组处理器列表或对象 processors 列表、每个处理器 processor_type+字段）、Processor Types 处理器类型（blackstone_replace 替换石头类型为黑石变体 铁栏杆替换为锁链、block_age 老化方块 mossiness 0-1、block_ignore 忽略方块 blocks 列表 不检查状态 移除方块 保留预存方块、block_rot 随机移除方块 integrity 0-1 移除概率 rottable_blocks 可腐烂方块、capped 限制处理方块数量 delegate 递归处理器 limit 数量提供器、gravity 重力按地形垂直移动方块 heightmap 高度图 offset 偏移、jigsaw_replacement 替换拼图方块 移除结构虚空 世界生成自动应用无需声明、lava_submerged_block 结构方块替换岩浆时 碰撞箱不完整方块不替换岩浆、nop 无操作、protected_blocks 受保护方块 value 不能被结构覆盖、rule 自定义规则 position_predicate 位置谓词 always_true/linear_pos/axis_aligned_linear_pos、input_predicate 输入谓词 规则测试已放置方块、location_predicate 位置谓词 规则测试生成前位置方块、output_state 输出状态 要放置的方块、block_entity_modifier 方块实体修改器 passthrough/clear/append_static/append_loot）、Behavior 行为（处理器按列表顺序运行每个模板方块、也称为方块处理器/结构后处理器、模板池拼图元素 处理器在地形适应前运行 实际放置位置可能与处理位置不同、服务器启动加载一次）。"
 whenToUse: "Use when authoring structure processor lists in data/worldgen/processor_list/."
 
 ---

@@ -1,6 +1,6 @@
 ---
 name: forge-simple-min-mod
-description: "Minimal runnable Forge 1.21.11 MOD fixed routine: register items + resources + GameTest in one closed loop. Use when the task needs something that compiles, runs, passes GameTest, and has working item registration/rendering."
+description: "Forge 1.21.11 最小可运行 MOD 固定流程：命名规则（modid/Java 包/主类名/物品ID）、固定工作流（activate_test_mode、validate_resources、run_mod_test_cycle）、物品注册（DeferredRegister<Item>、RegistryObject<Item>、Item.Properties.setId、FoodProperties）、物品模型定义（assets/<modid>/items/<name>.json、minecraft:model 类型、models/item/<name>.json）、纹理生成（Python PNG 脚本、16x16 纯色占位符）、语言文件（en_us.json/zh_cn.json、item.<modid>.<name> 键）、配方（data/<modid>/recipe/<name>.json、crafting_shaped、result id/count 格式）、工具快速参考（Item.Properties.sword/pickaxe、ToolMaterial.COPPER、AxeItem）、方块注册（DeferredRegister<Block>、BlockBehaviour.Properties、BlockItem、blockstates/models/block/models/item/items/blockstates.json）、GameTest 测试（@GameTestNamespace、@GameTest、GameTestHelper、Identifier、lookupOrThrow、ResourceKey.create）、复杂功能（自定义盔甲+鞘翅、humanoidArmor、DataComponents.GLIDER、canElytraFly/elytraFlightTick）、常见陷阱（items/<name>.json 缺失、旧配方格式、ArmorItem 类不存在、getModBusGroup/getModEventBus 混淆、ResourceLocation→Identifier、registryOrThrow→lookupOrThrow）、构建/验证纪律（validate_resources、run_mod_test_cycle、run_test_gametest）。"
 whenToUse: "The task is to make a MOD run, needs a simple item/block, and must pass build + GameTest."
 ---
 

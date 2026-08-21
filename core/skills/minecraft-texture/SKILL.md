@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-texture
-description: "Texture — directory structure, properties, animated textures, GUI sprites."
+description: "Minecraft Texture 纹理：Directory Structure 目录结构（assets/<namespace>/textures/：colormap/ 生物群系颜色映射、effect/ 后处理输入纹理、entity/ 实体和动态模型方块纹理、environment/ 云/雨/末地天空、font/ 字体、gui/ GUI + gui/sprites/ GUI精灵、item/ 物品、map/ 地图、misc/ 光泽/望远镜覆盖等、mob_effect/ 状态效果、painting/ 画作、particle/ 粒子、trims/ 装饰 color_palettes/entity/items/）、Texture Properties 纹理属性（独立纹理和精灵纹理、静态和动画纹理、*.png.mcmeta 元数据：texture.blur 最近邻/双线性过滤、texture.clamp 重复/钳制边缘、texture.mipmap_strategy mipmap策略 mean/dark_cutout/cutout/strict_cutout/auto、texture.alpha_cutoff_bias alpha截止偏移、texture.palette.base_palette 盔甲装饰基础调色板）、Texture Atlases 纹理图集（F3+S 转储图集+精灵映射、图集引用 minecraft:atlas/<id>、图集加载纹理可动画）、Animated Textures 动画纹理（必须是精灵 帧网格布局 frame 0=左上角、*.png.mcmeta 元数据 animation.height/width 帧尺寸、animation.frames 播放顺序、animation.frametime 每帧刻数、animation.interpolate 帧间混合）、Animated-eligible Categories 可动画类别（方块/物品纹理、旗帜/盾牌纹理、部分方块实体、物品展示框/画作、GUI精灵+状态效果图标、地图图标、粒子、盔甲装饰、天体）、Special Textures 特殊纹理（Missing texture minecraft:missingno 自动生成16x16 紫色/黑色、Loading screen logo assets/minecraft/gui/title/mojangstudios.png 仅游戏JAR、Color maps 颜色映射 colormap/grass/foliage/dry_foliage 256x256）、GUI Sprite Textures GUI精灵纹理（textures/gui/sprites/ *.png.mcmeta gui.scaling.type：nine_slice 九切片缩放 border/width/height/stretch_inner、stretch 拉伸、tile 平铺 width/height）、Villager Textures 村民纹理（生物群系服装+职业服装+职业徽章 帽子层冲突需元数据 villager.hat none/partial/full）。"
 whenToUse: "Use when authoring textures and their .mcmeta metadata for resource packs."
 
 ---

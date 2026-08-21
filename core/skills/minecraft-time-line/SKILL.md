@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-time-line
-description: "Timeline definition format — tracks, keyframes, easing, time markers."
+description: "Minecraft Timeline Definition 时间线定义格式：Definition Format 定义格式（TIMELINE 注册表、data/<namespace>/timeline/ 数据包路径、tags/timeline/ 标签、clock 世界时钟ID ticks、period_ticks 周期 非周期时缺失、time_markers 时间标记 marker ID ticks+show_in_commands）、Tracks 环境属性轨迹（每属性ID modifier+keyframes 关键帧列表 按ticks升序排列 同刻最多两个、keyframes 关键帧 ticks+value+ease 缓动函数）、Definition Behavior 定义行为（服务器启动加载一次、通过维度类型使用 影响整个维度属性 优先级高于生物群系）、Interpolation 插值（可插值属性在关键帧间插值 缓动类型；不可插值属性始终为前一关键帧值；单关键帧轨迹固定值；同刻两个关键帧切换到后者；非周期 前帧前使用首帧值 后帧后使用末帧值；周期 关键帧跨周期环绕）、Easing Functions 缓动函数（constant y=0 始终前值、linear y=x、in_/out_/in_out_ 前缀 in慢启动 out慢结束 in_out两者；函数：in_back/in_bounce/in_circ/in_cubic/in_elastic/in_expo/in_quad/in_quart/in_quint/in_sine 各有in/out/in_out变体）、Built-in Timelines 内置时间线（day 主世界仅 1游戏天周期 驱动昼夜渲染/雾/天空颜色/光照强度/怪物燃烧；early_game 主世界仅 前5游戏天阻止劫掠者巡逻；moon 主世界仅 8游戏天周期 月相+表面史莱姆生成；villager_schedule 所有原版维度 1游戏天周期 村民日程）。"
 whenToUse: "Use when authoring timeline JSON files or referencing time-based environment attributes."
 
 ---

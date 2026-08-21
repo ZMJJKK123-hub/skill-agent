@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tutorial-custom-armor-trim
-description: "Tutorial — custom armor trims: recipe, pattern/material, atlases, models."
+description: "Minecraft Tutorial: Custom Armor Trims 自定义盔甲装饰教程（Java 1.21.5+）：Data Pack 数据包（Recipe 配方 smithing_trim 模板+基底+添加物+图案、Trim Pattern 装饰图案 asset_id+description+decal、Trim Material 装饰材料 provides_trim_material 数据组件 而非配方字段 asset_name+description）、Resource Pack 资源包（Equipment Model Atlas 装备模型图集 覆盖assets/minecraft/atlases/armor_trims.json 合并非替换原版 paletted_permutations 调色板置换 palette_key+permutations+textures；Item Model Atlas 物品模型图集 覆盖blocks.json 原版纹理复用；Item Models 物品模型 select property minecraft:trim_material 按材料选择层 texture layer0+layer1）。"
 whenToUse: "Use when adding custom armor trim patterns or materials via data + resource packs."
 
 ---

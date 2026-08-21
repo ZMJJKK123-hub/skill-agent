@@ -1,7 +1,7 @@
 ---
 
 name: forge-resources-server
-description: "Forge server data: advancements, conditional loading, loot tables, tags, recipes."
+description: "Forge 服务端数据：Advancements 进度系统（JSON 数据驱动、CriteriaTriggers 触发器、SimpleCriterionTrigger 自定义触发器、AbstractCriterionTriggerInstance 条件实例、ContextAwarePredicate 玩家条件、#serializeToJson 序列化、FMLCommonSetupEvent#enqueueWork 注册、Advancement Rewards 奖励 experience/loot/recipes/function）、Conditional Loading 条件加载（ICondition、IConditionSerializer、forge:true/false/not/and/or/mod_loaded/item_exists/tag_empty 条件、ConditionalRecipe$Builder/ConditionalAdvancement$Builder）、Global Loot Modifiers 全局战利品修改器（global_loot_modifiers.json、IGlobalLootModifier、LootModifier 子类、Codec<T> 编解码、LootModifier#codecStart、LootItemCondition 条件、堆叠机制）、Datapacks 数据包（data 目录、资源包创建）、Loot Tables 战利品表（LootTable、LootParams、LootContext、LootContextParamSet、LootTableLoadEvent、LootPool 命名、LootingLevelEvent、LootContextParams#KILLER_ENTITY、SmeltItemFunction 多物品熔炼、LootItemCondition forge:loot_table_id/forge:can_tool_perform_action）、Tags 标签（TagKey、ITagManager、IForgeRegistry#tags、Holder#is、forge:/c: 命名空间、remove 数组、replace 机制）、Custom Recipes 自定义配方（Recipe 接口、RecipeType 注册、RecipeSerializer 注册、Ingredient 输入、Container 输入、#matches/#assemble 方法、fromJson/toNetwork/fromNetwork 序列化、FinishedRecipe 数据生成）、Non-Datapack Recipes 非数据包配方（BrewingRecipeRegistry#addRecipe 酿造配方、IBrewingRecipe 接口）、Recipes and Advancements 中的标签使用。"
 whenToUse: "Use when writing or modifying Forge server data (datapack content: advancements, loot tables, tags, recipes, etc.)."
 
 ---

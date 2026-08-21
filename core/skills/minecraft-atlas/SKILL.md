@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-atlas
-description: "Texture atlas system — usage, sources (directory, filter, paletted_permutations...)."
+description: "Minecraft 纹理图集系统：Atlas 引用（minecraft:<id> 命名空间 ID、assets/minecraft/textures/atlas/<id>.png）、F3+S 转储图集、图集尺寸（2 的幂次方、最大 16384×16384）、Definition Format 定义格式（assets/minecraft/atlases/<name>.json、sources 图集源列表）、Atlas Sources 图集源类型（directory 目录添加、filter 正则过滤移除、paletted_permutations 调色板置换生成、single 单纹理添加、unstitch 区域切割提取）、Vanilla Atlases 原版图集（armor_trims.json/banner_patterns.json/blocks.json/celestials.json/chests.json/decorated_pot.json/gui.json/items.json/map_decorations.json/paintings.json/particles.json/shield_patterns.json/shulker_boxes.json）、Sprite 精灵解析（assets/<namespace>/textures/<id>.png）、Duplicate Sprite 重复精灵警告、palette_key/palette texture 调色板纹理、permutations 置换映射、separator 分隔符。"
 whenToUse: "Use when adding or removing textures from vanilla texture atlases via resource packs."
 
 ---

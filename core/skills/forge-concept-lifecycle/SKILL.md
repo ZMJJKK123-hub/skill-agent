@@ -1,7 +1,7 @@
 ---
 
 name: forge-concept-lifecycle
-description: "Forge mod lifecycle: mod event bus events, setup, sided setup, GatherDataEvent, InterModComms."
+description: "Forge 模组生命周期：模组事件总线（Bus.MOD）、生命周期事件（FMLCommonSetupEvent、FMLClientSetupEvent、FMLDedicatedServerSetupEvent）、注册事件（NewRegistryEvent、DataPackRegistryEvent$NewRegistry、RegisterEvent）、DeferredRegister 使用、GatherDataEvent 数据生成、InterModComms 跨模组通信（InterModEnqueueEvent、InterModProcessEvent、IMCMessage）、ParallelDispatchEvent#enqueueWork 线程安全、FMLConstructModEvent、FMLLoadCompleteEvent、1.21.11+ typed event bus、FMLJavaModLoadingContext#getModBusGroup。"
 whenToUse: "Use when initializing a Forge mod or registering lifecycle event listeners."
 
 ---

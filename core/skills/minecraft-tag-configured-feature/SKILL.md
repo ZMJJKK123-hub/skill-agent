@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tag-configured-feature
-description: "Configured feature tags referenced from biomes for feature generation."
+description: "Configured feature tags referenced from biomes for feature generation, including #can_spawn_from_bone_meal (8 entries) for bone meal spawning features like flower_default, flower_flower_forest, wildflower, etc."
 whenToUse: "Use when writing or understanding configured feature tags (e.g. can_spawn_from_bone_meal)."
 
 ---

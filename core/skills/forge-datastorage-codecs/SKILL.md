@@ -1,7 +1,7 @@
 ---
 
 name: forge-datastorage-codecs
-description: "Forge Codecs: DynamicOps, DataResult, custom codecs (Records, Dispatch...)."
+description: "Forge Codecs 数据序列化：Codec 编码/解码（Codec#encodeStart、Codec#parse）、DynamicOps 动态操作（JsonOps#INSTANCE/COMPRESSED、NbtOps#INSTANCE、#convertTo 格式转换）、DataResult 数据结果（#result、#error、#resultOrPartial）、现有 Codec（BOOL/BYTE/SHORT/INT/LONG/FLOAT/DOUBLE/STRING/BYTE_BUFFER/INT_STREAM/LONG_STREAM/PASSTHROUGH/EMPTY、ResourceLocation#CODEC、CompoundTag#CODEC、Registry#byNameCodec、IForgeRegistry#getCodec）、RecordCodecBuilder 记录 Codec（#create、Instance#group、#fieldOf/#optionalFieldOf、#forGetter、#apply）、Transformer 转换器（#xmap/#flatComapMap/#comapFlatMap/#flatXMap）、Range Codec 范围（#intRange/#floatRange/#doubleRange）、Defaults 默认值（#orElse/#orElseGet）、Unit 单元（Codec#unit）、List Codec（Codec#listOf）、Map Codec（Codec#unboundedMap）、Pair Codec（Codec#pair）、Either Codec（Codec#either）、Dispatch Codec（Codec#dispatch、注册表分派）、MapCodec 扩展、DataFixerUpper 库。"
 whenToUse: "Use when writing or understanding Forge data serialization (codec encode/decode, NBT/JSON data storage, registry codecs)."
 
 ---

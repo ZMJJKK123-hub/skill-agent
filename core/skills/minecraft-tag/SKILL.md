@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tag
-description: "Disambiguation of 'tag': datapack tags, scoreboard tags, NBT tags, chunk tags."
+description: "Minecraft Tag 标签消歧义：Tags 数据包标签（技术机制 分组游戏资源 方块/物品/流体等标签、Java Edition tags 和 Bedrock Edition tags）、Scoreboard tags 记分板标签（标记特定实体、/tag 命令管理、Java 1.13前通过/scoreboard）、Tags in data structures 数据结构标签（NBT格式 二进制命名标签格式、SNBT格式 NBT文本表示）、Chunk loading tag 区块加载标签（Java Edition 区块加载机制）、Tag 物品（愚人节快照 23w13a_or_b 中的物品）。"
 whenToUse: "Use when clarifying which \"tag\" concept applies in Java Edition contexts."
 
 ---

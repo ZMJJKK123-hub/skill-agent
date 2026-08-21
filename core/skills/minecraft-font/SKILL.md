@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-font
-description: "Fonts — Mojangles, GNU Unifont (JP, PUA), SGA, Illageralt, Minecraft Ten/Five."
+description: "Minecraft Font 字体系统：Mojangles 字体（Minecraft Seven 7像素字形高度、默认UI字体 minecraft:default、字符宽度1-6点 ASCII 32-126 5点宽、支持 Latin/Greek/Cyrillic/Armenian/Georgian/Hebrew、字形文件 ascii.png/accented.png/nonlatin_european.png、Bedrock 使用 pre-1.13.6 Mojangles 旧字形）、GNU Unifont Unicode 字体（16x16 字形 更细笔画、Java Unifont v17.0.01 完整BMP+部分其他平面、minecraft:uniform 字体、Force Unicode Font 选项、Bedrock Unifont v5.1 部分BMP 0000-FFFF）、Unifont JP 日本字形（日语标准CJK字形、Japanese glyph variants 选项切换）、Private Use Area PUA（CSUR/UCSUR 构造语言字形 minecraft:include/unifont_pua）、SGA 标准银河字母（附魔台字体 26字母 无大小写 Command Keen 替换密码、minecraft:alt 字体）、Illageralt 恶魂字母（Mojang类SGA脚本 Minecraft Dungeons、26字母+数字+标点、minecraft:illageralt 字体）、Minecraft Ten 主标题字体（10像素字形高度）、Minecraft Five 5像素字体（粗体副标题字体）、Noto Sans 无衬线字体（Google/Adobe Source Han Sans Bedrock smooth、完整BMP+非BMP字符、日语使用 Noto Sans CJK JP）。"
 whenToUse: "Use when choosing fonts for text components or understanding which characters each font renders."
 
 ---

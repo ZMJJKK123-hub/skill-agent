@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-surface-rule
-description: "Surface (material) rule format — rule types, conditions, application order."
+description: "Minecraft Surface Rule 表面规则（材质规则）：Definition Format 定义格式（26.3后 MATERIAL_RULE 注册表 data/<namespace>/worldgen/material_rule/、MATERIAL_CONDITION 注册表 worldgen/material_condition、条件和序列决策树 在位置放置方块）、Rule Types 规则类型（bandlands badlands 陶瓦条带、block 放置结果方块状态 result_state、condition 条件 if_true 表面规则条件+then_run 成功时递归规则、sequence 序列 规则列表 每个位置取第一个成功规则）、Condition Types 条件类型（above_preliminary_surface 位置高于初步表面层、biome 生物群系 biome_is 列表、hole 表面厚度<0 噪声计算、noise_threshold 噪声阈值 noise min/max_threshold is_3d、not 取反 invert 递归条件、steep 陡坡 阴影面 高度差>4方块、stone_depth 到表面/洞穴表面距离≤限制 offset/add_surface_depth/secondary_depth_range/surface_type floor/ceiling、temperature 温度 允许雪、vertical_gradient 垂直渐变 false_at_and_above/true_at_and_below 成功概率线性插值、water 流体下厚度 offset/surface_depth_multiplier/add_stone_depth、y_above Y以上 anchor/surface_depth_multiplier/add_stone_depth）、Application Order 应用顺序（1检查eroded_badlands 放置陶瓦柱、2应用噪声设置表面规则、3检查frozen_ocean/deep_frozen_ocean 放置冰山）。"
 whenToUse: "Use when authoring surface/material rules in noise settings (worldgen)."
 
 ---

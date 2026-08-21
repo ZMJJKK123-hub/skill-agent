@@ -1,7 +1,7 @@
 ---
 
 name: forge-concept-internationalization
-description: "Forge i18n: translation keys, language files, getDescriptionId, client/server localization."
+description: "Forge 国际化（i18n）与本地化机制：翻译键（translation keys）、语言文件（assets/[namespace]/lang/[locale].json）、Block/Item 翻译键生成（getDescriptionId、registry name 转换）、客户端/服务端本地化差异、I18n 客户端本地化、TranslatableContents 惰性本地化、TextComponentHelper#createComponentTranslation、Component#translatable、语言文件格式、翻译键与注册名分离原则。"
 whenToUse: "Use when localizing Forge mod text or sending translatable text to players."
 
 ---

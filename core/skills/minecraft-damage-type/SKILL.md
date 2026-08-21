@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-damage-type
-description: "Damage type definition JSON: DAMAGE_TYPE registry, death messages, scaling, sounds."
+description: "Minecraft Damage Type 伤害类型定义：DAMAGE_TYPE 注册表、data/<namespace>/damage_type/ 数据包路径、tags/<namespace>/tags/damage_type/ 标签、JSON 格式（death_message_type 死亡消息行为、effects 受伤音效、exhaustion 饥饿疲劳、message_id 死亡消息翻译键、scaling 难度缩放）、Death Messages 死亡消息（default 默认：实体来源 检查命名物品 三参数/无实体来源 100刻内被生物伤害 两参数、fall_variants 跌落死亡消息、intentional_game_design 故意游戏设计 链接样式）、Damage Scaling 伤害缩放（always 总是缩放、never 从不缩放、when_caused_by_living_non_player 生物来源时缩放、和平0/简单min{0.5d+1,d}/普通d/困难1.5d）、Hurt Sounds 受伤音效（effects 字段决定玩家受伤音效）、服务器启动加载（/reload 不重新加载）、内置 DAMAGE_TYPE 条目不可移除 否则游戏崩溃）。"
 whenToUse: "Use when writing datapack damage_type definitions or custom death messages and damage scaling."
 
 ---

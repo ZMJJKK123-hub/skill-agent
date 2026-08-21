@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-cow-sound-variant
-description: "Cow sound variant definition JSON: COW_SOUND_VARIANT registry, sound events."
+description: "Minecraft Cow Sound Variant 牛声音变体定义：COW_SOUND_VARIANT 注册表、data/<namespace>/cow_sound_variant/ 数据包路径、JSON 格式（adult_sounds 成年牛声音、baby_sounds 幼牛声音）、Adult Sounds 成年牛声音事件（ambient_sound 空闲、death_sound 死亡、hurt_sound 受伤、step_sound 脚步）、Baby Sounds 幼牛声音事件（同上格式）、Sound Types 声音类型（Immediate 即时：hurt/death/step；Random 随机：ambient）、服务器启动加载（/reload 不重新加载）、COW_SOUND_VARIANT 注册表至少一个元素、声音变体独立于牛变体。"
 whenToUse: "Use when writing datapack cow_sound_variant definitions or custom cow sounds."
 
 ---

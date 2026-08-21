@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-random-sequence
-description: "Random sequences save format, seeding (Xoroshiro128++), /random reset."
+description: "Minecraft Random Sequences 随机序列：Storage Format 存储格式（data/minecraft/random_sequences.dat GZip NBT、Root tag data：include_sequence_id 序列命名空间ID是否参与种子 /random reset * 可修改、include_world_seed 世界种子是否参与、salt 初始化盐、sequences 命名空间ID→source 长数组 种子低64位+高64位、DataVersion）、Creating Sequences 创建序列（参数：identifier/worldSeed/salt、Xoroshiro128++ 128位种子、初始种子 salt ^ worldSeed ^ 0x6A09E667F3BCC909L、unmixedHi64 unmixedLo64+0x9E3779B97F4A7C15L、include_sequence_id MD5标识符XOR两半、mixStafford13混合、零种子替换）、Behavior 行为（缺失/不完整文件初始化 include_sequence_id=true include_world_seed=true salt=0、每次使用消耗并更新序列、大多数战利品表计算使用随机序列 方块掉落/生物掉落/钓鱼/猪灵以物易物、世界生成战利品箱直接种子控制）、/random reset 重置序列（给定参数）、/random reset * 重置所有并同步参数到文件）。"
 whenToUse: "Use when understanding random sequence seeding, loot randomness, or /random reset."
 
 ---

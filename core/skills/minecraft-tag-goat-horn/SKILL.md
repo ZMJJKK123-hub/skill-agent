@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tag-goat-horn
-description: "Goat horn instrument tags for referencing instruments in packs."
+description: "Goat horn instrument tags: #goat_horns (all 8 horns), #regular_goat_horns (4 horns from regular goats: ponder, sing, seek, feel), #screaming_goat_horns (4 horns from screaming goats: admire, call, yearn, dream)."
 whenToUse: "Use when querying or writing goat horn instrument tags (goat_horns etc.)."
 
 ---

@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-biome
-description: "Biome definition format — climate, colors, carvers, features (11 stages), spawners, spawn costs."
+description: "Minecraft Biome 生物群系定义：BIOME 注册表、data/<namespace>/worldgen/biome/ 数据包路径、JSON 格式（has_precipitation/temperature/temperature_modifier/downfall/attributes）、Effects 环境效果（water_color/dry_foliage_color/foliage_color/grass_color/grass_color_modifier）、Carvers 雕刻器（tag/ID/inline/list）、Features 生成特性（11个装饰阶段 RAW_GENERATION/LAKES/LOCAL_MODIFICATIONS/UNDERGROUND_STRUCTURES/SURFACE_STRUCTURES/STRONGHOLDS/UNDERGROUND_ORES/UNDERGROUND_DECORATION/FLUID_SPRINGS/VEGETAL_DECORATION/TOP_LAYER_MODIFICATION、Feature order cycle found 排序规则）、creature_spawn_probability 生物生成概率、Spawners 生物生成条目（type/weight/minCount/maxCount）、spawn_costs 生成成本（energyBudget/charge）、Legacy Effects 旧版效果（fog_color/sky_color/water_fog_color/particle/ambient_sound/additions_sound/mood_sound/music/music_volume）、biome.<ns>.<path> 本地化键、plains 生物群系必需。"
 whenToUse: "Use when authoring biome JSON files in data/worldgen/biome/."
 
 ---

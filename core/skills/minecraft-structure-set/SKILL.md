@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-structure-set
-description: "Structure set definition JSON: STRUCTURE_SET registry, placement types."
+description: "Minecraft Structure Set 结构集定义：STRUCTURE_SET 注册表、data/<namespace>/worldgen/structure_set/ 数据包路径、tags/worldgen/structure_set/ 标签、JSON 格式（structures 可放置结构特性列表 structure+weight、placement 放置行为 salt 随机种子盐 frequency 尝试概率 0-1 frequency_reduction_method 频率降低方法 default/legacy_type_1/legacy_type_2/legacy_type_3、exclusion_zone 排除区域 chunk_count+other_set、locate_offset /locate偏移 chunks -16..16、type 放置类型）、Placement Types 放置类型（concentric_rings 同心环 固定数量 环绕世界中心：distance 环宽度+间隙 6区块单位 0-1023、count 总尝试次数 1-4095、spread 中心环尝试次数 0-1023、preferred_biomes 首选生物群系；random_spread 随机扩散 分割维度为spacing区块单元格 每个尝试一次 结构仅在separation区块内生成：spread_type linear/triangular、spacing 平均距离 1-4096区块、separation 最小距离 0<spacing；dimension_origin 维度原点 26.3 放置在维度原点 噪声生成器首选spawn_target 否则区块(0,0)）、Definition Behavior 定义行为（服务器启动加载一次、/reload 不重新加载、生成期间每个维度评估可用集 结构仅在概率/生物群系/地形检查通过时放置）。"
 whenToUse: "Use when writing datapack worldgen structure_set definitions."
 
 ---

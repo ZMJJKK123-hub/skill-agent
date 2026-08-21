@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-template-pool
-description: "Template pool (jigsaw pool) format — elements, generation rules, fallback."
+description: "Minecraft Template Pool 模板池（拼图池）格式：TEMPLATE_POOL 注册表、data/<namespace>/worldgen/template_pool/ 数据包路径、tags/worldgen/template_pool/ 标签、JSON 格式（fallback 回退池 终止拼图结构、elements 元素列表 element+weight 1-150）、Element Types 元素类型（empty_pool_element 无生成、feature_pool_element 生成放置特性 projection rigid/terrain_matching + feature 放置特性 假设jigsaw方块名minecraft:bottom 可滚动接头 final_state air orientation=down_south、list_pool_element 按顺序放置elements 递归 重叠、single_pool_element 放置结构模板 projection+location 模板ID+override_liquid_settings+processors 处理器列表 放置顺序：转换拼图方块→移除结构虚空→处理液体→应用处理器→放置、legacy_single_pool_element 同single但额外移除空气）、Behavior 行为（服务器启动加载一次、为jigsaw结构服务 每个拼图方块命名目标池、仅匹配拼图方块的结构可连接、可通过/place jigsaw调用）、Generation Rules 生成规则（随机选择元素、起始池必须存在命名起始拼图、非起始池成功条件：匹配名称和方向的拼图方块、3D切比雪夫距离≤结构max_distance_from_center、无重叠 除非拼图指向当前片段内部、指向内部时元素及后续必须完全在片段内）、Fallback 回退（失败时尝试下一个元素、无元素可用时使用回退池、在生成深度到达时或目标池无元素可生成时使用回退池、回退池元素也失败则无生成）。"
 whenToUse: "Use when authoring template pools for jigsaw structures."
 
 ---

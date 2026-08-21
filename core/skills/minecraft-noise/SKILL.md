@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-noise
-description: "Noise definition JSON: NOISE registry, octaves/amplitudes/normalize, vanilla usages."
+description: "Minecraft Noise 噪声定义：NOISE 注册表、data/<namespace>/worldgen/noise/ 数据包路径、tags/worldgen/noise/ 标签、JSON 格式（firstOctave/base_octave 主八度 int、amplitudes/amplitude_modifiers 振幅列表 子噪声频率 2^(i+o) 振幅 2^(n-i)·ai/(2^(n+1)-1）、base_amplitude 基础振幅缩放因子 float、octave_count 采样八度数 1-32、normalize 输出归一化 true/false/"legacy"）、Definition Behavior 定义行为（服务器启动加载一次、/reload 不重新加载、噪声可被密度函数或表面规则引用 坐标依赖随机值）、Hardcoded Vanilla Usages 硬编码原版用途（minecraft:surface/surface_secondary 表面规则厚度、minecraft:clay_bands_offset 恶地陶瓦条带、minecraft:badlands_pillar/_roof/badlands_surface 侵蚀恶地柱、minecraft:iceberg_pillar/_roof/iceberg_surface 冰冻海洋冰山）。"
 whenToUse: "Use when writing datapack worldgen noise definitions."
 
 ---

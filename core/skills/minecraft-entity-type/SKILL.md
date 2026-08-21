@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-entity-type
-description: "Entities — behavior, riding, movement physics (Motion, drag, terminal speed), NBT."
+description: "Minecraft Entity 实体类型：General Behavior 通用行为（3D边界框、状态效果、重命名名牌、光照等级）、Details 细节（物品展示框/画/拴绳结 对齐方块网格、船和矿车 血量恢复 摇摆指示剩余生命、下落方块 sand/gravel/suspicious sand/red sand/dripstone/sulfur spikes/scaffolding/anvil/dragon egg/concrete powder/snow 轨迹可被爆炸/活塞/气泡柱/钓鱼竿修改 600刻超时）、Riding 骑乘（低/外实体碰撞控制移动、常见组合：船/矿车+乘客、鞍猪/马/驴/骡/僵尸马/骷髅马/骆驼、鞍炽足兽、羊驼、鹦鹉肩上、鸡骑士、蜘蛛骑士、骷髅陷阱马、劫掠兽+灾厄村民、/ride 命令、/summon 嵌套乘客、栈顶实体不能传送）、Movement 移动（Motion 速度 [x,y,z] -10..10、Pos 坐标 X/Z -30000512..30000512 Y -20000000..20000000）、Physics 物理（加速度 a、阻力 f、位置 s、速度 v、终端速度 v∞、水平最大位移乘数 k∞、Acceleration 加速度 水平/玩家 a1·a2·a3+a4、Drag 阻力 地面 FB/F/A 空气 FB=0、Velocity 速度 拖拽→加速/加速→拖拽 公式、Jump 跳跃 v0=p·j·f+vl+vs、Bounciness 弹性 0/属性值）、Entity List 实体列表（边界框尺寸）、Entity Type Tags 实体类型标签（实体谓词和目标选择器）、Common Entity NBT 通用实体NBT（id/Air/CustomName/data/fall_distance/Fire/Glowing/HasVisualFire/Invulnerable/Motion/NoGravity/OnGround/Passengers/PortalCooldown/Pos/Rotation/Silent/Tags/Team/TicksFrozen/UUID/Vehicle）。"
 whenToUse: "Use when working with entities in general — spawning, riding, movement mechanics, or common entity NBT."
 
 ---

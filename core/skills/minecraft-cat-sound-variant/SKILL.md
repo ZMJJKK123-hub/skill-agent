@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-cat-sound-variant
-description: "Cat sound variant definition JSON: CAT_SOUND_VARIANT registry, adult/baby sound events."
+description: "Minecraft Cat Sound Variant 猫声音变体定义：CAT_SOUND_VARIANT 注册表、data/<namespace>/cat_sound_variant/ 数据包路径、JSON 格式（adult_sounds 成年猫声音、baby_sounds 幼猫声音）、Adult Sounds 成年猫声音事件（ambient_sound 空闲、beg_for_food_sound 乞食、death_sound 死亡、eat_sound 进食、hiss_sound 对幻翼嘶叫、hurt_sound 受伤、purr_sound 呼噜、purreow_sound 驯服空闲、stray_ambient_sound 流浪空闲）、Baby Sounds 幼猫声音事件（同上格式）、Sound Types 声音类型（Immediate 即时：hurt/death/eat；Random 随机：hiss/beg_for_food/purr/purreow/stray_ambient/ambient）、服务器启动加载（/reload 不重新加载）、CAT_SOUND_VARIANT 注册表至少一个元素、声音变体独立于猫变体。"
 whenToUse: "Use when writing datapack cat_sound_variant definitions or custom cat sounds."
 
 ---

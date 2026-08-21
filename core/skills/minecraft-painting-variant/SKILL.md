@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-painting-variant
-description: "Painting variant definition JSON: PAINTING_VARIANT registry, size, texture."
+description: "Minecraft Painting Variant 画作变体定义：PAINTING_VARIANT 注册表、data/<namespace>/painting_variant/ 数据包路径、tags/painting_variant/ 标签、JSON 格式（width 画作宽度 方块数 1-16、height 画作高度 方块数 1-16、asset_id 画作纹理 assets/<namespace>/textures/painting/<path>.png、title 画作标题文本组件、author 画作作者文本组件）、Definition Behavior 定义行为（服务器启动加载一次、/reload 不重新加载、PAINTING_VARIANT 注册表至少一个元素）、Tooltip 提示信息（显示 painting/variant 组件变体尺寸+作者+标题）。"
 whenToUse: "Use when writing datapack painting_variant definitions or custom paintings."
 
 ---

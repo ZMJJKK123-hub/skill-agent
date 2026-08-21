@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-example-datapack
-description: "Slicedlime's example datapacks: macros, return values, data-driven enchantments."
+description: "Minecraft Example Datapacks 示例数据包：16th-version demo datapack 23w31a 示例（8个函数演示）、Macro Functions 宏函数（set_time.mcfunction $(time) 变量、eval.mcfunction $$(command) 命令执行、concat.mcfunction $(string1)$(string2) 拼接 存储到 storage）、Function Return Values 函数返回值（fails.mcfunction 无返回值返回失败、fails2.mcfunction return 0 返回失败、succeeds.mcfunction return 1 返回成功、get_player_health.mcfunction 返回玩家生命值）、Line Continuation 行续（\ 反斜杠行续）、Data-driven Enchantment 数据驱动附魔（24w18a 14个附魔：Curse of Annoyance/Boom Boom/Claw/Cowbow/Diminishing/Fire Walker/Fishy/Curse of Fragility/Galaxy Brain/Multi-Multishot/Curse of Pollen Allergy/Roulette/Sparkles!/Thor）。"
 whenToUse: "Use as reference when learning datapack macros, function return values, or data-driven enchantments."
 
 ---

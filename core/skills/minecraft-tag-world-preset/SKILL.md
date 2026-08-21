@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tag-world-preset
-description: "World preset tags and their members, controlling which presets appear on the world creation screen."
+description: "World preset tags: #normal (5 entries: normal, flat, large_biomes, amplified, single_biome_surface) for default world creation screen, #extended (2 entries: #normal, debug_all_block_states) for Alt-held selection."
 whenToUse: "Use when writing datapacks or understanding world preset tags (#extended, #normal)."
 
 ---

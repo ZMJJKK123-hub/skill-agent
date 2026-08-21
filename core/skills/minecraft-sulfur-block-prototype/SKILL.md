@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-sulfur-block-prototype
-description: "Sulfur cube archetype JSON: attributes, buoyancy, explosions, food, sounds."
+description: "Minecraft Sulfur Cube Archetype 硫磺立方体原型：JSON format（data/<namespace>/sulfur_cube_archetype 数据包路径）、JSON 格式（attribute_modifiers 属性修饰符列表 attribute/id/amount/operation、buoyant 浮力 是否在液体中漂浮、contact_damage 接触伤害 amount/attribute_to_source/damage_type 可选、explosion 爆炸 点燃时爆炸 causes_fire/fuse 点燃时随机fuse时间/power、items 喂养物品或物品标签、knockback_modifiers 击退修饰符 horizontal_power/vertical_power、sound_settings 声音设置 hit_sound/push_sound 及更多声音事件）。"
 whenToUse: "Use when writing datapack sulfur_cube_archetype definitions (upcoming content)."
 
 ---

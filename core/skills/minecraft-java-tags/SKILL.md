@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-java-tags
-description: "Tags (Java Edition) — directory structure, file format, replace/required, loading."
+description: "Minecraft Java Tags Java版标签：Definition 定义（data/<namespace>/tags/<registry path>/<name>.json、每个注册表内容可有标签 除了advancements和recipes、Functions 在 tags/function/ 下、标签ID命名空间格式 #前缀引用 #minecraft:air 块标签）、File Format 文件格式（replace 默认false 覆盖低优先级包同ID标签 false=追加、values 列表：资源ID字符串、#标签ID 引用其他标签、{id required} required:false 缺失条目静默忽略）、Loading Behavior 加载行为（底部向上加载每个包、缺失必需条目或循环→标签无效、可选 required:false 缺失条目忽略、上包 replace:true 丢弃下层数据 即使下层标签无效 上层正常加载、上包 replace:false 合并 下层无效标签使合并标签无效）、Usage 使用（测试成员资格 任何列出条目匹配、原版标签控制游戏行为 方块标签 climbable 等 物品标签 dyeable 等 实体类型标签节肢动物 蛛网、进度/配方使用标签条件）、Vanilla Tag Directories 原版标签目录（data/minecraft/tags/：banner_pattern/block/damage_type/dialog/enchantment/entity_type/fluid/function/game_event/instrument/item/painting_variant/point_of_interest_type/potion/timeline/villager_trade/worldgen/）、Examples 示例（新标签 my_logs.json、嵌套标签 #minecraft:logs、可选条目 required:false、扩展原版 sword_efficient 羊毛、替换原版 beacon_base_blocks lodestone）。"
 whenToUse: "Use when defining or extending tags in data packs."
 
 ---

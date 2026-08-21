@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tag-game-event
-description: "Game event tags: vibration listening conditions and listening ranges."
+description: "Game event tags: #vibrations (56 entries) detectable by Sculk Sensor and Calibrated Sculk Sensor, #warden_can_listen (57 entries), #allay_can_listen (1 entry: note_block_play), #shrieker_can_listen (1 entry), and #ignore_vibrations_sneaking (6 entries for sneaking entities)."
 whenToUse: "Use when referencing game event tags (vibration system, Allay and Warden listening conditions)."
 
 ---

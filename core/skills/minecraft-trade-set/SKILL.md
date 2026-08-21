@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-trade-set
-description: "Trade set definition JSON: TRADE_SET registry, trades, villager usage."
+description: "Trade set definition JSON: TRADE_SET registry controlling villager trade generation, with trades (villager trade IDs/tags), amount (number of trades to generate), allow_duplicates, and random_sequence parameters."
 whenToUse: "Use when writing datapack trade_set definitions or understanding villager trade generation."
 
 ---

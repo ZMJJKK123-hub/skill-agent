@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-function
-description: "Java Edition function — .mcfunction format, macros, invocation, recursion, return."
+description: "Minecraft Function 函数：Definition 定义（.mcfunction 文本文件、data/<namespace>/function/、每行一个命令 无/前导、尾部\行续、#行首注释、允许子文件夹）、Macros 宏函数（$开头宏行 $(key) 替换段 key允许 a-z/A-Z/0-9/_、调用 /function with entity @p SelectedItem 复合标签、值转换 数字→纯文本 字符串→原始值 列表/复合/整数数组→SNBT、宏行在调用时解析 缓存已解析结果）、Invocation 调用（/function <id>、/execute if|unless function <id>、function tags #example:example_tag 顺序运行去重、Advancement rewards function 执行者为进度玩家、Special tags #minecraft:load 世界加载/服务器启动/每次重载运行、#minecraft:tick 每刻开始运行、/schedule 延迟执行、Enchantment run_function 执行者为效果实体）、Behavior 行为（/reload 重载函数、加载时所有非宏行解析 一行坏整个函数失败 宏行每次调用解析、单人/LAN 权限上限2 服务器 function-permission-level 配置、每刻总命令数上限 max_command_sequence_length 65536、执行者上下文存储 /execute 内部更改不泄露）、Recursion 递归（函数调用自身运行直到 maxCommandChainLength 限制）、Return 返回（return [run ...] 强制结束函数 后续命令跳过、execute if|unless ... run return 条件退出、返回值 成功标志+整数返回值、无return→Void、/function 输出返回值、/execute (if|unless) function 检查返回值存在且非零）。"
 whenToUse: "Use when writing or calling .mcfunction files in datapacks."
 
 ---

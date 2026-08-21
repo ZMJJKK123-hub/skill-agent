@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-armor-trim
-description: "Armor trim definition format — patterns, materials, tooltips, texture generation."
+description: "Minecraft Armor Trim 盔甲装饰定义：Trim Pattern 装饰图案（TRIM_PATTERN 注册表、data/<namespace>/trim_pattern/、description 文本组件、asset_id 资源 ID、decal 贴花模式）、Trim Material 装饰材料（TRIM_MATERIAL 注册表、data/<namespace>/trim_material/、asset_name 纹理路径后缀、palette_id 调色板 ID、override_armor_assets 资产覆盖）、Tooltips 提示信息（图案名称 + 材料名称显示）、Textures 纹理生成（minecraft:armor_trims 图集、assets/<ns>/textures/trims/entity/<equipment model layer>/<pattern>_<material>.png、paletted_permutations 调色板置换、UV 映射）、Smithing Trim Recipe 锻造装饰配方（provides_trim_material 组件、trim 组件）、Equipment Assets 装备资产（trim_palette_replacements 调色板替换）、服务器启动加载定义。"
 whenToUse: "Use when authoring armor trim patterns/materials in data packs."
 
 ---

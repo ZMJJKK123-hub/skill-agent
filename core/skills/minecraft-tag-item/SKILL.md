@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tag-item
-description: "Java Edition item tags: all 248 tags with representative members."
+description: "Java Edition item tags: 248 tags including tool tags (#swords, #axes, #pickaxes, #shovels, #hoes), armor tags (#foot_armor, #leg_armor, #chest_armor, #head_armor), enchantability tags (#enchantable/*), mob food tags (#cat_food, #chicken_food, #cow_food, etc.), piglin-related tags (#piglin_loved, #piglin_repellents), building block tags (#planks, #logs, #wool, #concrete), and many more."
 whenToUse: "Use when querying or writing item tags for datapacks, or understanding which items a game mechanic accepts."
 
 ---

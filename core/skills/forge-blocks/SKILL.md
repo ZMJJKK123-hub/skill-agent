@@ -1,7 +1,7 @@
 ---
 
 name: forge-blocks
-description: "Forge Block guide: BlockBehaviour.Properties, registration, BlockItem, and the block state system."
+description: "Forge Block 机制：Block 创建（BlockBehaviour$Properties、strength/sound/lightLevel/friction 属性）、Block 注册（RegistryObject、BlockItem 关联、asItem 方法）、Block 状态系统（Property<?>、BlockState、StateDefinition$Builder、IntegerProperty/BooleanProperty/EnumProperty/DirectionProperty）、状态定义（createBlockStateDefinition、registerDefaultState、getStateForPlacement）、状态读写（getValue/setValue、Level#setBlockAndUpdate）、CreativeModeTab 配置、FeatureFlag 使用、元数据系统演进。"
 whenToUse: "Use when creating Forge blocks or working with block states."
 
 ---

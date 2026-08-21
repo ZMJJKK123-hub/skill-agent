@@ -1,7 +1,7 @@
 ---
 
 name: forge-gettingstarted
-description: "Getting started with Forge modding: build.gradle, mod metadata, dependencies, javafml, @Mod."
+description: "Forge 模组入门：MDK 下载与设置、build.gradle 配置（base.archivesName、group、version）、Java 21 JDK 要求、IDE 集成（Eclipse/IntelliJ IDEA/VS Code）、运行配置生成（genEclipseRuns/genIntellijRuns/genVSCodeRuns）、mods.toml 元数据（modLoader javafml/lowcodefml、loaderVersion、license、showAsResourcePack、clientSideOnly、[[mods]] 模组属性、[[dependencies]] 依赖配置、features 系统）、@Mod 注解入口点、FMLJavaModLoadingContext#getModBusGroup、版本号格式（MCVERSION-MAJORMOD.MAJORAPI.MINOR.PATCH）、Maven 版本范围、模组结构化（包组织、类命名方案）、依赖顺序（ordering BEFORE/AFTER/NONE）、物理侧面（CLIENT/SERVER/BOTH）、displayTest 配置、updateJSONURL 更新检查、lowcodefml 数据包/资源包分发。"
 whenToUse: "Use when setting up a Forge mod project or build.gradle."
 
 ---

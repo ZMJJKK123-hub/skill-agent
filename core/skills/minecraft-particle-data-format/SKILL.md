@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-particle-data-format
-description: "Particle data format — particle types with options, colors, all options."
+description: "Minecraft Particle Data Format 粒子数据格式：Format 格式（JSON type 粒子类型+选项、SNBT /particle 命令 JSON 生物群系/附魔文件）、Common Structures 常见结构（RGB color int Red<<16+Green<<8+Blue 或 float[3] [0,1]、ARGB color int Alpha<<24+Red<<16+Green<<8+Blue 或 float[4] [0,1]）、Particle Options 粒子选项（Block block/block_marker/dust_pillar block_state 方块ID或完整方块状态、Dust dust color RGB+scale 0.01-4.0 生命周期乘数、Dust color transition dust_color_transition from_color+to_color+scale、Color entity_effect color ARGB、Item item item模板物品、Power power 初始速度乘数、Sculk charge sculk_charge roll 弧度显示角度、Shriek shriek delay 刻延迟、Spell spell/instant_effect/entity_effect color RGB+power、Vibration vibration destination 位置源 block类型+pos+arrival_in_ticks 行程时间、Trail trail color ARGB+duration+target 目标坐标 轨迹、Geyser plume geyser_plume water_blocks 生命周期=water_blocks×25刻 上升高度=water_blocks×5方块、Geyser base geyser_base water_blocks 尺寸=3.0+water_blocks×0.125 基础速度=water_blocks×0.25 burst_impulse_base 速度增量）。"
 whenToUse: "Use when specifying particles in commands (/particle), biomes, or enchantments."
 
 ---

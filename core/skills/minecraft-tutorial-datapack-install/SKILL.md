@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tutorial-datapack-install
-description: "Tutorial — installing data packs: at world creation, into existing worlds, on servers."
+description: "Minecraft Tutorial: Installing Data Packs 安装数据包教程：Getting a Data Pack 获取数据包（下载或创建、识别包 文件夹或zip 第一级有pack.mcmeta 可选pack.png+data/<namespace>/...、游戏不识别可能多余目录层）、Single-Player 单人游戏（At World Creation 创建世界时：创建新世界→更多→数据包 拖入文件/打开包文件夹添加 箭头重排优先级、Incompatible警告不一定破坏加载；Into an Existing World 现有世界：不推荐维度/世界生成包、选择世界→编辑→打开世界文件夹→datapacks/ 放入包 重新进入世界 /datapack list enabled 检查 成功加载仅表示pack.mcmeta被读取）、Multiplayer 多人游戏（服务器文件夹 world/datapacks/ 放入包 下次服务器启动加载、运行服务器 /reload 控制台或≥3权限级别 /datapack list enabled 控制台或≥2）。"
 whenToUse: "Use when installing data packs in single-player or multiplayer."
 
 ---

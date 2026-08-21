@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-frog
-description: "Frog — spawning, tadpoles, skin variants, hunting (slimes, magma cubes, froglight), breeding, NBT."
+description: "Minecraft Frog 青蛙：Spawning 生成（沼泽生成温带青蛙、红树沼泽生成温暖青蛙、#spawns_warm_variant_frogs/#spawns_cold_variant_frogs 生物群系标签、Bedrock 无光照要求 2x2x2空间检查）、Tadpoles 蝌蚪（20分钟成长为青蛙、喂食粘液球加速生长 -10%剩余时间）、Skin Variants 皮肤变体（cold 冷绿色、warm 暖白色、temperate 温带橙色、生成时生物群系决定）、Drops 掉落（1-3 XP）、Behavior 行为（缓慢跳跃 快速游泳 肢体展开 喉囊膨胀、跳跃8方块高 减少5摔落伤害、偏好大滴水叶/睡莲、走上1方块台阶、可拴绳 永不溺水）、Hunting 狩猎（小史莱姆 舌头弹出 1粘液球、小岩浆立方体 根据变体掉落froglight：cold→verdant/warm→ochre/temperate→pearlescent）、Breeding 繁殖（粘液球跟随 10/16方块、爱心模式 1-7 XP 5分钟冷却、怀孕青蛙搜索曼哈顿≤8方块陆地相邻水、每40刻重新搜索 产卵在水上空气下）、Data Values 数据（variant 命名空间ID temperate/warm/cold → frog/variant 组件）。"
 whenToUse: "Use when working with frogs and tadpoles (breeding, froglight farming, variants)."
 
 ---

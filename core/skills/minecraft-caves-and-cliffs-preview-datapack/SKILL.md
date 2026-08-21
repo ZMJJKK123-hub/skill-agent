@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-caves-and-cliffs-preview-datapack
-description: "Caves & Cliffs Prototype Data Pack — the 8 versions and their worldgen changes."
+description: "Minecraft Caves & Cliffs Prototype Data Pack 洞穴与悬崖预览数据包：8个版本历史（Version 1-8，21w15a 到 1.17-pre2）、Noise Caves 噪声洞穴（spaghetti caves 长弯曲、cheese caves 瑞士奶酪孔洞）、Aquifers 含水层（替代水下雕刻洞穴、Y=31以下生成水体、岩浆块漩涡气泡柱、海洋/河流鱼类生成）、Cracks 裂缝（比峡谷更窄更直、从表面延伸到90方块深板岩）、World Height 世界高度（-64..319 建造范围384）、Ore Changes 矿石变化（spread-type 分布型生成、coal/copper/diamond/emerald/gold/iron/lapis/redstone 分布范围和频率变化）、Deepslate 深板岩（Y=0以下主要岩石、stone→deepslate 过渡）、Diorite/Andesite/Granite 闪长岩/安山岩/花岗岩（更大更圆更稀有簇、Y=0以下不生成）、Noodle Caves 面条洞穴（比spaghetti更窄更弯曲更紧凑）、Ore Veins 矿脉（大型铜矿脉+花岗岩/大型铁矿脉+凝灰岩、raw iron/copper blocks）、Candle/Bundle 合成配方变更。"
 whenToUse: "Use when researching the 1.17-era Caves & Cliffs prototype datapack (historical)."
 
 ---

@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tag-structure
-description: "Structure tags and their members, used for locating structures, explorer maps, and related commands."
+description: "Structure tags: #village (5 entries), #ruined_portal (7 entries), #ocean_ruin (2 entries), #mineshaft (2 entries), #shipwreck (2 entries), plus location tags (#eye_of_ender_located, #on_treasure_maps, #dolphin_located, #on_*_maps) for explorer maps and structure discovery."
 whenToUse: "Use when querying or using structure tags for structure location."
 
 ---

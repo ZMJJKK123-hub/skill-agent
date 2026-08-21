@@ -1,7 +1,7 @@
 ---
 
 name: forge-gameeffects-particles
-description: "Forge particle system: ParticleType/ParticleOptions/Provider, registration, spawning."
+description: "Forge 粒子系统：ParticleType 注册（overrideLimiter、ParticleOptions$Deserializer、#codec、SimpleParticleType）、ParticleOptions 数据持有（#getType、#writeToNetwork、#writeToString、#fromCommand、#fromNetwork）、Particle 渲染（#render、#getRenderType、TextureSheetParticle、ParticleRenderType TERRAIN_SHEET/PARTICLE_SHEET_OPAQUE/PARTICLE_SHEET_TRANSLUCENT/PARTICLE_SHEET_LIT/CUSTOM/NO_RENDER）、ParticleProvider 工厂（#createParticle、RegisterParticleProvidersEvent 注册、#registerSpecial）、ParticleDescription JSON 纹理定义（assets/<modid>/particles/<name>.json）、SpriteSet 粹子集（#setSpriteFromAge、#pickSprite、#registerSpriteSet）、粒子生成（ClientLevel#addParticle/#addAlwaysVisibleParticle、ServerLevel#sendParticles 网络包）、客户端/服务端分离。"
 whenToUse: "Use when creating custom particles in a Forge mod."
 
 ---

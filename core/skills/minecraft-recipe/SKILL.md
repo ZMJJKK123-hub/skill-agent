@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-recipe
-description: "Recipe system — acquisition, recipe book, Java recipe JSON types, Bedrock."
+description: "Minecraft Recipe 配方系统：Acquisition 获取（使用配方自动发现、/recipe 直接授予、条件解锁 Java通过进度奖励 Bedrock通过配方本身、发现配方存储在玩家 recipeBook/recipe_unlocking NBT）、Usage 使用（配方书显示 limited_crafting 游戏规则才需发现、仅在匹配界面显示）、Java Edition Java版（RECIPE 注册表、data/<namespace>/recipe/ JSON文件、无配方标签；Common fields 通用字段 group/category show_notification）、Crafting Recipes 合成配方（crafting_shaped 有形配方 key+pattern+result 镜像对称自动有效、crafting_shapeless 无配方 ingredients+result 9相同输入视为有形、crafting_transmute 保留组件修订变更物品类型 input+material+result、crafting_dye 染料染色 target+dye+result、crafting_imbue 药水效果复制 Java26.3+ 中心source 周围material）、Custom (Special) Recipes 自定义特殊配方（crafting_decorated_pot 装饰罐、crafting_special_bannerduplicate 旗帜复制、crafting_special_bookcloning 书籍克隆、crafting_special_firework_rocket 星箭火箭、crafting_special_firework_star 烟花星星、crafting_special_firework_star_fade 烟花星星渐变、crafting_special_mapextending 地图扩展、crafting_special_repairitem 修理物品、crafting_special_shielddecoration 盾牌装饰）、Smelting Recipes 熔炼配方（smelting 熔炉、blasting 高炉、smoking 烟熏炉、campfire_cooking 营火）、Stonecutting 石切 stonecutting、Brewing 酿造 Java26.3+ brewing input+output+reagent、Smithing 锻造 smithing_transform 转变+smithing_trim 装饰）、Bedrock Edition 基岩版（行为包 recipes/ 目录 JSON 格式 version+类型键+description.identifier+tags+group+priority+unlock；类型：recipe_shaped/recipe_shapeless/recipe_furnace/recipe_brewing_container/recipe_brewing_mix/recipe_smithing_transform/recipe_smithing_trim/recipe_material_reduction）。"
 whenToUse: "Use when authoring recipe JSON files for data packs (Java) or behavior packs (Bedrock)."
 
 ---

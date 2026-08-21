@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-chicken-sound-variant
-description: "Chicken sound variant definition JSON: CHICKEN_SOUND_VARIANT registry, sound events."
+description: "Minecraft Chicken Sound Variant 鸡声音变体定义：CHICKEN_SOUND_VARIANT 注册表、data/<namespace>/chicken_sound_variant/ 数据包路径、JSON 格式（adult_sounds 成年鸡声音、baby_sounds 幼鸡声音）、Adult Sounds 成年鸡声音事件（ambient_sound 空闲、death_sound 死亡、hurt_sound 受伤、step_sound 脚步）、Baby Sounds 幼鸡声音事件（同上格式）、Sound Types 声音类型（Immediate 即时：hurt/death/step；Random 随机：ambient）、服务器启动加载（/reload 不重新加载）、CHICKEN_SOUND_VARIANT 注册表至少一个元素、声音变体独立于鸡变体。"
 whenToUse: "Use when writing datapack chicken_sound_variant definitions or custom chicken sounds."
 
 ---

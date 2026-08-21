@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-text-component
-description: "Text Component format — Java types, styles, click/hover events; Bedrock rawtext."
+description: "Minecraft Text Component 文本组件格式：Context and Parsing 上下文和解析（Static context 静态上下文 语言/键绑定、Dynamic context 动态上下文 记分板/实体/方块实体/命令存储/实体位置朝向；Pre-parse dynamic components 预解析动态组件 读取世界数据 score/selector/nbt 服务器端预解析→静态快照→不跟踪后续变化；Parse static components 解析静态组件 客户端解析静态上下文）、Basic Structure 基本结构（String form 字符串形式 {text:} 简写、List form 列表形式 拼接简写 第一个元素成为根 其余追加到extra、Compound form 复合形式 type+extra+Style tags；Inheritance 继承 树结构 extra非空为父 子继承样式标签 渲染深度优先）、Pre-parse Triggers 预解析触发器（/tellraw /title 每接收者预解析、/title 命令立即预解析、written book lectern无触发实体、sign text 立即预解析、text display entity 显示实体触发、item modifier set_lore/set_name entity触发）、Component Types 组件类型（7种：text 纯文本静态、translatable 本地化文本静态 translate+fallback+with、keybind 键绑定静态、score 记分板数据动态 name+objective、selector 实体名称动态 separator+团队前缀后缀/颜色、nbt NBT数据动态 interpret/plain+source entity/block/storage、object 精灵组件 atlas sprite/player head）、Component Styles 组件样式（color 颜色 #RRGGBB/格式化代码颜色名、shadow_color 阴影颜色 ARGB、font 字体命名空间ID、bold/italic/underlined/strikethrough/obfuscated 布尔、insertion 插入文本 Shift点击）、Click Events 点击事件（change_page 翻页、copy_to_clipboard 复制、custom 自定义网络负载、open_file 打开文件、open_url 打开URL、run_command 执行命令、show_dialog 打开对话、suggest_command 替换聊天栏）、Hover Events 悬停事件（show_entity 显示实体 名称/类型/UUID F3+H、show_item 显示物品 工具提示、show_text 显示文本）、Bedrock Edition 基岩版（仅文本显示 无交互、rawtext 列表、text/translate/score/selector 内容组件）。"
 whenToUse: "Use when composing text components in commands, data packs, or resource packs (tellraw, books, signs, item names)."
 
 ---

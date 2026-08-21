@@ -1,7 +1,7 @@
 ---
 
 name: forge-resources-client
-description: "Forge client resources: resource packs, models, item properties, BlockColor/ItemColor handlers."
+description: "Forge 客户端资源：Resource Packs 资源包（pack.mcmeta、assets 目录、自定义资源包创建）、Models 模型系统（ModelManager、ModelResourceLocation、BlockState 模型映射、Item 模型映射、JSON 模型 cuboid elements）、Textures 纹理（ResourceLocation、UV 坐标 0-16、纹理尺寸 2 的幂次方、动画纹理）、Item Properties 物品属性（ItemProperties#register、ItemPropertyFunction/ClampedItemPropertyFunction、float 属性值、overrides 物品覆盖、predicate 属性匹配、FMLClientSetupEvent 客户端设置、enqueueWork 线程安全）、Coloring Textures 纹理着色（tint index 着色索引、BlockColor 块颜色、ItemColor 物品颜色、RegisterColorHandlersEvent$Block/$Item 注册、颜色乘数 ARGB、builtin/generated 模型层索引）。"
 whenToUse: "Use when developing Forge client resources: resource packs, models, item properties, or color handling."
 
 ---

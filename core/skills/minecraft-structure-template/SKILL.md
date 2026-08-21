@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-structure-template
-description: "Structure template format — NBT/SNBT storage, placement behavior, vanilla data."
+description: "Minecraft Structure Template 结构模板格式：Storage Locations 存储位置（游戏数据 data/minecraft/structure/ client.jar内、玩家导出 生成目录 generated/<namespace>/structure/<name>.nbt、数据包 data/<namespace>/structure/、放置时查找顺序 保存根目录→数据包→内置、文件GZip压缩NBT）、NBT Format NBT格式（根标签 DataVersion 数据版本、blocks 方块列表 pos相对坐标 nbt方块实体数据 state调色板索引、entities 实体列表 blockPos块坐标 pos精确双精度坐标 nbt实体数据 UUID忽略/Pos覆写/Passengers无效、palette/palettes 调色板映射索引到方块状态 palettes随机选择一个、size 维度 [x,y,z]）、SNBT Format SNBT格式（数据生成器可转换为特殊SNBT形式 块相关标签不遵循正常NBT↔SNBT规则、data blocks pos+state+可选nbt、palette 调色板字符串、palettes 键列表）、Vanilla Structures 原版结构（abandoned_camp/ancient_city/bastion/empty.nbt/end_city/fossil/igloo/nether_fossils/pillager_outpost/ruined_portal/shipwreck/trail_ruins/trial_chambers/underwater_ruin/village/woodland_mansion）、Placement Behavior 放置行为（结构保存/加载通过结构方块和测试实例方块、部分结构作为片段放置后处理 结构方块和拼图方块替换、部分放置被阻止以保留现有方块：冰屋/下界化石/海洋废墟/废弃传送门/沉船修改模板内容、数据模式结构方块 metadata 匹配后处理：末地城市/冰屋/海洋废墟/沉船/林地宅邸 特殊战利品箱/实体生成、拼图方块替换为final_state、单池元素/旧单池元素扩展拼图到池结构、处理器列表后处理块）。"
 whenToUse: "Use when authoring structure NBT files, debugging structure placement, or reading vanilla structure data."
 
 ---

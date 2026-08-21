@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tag-villager-trade
-description: "Villager trade tags: purpose, naming, member structure."
+description: "Villager trade tags: profession/level naming convention (#armorer/level_1 through level_5, #librarian/level_1 through level_5, #wandering_trader/buying/common/uncommon, etc.) controlling trade offer pools, including villager trade rebalancing experimental content."
 whenToUse: "Use when customizing villager trade offers by profession and level via villager trade tags."
 
 ---

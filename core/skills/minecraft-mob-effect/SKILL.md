@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-mob-effect
-description: "Potion effects: base data for potions, splash/lingering, tipped arrows, clouds."
+description: "Minecraft Mob Effect 药水效果：Potion Effects 药水效果基础数据（药水/喷溅药水/滞留药水/箭矢/区域效果云 使用、药水物品和实体存储药水效果数据、未指定或未识别ID使用不可合成药水或水瓶效果）、效果属性（名称、颜色、应用状态效果 等级和持续时间、其他行为）、Duration Notes 持续时间说明（喷溅药水按距离缩短、滞留药水和区域效果云 1/4持续时间、箭矢 1/8持续时间）、Potion Color 药水颜色（Java混合算法计算 非预定义）、Bedrock 数字ID（药水数据值 箭矢+1）、Effect Names 效果名称（部分与状态效果名称不同、部分药水效果无状态效果 如乌龟大师药水应用多个）、Full Effect List 完整效果列表（Minecraft Wiki）。"
 whenToUse: "Use when understanding potion effect data, potion colors, names, and their linked status effects."
 
 ---

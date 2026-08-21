@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tag-damage-type
-description: "Damage type tags and their members, for custom damage, game rules, and datapacks."
+description: "Damage type tags controlling damage mechanics: #is_fire (8 entries), #is_fall (3 entries), #is_projectile (8 entries), #bypasses_armor (19 entries), #bypasses_shield (12 entries), #bypasses_wolf_armor (12 entries), #no_knockback (30 entries), #panic_causes (20 entries), and many more for armor protection, enchantment effects, and game rules."
 whenToUse: "Use when writing datapacks or understanding damage reduction rules via damage type tags (#is_fire, #bypasses_armor etc.)."
 
 ---

@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tag-block
-description: "Java Edition block tags: purpose and representative members of all 305 tags."
+description: "Java Edition block tags: 305 tags including #mineable/* (axe/pickaxe/shovel/hoe), #needs_*_tool, #climbable, #beds, #doors, #fences, #logs, #wool, #copper, #concrete, #terracotta, #glazed_terracotta, #ores, #supports_* vegetation tags, and many more controlling game mechanics like mob spawning, block interactions, and world generation."
 whenToUse: "Use when querying or writing block tags, or understanding which game behavior a block group controls."
 
 ---

@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-wolf-sound-variant
-description: "Wolf sound variant definition JSON: WOLF_SOUND_VARIANT registry, events."
+description: "Wolf sound variant definition JSON: WOLF_SOUND_VARIANT registry defining adult and baby wolf sound events including ambient_sound, death_sound, hurt_sound, step_sound, and ambient_whine for idle behavior."
 whenToUse: "Use when writing datapack wolf_sound_variant definitions or custom wolf sounds."
 
 ---

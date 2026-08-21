@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-frog-variant
-description: "Frog variant definition JSON: FROG_VARIANT registry, texture, spawn conditions."
+description: "Minecraft Frog Variant 青蛙变体定义：FROG_VARIANT 注册表、data/<namespace>/frog_variant/ 数据包路径、tags/frog_variant/ 标签、JSON 格式（asset_id 青蛙纹理、spawn_conditions 生成条件选择器）、asset_id 纹理解析（assets/<namespace>/textures/<path>.png）、Spawn Conditions 生成条件选择器（condition.type 生物群系/月光亮度/结构、biome biomes 标签/ID/列表、moon_brightness range 范围（满月1/新月0）、structure structures 标签/ID/列表、priority 优先级 随机打破平局）、Definition Behavior 定义行为（服务器启动加载一次、/reload 不重新加载、FROG_VARIANT 注册表至少一个元素）、生成青蛙时评估所有变体选择器 选择最高优先级有效选择器生成对应变体。"
 whenToUse: "Use when writing datapack frog_variant definitions or custom frog variants."
 
 ---

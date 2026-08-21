@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-world-preset
-description: "World preset definition JSON: WORLD_PRESET registry, dimension sets, tags."
+description: "Minecraft World Preset 世界预设定义：WORLD_PRESET 注册表、data/<namespace>/worldgen/world_preset/ 数据包路径、tags/worldgen/world_preset/ 标签、JSON 格式（dimensions 维度集 必须包含overworld 每个值是维度）、Definition Behavior 定义行为（服务器启动加载一次、/reload 不重新加载、仅在世界创建前有效、维度集写入level.dat、相同ID的维度定义文件覆盖预设设置）、Two hardcoded presets 两个硬编码预设（flat 超平坦生成器+设置、single_biome_surface 单一生物群系 维度文件仍优先）、Tags 标签（#extended 按住Alt可选、#normal 无Alt可选、标签为空时所有注册预设显示在"世界"屏幕）、Text 文本（翻译键 generator.<namespace>.<path> 按钮显示"World type: generator.<namespace>.<path>"）。"
 whenToUse: "Use when writing datapack worldgen world_preset definitions."
 
 ---

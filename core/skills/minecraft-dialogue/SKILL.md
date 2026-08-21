@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-dialogue
-description: "Dialog definition format — invocation, dialog types, body, inputs, actions."
+description: "Minecraft Dialog Definition 对话定义：Invocation 调用方式（/dialog、文本组件点击事件、服务器消息、其他对话）、Special Dialog Tags 特殊对话标签（#pause_screen_additions 暂停屏幕替换、#quick_actions 快捷操作 G 键）、Layout 布局（header 标题+警告按钮、content 内容+输入面板、footer 页脚）、Definition Format 定义格式（DIALOG 注册表、data/<namespace>/dialog/ 数据包路径、tags/dialog/ 标签、common fields after_action/pause/can_close_with_escape/body/inputs/external_title/title/type）、After-action Behavior 后操作行为（none 无操作、close 关闭对话、wait_for_response 等待服务器响应）、Dialog Types 对话类型（confirmation 确认对话 yes/no、dialog_list 对话列表 跳转按钮、multi_action 多操作网格、notice 通知单确认按钮、server_links 服务器链接）、Body Elements 主体元素（item 物品栈渲染+描述、plain_message 纯文本）、Input Controls 输入控件（boolean 复选框、number_range 滑块、single_option 选择按钮、text 文本框）、Actions 操作（Static Actions 静态操作：open_url/run_command/suggest_command/change_page/copy_to_clipboard/show_dialog/custom、Dynamic Actions 动态操作：dynamic/custom 自定义负载 input values、dynamic/run_command 模板命令 $(name) 占位符）。"
 whenToUse: "Use when authoring dialog JSON files for data packs (menus, forms, confirmations)."
 
 ---

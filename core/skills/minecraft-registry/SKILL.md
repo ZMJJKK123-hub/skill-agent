@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-registry
-description: "Registry mechanism: built-in vs writable, ID keys, tags, datapack paths."
+description: "Minecraft Registry 注册表机制：Categories 分类（Built-in registries 内置注册表 硬编码 内容不可修改 跨世界共享、Writable registries 可写注册表 从数据包加载 世界绑定 数据依赖、Network-synchronized registries 网络同步注册表 可写注册表通过 registry_data 数据包同步到客户端）、Indexing 索引（命名空间ID映射到值 如BLOCK注册表的grass_block、数字ID仅网络使用缩短数据、标签映射到多个值 如#air=air+cave_air+void_air 标签永不硬编码 可由数据包定义任何注册表、同步注册表 通过 update_tags 数据包同步标签）、Structure 结构（每个可写注册表有反序列化器 如ENCHANTMENT↔附魔格式、数据包路径P：文件 data/<N>/<P>/<I>.json 注册值 N:I、标签文件 data/<N>/tags/<P>/<I>.json 包含子目录 创建 #N:I 标签、注册表本身注册在特殊注册表中 不能添加或移除）。"
 whenToUse: "Use when understanding how datapack registries (enchantment, jukebox_song, tags, etc.) work."
 
 ---

@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-item-format
-description: "Item stack storage format: id/count/components, encoding, validation."
+description: "Minecraft Item Format 物品格式：Data Format 数据格式（两种存储方式：带 Slot 字节标签 容器内、无槽位 属性数据 如物品实体、根标签 id 物品类型/组件补丁/count 堆叠数量）、Item stacks 物品堆栈（添加物品类型特定数据：堆叠数量+组件补丁、有效组件=默认组件+补丁 F3+H高级工具提示显示）、Encoding Formats 编码格式（Basic format 基本格式：物品ID必需 count和patch可选 最常用、Optional format 可选格式：可为空 仅用于快捷栏槽位）、Strict Validation 严格验证（定义物品堆栈和补丁组件时运行：组件检查 max_damage 暗示最大堆叠≤1、container/bundle_contents/charged_projectiles 要求每个包含物品通过计数验证；计数检查 count不能超过最大堆叠大小；验证失败使物品无效 命令失败 文件加载失败）、Default Components 默认组件（无外部修改获得的物品有默认组件、不序列化、无法通过/data获取、组件等于默认时不存储、与物品类型强关联 不继承、物品替换时只有序列化补丁组件携带、创造模式物品可能携带额外组件 匹配时显示蓝色类别+可堆叠、至少12个默认组件）。"
 whenToUse: "Use when understanding item stack data in saves, commands, or datapack item components."
 
 ---

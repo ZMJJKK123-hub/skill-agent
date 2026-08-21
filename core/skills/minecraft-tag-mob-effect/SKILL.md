@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tag-mob-effect
-description: "The tradeable potion effect tag and its members."
+description: "Mob effect tags: #tradeable tag controlling which potion effects' tipped arrows the fletcher villager can sell (41 entries including wind_charged, night_vision, long_night_vision, strong_leaping, slow_falling, etc.). Referenced by item modifiers and data component predicates."
 whenToUse: "Use when writing datapack item modifiers or data component predicates that reference the tradeable potion effect tag."
 
 ---

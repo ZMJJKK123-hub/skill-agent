@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-entity-predicate
-description: "Entity predicate — sub-predicates: type, location, movement, effects, flags, type-specific."
+description: "Minecraft Entity Predicate 实体谓词：Format 格式（实体子谓词映射→测试内容）、Sub-predicates 子谓词（entity_type 实体类型ID/列表/标签、location 位置谓词、stepping_on 脚下位置谓词、movement_affected_by 影响移动速度位置谓词、distance 距离谓词 双重边界、movement 运动检查 fall_distance/horizontal_speed/speed/vertical_speed/x/y/z、effects 状态效果谓词、nbt NBT匹配、flags 布尔标志 is_baby/is_flying/is_on_ground/is_on_fire/is_sneaking/is_sprinting/is_swimming/is_in_water/is_fall_flying、equipment 装备槽物品栈谓词 body/chest/feet/head/legs/mainhand/offhand、periodic_tick 周期性刻检查、vehicle 骑乘实体谓词、passenger 乘坐实体谓词、targeted_entity 攻击目标谓词、team 队伍名称、slots 物品槽范围谓词、components 数据组件精确匹配、predicates 数据组件谓词、entity_tags 记分板标签 any_of/all_of/none_of）、Type-specific Sub-predicates 类型特定子谓词（lightning 闪电方块点燃/实体击中、fishing_hook 钓鱼钩 开放水域、player 玩家检查 level/food/gamemode/stats/recipes/advancements/looking_at/input、cube_mob 史莱姆/岩浆立方体/硫磺立方体 size、raider 袭击者 has_raid/is_captain、sheep 羊 sheared）。"
 whenToUse: "Use when writing entity predicates in advancements, loot predicates, or target selectors."
 
 ---

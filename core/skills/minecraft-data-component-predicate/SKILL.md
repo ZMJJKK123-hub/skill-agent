@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-data-component-predicate
-description: "Data component predicate format — existence checks and value predicates."
+description: "Minecraft Data Component Predicate 数据组件谓词：Usage Formats 使用格式（advancements/predicates predicates 映射、commands minecraft:item_predicate 参数类型、item models predicate/value condition/component）、Existence Checks 存在性检查（空对象 {} 测试组件存在、谓词ID与组件ID重叠 优先解释为值测试 回退存在性检查）、Value Predicates 值谓词（attribute_modifiers 修饰符 集合谓词 size/count/contains、bundle_contents/container 物品堆栈 集合谓词 count/items/components/predicates、custom_data 自定义数据 JSON/NBT/SNBT、damage damage/durability 整数边界、enchantments/stored_enchantments 附魔 条件数组 enchantments/levels、firework_explosion 爆炸集合谓词 has_trail/has_twinkle/shape、fireworks flight_duration+explosions、jukebox_playable song 歌曲ID、potion_contents potion/custom_effects 药水内容、trim 装饰 material/pattern ID、villager/variant 村民类型、writable_book_content 书与笔 pages 集合谓词、written_book_content 成书 pages/author/title/generation/resolved）。"
 whenToUse: "Use when testing item/block entity/entity data components in advancements, loot predicates, item predicates, or item models."
 
 ---

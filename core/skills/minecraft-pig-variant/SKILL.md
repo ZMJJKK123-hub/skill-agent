@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-pig-variant
-description: "Pig variant definition JSON: PIG_VARIANT registry, textures, model, spawn conditions."
+description: "Minecraft Pig Variant 猪变体定义：PIG_VARIANT 注册表、data/<namespace>/pig_variant/ 数据包路径、JSON 格式（asset_id 成年猪纹理、baby_asset_id 幼猪纹理、model 模型类型 normal/cold、spawn_conditions 生成条件选择器）、asset_id/baby_asset_id 纹理解析（assets/<namespace>/textures/<path>.png）、Model 模型类型（normal 温带/热带猪、cold 寒冷猪）、Spawn Conditions 生成条件选择器（condition.type 生物群系/月光亮度/结构、biome biomes 标签/ID/列表、moon_brightness range 范围（满月1/新月0）、structure structures 标签/ID/列表、priority 优先级 随机打破平局）、服务器启动加载（/reload 不重新加载）、PIG_VARIANT 注册表至少一个元素、最高优先级有效选择器生成猪变体。"
 whenToUse: "Use when writing datapack pig_variant definitions or custom pig variants."
 
 ---

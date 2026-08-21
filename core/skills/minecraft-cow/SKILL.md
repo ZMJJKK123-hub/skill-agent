@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-cow
-description: "Cow — spawning, mooshroom conversion, sound variants, drops, milking, breeding, NBT."
+description: "Minecraft Cow 牛：Spawning 生成（grass blocks/light≥7/2 air blocks/5% babies、biome variants 温带/寒冷/温暖、平原/沼泽/风袭山丘/森林/干旱生物群系自然生成、村庄牛栏生成）、Mooshroom Conversion 蘑菇牛转换（剪切蘑菇牛变成牛 总是温带变体）、Sound Variants 声音变体（Classic 和 Moody 各50%）、Drops 掉落（生牛肉 烧死时变熟/Fire Aspect、皮革、1-3 XP 成年牛）、Behavior 行为（漫游/哞叫/避免悬崖/岩浆/火焰/受伤逃跑、桶挤奶成年牛获得牛奶桶）、Breeding 繁殖（小麦跟随 10/16方块、爱心模式、1只幼崽 1-7 XP、5分钟冷却、20分钟成长、每条小麦减少10%剩余时间、幼崽继承父母变体、金蒲公英控制生长）、Data Values 数据（sound_variant 声音变体、variant 变体 温带/寒冷/温暖）。"
 whenToUse: "Use when working with cows (breeding, milking, variants)."
 
 ---

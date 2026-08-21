@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-experimental-datapack
-description: "Java experimental content: built-in datapacks, feature flags, their effects."
+description: "Minecraft Experimental Content 实验性内容：Enabling 启用方式（创建世界时 Experimental/Datapacks 启用、不能禁用、现有世界不能启用、内置数据包激活硬编码游戏元素+data/<namespace>/datapacks/<experiment ID>/ 内容、服务器 server.properties initial-enabled-packs/initial-disabled-packs）、Warning 警告（可能与未来版本不兼容 崩溃/损坏/无法加载）、Options 选项（Minecart improvements 矿车改进 max_minecart_speed 游戏规则/同步旋转 惯性/铁轨对齐、Redstone experiments 红石实验 红石粉更新顺序变更、Villager trade rebalancing 村民交易重新平衡 铁匠/图书管理员交易）、Feature Flags 功能标志（启用/禁用功能组、过滤器：blocks 方块 /setblock//fill 不识别 不能使用/拾取、entities 实体 /summon 不识别 不生成/加载、items 物品 /give//item//clear 不识别 隐藏在创造模式 红色禁用物品 工具提示、rules 规则 /gamerule 不识别、effects 效果 /effect 不适用、enchantments 附魔 /enchant 不可用、GUIs 不加载、stats 不显示、commands 不解析）、Feature Flag Set 功能标志集（最多64个标志：vanilla 默认开启、trade_rebalance、redstone_experiments、minecart_improvements）、level.dat enabled_features 标签。"
 whenToUse: "Use when understanding or enabling experimental content and feature flags in Java Edition."
 
 ---

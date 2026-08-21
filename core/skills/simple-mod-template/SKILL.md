@@ -1,6 +1,6 @@
 ---
 name: simple-mod-template
-description: "Complete working MC 1.21.11 Forge simple MOD template: item + block + recipe + GameTest. Copy these files and rename."
+description: "Simple MOD Template 简单MOD模板（MC 1.21.11 / Forge 61.2.0）：已知可工作 简单MOD 完整模板 包含物品+方块+配方+GameTest 复制文件重命名；How to use 使用方法（保留package com.example.examplemod 和 mod id examplemod、替换test_item/example_block、创建文件、运行gradlew build GameTest运行run_test_gametest）；ExampleMod.java 主类（DeferredRegister<Block>/Item/CreativeModeTab、RegistryObject<Block>/Item、CreativeModeTab.builder、FMLJavaModLoadingContext#getModBusGroup、BuildCreativeModeTabContentsEvent、ModConfig.Type.COMMON、FMLCommonSetupEvent、FMLClientSetupEvent @Mod.EventBusSubscriber）；Item model definitions 物品模型定义（assets/<modid>/items/<name>.json minecraft:model 类型）；Item/block models 物品/方块模型（models/item parent minecraft:item/generated textures layer0、models/block parent minecraft:block/cube_all textures all、blockstates variants model）；Lang 语言文件（en_us.json/zh_cn.json item/block/itemGroup 翻译键）；Recipe 配方 MC1.21.11 格式（ingredients 纯字符串、result id+count）；Textures 纹理（Python PIL 脚本生成16x16 PNG）；Minimal GameTest 最小GameTest（@GameTestNamespace("examplemod") @GameTest helper.succeed() Forge 1.21.11 正确API）；Do NOT 不要做的事（不要重复读取文件、不要搜索API、不要写引用、先写文件后构建修复错误）。"
 whenToUse: "Use when the user asks for a simple item/block with basic properties, recipe, and optionally GameTest. Do NOT research APIs; copy this template."
 ---
 

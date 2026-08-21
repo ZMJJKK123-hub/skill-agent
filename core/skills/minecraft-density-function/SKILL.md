@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-density-function
-description: "Density function format — all types: markers, math, noise sampling, splines."
+description: "Minecraft Density Function 密度函数格式：Definition Format 定义格式（DENSITY_FUNCTION 注册表、data/<namespace>/worldgen/density_function/ 数据包路径、tags/worldgen/density_function/ 标签、文件根对象浮点常量或对象 type 字段、支持 ID/常量/内联密度函数）、Marker Functions 标记函数（interpolated 插值 flat_cache Y=0缓存 cache_2d 二维缓存 cache_once 一次缓存 cache_all_in_cell 单元格缓存 blend_density 区块混合密度）、Univariate Functions 一元函数（abs绝对值/square平方/cube立方/sqrt平方根/half_negative/quarter_negative/invert倒数/negate取反/squeeze挤压/log对数/sign符号/rounding 取整 floor/round/ceil/truncate）、Binary Functions 二元函数（add/sub/mul/div/min/max left/right 参数）、Other Functions 其他函数（blend_alpha/blend_offset 区块混合/beardifier 结构地形适应/old_blended_noise 旧噪声算法/lerp 线性插值/noise 噪声采样/end_islands 末地岛屿/shifted_noise 偏移噪声/range_choice 范围选择/interval_select 区间选择/shift_a/shift_b/shift 偏移噪声采样/clamp 钳制/pow 幂运算/spline 三次样条/constant 常量/slice 切片/gradient 梯度/distance_to_point 点距离/find_top_surface 找顶面）、Removed Functions 已移除函数（slide/terrain_shaper_spline/weird_scaled_sampler）。"
 whenToUse: "Use when authoring density function JSON files for world generation noise settings."
 
 ---

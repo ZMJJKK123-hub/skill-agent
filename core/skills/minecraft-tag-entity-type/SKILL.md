@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tag-entity-type
-description: "Entity type tags and their members, used in entity predicates, target selectors, and game behavior."
+description: "Entity type tags: #undead (4 entries), #skeletons (6 entries), #zombies (9 entries), #illager (4 entries), #aquatic (14 entries), #arthropod (5 entries), #boat (11 entries), #burn_in_daylight (10 entries), #fall_damage_immune (18 entries), #frog_food (2 entries), #raiders (6 entries), and many more controlling mob behavior, spawning, and interactions."
 whenToUse: "Use when writing entity predicates, target selectors, or datapacks via entity type tags (#undead, #skeletons etc.)."
 
 ---

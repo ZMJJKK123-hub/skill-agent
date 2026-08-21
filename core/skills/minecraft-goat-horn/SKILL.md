@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-goat-horn
-description: "Goat horn instrument definition JSON: INSTRUMENT registry, sound, range, duration."
+description: "Minecraft Goat Horn Instrument 山羊角乐器定义：INSTRUMENT 注册表、data/<namespace>/instrument/ 数据包路径、tags/instrument/ 标签、JSON 格式（description 乐器名称文本组件、sound_event 吹奏时播放音效事件 注册名或内联定义、durability_damage 耐久消耗≥0、range 声音最大传播距离>0、use_duration 吹奏持续时间秒>0 影响物品冷却）、Definition Behavior 定义行为（服务器启动加载一次、/reload 不重新加载）、Blowing Behavior 吹奏行为（读取 instrument 物品栈组件 播放声音、record 类别 音量 range/16 音高1 立即播放线性衰减、可听距离取 sound_id attenuation_distance/instrument range/sound event range 最小值）。"
 whenToUse: "Use when writing datapack instrument definitions or custom goat horn instruments."
 
 ---

@@ -1,7 +1,7 @@
 ---
 
 name: forge-datastorage-saveddata
-description: "Forge SavedData: per-level persistent data via computeIfAbsent, save/setDirty."
+description: "Forge SavedData 持久化数据机制：SavedData 类继承、save 方法写入 NBT、setDirty 标记脏位、DimensionDataStorage#computeIfAbsent 动态加载/附加、ServerLevel#getDataStorage 获取数据存储、.dat 文件存储路径、数据加载函数（NBT → SD）、数据创建函数（Supplier）、跨维度持久化（Overworld 附加）、1.21.11+ SavedDataType 新 API（Codec<T> 定义、SavedDataType<T> 静态类型、DataFixTypes.SAVED_DATA_MAP_DATA）、旧版 DimensionDataStorage#computeIfAbsent 兼容方法、NBT 序列化/反序列化。"
 whenToUse: "Use when attaching persistent data to a level in a Forge mod."
 
 ---

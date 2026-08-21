@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-pig-sound-variant
-description: "Pig sound variant definition JSON: PIG_SOUND_VARIANT registry, sound events."
+description: "Minecraft Pig Sound Variant 猪声音变体定义：PIG_SOUND_VARIANT 注册表、data/<namespace>/pig_sound_variant/ 数据包路径、JSON 格式（adult_sounds 成年猪声音、baby_sounds 幼猪声音）、Adult Sounds 成年猪声音事件（ambient_sound 空闲、death_sound 死亡、hurt_sound 受伤、step_sound 脚步、eat_sound 进食）、Baby Sounds 幼猪声音事件（同上格式）、Sound Types 声音类型（Immediate 即时：hurt/death/step/eat；Random 随机：ambient）、服务器启动加载（/reload 不重新加载）、PIG_SOUND_VARIANT 注册表至少一个元素、声音变体独立于猪变体。"
 whenToUse: "Use when writing datapack pig_sound_variant definitions or custom pig sounds."
 
 ---

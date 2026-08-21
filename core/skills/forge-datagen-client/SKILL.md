@@ -1,7 +1,7 @@
 ---
 
 name: forge-datagen-client
-description: "Forge client asset data generation: model/language/sound providers (BlockModelProvider etc.)."
+description: "Forge 客户端资产数据生成：LanguageProvider 语言文件生成（addTranslations、addBlock、unicode 编码）、ModelProvider 模型生成（ModelBuilder、ModelFile、ExistingModelFile、UncheckedModelFile）、BlockModelProvider 方块模型、ItemModelProvider 物品模型、BlockStateProvider 方块状态生成（VariantBlockStateBuilder、MultiPartBlockStateBuilder、ConfiguredModel）、CustomLoaderBuilder 自定义模型加载器（DynamicFluidContainerModelBuilder、CompositeModelBuilder、ItemLayersModelBuilder、SeparateTransformsModelBuilder、ObjModelBuilder）、SoundDefinitionsProvider 声音定义生成（SoundDefinition、SoundType SOUND/EVENT、volume/pitch/weight/stream/attenuationDistance/preload）、ModelEvent$RegisterGeometryLoaders、ExistingFileHelper 文件验证、GatherDataEvent 数据收集。"
 whenToUse: "Use when data generating client assets (models, language, sounds)."
 
 ---

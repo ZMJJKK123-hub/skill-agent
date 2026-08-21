@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-structure
-description: "Structure (feature) definition format — fields and structure types."
+description: "Minecraft Structure Definition 结构定义格式：Definition Format 定义格式（STRUCTURE 注册表、data/<namespace>/worldgen/structure/ 数据包路径、tags/worldgen/structure/ 标签）、Common Fields 通用字段（biomes 结构可生成生物群系 ID/列表/标签、spawn_overrides 生物生成覆盖 bounding_box piece/full spawns列表 type/weight/minCount/maxCount、step 装饰阶段 11个阶段 raw_generation到top_layer_modification、terrain_adaptation 地形适应 none/beard_thin/beard_box/bury/encapsulate、type 结构类型）、Structure Types 结构类型（jigsaw 拼图结构模板：start_pool 起始模板池、start_jigsaw_name 起始拼图方块名、start_height 起始高度提供器 project_start_to_heightmap 投影到高度图、use_expansion_hack 允许次要片段超出基础片段Y尺寸、size 生成深度1-20、max_distance_from_center 距离中心最大3D切比雪夫距离、pool_aliases 模板池映射 direct/random/random_group、dimension_padding 垂直填充、liquid_settings 液体设置 apply_waterlogging/ignore_waterlogging；mineshaft 矿井 硬编码 mineshaft_type normal/mesa；nether_fossil 下界化石 高度提供器 放置扫描区块；ocean_ruin 海洋废墟 biome_temp cold/warm large_probability cluster_probability；ruined_portal 废弃传送门 setups 加权列表 placement/air_pocket_probability/mossiness/overgrown/vines/can_be_cold/replace_with_blackstone；shipwreck 沉船 is_beached 搁浅/水中）、Behavior 行为（服务器启动加载一次、/reload 不重新加载、通过结构集或/place structure生成）。"
 whenToUse: "Use when authoring structure JSON files in data/worldgen/structure/."
 
 ---

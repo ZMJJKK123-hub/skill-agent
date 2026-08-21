@@ -1,7 +1,7 @@
 ---
 
 name: forge-gameeffects-sounds
-description: "Forge sounds: sounds.json, SoundEvent registration, and the sound-playing method matrix."
+description: "Forge 声音系统：sounds.json 定义（assets/<namespace>/sounds.json、声音事件、声音文件路径、stream 流式播放、volume/pitch/weight 配置）、SoundEvent 注册（RegistryObject、注册名 = ResourceLocation）、SoundSource 声音类别、声音播放方法矩阵（Level#playSound BlockPos/x,y,z、Level#playLocalSound 客户端本地播放、ClientLevel#playLocalSound、Entity#playSound 实体声音、Player#playSound 玩家声音、LocalPlayer#playLocalSound 客户端玩家声音）、逻辑客户端/服务端行为差异、SoundEvent 服务端引用、sounds.json 数据生成、.ogg 文件格式。"
 whenToUse: "Use when creating sound events or playing sounds in a Forge mod."
 
 ---

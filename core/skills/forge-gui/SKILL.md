@@ -1,7 +1,7 @@
 ---
 
 name: forge-gui
-description: "Forge GUI guide: menus (MenuType, AbstractContainerMenu), screens and HUD, data synchronization."
+description: "Forge GUI 系统：MenuType 注册（MenuSupplier、IContainerFactory、IForgeMenuType#create）、AbstractContainerMenu 菜单（#stillValid、#quickMoveStack、ContainerLevelAccess）、数据同步（Slot、SlotItemHandler、DataSlot、ContainerData、SimpleContainerData）、菜单打开（ServerPlayer#openMenu、MenuProvider、SimpleMenuProvider）、屏幕系统（Screen、AbstractContainerScreen、Renderable、GuiEventListener、ContainerEventHandler、NarratableEntry）、GuiGraphics 渲染（#hLine/#vLine/#fill/#fillGradient、#drawString/#drawCenteredString、#blit 纹理渲染、ARGB 颜色）、相对坐标与 Blit Offset、Overlay 覆盖层（ForgeLayeredDraw、ForgeLayer、AddGuiOverlayLayersEvent、vanilla 渲染顺序）、屏幕组件（#init、#tick、#render、#renderBackground、#renderTooltip）、容器屏幕（imageWidth/imageHeight、leftPos/topPos、#renderBg/#renderLabels）、MenuScreens#register 注册、FMLClientSetupEvent 客户端设置、FeatureFlagSet、 FriendlyByteBuf 额外数据。"
 whenToUse: "Use when implementing containers/menus, screens, or HUD elements."
 
 ---

@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-jukebox-song
-description: "Jukebox song definition JSON fields and playback behavior for datapack-custom music discs."
+description: "Minecraft Jukebox Song 唱片盒歌曲定义：JUKEBOX_SONG 注册表、data/<namespace>/jukebox_song/ 数据包路径、tags/jukebox_song/ 标签、JSON 格式（comparator_output 红石比较器信号强度 0-15、description 歌曲名称文本组件、length_in_seconds 歌曲持续时间秒>0 TPS20转换为游戏刻+20额外刻、sound_event 播放音效事件 忽略客户端传播距离）、Definition Behavior 定义行为（服务器启动加载一次、/reload 不重新加载）、Playback Behavior 播放行为（读取 jukebox_playable 物品栈组件 获取唱片盒歌曲 播放、引用歌曲不存在则无事发生、record 类别 音量4 音高1 立即播放线性音量衰减、最远可听距离 sound_id attenuation_distance×音量4 默认64方块、sound event range不参与计算、作为世界事件发送 忽略传播距离）。"
 whenToUse: "Use when writing jukebox_song definitions or understanding jukebox playback."
 
 ---

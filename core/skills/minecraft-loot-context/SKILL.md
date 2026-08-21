@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-loot-context
-description: "Loot context — parameters and every parameter set (table and predicate-only)."
+description: "Minecraft Loot Context 战利品上下文：Parameters 参数（15/16个参数 根据上下文类型存在：this_entity/interacting_entity/target_entity/last_damage_player/attacking_entity/direct_attacking_entity/damage_source/origin/block_state/block_entity/tool/explosion_radius/enchantment_active/enchantment_level/additional_cost_component_allowed/container）、Predicate/Modifier Target Aliases 谓词/修改器目标别名（this→this_entity、target_entity/interacting_entity/attacking_player→last_damage_player、attacker→attacking_entity、direct_attacker→direct_attacking_entity）、Parameter Sets 参数集（Loot Table Types 战利品表类型：empty 无参数 trial spawner/ominous item spawner、generic 通用 默认参数、advancement_reward 进度奖励、archaeology 考古 刷可疑方块、barter 以物易物 猪灵、block 方块破坏 /loot mine、block_interact 方块交互 雕刻南瓜/剪蜂巢、chest 容器 打开战利品容器、entity 实体死亡 /loot kill、entity_interact 实体交互 刷犰狳、equipment 装备 生成器装备生物、fishing 钓鱼 /loot fish、gift 礼物 猫/村民/嗅探者/鸡/犰狳/熊猫/幼龟、shearing 剪切 蓝沼/蘑菇牛/羊/雪傀儡、vault 宝库）、Predicate-Only Sets 仅谓词集（advancement_entity 进度实体、advancement_location 进度位置、block_use 方块交互、command 命令 /execute if|unless predicate、command_slot_source 命令槽源、enchanted_damage 附魔伤害、enchanted_entity 附魔实体、enchanted_item 附魔物品、enchanted_location 附魔位置、hit_block 击中方块、selector 选择器、villager_trade 村民交易）。"
 whenToUse: "Use when choosing the loot table `type` field or knowing which parameters are available in predicates/modifiers."
 
 ---

@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tutorial-datapack-create
-description: "Tutorial — creating a datapack: setup, pack.mcmeta, namespaces, content."
+description: "Minecraft Tutorial: Making a Data Pack 创建数据包教程：Overview 概述（数据包文件夹或zip 添加/修改函数/战利品表/世界结构/进度/配方/谓词/标签/维度/自定义世界生成、与mod不同 仅向原版固定接口提供数据、驱动原版风格地图和小游戏）、Setup 设置（VS Code 安装扩展 syntax-mcfunction/Datapack Helper Plus Spyglass、DNS问题解决 hosts文件、spyglass.json 配置）、Creating the Data Pack 创建数据包（/datapack create 命令 或手动创建、必需结构 data/ + pack.mcmeta）、pack.mcmeta（pack_format/min_format/max_format 包版本 F3+V查看当前游戏pack_data、不兼容显示但不一定破坏加载、/datapack list 检查）、Adding Content 添加内容（Namespaces 命名空间 data/ 包含多个命名空间 minecraft覆盖/test自定义、Namespace IDs and registries 命名空间ID和注册表 data/<ns>/<registry>/<path>.json 注册<ns>:<path>、Functions 函数、JSON files JSON文件 解压客户端jar浏览原版JSON、Autocomplete DHP自动补全、Structure files .nbt 结构方块保存→复制到包 data/<ns>/structure/、Reference vanilla pack 参考原版包 解压客户端jar 复制调整、With resource packs 结合资源包 "vanilla mods" Beet代码生成工具）、Tools 工具（社区转换器和语法高亮扩展）。"
 whenToUse: "Use when creating your first datapack (setup, structure, pack.mcmeta)."
 
 ---

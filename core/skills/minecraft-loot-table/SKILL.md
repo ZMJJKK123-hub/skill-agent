@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-loot-table
-description: "Loot table format — pools, entries (item/loot_table/slots/tag), invocation, context."
+description: "Minecraft Loot Table 战利品表格式：Vanilla Uses 原版用途（容器内容、可疑方块、方块掉落、实体死亡掉落、钓鱼、猪灵以物易物、不控制经验/无掉落实体）、Built-in Tables 内置表（archaeology/考古、blocks/方块破坏、brush/刷、carve/雕刻、charged_creeper/苦力怕击杀、chests/结构容器、dispensers/发射器、entities/生物死亡、equipment/装备、gameplay/游戏玩法、pots/装饰罐、harvest/收获、shearing/剪切、spawners/生成器胜利奖励）、Custom Invocation 自定义调用（容器 LootTable+LootTableSeed NBT、Trial spawner normal_config/ominous_config、Vault config.loot_table、Mobs DeathLootTable+DeathLootTableSeed、Spawner spawn_data.equipment.loot_table、Advancement rewards、/loot 命令）、Definition Format 定义格式（LOOT_TABLE 注册表、data/<namespace>/loot_table/、JSON type/random_sequence/functions/pools）、Pools 池（rolls 基础抽取数 number provider、bonus_rolls 幸运额外抽取 玩家幸运+附魔等级×值、conditions 谓词、functions 修改器、entries 条目 独立抽取有放回）、Entries 条目（Common fields 通用字段 functions/weight/quality/conditions；Singleton 单项：item 单物品栈、loot_table 从另一表抽取、dynamic 动态（decorated pot shulker box）、empty 无生成、slots 槽源生成、tag 物品标签 expand false单例/true展开；Composite 复合条目：alternatives 选择第一个条件通过的、group 包含所有条件通过的、sequence 从头遍历直到失败）、Item Modifiers and Predicates 修改器和谓词、Loot Context 战利品上下文（生成时创建 持有当前参数）。"
 whenToUse: "Use when authoring loot table JSON files for data packs."
 
 ---

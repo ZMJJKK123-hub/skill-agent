@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-cat
-description: "Cat — spawning, skins, sound variants, taming, breeding, sitting, teleporting, gifts, NBT."
+description: "Minecraft Cat 猫：Spawning 生成（沼泽小屋黑猫生成、村庄猫生成 60秒/随机玩家/8-31方块/5 beds/48方块/10-11外观、基岩版村庄猫配额 1:4村民/17x13x17区域）、Sound Variants 声音变体（Classic 和 Royal 各50%）、Drops 掉落（1-3 XP 成年猫）、Behavior 行为（免疫摔落伤害、看穿隐身玩家、对幻翼嘶叫、苦力怕保持6方块距离、幻翼16方块、水中漂浮）、Stray Cats 流浪猫（野生物群系消失规则、15方块内猎杀兔子和幼龟、16方块内避免玩家、快速移动逃跑、生鱼/生鲑鱼乞讨）、Breeding 繁殖（生鱼喂养、爱心模式、1只幼崽、1-7 XP、5分钟冷却、幼崽继承父母毛色、项圈颜色混合、金蒲公英控制生长）、Healing 治疗（主人生鱼2HP）、Appearance 外观（22种皮肤 11种年龄、黑色/英国短毛/三花/Jellie/波斯/布偶/红色虎斑/暹罗/虎斑/燕尾服/白色、可染色项圈）、Taming 驯服（生鱼1/3概率、平均3条鱼、坐下/站立交互、喜欢坐在箱子/床/熔炉上）、Teleporting 传送（12方块外传送、各种不传送情况）、Gifts 礼物（70%概率晨礼 gamepplay/cat_morning_gift 战利品表）、NBT 数据（CollarColor/sound_variant/variant）。"
 whenToUse: "Use when working with cats (taming, breeding, variants, gifts)."
 
 ---

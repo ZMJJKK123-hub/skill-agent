@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-sound-event
-description: "Sound event — registry usage, sounds.json format, merging, playback."
+description: "Minecraft Sound Event 声音事件（Java Edition）：Sound Events 声音事件（SOUND_EVENT 注册表、内置注册表 可使用未定义ID、播放创建声音事件实例 事件+位置+初始音高/音量、声音事件引用 命名空间ID、play range 播放范围 服务器→客户端发送距离）、Inline Format 内联格式（sound_id 事件引用 + range 最大发送距离 缺失→16×初始音量）、Definition Format 定义格式 sounds.json（assets/<namespace>/sounds.json、replace 替换/合并、sounds 可播放声音条目 列表：name 声音文件路径或事件引用、type file/event、weight 权重、attenuation_distance 线性衰减距离、pitch/volume、preload 预加载、stream 流式解码、subtitle 字幕翻译键）、Merging 合并（底部向上加载、非冲突事件直接加载、replace:true丢弃下层数据 replace:false合并、解析错误丢弃整个资源包、直接/间接自引用导致非致命栈溢出 卸载所有资源包）、Empty References 空引用（minecraft:intentionally_empty 不可替换 无声音无警告、minecraft:empty 占位符 sounds为空 首次播放警告）、Sound Playback 声音播放（Logical Sides 逻辑侧面：Server sounds 服务器声音 范围range或max{16v,16}、Client sounds 客户端声音 仅一个客户端；Categories 类别 master/music/record/weather/block/hostile/neutral/player/ambient/voice/ui；Instance Types 实例类型：Normal 即时非循环线性衰减、Bee flying 蜜蜂飞行、Elytra flying 鞘翅飞行、Entity-bound 实体绑定、Guardian attack 守卫者攻击、Biome ambient 生物群系环境、Minecart 矿车、Minecart riding 矿车骑乘、Sniffer digging 嗅探者挖掘、Underwater ambient 水下环境、Underwater ambient additions 水下环境附加、End flash 末地闪光）、Playback Steps 播放步骤（跳过Silent:true实体→按权重选择声音条目→空引用不播放→最终音量=类别×实例×条目音量0-1→最终音高=实例×条目音高0.5-2→音量0不播放→衰减距离=最终音量×条目衰减距离→静态缓冲 vs 流式）。"
 whenToUse: "Use when defining or referencing sound events in data packs/resource packs (sounds.json, playable events)."
 
 ---

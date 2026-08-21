@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-item-model-mapping
-description: "Item model definition format — condition/range/select dispatch, tints, special models."
+description: "Minecraft Item Model Definition 物品模型定义格式：Root Format 根格式（hand_animation_on_swap 切换动画、oversized_in_gui 超出槽位渲染、swap_animation_scale 动画速度缩放、model 模型定义）、Item Model Definitions 模型定义类型（type 命名空间ID + 类型特定字段 + transformation 可选）：Condition 条件分派 property+on_true/on_false 递归、Range Dispatch 数值分派 scale+entries threshold+fallback、Select 选择分派 cases when value list+fallback、Model 烘焙模型 model路径+tints着色列表（custom_model_data/constant/grass/firework/dye/potion/map_color/team）、Bundle/Selected Item 渲染选中物品、Composite 复合模型列表从后到前渲染、Special 特殊模型渲染 banner/book/chest/copper_golem_statue/end_cube/head/shulker_box）、Transformation 变换（矩阵16浮点 分解形式 right_rotation quaternion/scale/left_rotation/translation）、Condition Properties 条件属性（broken/bundle/has_selected_item/damaged/using_item/custom_model_data/component/has_component/keybind_down）、Range Properties 数值属性（custom_model_data/compass compass摇摆 progress target spawn/lodestone/none/count 栈数量/decay 损坏值/time 时间 clock wobble daytime/random/moon_phase/use_cycle/use_duration）、Select Properties 枚举属性（context_dimension 维度ID/trim_material 装饰材料/block_state 方块属性/component 完整组件值匹配/custom_model_data 字符串/local_time 格式化本地时间）。"
 whenToUse: "Use when authoring item model definition JSON files in assets/<namespace>/items/."
 
 ---

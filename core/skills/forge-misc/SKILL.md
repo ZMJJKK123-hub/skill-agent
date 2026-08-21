@@ -1,7 +1,7 @@
 ---
 
 name: forge-misc
-description: "Forge miscellaneous: configuration (ConfigValue), key bindings, game tests, update checks."
+description: "Forge 杂项功能：配置系统（ForgeConfigSpec、ForgeConfigSpec$Builder、ConfigValue、defineInRange/defineInList/defineList/defineEnum/define 方法、ModLoadingContext#registerConfig、Config.Type CLIENT/COMMON/SERVER、ModConfigEvent$Loading/Reloading 事件）、调试分析器（Debug Profiler、F3+L、ProfilerFiller#push/#pop）、GameTest 游戏测试（@GameTest、GameTestHelper、@GameTestGenerator、@BeforeBatch/@AfterBatch、@GameTestHolder、RegisterGameTestsEvent、TestFunction、模板结构、/test 命令 run/runall/runthis/runthese/runfailed）、按键绑定（KeyMapping、RegisterKeyMappingsEvent、InputConstants$Type/KEYSYM/SCANCODE/MOUSE、IKeyConflictContext、KeyModifier、ClientTickEvent 检查、ScreenEvent$KeyPressed/ScreenEvent$MouseButtonPressed）、Forge 更新检查（updateJSONURL、VersionChecker#getResult、IModInfo、ModContainer、版本状态 FAILED/UP_TO_DATE/AHEAD/OUTDATED/BETA_OUTDATED/BETA/PENDING）。"
 whenToUse: "Use when adding configs, key bindings, game tests, or debugging Forge mods."
 
 ---

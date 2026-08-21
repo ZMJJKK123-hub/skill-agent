@@ -1,7 +1,7 @@
 ---
 
 name: forge-items
-description: "Forge items: Item.Properties, registration, creative tabs, BEWLR dynamic rendering."
+description: "Forge 物品系统：Item 创建（Item$Properties、requiredFeatures/durability/stacksTo/setNoRepair/craftRemainder 属性）、物品注册（RegistryObject、DeferredRegister）、CreativeModeTab 创造模式标签页（BuildCreativeModeTabContentsEvent、CreativeModeTab#builder、displayItems、Forge 扩展 image/label/slot colors）、物品模型定义（assets/<modid>/items/<registry_name>.json、minecraft:model 类型、models/item、blockstates、textures/block）、BEWLR 动态渲染（BlockEntityWithoutLevelRenderer、renderByItem、BakedModel#isCustomRenderer、RenderShape#ENTITYBLOCK_ANIMATED、Item#initializeClient、IClientItemExtensions#getCustomRenderer）、FeatureFlagSet 功能标志、GameTest 测试模板（@GameTestHolder、@GameTest template="empty"）。"
 whenToUse: "Use when creating Forge items or custom item rendering."
 
 ---

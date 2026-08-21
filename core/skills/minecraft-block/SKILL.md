@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-block
-description: "Blocks — behavior, block items, heights, textures, technical/Education/removed blocks."
+description: "Minecraft Block 方块系统：基本单位（1立方米网格、Air 空气变体 cave air/void air）、Block Behavior 方块行为（光照 0-15、重力方块 sand/gravel/anvil/dragon egg/concrete powder/scaffolding/pointed dripstone/snow/suspicious sand）、Block Items 方块物品（放置方块、BlockItem）、Block Heights 方块高度（1x1x1 立方体、slabs/stairs 不完整方块、0.6 高度差行走阈值）、Textures 纹理（16x16 像素、动画纹理 water/lava/nether portal/fire/sea lantern/prismarine 等）、Block List 方块列表、Technical Blocks 技术方块（wall signs/attached stems/wall banners/candle cakes/bubble column/wall heads/moving piston/piston head/potted plants 等）、Education Edition Blocks 教育版方块、Removed Blocks 已移除方块（gear/locked chest/bush/infinite water/lava source 等）、资源包纹理/模型修改。"
 whenToUse: "Use when working with blocks in general (placement, gravity, textures, item forms)."
 
 ---

@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tag-time-line
-description: "Timeline tags and their members, used in dimension type definitions to specify active timelines."
+description: "Timeline tags: #in_overworld (4 entries: universal, day, moon, early_game), #in_nether (1 entry: universal), #in_end (1 entry: universal), #universal (1 entry: villager_schedule), used in dimension type definitions to specify active timelines."
 whenToUse: "Use when querying or writing timeline tags for dimension type definitions."
 
 ---

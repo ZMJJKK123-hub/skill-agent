@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-nbt-format
-description: "NBT format — tag types, storage/network formats, SNBT/JSON conversion."
+description: "Minecraft NBT Format NBT格式：Structure 结构（每个标签 End除外 = 标签ID字节+标签名称+有效负载、End标签单字节ID）、Tag Types 标签类型（13种：End(0)/Byte(1)/Short(2)/Int(3)/Long(4)/Float(5)/Double(6)/ByteArray(7)/String(8)/List(9)/Compound(10)/IntArray(11)/LongArray(12)）、Storage Format 存储格式（NBT文件=一个根复合标签/列表 单个子项、可选未压缩/GZip/Zlib压缩；Java大端 定长；Bedrock小端 定长 字符串原始UTF-8；level.dat 8字节头 4字节版本+4字节NBT字节计数）、Transfer Format 传输格式（流式未压缩；Java 根复合标签名称省略 标签ID直接跟负载；Bedrock zigzag VarInt编码 Int/Long 1-5/1-10字节 String长度unsigned VarInt）、Conversion 转换（Program Objects 程序对象 运行时数据 运行时转换；SNBT 文本中介 NBT↔玩家 SNBT→NBT 额外标签形式转换 NBT→SNBT 固定表示 聊天输出着色；JSON 不兼容NBT 嵌入NBT通常存JSON文本为字符串 信息丢失 null/异构列表可能失败）、Modifying Objects via NBT 通过NBT修改对象（转换传入SNBT/JSON为NBT 应用可用属性 未知属性丢弃 类型强制：命名空间ID字符串转换、布尔数值转换、数值属性类型转换、字符串转换、列表/数组类型转换、复合标签非复合转换空）、Testing NBT Tags 测试NBT标签（@e[nbt={...}] 部分匹配 目标包含提供标签即通过、列表匹配忽略顺序和数量、数组要求精确匹配 长度+顺序、标签名称和数据类型必须精确匹配）。"
 whenToUse: "Use when working with NBT at the binary level, /data commands, or NBT matching in selectors."
 
 ---

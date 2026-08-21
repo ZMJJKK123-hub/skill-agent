@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-command-context
-description: "Command context — parameters, static vs dynamic, per-scenario contexts."
+description: "Minecraft Command Context 命令上下文：Parameters 参数（permission level 权限等级、executor 执行者名称+实体、environment 环境 维度/位置/旋转/锚点、output feedback 输出反馈）、Behavior 行为（/function 继承执行者/环境/权限 不继承输出反馈、函数命令权限上限2）、Static vs Dynamic Parameters 静态vs动态参数（Java 执行者名称和环境参数静态、/execute 冻结维度和旋转、align/in/positioned/facing/rotated 冻结位置/旋转、anchored 锚定动态位置到脚/眼、Bedrock 多参数动态获取）、Parameters in Detail 参数详情（Permission level 不可修改、Executor 执行者 空/命令方块、Execution dimension 维度 用于坐标/距离选择器、Execution position 位置 相对坐标原点、Execution rotation 旋转 局部坐标系、Execution anchor 锚点 脚/眼 Java独有、Output feedback 输出反馈 成功计数）、Contexts per Scenario 各场景上下文（Server console 级别4、Server-executed functions 级别2/1、Player 玩家聊天/动态、Command block 级别2/1、Command block minecart 动态、Sign 标志 级别2、Advancement reward function 级别2、Enchantment run_function 级别2、Bedrock entity-command 级别1 动态、Test environment 级别2）、Text Component Parsing 文本组件解析（继承命令上下文、score name:* 显示读者分数、命令调用组件、Written book/Sign/Text display entity/Item modifiers）。"
 whenToUse: "Use when reasoning about how commands/functions/text components resolve (executor, coordinates, permissions) in different contexts."
 
 ---

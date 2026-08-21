@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tag-fluid
-description: "Java Edition fluid tags and their members controlling fluid behavior."
+description: "Java Edition fluid tags: #water (2 entries) controlling coral survival, farmland moisture, sponge absorption, underwater fog, swimming behavior, and more; #lava (2 entries) controlling cactus breaking, lava texture effects, smoke particles, entity burning, and stone formation; plus #bubble_column_can_occupy, #supports_frogspawn, #supports_lily_pad."
 whenToUse: "Use when querying fluid tags (water, lava etc.) or judging which fluid tag controls a game behavior."
 
 ---

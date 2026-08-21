@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-cat-variant
-description: "Cat variant definition JSON: CAT_VARIANT registry, adult/baby textures, spawn conditions."
+description: "Minecraft Cat Variant 猫变体定义：CAT_VARIANT 注册表、data/<namespace>/cat_variant/ 数据包路径、tags/<namespace>/tags/cat_variant/ 标签、JSON 格式（asset_id 成年猫纹理、baby_asset_id 幼猫纹理、spawn_conditions 生成条件）、asset_id/baby_asset_id 纹理解析（assets/<namespace>/textures/<path>.png）、Spawn Conditions 生成条件选择器（condition.type 生物群系/月光亮度/结构、biome biomes 标签/ID/列表、moon_brightness range 范围（满月1/新月0）、structure structures 标签/ID/列表、priority 优先级 随机打破平局）、服务器启动加载（/reload 不重新加载）、CAT_VARIANT 注册表至少一个元素、最高优先级有效选择器生成猫变体。"
 whenToUse: "Use when writing datapack cat_variant definitions or custom cat variants."
 
 ---

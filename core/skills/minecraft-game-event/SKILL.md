@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-game-event
-description: "Game events — vibration system, listeners, detection rules, event list."
+description: "Minecraft Game Event 游戏事件：Game Events and Vibrations 游戏事件与振动（事件记录位置+上下文实体/方块、创建振动 源为事件位置、投射物源实体为射击者、振动频率 红石信号强度）、Monitoring 监测（Non-vibration systems 非振动系统：sculk catalysts 检测 entity_die 8/10方块扩散sculk、allays 检测 jukebox_play/jukebox_stop_play 10方块跳舞；Vibration system 振动系统：保存到区块数据 渲染振动粒子、vibration listeners 振动监听器 检测半径+可听事件列表、Receivers 接收器：sculk sensor 半径8 几乎所有事件 步入强制接收 step/sculk_patch 忽略自身 block_place/block_destroy、calibrated sculk sensor 半径16 红石输入限制、sculk shrieker 半径8 监听 sculk_sensor_tendrils_clicking、allay 半径16 监听 note_block_play、warden 半径16 几乎所有事件）、Detection Rules 检测规则（源在监听器半径内、事件可听、源实体非Warden/非旁观者/非潜行 hit_ground/projectile_shoot/step/swim/item_interact_start/item_interact_finish/非含羊毛地毯物品实体、源方块非羊毛地毯、无羊毛阻挡线）、Vibration Selection 振动选择（最近距离优先 然后最高频率、延迟 floor(distance) 刻）、Game Event List 事件列表（block_activate/block_attach/block_change/block_close/block_deactivate/block_destroy/block_detach/block_open/block_place/bounce/container_close/container_open/dispense_fail/drink/eat/elytra_glide/entity_act/entity_action/entity_damage/entity_die/entity_dismount/entity_interact/entity_mount/entity_move/entity_place/entity_roar/equip/explode/flap/fluid_pickup/fluid_place/hit_ground/instrument_play/item_interact_finish/item_interact_start/jukebox_play/jukebox_stop_play/lightning_strike/multi_item_swap/note_block_play/piston_contract/piston_extend/prime_fuse/projectile_land/projectile_shoot/sculk_patch/sculk_sensor_tendrils_clicking/shear/shriek/single_item_swap/splash/step/swim/teleport/unequip）。"
 whenToUse: "Use when working with game events, sculk sensors, or vibration-based mechanics."
 
 ---

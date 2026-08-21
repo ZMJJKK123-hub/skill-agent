@@ -1,7 +1,7 @@
 ---
 
 name: forge-datagen-server
-description: "Forge server data generation: recipes, loot tables, advancements, tags, and global loot modifiers."
+description: "Forge 服务端数据生成：AdvancementProvider 进度 advancement 生成（ForgeAdvancementProvider、Advancement$Builder、criteria/rewards/display）、DatapackBuiltinEntriesProvider 数据包注册表对象生成（RegistrySetBuilder、BootstapContext#register、HolderGetter 查找）、GlobalLootModifierProvider 全局战利品修改器生成（GlobalLootModifierProvider#start、LootItemCondition）、LootTableProvider 战利品表生成（LootTableSubProvider、BlockLootSubProvider、EntityLootSubProvider、LootTable$Builder、LootPool、LootPoolEntryContainer、LootItemCondition、LootItemFunction、NumberProvider）、RecipeProvider 配方生成（RecipeBuilder、ShapedRecipeBuilder、ShapelessRecipeBuilder、SimpleCookingRecipeBuilder、SingleItemRecipeBuilder、SmithingTransformRecipeBuilder、SmithingTrimRecipeBuilder、SpecialRecipeBuilder、ConditionalRecipe、IConditionBuilder）、TagsProvider 标签生成（TagAppender、add/addOptional/addTag/addOptionalTag/replace/remove、BlockTagsProvider/ItemTagsProvider/EntityTypeTagsProvider/FluidTagsProvider、IntrinsicHolderTagsProvider）、GatherDataEvent 数据收集、ExistingFileHelper 文件验证。"
 whenToUse: "Use when data generating server data (recipes, loot, advancements, tags)."
 
 ---

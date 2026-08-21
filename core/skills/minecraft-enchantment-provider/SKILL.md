@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-enchantment-provider
-description: "Enchantment provider definition JSON: the three types and built-in behavior."
+description: "Minecraft Enchantment Provider 附魔提供者定义：ENCHANTMENT_PROVIDER 注册表、data/<namespace>/enchantment_provider/ 数据包路径、tags/enchantment_provider/ 标签、JSON 格式（type 类型）、三种 Provider Types 提供者类型（by_cost 附魔消耗型：enchantments 可选附魔 ID/标签/数组、cost 附魔消耗整数提供器；by_cost_with_difficulty 附魔消耗+难度型：enchantments、max_cost_span 难度调整 0-10000、min_cost 最小消耗 1-10000 最大消耗 n+md；single 单附魔型：enchantment 附魔ID、level 附魔等级整数提供器）、Definition Behavior 定义行为（服务器启动加载一次、/reload 不重新加载、内置提供者 硬编码调用 数据包定义提供者永不使用）、Built-in Providers 内置提供者（enderman_loot_drop 总是应用、mob_spawn_equipment 骷髅陷阱总是应用 自然生成概率应用、pillager_spawn_crossbow 概率应用、raids/* 概率应用 按不祥之兆等级缩放）。"
 whenToUse: "Use when writing datapack enchantment_provider definitions or understanding the enchanting source mechanism."
 
 ---

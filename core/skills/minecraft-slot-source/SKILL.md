@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-slot-source
-description: "Slot source format — all slot source types (slot_range, contents, group...)."
+description: "Minecraft Slot Source 槽源格式：Definition Format 定义格式（26.3前仅战利品表使用、26.3后 SLOT_SOURCE 注册表 data/<namespace>/slot_source/、对象 type+字段 或槽源列表 列表=group行为）、Types 类型列表（group 分组 terms 递归列表 顺序连接槽列表 保留重复、filtered 过滤 item_filter 物品栈谓词+slot_source 递归 丢弃失败槽、limit_slots 限制 limit 最大数量+slot_source 保留前limit个槽、slot_range 槽范围 source 战利品上下文来源 block_entity/this/attacking_entity/last_damage_player/direct_attacker/target_entity/interacting_entity 默认container + slots 槽范围如armor.chest/container.* 26.3可直接指定槽范围转换为此类型）、contents 内容 component bundle_contents/charged_projectiles/container+slot_source 递归 获取输入槽物品的容器组件槽 空/缺失物品或组件无槽、reference 引用 26.3 name 槽源ID 循环解析失败、empty 空 无槽）。"
 whenToUse: "Use when writing slot sources in loot tables or /item commands."
 
 ---

@@ -1,7 +1,7 @@
 ---
 
 name: forge-datagen
-description: "Forge data generators: runData task, generator modes, ExistingFileHelper, asset/server providers."
+description: "Forge 数据生成器：runData 任务、DataGenerator 系统、ExistingFileHelper 文件验证（GatherDataEvent#getExistingFileHelper）、生成器模式（--client/--server/--dev/--reports/--all）、DataProvider 注册、客户端资产提供器（LanguageProvider、SoundDefinitionsProvider、ModelProvider、BlockStateProvider）、服务端数据提供器（GlobalLootModifierProvider、DatapackBuiltinEntriesProvider、LootTableProvider、RecipeProvider、TagsProvider、AdvancementProvider）、RegistrySetBuilder 使用、SNBT↔NBT 转换、注册块/物品/命令转储。"
 whenToUse: "Use when programmatically generating mod assets/data with Forge data generators."
 
 ---

@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tag-dialogue
-description: "Dialogue tags and the two built-in tags, used when writing dialogue datapacks."
+description: "Dialogue tags: #pause_screen_additions (replaces pause menu buttons with custom dialogues) and #quick_actions (opened via G key binding for quick actions), used for custom dialogue systems in data packs."
 whenToUse: "Use when defining or invoking datapack dialogue tags (dialog_list etc.)."
 
 ---

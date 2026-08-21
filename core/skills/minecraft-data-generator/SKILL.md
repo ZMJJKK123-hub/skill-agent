@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-data-generator
-description: "Data generator — running it, NBT↔SNBT conversion, exports, report tools."
+description: "Minecraft Data Generator 数据生成器：Launch Arguments 启动参数（--dev NBT→SNBT转换、--reports 报告工具、--server SNBT→NBT转换+服务端数据包导出、--all 全部、--input 输入目录、--output 输出目录、--validate 验证）、Export Tools 导出工具（NBT→SNBT --dev + --input GZip压缩.nbt转换、SNBT→NBT --server + --input .snbt转换、Server datapack export --server 可写注册表条目/进度/战利品表/配方/注册表标签、Client resource pack export --client 纹理图集/装备模型/方块状态映射/物品模型定义）、Reports 报告（blocks.json 方块状态 definition/properties/states、commands.json 命令树节点 type/children/redirect/executable/parser/permissions、datapacks.json 数据包结构 others/registries、json-rpc-api-schema.json 服务器管理JSON-RPC模式、packets.json 网络数据包 handshake/login/configuration/play/status 各阶段 protocol_id、registries.json 注册表 default/entries/protocol_id、biome_parameters/ 每维度生物群系参数 continentalness/depth/erosion/humidity/temperature/weirdness/offset、components/ 默认组件 registry entries components patch）。"
 whenToUse: "Use when exporting Minecraft's data-driven files, converting NBT/SNBT, or generating internal reports (blocks, commands, registries, packets)."
 
 ---

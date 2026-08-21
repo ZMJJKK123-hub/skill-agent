@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tutorial-datapack-optimization
-description: "Tutorial — optimizing datapacks: profiling, selectors, NBT, macros."
+description: "Minecraft Tutorial: Optimizing Data Packs 数据包优化教程：Profiling 性能分析（/perf 专用服务器 F3+L单人游戏、debug/profiling/<time>-<world>-<version>.zip server/profiling.txt、函数性能 tick>commandFunctions/tick>levels>ServerLevel tick>scheduledFunctions）、Best Practices 最佳实践（Reduce Running Commands 减少运行命令：/schedule 自调度循环 hook #minecraft:load、periodic_tick 实体谓词 每实体频率门控、Advancements on players 进度代替@a扫描 推荐使用advancement revoke、Enchantments on mobs 附魔效果服务器端每实体运行）、Optimize NBT Operations 优化NBT操作（NBT访问/修改昂贵 保存/修改/重载 创建新实体；推荐 execute if items entity 代替nbt匹配、predicates代替nbt匹配、item modifiers代替data commands、Command storage caching 命令存储缓存 复制到storage一次 处理后写回）、Reduce execute subcommands 减少execute子命令（effect give直接代替execute as run、条件移入选择器参数、丢弃无用execute run）、Optimize Target Selectors 优化目标选择器（添加type= 除非每个实体类型都重要、减少@e使用 合并选择器用@s执行函数、添加distance= 当实体附近）、Optimize Macro Functions 优化宏函数（避免不必要宏、缓存约8个参数集 拆分16参数宏为两个8参数宏显著加速）、Alternatives 替代方案（Player-distance gating 玩家距离门控 标签活跃实体、return run匹配 互斥情况提前返回、Binary trees 二叉树 极端情况数 O(log n)匹配）。"
 whenToUse: "Use when optimizing command-heavy datapacks or debugging performance."
 
 ---

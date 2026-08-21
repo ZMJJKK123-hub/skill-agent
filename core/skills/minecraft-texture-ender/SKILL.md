@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-texture-ender
-description: "The Texture Ender utility: converts legacy texture packs to resource packs."
+description: "Minecraft Texture Ender 纹理终结者工具：Java实用程序 将纹理包转换为资源包 通过移动所有可能的文件到新文件名和目录、Related tools 相关工具（Unstitcher 拆分纹理图集、Slicer 切片纹理）。"
 whenToUse: "Use when converting a legacy texture pack into a resource pack, or understanding the Texture Ender utility."
 
 ---

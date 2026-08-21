@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-item
-description: "Items — behavior (stacking, rarity, durability, cooldowns), categories, removed."
+description: "Minecraft Item 物品系统：Behavior 行为（Held items 持有物品 通用实体数据、use behaviors 使用行为 放置方块/实体、Stacking 堆叠 大多数64 部分16 工具/盔甲/药水不堆叠、Rarity 稀有度 Common/Uncommon/Rare/Epic 颜色名称、Anvil rename 铁砧重命名 自定义名称斜体、Lore lore数据组件、Enchantments 附魔 效果+紫色光泽动画 提高稀有度、repair_cost 铁砧操作记录、Durability 耐久 消耗因素 unbreakable 组件阻止损失 0耐久破坏 创造模式不消耗、Attribute modifiers 属性修饰符 工具主手/盔甲穿戴、Cooldowns 冷却 半透明白色叠加层 末影珍珠/紫颂果/风弹/山羊角/盾牌被斧击中等、Crafting remainders 合成剩余物 熔炼/酿造后剩余 桶返回空桶 蜂蜜瓶/龙息返回玻璃瓶）、Item List 物品列表（Blocks liquids entities 产生方块/液体/实体的物品、World interaction 世界交互物品、Indirect use 间接使用物品、Spawn eggs 刷怪蛋）、Education Edition Items 教育版物品、Removed Items 已移除物品（copper horn/fish/horse saddle/quiver/restoration potion/custom spawn egg/leather chainmail）。"
 whenToUse: "Use when working with items in general — behavior, stacking, durability, rarity, remainders."
 
 ---

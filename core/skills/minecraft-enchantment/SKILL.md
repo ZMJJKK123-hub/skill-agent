@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-enchantment
-description: "Enchantment definition format — root fields, cost ranges, effect components."
+description: "Minecraft Enchantment Definition 附魔定义：Definition Format 定义格式（ENCHANTMENT 注册表、data/<namespace>/enchantment/ 数据包路径、tags/enchantment/ 标签、JSON 根字段 description/anvil_cost/max_level/weight/min_cost/max_cost/supported_items/primary_items/slots/exclusive_set/effects）、Cost Ranges 范围（min_cost/max_cost base+per_level_above_first*(n-1)、anvil_cost 铁砧消耗 XP 等级）、Effect Components 效果组件（Value-Effect Components 值效果组件：block_experience/damage/knockback/projectile_damage/sweeping_damage/smash_damage_per_fallen_block/mob_experience/fishing_time_reduction/fishing_luck_bonus/repair_with_xp/repair_cost；Entity-Effect Components 实体效果组件：on_hit_block/on_death/post_attack/tick/projectile_spawned；Location-Dependent Component 位置依赖组件：location_changed；Damage Immunity 伤害免疫：damage_immunity；Other Components 其他组件：attributes/crossbow_charging_sounds/trident_sound/unit components）、Enchantment Effects 附魔效果（Value Effects 值效果：all_of/add/multiply/set/remove_binomial/exponential；Entity Effects 实体效果：all_of/apply_exhaustion/apply_impulse/apply_mob_effect/change_item_damage/damage_entity/explode/ignite/play_sound/replace_block/replace_disk/run_function/set_block_properties/spawn_particles/summon_entity；Location-Dependent Effects 位置依赖效果；Attribute Effects 属性效果 temporary modifiers）。"
 whenToUse: "Use when authoring enchantment JSON files in data packs."
 
 ---

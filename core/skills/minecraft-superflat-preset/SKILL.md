@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-superflat-preset
-description: "Flat level generator preset JSON: FLAT_LEVEL_GENERATOR_PRESET registry."
+description: "Minecraft Flat Level Generator Preset 超平坦世界生成器预设：FLAT_LEVEL_GENERATOR_PRESET 注册表、data/<namespace>/worldgen/flat_level_generator_preset/ 数据包路径、tags/flat_level_generator_preset/ 标签、JSON 格式（display 预设图标物品命名空间ID、settings 超平坦生成器设置 compound）、Definition Behavior 定义行为（服务器启动加载一次、/reload 不重新加载、仅在世界创建前有效）、预设使用（超平坦"选择预设"屏幕显示、需要#visible标签才显示、显示图标+预设代码+层方块 无物品方块显示空气）、Translation Key 翻译键 flat_world_preset.<namespace>.<name>。"
 whenToUse: "Use when writing datapack flat_level_generator_preset definitions."
 
 ---

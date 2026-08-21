@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-block-entity-data-format
-description: "Block entity NBT format — common tags, per-block-entity tags, chunk storage (keepPacked)."
+description: "Minecraft Block Entity 方块实体数据格式：Common Tags 通用标签（x/y/z 坐标、id 命名空间 ID、components 数据组件）、Per-block-entity Tags 各方块实体标签（Banner patterns/colors、Barrel/Container Items+LootTable、Beacon Levels/primary_effect/secondary_effect、Beehive bees 列表、Brewing Stand BrewTime/Fuel/Items、Campfire CookingTimes/Items、Chest/Trapped Chest/Ender Chest/Shulker Box Items、Command Block auto/Command/SuccessCount、Comparator OutputSignal、Crafter crafting_ticks_remaining/disabled_slots、Decorated Pot sherds、Dispenser/Dropper Items、End Gateway Age/exit_portal、Hanging Sign/Sign front_text/back_text/is_waxed、Hopper TransferCooldown、Jigsaw Block name/final_state/joint/pool、Jukebox RecordItem、Lectern Book/Page、Monster Spawner spawn 数据、Moving Piston blockState/progress、Sculk Catalyst/Shrieker listener、Skull profile（Base64 textures）、Structure Block mode/rotation/mirror/size、Trial Spawner normal_config/ominous_config、Vault config/server_data/shared_data）、Storage Format 存储格式（chunk block_entities 列表、keepPacked 标志、world generation DUMMY ID 反序列化）。"
 whenToUse: "Use when reading or writing block entity NBT in commands, data packs, or save files."
 
 ---

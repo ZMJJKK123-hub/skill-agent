@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-tag-function
-description: "Function tags (#load, #tick) usage and a JSON example, for organizing datapack functions."
+description: "Function tags: #load (runs on world load/server start and every datapack reload) and #tick (runs at the start of every game tick), used to organize and invoke datapack functions in specific contexts."
 whenToUse: "Use when organizing datapack functions with function tags (#load, #tick)."
 
 ---

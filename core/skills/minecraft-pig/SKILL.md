@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-pig
-description: "Pig — spawning, variants, sound variants, drops, breeding, riding (carrot on a stick speed), NBT."
+description: "Minecraft Pig 猪：Spawning 生成（grass blocks/light≥7/2 air blocks/5% babies、biome variants 温带/寒冷/温暖、平原/沼泽/风袭山丘/森林/干旱生物群系自然生成、村庄猪栏生成）、Sound Variants 声音变体（Big/Classic/Mini 各33.3%）、Drops 掉落（生猪肉 烧死时变熟/Fire Aspect、鞍、1-3 XP）、Behavior 行为（漫游/避免悬崖/岩浆/受伤逃跑、闪电将猪变成僵尸猪灵）、Breeding 繁殖（胡萝卜/马铃薯/甜菜根 爱心模式 1只幼崽 1-7 XP 5分钟冷却、20分钟成长、金蒲公英控制生长）、Riding 骑乘（鞍+胡萝卜钓竿控制、自动跳过1方块高度、闪电移除鞍、速度2.42方块/秒 胡萝卜钓竿加速 1+1.15×sin(t/t0·π)×base）、Data Values 数据（sound_variant 变体 variant 变体 温带/寒冷/温暖）。"
 whenToUse: "Use when working with pigs (breeding, riding, variants)."
 
 ---

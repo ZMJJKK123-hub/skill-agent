@@ -1,7 +1,7 @@
 ---
 
 name: minecraft-json
-description: "JSON syntax used in Minecraft: values, objects, arrays, strings, numbers."
+description: "Minecraft JSON 语法：Syntax 语法（Unicode码点序列、6个结构符号 []{}:,, 字符串、数字、3个字面量 true/false/null null在数据包标准文件中不使用）、Data Value Types 数据值类型（Object 对象 {} 键值对 键唯一、Array 数组 [] 逗号分隔 可混合类型、String 字符串 双引号+转义、Number 数字 整数/小数/指数、Boolean 布尔 true/false）、Serialization 序列化（数据包文件加载时反序列化为程序对象、游戏验证数据 额外对象成员可能丢弃 数值范围重新计算、严格验证 非法值可能抛出异常阻塞加载、所有必要属性必须存在 否则加载失败）、Usage 使用场景（Bedrock 书/标志牌/自定义名称/tellraw/titleraw、pack.mcmeta/manifest.json、资源包模型/音效/UI文件、行为包实体行为文件、进度和统计数据、启动器配置、Java数据包文件：进度/战利品表/标签/配方/维度/维度类型/谓词等）。"
 whenToUse: "Use when writing or validating JSON files in datapacks and resource packs."
 
 ---
