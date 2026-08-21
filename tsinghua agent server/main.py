@@ -1048,7 +1048,14 @@ def _stream_agent(messages: list, session_id: str, base_url: str):
     created = int(time.time())
 
     yield _sse_frame(cid, created, {"role": "assistant"})
-    yield _sse_frame(cid, created, {"reasoning": "正在调用自研 Agent 引擎…"})
+    is_first_request = not any(
+        isinstance(m, dict) and m.get("role") == "assistant"
+        for m in messages
+    )
+    if is_first_request:
+        yield _sse_frame(cid, created, {"reasoning": "🔧 首次启动准备中，会稍微慢一点，请耐心等待～"})
+    else:
+        yield _sse_frame(cid, created, {"reasoning": "正在调用自研 Agent 引擎…"})
 
     session_root = _session_workdir(session_id)
     start_ts = time.time()
