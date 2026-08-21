@@ -117,13 +117,19 @@ class SkillLoader:
 
     @staticmethod
     def _parse_frontmatter(raw: str) -> tuple[dict, str]:
-        """分离 YAML frontmatter 和 markdown 正文。"""
+        """分离 YAML frontmatter 和 markdown 正文；坏 YAML 容错，不让启动崩溃。"""
+        if raw.startswith("\ufeff---"):
+            raw = raw[1:]  # UTF-8 BOM 兼容
         if not raw.startswith("---"):
             return {}, raw
         parts = raw.split("---", 2)
         if len(parts) < 3:
             return {}, raw
-        meta = yaml.safe_load(parts[1]) or {}
+        try:
+            meta = yaml.safe_load(parts[1]) or {}
+        except Exception as e:
+            logger.warning(f"SkillLoader 跳过坏 frontmatter YAML（按无 frontmatter 处理）: {e}")
+            return {}, raw
         body = parts[2]
         return meta, body
 
