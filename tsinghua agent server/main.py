@@ -445,6 +445,10 @@ def _easter_egg_response(messages: list) -> str | None:
             return "pong 🏓（彩蛋：Ping-Pong！）"
         if c in ("彩蛋", "easter egg", "easteregg"):
             return "🎉 你发现了一个彩蛋！谢谢你的好奇，祝你今天也开开心心～"
+        if c in ("猜谜语", "谜语", "来个谜语"):
+            return "🤔 谜语：什么东西越洗越脏？……答案是：水！💧"
+        if c in ("绕口令", "来段绕口令"):
+            return "🥵 绕口令：四是四，十是十，十四是十四，四十是四十。别被绕晕啦～"
         if c in ("你吃饭了吗", "吃饭了吗", "你吃了吗"):
             return "😋 我刚吃过一段全是 0 和 1 组成的代码大餐！你呢？"
         if c in ("你多大了", "你几岁", "你的年龄"):
