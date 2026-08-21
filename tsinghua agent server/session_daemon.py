@@ -20,6 +20,9 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from dotenv import load_dotenv
+load_dotenv(PROJECT_ROOT / ".env", override=True)
+
 session_dir = Path(sys.argv[1]).resolve()
 session_dir.mkdir(parents=True, exist_ok=True)
 
