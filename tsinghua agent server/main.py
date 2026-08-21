@@ -100,6 +100,16 @@ PERSONA_PROMPTS = {
     "senpai": "你是一位热心靠谱的学长/前辈，说话亲切轻松，偶尔会吐槽，但总能把事情讲清楚。",
 }
 
+PERSONA_DISPLAY = {
+    "meow": "喵娘",
+    "cool": "高冷技术助理",
+    "cheer": "元气少女",
+    "elegant": "优雅姐姐",
+    "mystic": "神秘占卜师",
+    "senpai": "学长前辈",
+    "default": "通用",
+}
+
 
 # ---------------------------------------------------------------------------
 # FastAPI 实例
@@ -271,6 +281,34 @@ def _usage_zero() -> dict:
     return {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
 
+def _quick_chat_response(content: str, stream: bool):
+    """快速构造 OpenAI 完整回复（非流式 JSON 或流式 SSE）。"""
+    if stream:
+        cid = _new_id()
+        created = int(time.time())
+
+        def gen():
+            yield _sse_frame(cid, created, {"role": "assistant"})
+            for i in range(0, len(content), 8):
+                yield _sse_frame(cid, created, {"content": content[i:i + 8]})
+            yield _sse_frame(cid, created, {}, finish_reason="stop", usage=_usage_zero())
+            yield "data: [DONE]\n\n"
+
+        return StreamingResponse(gen(), media_type="text/event-stream")
+    return JSONResponse({
+        "id": _new_id(),
+        "object": "chat.completion",
+        "created": int(time.time()),
+        "model": "tsinghua-agent",
+        "choices": [{
+            "index": 0,
+            "message": {"role": "assistant", "content": content},
+            "finish_reason": "stop",
+        }],
+        "usage": _usage_zero(),
+    })
+
+
 def _sse_frame(cid: str, created: int, delta: dict, finish_reason=None, usage=None, error=None, extra=None) -> str:
     choice = {"index": 0, "delta": delta, "finish_reason": finish_reason}
     chunk = {
@@ -407,6 +445,8 @@ def _easter_egg_response(messages: list) -> str | None:
             return "pong 🏓（彩蛋：Ping-Pong！）"
         if c in ("彩蛋", "easter egg", "easteregg"):
             return "🎉 你发现了一个彩蛋！谢谢你的好奇，祝你今天也开开心心～"
+        if c in ("人格列表", "有哪些人格", "有哪些人格可以切换"):
+            return "可切换人格：喵娘、高冷技术助理、元气少女、优雅姐姐、神秘占卜师、学长前辈、通用。例如：切换成喵娘 🐱"
         if c in ("help", "帮助", "你能做什么", "你会什么"):
             return ("✨ 我能做很多事：\n"
                     "· 普通聊天、答疑\n"
@@ -672,6 +712,17 @@ async def chat_completions(
             }],
             "usage": _usage_zero(),
         })
+
+    # 当前人格查询
+    current_queries = {"你现在是什么人格", "当前人格", "你是什么人格"}
+    if any(
+        isinstance(m, dict) and m.get("role") == "user" and str(m.get("content", "")).strip() in current_queries
+        for m in messages
+    ):
+        key = _resolve_persona_key(session_id)
+        display = PERSONA_DISPLAY.get(key, key or "通用")
+        reply = f"我当前的人格是：{display}。想换人格的话，跟我说“切换成喵娘”就好啦～"
+        return _quick_chat_response(reply, stream)
 
     # 轻量彩蛋：先于 agent 返回，保证快速、有趣
     egg = _easter_egg_response(messages)
