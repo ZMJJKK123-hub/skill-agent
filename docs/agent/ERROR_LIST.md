@@ -685,3 +685,7 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **Villager offer injection pattern**: read `AbstractVillager#getOffers()`, append a `MerchantOffer`, guard duplicates by checking an equivalent offer already exists; server-side interaction only.
 - Grind note: heaviest session so far (~110 compile iterations) — trade/offer zone plus client-render deliberation; budget cycles accordingly.
 - Agent misflagged `Item id not set` NPE as NEW_ERROR; it is already documented (setId requirement). Reminder: grep ERROR_LIST before claiming NEW_ERROR.
+## 2026-08-21 infra - .env BOM breaks key parsing
+
+- **PowerShell `Set-Content -Encoding UTF8` writes a BOM**: `_load_env_file` then sees the first key as `\ufeffDEEPSEEK_API_KEY` and "auto" mode finds no key.
+  - Fix: write `.env` with `[IO.File]::WriteAllText($path, $text, [Text.UTF8Encoding]::new($false))` (no BOM), or strip BOM on parse.
