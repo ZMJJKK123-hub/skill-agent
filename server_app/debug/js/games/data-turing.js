@@ -68,6 +68,8 @@ class DataTuring extends BaseGame {
     this.tick = 0;
     this.success = false;
     this.fail = false;
+    this.bestScore = parseInt(localStorage.getItem('dtBest') || '0');
+    this.trailParticles = [];
   }
 
   addNode(type) {
@@ -139,7 +141,12 @@ class DataTuring extends BaseGame {
       }
       b.x = lerp(from.x, to.x, b.progress);
       b.y = lerp(from.y, to.y, b.progress);
+      // Trail particles
+      if (self.tick % 3 === 0) self.trailParticles.push({ x: b.x, y: b.y, life: 15 });
     });
+    // Update trail
+    this.trailParticles.forEach(function(p) { p.life--; });
+    this.trailParticles = this.trailParticles.filter(function(p) { return p.life > 0; });
   }
 
   render() {
@@ -157,6 +164,13 @@ class DataTuring extends BaseGame {
       var mx = (f.x + t.x) / 2;
       c.bezierCurveTo(mx, f.y, mx, t.y, t.x, t.y);
       c.stroke();
+    });
+    // Render trail particles
+    this.trailParticles.forEach(function(p) {
+      c.fillStyle = 'rgba(0,212,255,' + (p.life / 15 * 0.4) + ')';
+      c.beginPath();
+      c.arc(p.x, p.y, 3, 0, Math.PI * 2);
+      c.fill();
     });
     this.balls.forEach(function(b) {
       c.fillStyle = b.color || '#00d4ff';
@@ -187,6 +201,11 @@ class DataTuring extends BaseGame {
     c.font = '11px monospace';
     c.textAlign = 'left';
     c.fillText('Target: ' + (this.target === 'even' ? 'Even numbers' : 'Odd numbers') + '  Score: ' + this.score, 8, 18);
+    c.fillStyle = '#3a4a5a';
+    c.font = '9px monospace';
+    c.textAlign = 'right';
+    c.fillText('Best: ' + this.bestScore, this.w - 8, 18);
+    c.textAlign = 'left';
     c.fillText('Drag nodes to route, click RUN', 8, 34);
     if (this.success) { c.fillStyle = '#00ff9f'; c.font = '20px monospace'; c.textAlign = 'center'; c.fillText('CORRECT!', this.w / 2, this.h / 2); }
     if (this.fail) { c.fillStyle = '#ff3355'; c.font = '20px monospace'; c.textAlign = 'center'; c.fillText('WRONG OUTPUT', this.w / 2, this.h / 2); }
@@ -195,7 +214,11 @@ class DataTuring extends BaseGame {
   checkResult() {
     this.runningSim = false;
     if (this.fail) { sfx('lose'); }
-    else { this.success = true; sfx('win'); toast('Logic verified!'); }
+    else {
+      this.success = true; sfx('win');
+      if (this.score > this.bestScore) { this.bestScore = this.score; localStorage.setItem('dtBest', this.bestScore); }
+      toast('Logic verified!');
+    }
   }
 
   stop() {

@@ -38,8 +38,11 @@ class Snake2048 extends BaseGame {
     this.tick = 0;
     this.spd = 8;
     this.autoActive = 0;
+    this.autoCooldown = 0;
     this.gameOver = false;
     this.mergeFlash = 0;
+    this.mergeAnims = [];
+    this.bestScore = parseInt(localStorage.getItem('snBest') || '0');
   }
 
   spawnFood() {
@@ -54,12 +57,18 @@ class Snake2048 extends BaseGame {
   }
 
   activateAuto() {
+    if (this.autoCooldown > 0) return;
     this.autoActive = 300;
+    this.autoCooldown = 600;
     sfx('powerup');
+    toast('AUTO-SCRIPT 2.0 ACTIVATED');
   }
 
   update() {
     this.tick++;
+    if (this.autoCooldown > 0) this.autoCooldown--;
+    this.mergeAnims.forEach(a => a.life--);
+    this.mergeAnims = this.mergeAnims.filter(a => a.life > 0);
     if (this.tick < this.spd) return;
     this.tick = 0;
     this.dir = this.ndir;
@@ -102,6 +111,7 @@ class Snake2048 extends BaseGame {
           this.snake.splice(i + 1, 1);
           changed = true;
           this.mergeFlash = 10;
+          this.mergeAnims.push({ x: this.snake[i].x, y: this.snake[i].y, v: this.snake[i].v, life: 20 });
         }
       }
     }
@@ -180,7 +190,6 @@ class Snake2048 extends BaseGame {
       var col = i === 0 ? (scanning ? '#ff00ff' : (sc[s.v] || '#00ff9f')) : (sc[s.v] || '#2ea043');
       if (this.mergeFlash > 0 && i === 0) col = '#fff';
       c.fillStyle = col;
-      // Spring pop effect on merge
       var scale = 1;
       if (this.mergeFlash > 5 && i === 0) scale = 1 + (this.mergeFlash - 5) * 0.03;
       var sz = (this.cell - 4) * scale;
@@ -193,14 +202,37 @@ class Snake2048 extends BaseGame {
       c.fillText(s.v, s.x * this.cell + this.cell / 2, s.y * this.cell + this.cell / 2);
     });
 
+    // Merge pop animations
+    this.mergeAnims.forEach(a => {
+      var pop = a.life / 20;
+      var popScale = 1 + (1 - pop) * 0.6;
+      var popSize = this.cell * popScale;
+      c.strokeStyle = 'rgba(0,255,159,' + pop + ')';
+      c.lineWidth = 2;
+      c.strokeRect(a.x * this.cell + (this.cell - popSize) / 2, a.y * this.cell + (this.cell - popSize) / 2, popSize, popSize);
+      c.fillStyle = 'rgba(0,255,159,' + (pop * 0.3) + ')';
+      c.font = '10px monospace';
+      c.textAlign = 'center';
+      c.fillText('+' + a.v, a.x * this.cell + this.cell / 2, a.y * this.cell - 4);
+    });
+
     c.fillStyle = '#00ff9f';
     c.font = '14px monospace';
     c.textAlign = 'left';
     c.fillText('Score: ' + this.score + '  Len: ' + this.snake.length, 8, 18);
+    c.fillStyle = '#5a6a7a';
+    c.font = '9px monospace';
+    c.textAlign = 'right';
+    c.fillText('Best: ' + this.bestScore, this.w - 8, 18);
+    c.textAlign = 'left';
     if (scanning) {
       c.fillStyle = '#ff00ff';
       c.font = '10px monospace';
       c.fillText('AUTO-SCRIPT: ' + this.autoActive + 'f', 8, 34);
+    } else if (this.autoCooldown > 0) {
+      c.fillStyle = '#5a6a7a';
+      c.font = '9px monospace';
+      c.fillText('Auto cooldown: ' + this.autoCooldown + 'f', 8, 34);
     } else {
       c.fillStyle = '#5a6a7a';
       c.font = '10px monospace';
@@ -210,6 +242,7 @@ class Snake2048 extends BaseGame {
 
   die() {
     this.stop(); sfx('die');
+    if (this.score > this.bestScore) { this.bestScore = this.score; localStorage.setItem('snBest', this.bestScore); }
     var c = this.ctx;
     c.fillStyle = 'rgba(0,0,0,.8)';
     c.fillRect(0, 0, this.w, this.h);
@@ -220,10 +253,14 @@ class Snake2048 extends BaseGame {
     c.fillStyle = '#c8d6e5';
     c.font = '14px monospace';
     c.fillText('Score: ' + this.score, this.w / 2, this.h / 2 + 16);
+    c.fillStyle = '#5a6a7a';
+    c.font = '12px monospace';
+    c.fillText('Best: ' + this.bestScore, this.w / 2, this.h / 2 + 34);
   }
 
   win() {
     this.stop(); sfx('win');
+    if (this.score > this.bestScore) { this.bestScore = this.score; localStorage.setItem('snBest', this.bestScore); }
     var c = this.ctx;
     c.fillStyle = 'rgba(0,0,0,.8)';
     c.fillRect(0, 0, this.w, this.h);
@@ -234,6 +271,9 @@ class Snake2048 extends BaseGame {
     c.fillStyle = '#c8d6e5';
     c.font = '14px monospace';
     c.fillText('Score: ' + this.score, this.w / 2, this.h / 2 + 16);
+    c.fillStyle = '#5a6a7a';
+    c.font = '12px monospace';
+    c.fillText('Best: ' + this.bestScore, this.w / 2, this.h / 2 + 34);
   }
 
   stop() { super.stop(); removeEventListener('keydown', this._kd); }
