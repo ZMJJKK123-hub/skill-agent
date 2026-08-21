@@ -445,6 +445,13 @@ def _easter_egg_response(messages: list) -> str | None:
             return "pong 🏓（彩蛋：Ping-Pong！）"
         if c in ("彩蛋", "easter egg", "easteregg"):
             return "🎉 你发现了一个彩蛋！谢谢你的好奇，祝你今天也开开心心～"
+        if c in ("夸夸我", "夸我", "夸一下我", "夸夸"):
+            return random.choice([
+                "✨ 你已经很棒了！愿意探索新功能的人，运气都不会太差～",
+                "🌟 你刚刚发现的彩蛋，说明你很细心！这点超棒的！",
+                "🌈 你发消息的样子真好看，像未来的技术大牛！",
+                "🍀 能遇到你这样好奇又有趣的人，是我的幸运～",
+            ])
         if c in ("人格列表", "有哪些人格", "有哪些人格可以切换"):
             return "可切换人格：喵娘、高冷技术助理、元气少女、优雅姐姐、神秘占卜师、学长前辈、通用。例如：切换成喵娘 🐱"
         if c in ("help", "帮助", "你能做什么", "你会什么"):
@@ -714,14 +721,19 @@ async def chat_completions(
         })
 
     # 当前人格查询
-    current_queries = {"你现在是什么人格", "当前人格", "你是什么人格"}
+    current_queries = {"你现在是什么人格", "当前人格", "你是什么人格", "你是谁", "你叫什么名字"}
     if any(
         isinstance(m, dict) and m.get("role") == "user" and str(m.get("content", "")).strip() in current_queries
         for m in messages
     ):
         key = _resolve_persona_key(session_id)
         display = PERSONA_DISPLAY.get(key, key or "通用")
-        reply = f"我当前的人格是：{display}。想换人格的话，跟我说“切换成喵娘”就好啦～"
+        if display == "喵娘":
+            reply = "我是你的专属喵娘助手喵～当前人格：喵娘。想换人格跟我说“切换成高冷”就可以喵！"
+        elif display == "高冷技术助理":
+            reply = "我是你的专属 AI 助手。当前人格：高冷技术助理。想换人格就说“切换成喵娘”。"
+        else:
+            reply = f"我是你的专属 AI 助手，当前人格：{display}。想换人格的话，跟我说“切换成喵娘”就好啦～"
         return _quick_chat_response(reply, stream)
 
     # 轻量彩蛋：先于 agent 返回，保证快速、有趣
