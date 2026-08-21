@@ -731,3 +731,9 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
   - Fix: only register classes that actually contain `@SubscribeEvent` handlers; otherwise skip registration entirely.
 - End-to-end RESULT: PASS; jar `xpwell-1.0.0.jar`.
 - Ops note: this session required two kill+resume cycles for no-timeout LLM hangs (endpoint instability tonight); both recoveries clean.
+## 2026-08-21 itertest33 Torch Bow - entity synched data + spawn facts
+
+- **`defineSynchedData` is abstract on Entity and takes a Builder from `net.minecraft.network.syncher`** (NOT `synched`/`syncheddata` packages); override signature: `protected void defineSynchedData(SynchedEntityData.Builder builder)` and register entries via `builder.define(...)`.
+- **`Entity.spawnAtLocation(ItemStack)` not found**: now requires a `ServerLevel` first arg (e.g. `spawnAtLocation(serverLevel, stack)`).
+- **`InteractionResult.sidedSuccess(...)` gone (re-confirms sealed InteractionResult)** — return SUCCESS/SUCCESS_SERVER/CONSUME/PASS directly.
+- End-to-end RESULT: PASS; jar `torchbow-1.0.0.jar`.
