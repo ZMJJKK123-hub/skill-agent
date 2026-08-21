@@ -445,6 +445,27 @@ def _easter_egg_response(messages: list) -> str | None:
             return "pong 🏓（彩蛋：Ping-Pong！）"
         if c in ("彩蛋", "easter egg", "easteregg"):
             return "🎉 你发现了一个彩蛋！谢谢你的好奇，祝你今天也开开心心～"
+        if c in ("所有彩蛋", "彩蛋列表", "有什么彩蛋", "彩蛋"):
+            return ("🎁 目前彩蛋：\n"
+                    "· ping → pong 🏓\n"
+                    "· 彩蛋 / easter egg\n"
+                    "· help / 帮助\n"
+                    "· 夸夸我\n"
+                    "· 人格列表 / 切换成喵娘 等\n"
+                    "· 讲个冷笑话 / 来点冷知识\n"
+                    "· 你是谁 / 当前人格")
+        if c in ("讲个冷笑话", "讲个笑话", "冷笑话"):
+            return random.choice([
+                "为什么程序员分不清万圣节和圣诞节？因为 Oct 31 == Dec 25 🎃🎄",
+                "为什么电脑总是很冷？因为它开了很多 Windows 😄",
+                "程序员最讨厌的动物：Bug 🐛",
+            ])
+        if c in ("来点冷知识", "冷知识", "讲个冷知识"):
+            return random.choice([
+                "你知道吗？章鱼有三颗心脏 🐙",
+                "香草味并不是一种真正的植物味道～",
+                "蜜蜂翅膀每分钟能扇动约 11000 次🐝",
+            ])
         if c in ("夸夸我", "夸我", "夸一下我", "夸夸"):
             return random.choice([
                 "✨ 你已经很棒了！愿意探索新功能的人，运气都不会太差～",
