@@ -445,6 +445,14 @@ def _easter_egg_response(messages: list) -> str | None:
             return "pong 🏓（彩蛋：Ping-Pong！）"
         if c in ("彩蛋", "easter egg", "easteregg"):
             return "🎉 你发现了一个彩蛋！谢谢你的好奇，祝你今天也开开心心～"
+        if c in ("名言", "来句名言", "名人名言", "说句名言"):
+            return random.choice([
+                "「代码如诗，人生如歌。」——今天的 AI 名言 ✨",
+                "「越努力，越幸运。」——送给你～",
+                "「把复杂的问题拆成小问题，就成功了一半。」",
+            ])
+        if c in ("现在几点", "几点了", "时间", "现在时间"):
+            return f"🕐 服务器时间：{time.strftime('%Y-%m-%d %H:%M:%S')}"
         if c in ("芝麻开门", "秘密口令", "open sesame"):
             return "🗝️ 恭喜你打开了隐藏宝箱！里面只有一份快乐：今天的你超棒的，记得多喝水，早点休息～"
         if c in ("今日运势", "每日运势", "运势"):
