@@ -27,6 +27,7 @@ OpenAI 兼容端点：
 import json
 import mimetypes
 import os
+import random
 import re
 import subprocess
 import sys
@@ -88,6 +89,14 @@ os.chdir(WORKSPACE)
 # 2026-08-xx：已按用户要求与 server_app 完全解耦。
 # 本服务只负责清小搭 OpenAI 兼容接口（8001 端口），不再挂载 server_app 网页。
 # server_app 网页由单独的 `server_app/server.py` 运行在 8000 端口。
+
+PERSONA_PROMPTS = {
+    "meow": "你现在是一只可爱的喵娘，说话要时不时带“喵”，语气亲昵俏皮，称呼用户为主人。",
+    "cool": "你是一个高冷高效的技术助理，回答简洁直接，少说废话，不卖萌。",
+    "cheer": "你是一个元气满满的少女，说话有活力，喜欢用感叹号和 emoji，语气开朗。",
+    "elegant": "你是一位优雅温柔的姐姐，说话正式、体贴、有礼貌，语气从容。",
+}
+
 
 # ---------------------------------------------------------------------------
 # FastAPI 实例
@@ -226,6 +235,12 @@ def _normalize_messages(messages: list | None, session_id: str = "") -> list[dic
 
     if not out:
         out = [{"role": "user", "content": "你好"}]
+
+    persona_key = os.environ.get("DSH_PERSONA", "").strip().lower()
+    if persona_key in PERSONA_PROMPTS:
+        instruction = f"[人格设定] {PERSONA_PROMPTS[persona_key]} 请始终以这个人格回应。"
+        if not any(isinstance(m, dict) and "[人格设定]" in str(m.get("content", "")) for m in out):
+            out.insert(0, {"role": "user", "content": instruction})
     return out
 
 
@@ -396,6 +411,14 @@ def _friendly_agent_error(e: Exception) -> str:
     return f"⚠️ AI 服务暂时不可用：{msg}"
 
 
+def _append_service_notice(text: str) -> str:
+    """如果配置了 DSH_SERVICE_NOTICE，就在回复末尾追加服务提示。"""
+    notice = os.environ.get("DSH_SERVICE_NOTICE", "").strip()
+    if notice:
+        return text + f"\n\n（服务提示：{notice}）"
+    return text
+
+
 def _append_web_hint(text: str, mod_related: bool = False) -> str:
     """仅在用户涉及 MOD 需求时，在回复末尾提示移步网页版完整功能。"""
     if not mod_related:
@@ -491,6 +514,7 @@ def _run_agent(messages: list, session_id: str, base_url: str,
         raise RuntimeError(result["error"])
     text = result.get("text") or "(no response)"
     text = _append_web_hint(text, mod_related)
+    text = _append_service_notice(text)
     attachments = _collect_attachments(start_ts, base_url, scope=session_root)
     return text, attachments
 
