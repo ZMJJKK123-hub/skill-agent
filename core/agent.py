@@ -345,7 +345,7 @@ def _ensure_mc_java_sources():
     手动复制的 mod 模板不会自动带 server 建的 junction；这里补上，
     保证 search_api/read_file 能在工作区内读到完整 MC/Forge 源码。
     """
-    if not IS_MOD_MODE:
+    if not IS_MOD_MODE and os.environ.get("DSH_ALLOW_MC_SOURCES") != "1":
         return
     target = Path.cwd() / "mc_java_sources"
     source = Path(__file__).resolve().parent.parent / "mc_java_sources_1.21.11"

@@ -40,6 +40,20 @@ def _is_mod_file(path: str) -> bool:
     return any(f in p for f in frags)
 
 
+def _is_mc_java_sources(fp: Path) -> bool:
+    """判断解析后的路径是否落在只读 MC/Forge 源码参考树下。"""
+    try:
+        repo_root = Path(__file__).resolve().parent.parent
+        resolved = fp.resolve()
+        for name in ("mc_java_sources_1.21.11", "mc_java_sources_26.2"):
+            src = (repo_root / name).resolve()
+            if src.exists() and resolved.is_relative_to(src):
+                return True
+    except Exception:  # noqa: BLE001
+        pass
+    return False
+
+
 def run_write(path: str, content: str) -> str:
     if _sandbox_mode() == "read-only":
         return "Error: read-only 模式禁止写入文件"
@@ -48,6 +62,8 @@ def run_write(path: str, content: str) -> str:
         # 第 12 课：基座跟随线程 session（worktree_use 后落在 worktree 内）
         base = worktree_manager.resolve_dir() if worktree_manager else None
         fp = safe_path(path, base)
+        if _is_mc_java_sources(fp):
+            return "Error: mc_java_sources 是只读参考源码，禁止修改"
         fp.parent.mkdir(parents=True, exist_ok=True)
         fp.write_text(content, encoding="utf-8")
         return f"Wrote {len(content)} bytes to {path}"
@@ -62,6 +78,8 @@ def run_edit(path: str, old_text: str, new_text: str) -> str:
         # 第 12 课：基座跟随线程 session（worktree_use 后落在 worktree 内）
         base = worktree_manager.resolve_dir() if worktree_manager else None
         fp = safe_path(path, base)
+        if _is_mc_java_sources(fp):
+            return "Error: mc_java_sources 是只读参考源码，禁止修改"
         content = fp.read_text(encoding="utf-8")
         if old_text not in content:
             return f"Error: Text not found in {path}"

@@ -52,10 +52,11 @@ os.chdir(PROJECT_ROOT)
 # 使用 chat 模式：不触发 MOD 专属的 GameTest / 构建 / 监管线程逻辑
 os.environ.setdefault("DSH_MODE", "chat")
 os.environ.setdefault("DSH_SKILL_CATALOG_DISABLED", "1")
+os.environ.setdefault("DSH_ALLOW_MC_SOURCES", "1")
 
 # 沙箱保护：只允许在服务工作区 .runtime/ 内写文件，禁止越出项目根目录
 # （清小搭接口绝不能修改 /opt/skill-agent 下的项目源文件）
-os.environ["DSH_SANDBOX_MODE"] = "workspace-write"
+os.environ["DSH_SANDBOX_MODE"] = "read-only"
 
 # 全自动模式：agent 若想 ask_user_question，不会在 HTTP 请求里永久阻塞
 os.environ.setdefault("DSH_AUTO_MODE", "1")
@@ -703,7 +704,8 @@ def _append_persona_guide(text: str, messages: list) -> str:
         return text
     guide = (
         "\n\n✨ 我可以切换不同模式陪你聊：默认、喵娘、高冷技术助理、元气少女、优雅姐姐、神秘占卜师、学长前辈。"
-        "如果你感兴趣，直接跟我说“切换成喵娘”就可以啦～"
+        "如果你感兴趣，直接跟我说“切换成喵娘”就可以啦～\n\n"
+        f"🛠️ 如果你想实际制作 MOD，请到完整版网站：{WEB_URL}"
     )
     return text + guide
 
@@ -725,17 +727,12 @@ def _mod_switch_reply() -> str:
 
 
 def _append_web_hint(text: str, mod_related: bool = False) -> str:
-    """仅在用户涉及 MOD 需求时，在回复末尾提示移步网页版完整功能。"""
+    """兼容旧标记：若模型返回 MOD_SWITCH_REQUEST，则换成友好中文；其余 MOD 咨询保留原回复。"""
     if not mod_related:
         return text
     if text.strip().upper().startswith("MOD_SWITCH_REQUEST"):
-        text = _mod_switch_reply()
-    hint = (
-        f"\n\n> ⚠️ 轻小搭平台上的对话功能暂时比较匮乏，仅支持 Chat 模式，"
-        f"不支持修改文件或制作 MOD。\n"
-        f"> 如有做 MOD 的需求，请移步至完整版网站：{WEB_URL}"
-    )
-    return text + hint
+        return _mod_switch_reply()
+    return text
 
 
 # ---------------------------------------------------------------------------
