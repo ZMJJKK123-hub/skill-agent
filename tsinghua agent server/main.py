@@ -445,6 +445,16 @@ def _easter_egg_response(messages: list) -> str | None:
             return "pong 🏓（彩蛋：Ping-Pong！）"
         if c in ("彩蛋", "easter egg", "easteregg"):
             return "🎉 你发现了一个彩蛋！谢谢你的好奇，祝你今天也开开心心～"
+        if c in ("小贴士", "tip", "来个贴士"):
+            return "💡 小贴士：" + random.choice([
+                "把大任务拆成 5 分钟小任务，更容易开始～",
+                "写代码前先想清楚输入/输出，能省很多时间。",
+                "累了就站起来喝口水，效率更高哦。",
+            ])
+        if c in ("加油", "打气", "鼓励我", "给我加油"):
+            return "🔥 你可以的！你已经比昨天更厉害了，冲就完事！"
+        if c in ("好运", "祝福我", "给我好运"):
+            return "🍀 好运已经悄悄绑定在你身上了！今天也会顺顺利利～"
         if c in ("版本", "版本号", "什么版本"):
             return "📦 我基于 skill-agent 引擎构建，服务版本持续迭代中～当前是 8001 开放接口版。"
         if c in ("反馈", "提意见", "提建议"):
