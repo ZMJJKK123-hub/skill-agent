@@ -445,6 +445,8 @@ def _easter_egg_response(messages: list) -> str | None:
             return "pong 🏓（彩蛋：Ping-Pong！）"
         if c in ("彩蛋", "easter egg", "easteregg"):
             return "🎉 你发现了一个彩蛋！谢谢你的好奇，祝你今天也开开心心～"
+        if c in ("芝麻开门", "秘密口令", "open sesame"):
+            return "🗝️ 恭喜你打开了隐藏宝箱！里面只有一份快乐：今天的你超棒的，记得多喝水，早点休息～"
         if c in ("今日运势", "每日运势", "运势"):
             return random.choice([
                 "🔮 今日运势：大吉！适合尝试新玩法，比如换个人格～",
@@ -706,7 +708,7 @@ async def chat_completions(
     try:
         body = await request.json()
     except Exception:
-        raise HTTPException(status_code=400, detail="invalid JSON body")
+        return _quick_chat_response("⚠️ 请求格式不正确，请检查后重试。", stream=False)
 
     # 严格按布尔解析 stream：不要把字符串 "false" 当真
     stream = body.get("stream") is True
