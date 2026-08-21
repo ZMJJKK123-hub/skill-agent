@@ -719,3 +719,8 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **`RegistryAccess.registryOrThrow(ResourceKey)` definitively gone**: only `lookup(ResourceKey<? extends Registry<? extends E>>) -> Optional<Registry<E>>` remains.
 - **GameTest annotation recap**: Forge ships `net.minecraftforge.gametest.GameTest` (method-level, `structure` default); `template="empty"` from vanilla and both GameTestHolder paths do not exist.
 - Heaviest session yet: ~116 compile iterations on the container/Menu zone; end-to-end RESULT: PASS.
+## 2026-08-21 itertest31 Weather Vane - weather API fact + SavedData notes
+
+- **`ServerLevel.setWeatherParameters(...)` signature changed**: now `(int clearTime, int rainTime, boolean raining, boolean thundering)` — 4 args, NO separate thunderTime.
+- SavedData placement registry pattern worked: `DimensionDataStorage.computeIfAbsent(SavedDataType...)` (verify exact overload per source); update loop only touches loaded chunks.
+- End-to-end RESULT: PASS; jar `vane-1.0.0.jar`.
