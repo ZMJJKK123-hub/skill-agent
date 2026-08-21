@@ -52,6 +52,8 @@ class BugSorter extends BaseGame {
     this.bugCount = 0;
     this.cleanupIcon = null;
     this.cleanupParticles = [];
+    this.hitFlash = [0, 0, 0];
+    this.bestScore = parseInt(localStorage.getItem('bgBest') || '0');
   }
 
   update() {
@@ -92,6 +94,10 @@ class BugSorter extends BaseGame {
     this.judgeText.forEach(j => { j.y -= 1; j.life--; });
     this.judgeText = this.judgeText.filter(j => j.life > 0);
     this.fireIntensity = clamp(this.miss * 2, 0, 100);
+    // Decay hit flashes
+    for (var i = 0; i < 3; i++) {
+      if (this.hitFlash[i] > 0) this.hitFlash[i] -= 0.05;
+    }
   }
 
   spawn() {
@@ -110,6 +116,7 @@ class BugSorter extends BaseGame {
       else { this.score += 50; this.judgeText.push({ text: 'GOOD', x: this.lanes[lane].x, y: this.judgeLineY, life: 30, color: '#ffcc00' }); }
       this.combo++;
       this.maxCombo = Math.max(this.maxCombo, this.combo);
+      this.hitFlash[lane] = 1;
       if (this.combo > 0 && this.combo % 5 === 0) { this.score += 50; sfx('combo'); }
       sfx('eat');
     } else {
@@ -126,13 +133,20 @@ class BugSorter extends BaseGame {
     var c = this.ctx;
     c.fillStyle = '#050810';
     c.fillRect(0, 0, this.w, this.h);
-    this.lanes.forEach(function(l) {
+    this.lanes.forEach(function(l, i) {
       c.strokeStyle = l.color + '20';
       c.lineWidth = 2;
       c.beginPath();
       c.moveTo(l.x, 0);
       c.lineTo(l.x, this.h);
       c.stroke();
+      // Hit flash glow
+      if (this.hitFlash[i] > 0) {
+        c.fillStyle = l.color;
+        c.globalAlpha = this.hitFlash[i] * 0.3;
+        c.fillRect(l.x - 30, this.judgeLineY - 40, 60, 80);
+        c.globalAlpha = 1;
+      }
     }.bind(this));
     c.strokeStyle = '#00ff9f';
     c.lineWidth = 2;
@@ -204,6 +218,11 @@ class BugSorter extends BaseGame {
     c.font = '14px monospace';
     c.textAlign = 'left';
     c.fillText('Score: ' + this.score + '  Combo: ' + this.combo + 'x', 8, 18);
+    c.fillStyle = '#5a6a7a';
+    c.font = '9px monospace';
+    c.textAlign = 'right';
+    c.fillText('Best: ' + this.bestScore, this.w - 8, 18);
+    c.textAlign = 'left';
     c.fillStyle = '#ff3355';
     c.font = '10px monospace';
     c.fillText('HP', 8, 36);
@@ -211,6 +230,9 @@ class BugSorter extends BaseGame {
     c.fillRect(30, 28, 100, 6);
     c.fillStyle = this.health > 50 ? '#00ff9f' : (this.health > 20 ? '#ffcc00' : '#ff3355');
     c.fillRect(30, 28, this.health, 6);
+    c.fillStyle = '#5a6a7a';
+    c.font = '9px monospace';
+    c.fillText('Bugs: ' + this.bugCount + '/8 = GC', 8, this.h - 8);
   }
 
   globalCleanup() {
@@ -234,6 +256,10 @@ class BugSorter extends BaseGame {
 
   endGame() {
     this.stop(); sfx('lose');
+    if (this.score > this.bestScore) {
+      this.bestScore = this.score;
+      localStorage.setItem('bgBest', this.bestScore);
+    }
     var c = this.ctx;
     c.fillStyle = 'rgba(0,0,0,.8)';
     c.fillRect(0, 0, this.w, this.h);
@@ -244,6 +270,9 @@ class BugSorter extends BaseGame {
     c.fillStyle = '#c8d6e5';
     c.font = '14px monospace';
     c.fillText('Score: ' + this.score + '  Max Combo: ' + this.maxCombo + 'x', this.w / 2, this.h / 2 + 10);
+    c.fillStyle = '#5a6a7a';
+    c.font = '12px monospace';
+    c.fillText('Best: ' + this.bestScore, this.w / 2, this.h / 2 + 30);
   }
 
   stop() { super.stop(); removeEventListener('keydown', this._kd); this.canvas.removeEventListener('click', this._click); }
