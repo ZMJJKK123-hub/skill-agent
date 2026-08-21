@@ -614,3 +614,11 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **ItemStack NBT round-trip**: use `ItemStack.CODEC.encodeStart(...)` / `.parse(...)`; old `stack.save/addTag` patterns are gone.
 - **Channel construction (new network layer)**: `ChannelBuilder.named(Identifier)...payloadChannel()` + `Channel.send(payload, PacketDistributor.SERVER.noArg())`; `SimpleChannel` still exists but the payload-channel path is the modern one.
 - **Template restoration trap (flow defect)**: template files under `src/main/java/com/example` can be auto-restored WITH `@Mod("examplemod")` → FML fails with `constructed N mods: [BROKEN, ...] but had M mods specified`. Robust fix: rewrite template classes as EMPTY classes WITHOUT `@Mod` AND delete stale `build/sourceSets/main` leftovers. (Recreating empty no-@Mod stubs also unblocks tests, but clean both is better.)
+## 2026-08-21 itertest18 Waypoint Charm - registry/cooldown/interaction API facts
+
+- **`Item.Properties.setId(...)` requires `ResourceKey<Item>`** (compile-proven): passing `Identifier` fails with `incompatible types: Identifier cannot be converted to ResourceKey<Item>`. Use `ITEMS.key("name")` from DeferredRegister or `ResourceKey.create(Registries.ITEM, id)`.
+- **`ItemCooldowns.addCooldown` overloads changed**: valid overloads are `(ItemStack, int)` and `(Identifier, int)`; passing an Item instance directly no longer matches.
+- **`RegistryAccess.registryOrThrow(ResourceKey<Registry<T>>)` not found**: use `lookupOrThrow(...)` (HolderLookup API) or `registry(...)` which returns Optional.
+- **`Registry.get(...)` returns `Optional<Reference<T>>`** now, not T — unwrap with `.value()` after presence check.
+- **`InteractionResultHolder` class does NOT exist** in 1.21.11: `Item#use` returns `InteractionResult` directly (sealed interface: Success/PASS/FAIL...).
+- **Deprecation warnings (for removal)**: `ModLoadingContext.get()` and `FMLJavaModLoadingContext.get()` — config/bus registration should migrate to the new context injection when available.
