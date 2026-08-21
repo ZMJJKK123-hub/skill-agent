@@ -729,6 +729,16 @@ def _stream_agent(messages: list, session_id: str, base_url: str):
 
 # ---------------------------------------------------------------------------
 # 健康检查 / 根路径说明
+# ---------------------------------------------------------------------------
+IMPROVEMENT_NOTES = [
+    "✨ 我们正在持续优化服务中，感谢你的等待！",
+    "🔧 工程师正在悄悄给 AI 升级技能，很快会有新惊喜～",
+    "🌱 服务正在一点点变强，感谢你的每一次使用！",
+    "🎨 最近在打磨人格系统，下次可能就有一个新朋友陪你聊天～",
+    "🛠️ 又修好了一个小 bug，体验会越来越好！",
+]
+
+
 # 本服务（8001）只提供服务清小搭用的 OpenAI 兼容接口；
 # 网页前端由 server_app/server.py 单独运行在 8000 端口。
 # ---------------------------------------------------------------------------
@@ -738,6 +748,7 @@ def root():
         "service": "Tsinghua Agent Server",
         "status": "running",
         "note": "这是给清小搭接入的 OpenAI 兼容服务，不是网页前端。",
+        "message": random.choice(IMPROVEMENT_NOTES),
         "endpoints": ["/v1/models", "/v1/chat/completions"],
         "web": "请访问 http://<server>:8000/",
         "auth": "Bearer <TSINGHUA_API_KEY>",
@@ -749,6 +760,7 @@ def health():
     return {
         "service": "Tsinghua Agent Server",
         "status": "running",
+        "message": random.choice(IMPROVEMENT_NOTES),
         "endpoints": ["/v1/models", "/v1/chat/completions"],
         "web": "独立运行于 server_app/server.py（8000 端口）",
         "auth": "Bearer <TSINGHUA_API_KEY>",
