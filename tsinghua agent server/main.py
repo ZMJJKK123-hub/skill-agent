@@ -24,12 +24,11 @@ OpenAI 兼容端点：
     - 8001 端口：本服务（清小搭 OpenAI 兼容接口）
 """
 
-import copy
 import json
 import mimetypes
 import os
-import queue
 import re
+import subprocess
 import sys
 import threading
 import time
@@ -85,7 +84,6 @@ WORKSPACE.mkdir(parents=True, exist_ok=True)
 # agent 生成的文件才会出现在我们能收集/提供下载的地方。
 os.chdir(WORKSPACE)
 
-from core.agent import agent_loop
 
 # 2026-08-xx：已按用户要求与 server_app 完全解耦。
 # 本服务只负责清小搭 OpenAI 兼容接口（8001 端口），不再挂载 server_app 网页。
@@ -100,14 +98,10 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# 简单并发锁：agent_loop 内部有大量模块级全局单例（task_manager/teammate/worktree），
-# 演示/低并发场景下串行执行最安全。高并发可改为每 sessionId 一个子进程（见 README）。
-_agent_lock = threading.Lock()
 
-# sessionId -> 最近一次完整 messages（仅用于调试/扩展；当前实际直接使用请求里的全量 messages）
-_session_cache: dict[str, list] = {}
-_SESSION_CACHE_MAX = 100
-
+# 每个会话的常驻 daemon 子进程注册表
+_session_daemons: dict[str, subprocess.Popen] = {}
+_daemon_lock = threading.Lock()
 
 # ---------------------------------------------------------------------------
 # 请求日志：方便定位清小搭实际请求了哪个路径、返回什么状态码
@@ -157,9 +151,12 @@ def _safe_input_name(filename: str, fallback_ext: str = "") -> str:
 def _download_remote_file(url: str, filename: str, inputs_dir: Path) -> tuple[str, bool]:
     """下载清小搭 OSS 上的文件/图片 URL 到工作区 inputs/，返回 (相对路径, 是否成功)。"""
     try:
+        from core.tools_web import _is_ssrf_blocked
+        if _is_ssrf_blocked(url):
+            return "下载被 SSRF 防护拦截（不允许访问内网/私网地址）", False
         inputs_dir.mkdir(parents=True, exist_ok=True)
         import httpx
-        r = httpx.get(url, timeout=60, follow_redirects=True)
+        r = httpx.get(url, timeout=60, follow_redirects=False)
         r.raise_for_status()
         safe_name = _safe_input_name(filename)
         target = inputs_dir / safe_name
@@ -216,7 +213,7 @@ def _normalize_messages(messages: list | None, session_id: str = "") -> list[dic
     if not isinstance(messages, list):
         return []
 
-    inputs_dir = WORKSPACE / "inputs"
+    inputs_dir = _session_workdir(session_id) / "inputs"
     out: list[dict] = []
     for m in messages:
         if not isinstance(m, dict):
@@ -296,13 +293,14 @@ def _guess_mime(path: Path) -> str:
     return mime or "application/octet-stream"
 
 
-def _collect_attachments(start_ts: float, base_url: str, limit: int = 10) -> list[dict]:
+def _collect_attachments(start_ts: float, base_url: str, limit: int = 10, scope: Path | None = None) -> list[dict]:
     """收集 start_ts 之后生成的可交付文件，构造清小搭 x_soda.attachments。"""
-    if not WORKSPACE.exists():
+    root = scope if scope is not None else WORKSPACE
+    if not root.exists():
         return []
     attachments: list[dict] = []
     seen: set[str] = set()
-    for p in sorted(WORKSPACE.rglob("*")):
+    for p in sorted(root.rglob("*")):
         if not p.is_file():
             continue
         try:
@@ -388,106 +386,66 @@ def _session_workdir(session_id: str) -> Path:
     return d
 
 
+def _ensure_session_daemon(session_root: Path) -> None:
+    """确保该会话的常驻 daemon 子进程在运行。"""
+    global _session_daemons
+    key = str(session_root)
+    with _daemon_lock:
+        proc = _session_daemons.get(key)
+        if proc is not None and proc.poll() is None:
+            return
+        daemon = Path(__file__).resolve().parent / "session_daemon.py"
+        log_path = session_root / "daemon" / "daemon.log"
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        logf = open(log_path, "a", encoding="utf-8")
+        proc = subprocess.Popen(
+            [sys.executable, str(daemon), str(session_root)],
+            cwd=str(session_root),
+            stdout=logf,
+            stderr=subprocess.STDOUT,
+        )
+        _session_daemons[key] = proc
+
+
+def _submit_daemon_request(session_root: Path, messages: list) -> str:
+    rid = uuid.uuid4().hex
+    qdir = session_root / "daemon" / "queue"
+    qdir.mkdir(parents=True, exist_ok=True)
+    (qdir / f"{rid}.json").write_text(json.dumps(messages, ensure_ascii=False), encoding="utf-8")
+    return rid
+
+
+def _wait_daemon_result(session_root: Path, rid: str, timeout: int = 900) -> dict:
+    rfile = session_root / "daemon" / "results" / f"{rid}.json"
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if rfile.exists():
+            data = json.loads(rfile.read_text(encoding="utf-8-sig"))
+            try:
+                rfile.unlink()
+            except OSError:
+                pass
+            return data
+        time.sleep(0.2)
+    raise RuntimeError("agent daemon timeout")
+
+
 def _run_agent(messages: list, session_id: str, base_url: str,
                reasoning_sink=None) -> tuple[str, list]:
-    """调用 agent_loop 获取最终回复，并收集本次生成的附件。串行化保证 demo 安全。
-
-    reasoning_sink: 可选回调，agent_loop 收到模型 reasoning_content 增量时实时调用，
-    用于清小搭流式展示思考过程。非流式请求传 None 即可。
-    """
-    # 缓存 session 最近消息（便于调试；当前仍优先使用请求里的全量 messages）
-    if session_id:
-        _session_cache[session_id] = copy.deepcopy(messages)
-        # 简单防止内存无限增长
-        if len(_session_cache) > _SESSION_CACHE_MAX:
-            for k in list(_session_cache.keys())[:len(_session_cache) - _SESSION_CACHE_MAX]:
-                _session_cache.pop(k, None)
-
+    """通过常驻 daemon 子进程运行 agent_loop，保证用户/会话隔离。"""
     mod_related = _is_mod_request(messages)
     start_ts = time.time()
     session_root = _session_workdir(session_id)
-
-    with _agent_lock:
-        _prev_cwd = Path.cwd()
-        _prev_root = os.environ.get("DSH_SESSION_ROOT")
-        os.environ["DSH_SESSION_ROOT"] = str(session_root)
-        os.chdir(session_root)
-        try:
-            # 仅在本次调用期间设置 reasoning 转发，避免并发请求串线
-            from core.agent import get_reasoning_sink, set_reasoning_sink
-            _prev_sink = get_reasoning_sink()
-            if reasoning_sink is not None:
-                set_reasoning_sink(reasoning_sink)
-            # deepcopy：agent_loop 会原地改写 messages
-            final = agent_loop(copy.deepcopy(messages))
-        finally:
-            try:
-                from core.agent import get_reasoning_sink, set_reasoning_sink
-                set_reasoning_sink(_prev_sink)
-            except Exception:
-                pass
-            os.chdir(_prev_cwd)
-            if _prev_root is None:
-                os.environ.pop("DSH_SESSION_ROOT", None)
-            else:
-                os.environ["DSH_SESSION_ROOT"] = _prev_root
-
-    text = str(final) if final is not None else "(no response)"
+    _ensure_session_daemon(session_root)
+    rid = _submit_daemon_request(session_root, messages)
+    result = _wait_daemon_result(session_root, rid)
+    if result.get("error"):
+        raise RuntimeError(result["error"])
+    text = result.get("text") or "(no response)"
     text = _append_web_hint(text, mod_related)
-    attachments = _collect_attachments(start_ts, base_url)
+    attachments = _collect_attachments(start_ts, base_url, scope=session_root)
     return text, attachments
 
-
-# ---------------------------------------------------------------------------
-# 探测快速通道
-# ---------------------------------------------------------------------------
-def _is_probe_request(messages: list, max_tokens) -> bool:
-    """清小搭探测会用 max_tokens:1 发最小对话；命中时走快速回复，避免超时。"""
-    if max_tokens is not None:
-        try:
-            if int(max_tokens) == 1:
-                return True
-        except (TypeError, ValueError):
-            pass
-    # 兜底：极短且只有一轮 user 的消息也视为探测
-    if len(messages) <= 1:
-        for m in messages:
-            content = m.get("content", "")
-            if isinstance(content, str) and len(content.strip()) <= 4:
-                return True
-    return False
-
-
-def _probe_answer() -> str:
-    return "连接成功：Tsinghua Agent 已就绪。"
-
-
-def _probe_stream_response() -> StreamingResponse:
-    cid = _new_id()
-    created = int(time.time())
-
-    def gen():
-        yield _sse_frame(cid, created, {"role": "assistant"})
-        yield _sse_frame(cid, created, {"content": _probe_answer()})
-        yield _sse_frame(cid, created, {}, finish_reason="stop", usage=_usage_zero())
-        yield "data: [DONE]\n\n"
-
-    return StreamingResponse(gen(), media_type="text/event-stream")
-
-
-def _probe_json_response():
-    return JSONResponse({
-        "id": _new_id(),
-        "object": "chat.completion",
-        "created": int(time.time()),
-        "model": "tsinghua-agent",
-        "choices": [{
-            "index": 0,
-            "message": {"role": "assistant", "content": _probe_answer()},
-            "finish_reason": "stop",
-        }],
-        "usage": _usage_zero(),
-    })
 
 
 # ---------------------------------------------------------------------------
@@ -532,12 +490,6 @@ async def chat_completions(
     # 公网 URL 基址：附件 fileUrl 用它拼出（可用 DSH_PUBLIC_BASE_URL 覆盖）
     base_url = os.environ.get("DSH_PUBLIC_BASE_URL") or str(request.base_url).rstrip("/")
 
-    # 清小搭探测最小对话：快速回复，不启动完整 Agent
-    if _is_probe_request(messages, max_tokens):
-        if stream:
-            return _probe_stream_response()
-        return _probe_json_response()
-
     if stream:
         return StreamingResponse(
             _stream_agent(messages, session_id, base_url),
@@ -580,55 +532,62 @@ async def chat_completions_alias(
 
 
 def _stream_agent(messages: list, session_id: str, base_url: str):
-    """流式 Agent：后台线程跑 agent_loop，实时转发 delta.reasoning，最后逐块吐内容。"""
+    """流式 Agent：常驻 daemon 处理请求，实时读推理文件转发 delta.reasoning。"""
     cid = _new_id()
     created = int(time.time())
 
     yield _sse_frame(cid, created, {"role": "assistant"})
-    # 可选 L1 思考帧，让前端先有“思考中”反馈
     yield _sse_frame(cid, created, {"reasoning": "正在调用自研 Agent 引擎…"})
 
-    q: queue.Queue = queue.Queue()
-
-    def _worker():
-        try:
-            # reasoning_sink 只作用于本次 agent_loop 调用，避免并发请求串线
-            final, attachments = _run_agent(
-                messages, session_id, base_url,
-                reasoning_sink=lambda text: q.put(("reasoning", text)),
-            )
-            q.put(("final", final, attachments))
-        except Exception as e:
-            q.put(("error", str(e)))
-
-    thread = threading.Thread(target=_worker, daemon=True)
-    thread.start()
-
+    session_root = _session_workdir(session_id)
+    start_ts = time.time()
+    _ensure_session_daemon(session_root)
+    rid = _submit_daemon_request(session_root, messages)
+    reasoning_file = session_root / "daemon" / "reasoning" / f"{rid}.jsonl"
+    result_file = session_root / "daemon" / "results" / f"{rid}.json"
     final = None
-    attachments = []
-    while True:
-        try:
-            item = q.get(timeout=0.3)
-        except queue.Empty:
-            if not thread.is_alive():
+    last_idx = 0
+    deadline = time.time() + 900
+    try:
+        while time.time() < deadline:
+            if reasoning_file.exists():
+                try:
+                    lines = reasoning_file.read_text(encoding="utf-8").splitlines()
+                    for line in lines[last_idx:]:
+                        try:
+                            obj = json.loads(line)
+                            yield _sse_frame(cid, created, {"reasoning": obj.get("text", "")})
+                        except Exception:  # noqa: BLE001
+                            continue
+                    last_idx = len(lines)
+                except OSError:
+                    pass
+            if result_file.exists():
+                data = json.loads(result_file.read_text(encoding="utf-8-sig"))
+                if data.get("error"):
+                    raise RuntimeError(data["error"])
+                final = data.get("text") or "(no response)"
                 break
-            continue
-        kind = item[0]
-        if kind == "reasoning":
-            yield _sse_frame(cid, created, {"reasoning": item[1]})
-        elif kind == "final":
-            final, attachments = item[1], item[2]
-            break
-        elif kind == "error":
-            yield _sse_frame(
-                cid, created, {},
-                finish_reason="stop",
-                error={"type": "upstream_error", "message": item[1]},
-            )
-            yield "data: [DONE]\n\n"
-            return
+            time.sleep(0.1)
+        if final is None:
+            raise RuntimeError("agent daemon timeout")
+        attachments = _collect_attachments(start_ts, base_url, scope=session_root)
+    except Exception as e:  # noqa: BLE001
+        yield _sse_frame(
+            cid, created, {},
+            finish_reason="stop",
+            error={"type": "upstream_error", "message": str(e)},
+        )
+        yield "data: [DONE]\n\n"
+        return
+    finally:
+        for p in (reasoning_file, result_file):
+            try:
+                if p.exists():
+                    p.unlink()
+            except OSError:
+                pass
 
-    # 将完整回复按小块流式输出，保证界面逐字展示
     step = 8
     for i in range(0, len(final or ""), step):
         yield _sse_frame(cid, created, {"content": (final or "")[i:i + step]})
@@ -638,6 +597,7 @@ def _stream_agent(messages: list, session_id: str, base_url: str):
         extra["x_soda"] = {"attachments": attachments}
     yield _sse_frame(cid, created, {}, finish_reason="stop", usage=_usage_zero(), extra=extra)
     yield "data: [DONE]\n\n"
+
 
 
 # ---------------------------------------------------------------------------

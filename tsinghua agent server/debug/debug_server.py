@@ -14,6 +14,12 @@ import os
 import random
 import time
 import uuid
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+# 读取项目根 .env（使 TSINGHUA_API_KEY 也能从 .env 读取）
+load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env", override=True)
 
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
