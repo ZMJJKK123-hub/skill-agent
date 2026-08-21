@@ -24,7 +24,7 @@ logger = logging.getLogger("agent")
 
 # ---------- 配置 ----------
 # 模型与 API 地址由会话注入（DSH_MODEL / DSH_BASE_URL），未注入时回退 DeepSeek 官方默认。
-MODEL = os.environ.get("DSH_MODEL", "GLM-5.2")
+MODEL = os.environ.get("DSH_MODEL", "DeepSeek-V4-Flash-0731")
 
 # 运行模式：chat（通用对话，不复制 mod 模板）| mod（MOD 制作，工作区已复制模板）
 # 由 server 通过 run_task 的 DSH_MODE 环境变量注入。
