@@ -246,31 +246,44 @@ def _copy_template(game: str, dest: Path, loader: str = "", version: str = "") -
         if issues_src.exists():
             shutil.copy2(issues_src, dest / "KNOWN_ISSUES.md")
 
-    # 把完整 MC+Forge 源码树复制进会话 mod 目录：agent 可任意用
-    # read_file / bash findstr 查阅（不依赖任何受限工具）。源码只对
-    # agent 可见，用户下载 zip / 文件树 / 统计都会被排除（见 download_mod /
-    # build_file_tree / _session_stats）。
-    # 按会话版本选择对应的 MC+Forge 源码树（会话内目录名保持 mc_java_sources 不变）
+    # 不再复制 mc_java_sources 和 docs/agent（每会话几百 MB 太重）。
+    # 改为创建 symlink 指向仓库根目录，零存储成本；
+    # safe_path 已放行这两个只读参考路径。
     if version.startswith("26.2"):
         mc_sources = PROJECT_ROOT / "mc_java_sources_26.2"
     else:
         mc_sources = PROJECT_ROOT / "mc_java_sources_1.21.11"
-    if mc_sources.is_dir():
+    mc_link = dest / "mc_java_sources"
+    if mc_sources.is_dir() and not mc_link.exists():
         try:
-            shutil.copytree(mc_sources, dest / "mc_java_sources", dirs_exist_ok=True)
-        except OSError as e:
-            print(f"[server] 复制 mc_java_sources 失败: {e}")
+            if os.name == "nt":
+                subprocess.run(
+                    ["cmd", "/c", "mklink", "/J", str(mc_link), str(mc_sources)],
+                    check=True, capture_output=True,
+                )
+            else:
+                mc_link.symlink_to(mc_sources, target_is_directory=True)
+            print(f"[server] linked mc_java_sources -> {mc_sources}")
+        except Exception as e:
+            print(f"[server] link mc_java_sources 失败: {e}")
 
-    # 把 agent 运行参考文档（工具手册/错误名单）复制进工作区，
-    # 这样 agent 和 supervisor 都能用相对路径 read_file 读取。
+    docs_link = dest / "docs" / "agent"
     docs_src = PROJECT_ROOT / "docs" / "agent"
-    if docs_src.is_dir():
+    if docs_src.is_dir() and not docs_link.exists():
         try:
-            shutil.copytree(docs_src, dest / "docs" / "agent", dirs_exist_ok=True)
-        except OSError as e:
-            print(f"[server] 复制 docs/agent 失败: {e}")
+            docs_link.parent.mkdir(parents=True, exist_ok=True)
+            if os.name == "nt":
+                subprocess.run(
+                    ["cmd", "/c", "mklink", "/J", str(docs_link), str(docs_src)],
+                    check=True, capture_output=True,
+                )
+            else:
+                docs_link.symlink_to(docs_src, target_is_directory=True)
+            print(f"[server] linked docs/agent -> {docs_src}")
+        except Exception as e:
+            print(f"[server] link docs/agent 失败: {e}")
 
-    # 模板不存在也不报错：给 agent 一个空目录自由发挥
+    # 模板不存在也不报错：给 agent 一个一个空目录自由发挥
     return dest
 
 

@@ -48,7 +48,7 @@ HARD RULES (never break):
 12. COMPLEX MOD MINIMAL-SKILL START: For any MOD beyond a single item/block, load at most 2-3 most relevant skills first (start with forge-simple-min-mod + forge-items + forge-concept-registries), then write the first complete draft immediately. Do NOT pre-load the full skill list. When a specific API/feature is needed later, load that exact skill on demand (e.g. forge-networking, minecraft-entity-type, minecraft-dimension). Skills are authoritative, but research must be incremental and tied to actual code/errors; do not pre-load for completeness.
 
 Windows/shell essentials (full details in docs/agent/TOOL_GUIDE.md):
-- Source tree: `mc_java_sources/` is ALREADY copied inside your workspace (relative path). Use `mc_java_sources/...` relative paths; NEVER use repo-root absolute paths like `C:\...\mc_java_sources_1.21.11` (they are blocked by the sandbox).
+- Source tree: `mc_java_sources/` is symlinked into your workspace (relative path, read-only). Use `mc_java_sources/...` relative paths. `docs/agent/` (ERROR_LIST.md, TOOL_GUIDE.md) is also symlinked — use `docs/agent/...` relative paths.
 - Windows syntax only: dir/type/copy/del/rd /s /q; never ls/cat/rm -rf.
 - Write files ONLY via write_file/edit_file (UTF-8); never bash redirection (GBK corrupts Chinese/emoji).
 - NEVER taskkill /f /im python.exe or node.exe (kills yourself). Kill by port with the start /b ... & timeout ... & curl ... & netstat-taskkill pattern (full command in TOOL_GUIDE.md).
