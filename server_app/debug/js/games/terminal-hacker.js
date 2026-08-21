@@ -88,22 +88,47 @@ class TerminalHacker extends BaseGame {
     var methods = [
       function(w) { return w.split('').reverse().join(''); },
       function(w) { try { return btoa(w); } catch(e) { return w; } },
-      function(w) { return w.split('').map(function(c, i) { return i % 2 ? c : c.toLowerCase(); }).join(''); }
+      function(w) { return w.split('').map(function(c, i) { return i % 2 ? c : c.toLowerCase(); }).join(''); },
+      // New: Caesar cipher +3
+      function(w) {
+        return w.split('').map(function(c) {
+          var code = c.charCodeAt(0);
+          if (code >= 65 && code <= 90) return String.fromCharCode(65 + (code - 65 + 3) % 26);
+          return c;
+        }).join('');
+      },
+      // New: ROT13
+      function(w) {
+        return w.split('').map(function(c) {
+          var code = c.charCodeAt(0);
+          if (code >= 65 && code <= 77) return String.fromCharCode(code + 13);
+          if (code >= 78 && code <= 90) return String.fromCharCode(code - 13);
+          return c;
+        }).join('');
+      }
     ];
-    var method = methods[rnd(0, methods.length - 1)];
+    // Higher score = harder methods
+    var maxMethod = this.defended < 3 ? 2 : (this.defended < 6 ? 4 : 5);
+    var method = methods[rnd(0, maxMethod - 1)];
     var encoded = method(word);
-    this.threat = { word: word, encoded: encoded };
-    this.timer = 15;
+    this.threat = { word: word, encoded: encoded, method: method };
+    // Timer decreases with difficulty
+    this.timer = Math.max(8, 15 - Math.floor(this.defended / 2));
     var self = this;
-    this.outTypewriter('THREAT DETECTED [' + (this.threats.length + 1) + ']', 'red', function() {
+    var methodHint = '';
+    if (method === methods[0]) methodHint = ' [REVERSED]';
+    else if (method === methods[1]) methodHint = ' [BASE64]';
+    else if (method === methods[2]) methodHint = ' [ALTERNATE CASE]';
+    else if (method === methods[3]) methodHint = ' [CAESAR +3]';
+    else if (method === methods[4]) methodHint = ' [ROT13]';
+    this.outTypewriter('THREAT DETECTED [' + (this.threats.length + 1) + ']' + methodHint, 'red', function() {
       self.outTypewriter('  Encrypted: ' + encoded, 'yellow', function() {
         self.out('  Decrypt and type: block <plaintext>', 'dim');
-        self.out('  Time: 15s', 'dim');
+        self.out('  Time: ' + self.timer + 's', 'dim');
         self.out('', '');
       });
     });
     this.threats.push({ word: word });
-    var self = this;
     this.threatTimer = setInterval(function() {
       self.timer--;
       if (self.timer <= 0) self.fail();
