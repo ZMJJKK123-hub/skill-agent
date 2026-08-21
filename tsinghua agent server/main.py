@@ -445,6 +445,10 @@ def _easter_egg_response(messages: list) -> str | None:
             return "pong 🏓（彩蛋：Ping-Pong！）"
         if c in ("彩蛋", "easter egg", "easteregg"):
             return "🎉 你发现了一个彩蛋！谢谢你的好奇，祝你今天也开开心心～"
+        if c in ("自我介绍", "介绍你自己", "介绍一下你"):
+            return "我是你的专属 AI 助手：能聊天、写代码、查资料、处理文件，还能切换不同人格陪你玩～比如“切换成喵娘”。"
+        if c in ("我喜欢你", "我好喜欢你", "喜欢你"):
+            return "❤️ 谢谢你！我也很喜欢和你聊天～不过我是 AI，只能把这份喜欢变成“认真陪你解决问题”哦！"
         if c in ("hello world", "helloworld", "你好世界"):
             return "👋 Hello World！你触发了最经典的编程咒语，恭喜成为程序员之友！"
         if c in ("101010", "0101", "二进制"):
