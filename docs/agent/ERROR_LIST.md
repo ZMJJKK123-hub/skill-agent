@@ -674,3 +674,8 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **`RenderType` moved** to `net.minecraft.client.renderer.rendertype` subpackage (old import fails).
 - **EntityRenderer abstract surface changed again**: no-arg `createRenderState()` override; old `render(PoseStack, MultiBufferSource, int)` gone — drawing goes through the new submit/`render*` pipeline; follow a vanilla minimal renderer (LlamaSpit pattern from itertest15 still applies for the trio structure).
 - Attributes event: entity attribute registration event located and used successfully this round (name per mc_java_sources).
+## 2026-08-21 itertest26 Sparkle Dust - particle registration facts
+
+- **Custom particle working pattern (1.21.11)**: `DeferredRegister<ParticleType<?>>` over the particle registry; register a `SimpleParticleType(true)` per particle; client provider wired via `DistExecutor.runWhenOn(Dist.CLIENT, () -> ClientClass::addParticleProviderListener)`.
+- Server spawn via `ServerLevel.sendParticles(...)` (signatures verified in source).
+- **FLOW DEFECT — wrap-up hang**: session hung twice with zero log output while process alive (LLM call without timeout during final wrap-up). Recovery: kill only that session's python + relaunch `run_task.py` with `DSH_RESUME=1`; breakpoint restored and completion state was intact. Consider adding an HTTP timeout to the LLM client.
