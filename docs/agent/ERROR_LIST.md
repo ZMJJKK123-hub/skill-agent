@@ -558,3 +558,10 @@ Post-write research budget (`build-now-stop`) was not active because the agent w
   - Prefer `new BlockEntityType<>(factory, Set.of(blocks))` (already in ERROR_LIST) or `BlockEntityType.Builder.of(...)` only if the compiler proves it exists.
 - **Full flow gametest-check false negative**:
   - `run_test_gametest` actually passed (`All 1 required tests passed`) and was in tool history, but `<gametest-check> FAILED` fired once; agent satisfied it by running full `run_mod_test_cycle` (RESULT: PASS). This indicates the checker may miss spilled/compressed tool outputs; keep using `run_mod_test_cycle` as the authoritative final proof.
+## 2026-08-21 itertest13 Feeding Helmet - new mod-loading pitfall
+
+- **`mods.toml missing metadata for modid examplemod` / `The Mod File build\sourceSets\main has mods that were not found`**:
+  - Root cause: template's `src/main/java/com/example/examplemod/{ExampleMod,Config}.java` were never deleted; they compile an extra `@Mod("examplemod")` class while mods.toml only declares the new modid, so FML sees `[BROKEN/examplemod, newmod]` but expects only `[newmod]`.
+  - `gradlew clean` alone does NOT fix it (clean recompiles the leftover source).
+  - Fix: delete/rename all template example source files under `src/main/java/com/example`, then `gradlew clean` + rebuild/`run_test_gametest`.
+- **`gametest-check` false negative repeats** when `run_test_gametest` passed but checker still said FAILED; running `run_mod_test_cycle` once (all-in-one) refreshed state and passed. Recorded earlier as full-flow observation; it happened again in itertest13.
