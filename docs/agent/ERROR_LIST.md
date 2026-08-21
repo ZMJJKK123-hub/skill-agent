@@ -758,3 +758,8 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **`Item#inventoryTick(ItemStack, Level, Entity, int slot, boolean selected)` still exists** (CompassItem.java:34 reference) — per-item tick logic is available directly on the Item, no event needed for inventory-scoped behavior.
 - Push-away via `setDeltaMovement`/`deltaMovement` accessors compiled fine this round (name check done against LivingEntity source).
 - End-to-end RESULT: PASS; jar `soul-lantern-pet-1.0.0.jar`.
+## 2026-08-21 infra - endpoint model access changed mid-run
+
+- **`DeepSeek-V4-Flash-0731` revoked by the provider team** (403 `team_model_access_denied`). Allowed list now: GLM-4-Flash / GLM-4.5-Flash / GLM-Z1-Flash / GLM-CogView3-Flash / GLM-4V-Flash / Intern-S2-Preview / PaddleOCR-VL-*.
+- **Switched default to `GLM-4.5-Flash`** (`.env` + `core/config.py`), probe verified: content + reasoning_content both populated, tool-call loop expected OK.
+- Ops: when a session dies with PermissionDeniedError 403 at startup, check the allowed-models list inside the error message and update DSH_MODEL accordingly.
