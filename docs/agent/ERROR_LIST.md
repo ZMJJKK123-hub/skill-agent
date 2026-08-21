@@ -653,3 +653,9 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **`BlockEvent.BreakEvent#getLevel()` returns `LevelAccessor`, not `Level`** (typed event record accessor).
   - Fix: hold as `LevelAccessor`, `instanceof ServerLevel serverLevel`, then use it for drops / `Block.popResource`.
 - **FLOW DEFECT — template pollution**: the forge starter auto-copied an UNRELATED "SwapGame" template alongside examplemod files; agents must detect and delete both or the extra @Mod breaks FML. Template dir needs a cleanup upstream.
+## 2026-08-21 itertest23 Coffee Rush - MobEffect registration facts
+
+- **`Registry#getHolderOrThrow(ResourceKey)` does NOT exist** in this mapping (search-proven: zero hits in mc_java_sources).
+  - Working pattern: custom MobEffect via `DeferredRegister.create(Registries.MOB_EFFECT, MODID)` (Holder-based vanilla registry); resolve the active effect with `BuiltInRegistries.MOB_EFFECT.getOrThrow(ResourceKey<MobEffect>)` (note: `getOrThrow`, not `getHolderOrThrow`).
+- MobEffectInstance construction unchanged (`new MobEffectInstance(holder, duration, amplifier)`), apply via `player.addEffect(...)`.
+- Session note: one ~2min silent LLM turn occurred pre-write (low CPU = network wait, not a hang); recovered and completed normally.
