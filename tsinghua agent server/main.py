@@ -428,7 +428,7 @@ def _is_mod_request(messages: list) -> bool:
         if not isinstance(content, str):
             continue
         low = content.lower()
-        if re.search(r"(?i)(/mod|\bmod\b|模组|mod制作|我的世界.*(?:mod|模组)|forge)", low):
+        if re.search(r"(?i)(/mod|(?<![a-z])mod(?![a-z])|模组|mod制作|我的世界.*(?:mod|模组)|forge)", low):
             return True
     return False
 

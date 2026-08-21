@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -45,6 +46,21 @@ LEADER_TOOLS = tool_registry.schemas(exclude={"submit_plan"})
 # 监管线程 / KNOWN_ISSUES 强制注入 / skill-source 引用校验 / GameTest 核查 /
 # 收尾 jar 构建与 zip 预生成——这些只在 mod 制作模式有意义。
 IS_MOD_MODE = MODE == "mod"
+
+
+def _messages_hint_mod(messages: list) -> bool:
+    """判断消息里是否明显提到 MOD/模组/Forge，决定是否注入技能目录。"""
+    for m in messages:
+        if not isinstance(m, dict):
+            continue
+        if m.get("role") not in ("user", "system"):
+            continue
+        content = str(m.get("content", ""))
+        if re.search(r"(?i)(/mod|(?<![a-z])mod(?![a-z])|模组|mod制作|我的世界.*(?:mod|模组)|forge)", content):
+            return True
+    return False
+
+
 
 # 防死循环：同一 agent_loop 内允许的最大工具调用轮次（每轮可能含多个 tool_call）
 MAX_TOOL_ROUNDS = int(os.environ.get("DSH_MAX_TOOL_ROUNDS", "100"))
@@ -442,7 +458,8 @@ def agent_loop(messages: list) -> str:
         # ── Layer 0c3: 技能目录 digest 注入（M2，对齐 DSH tool-skill catalog）──
         # 目录（name+首行描述）以 user 消息注入：digest 变化才追加，不变零开销；
         # 会话中新增/编辑 SKILL.md 下一轮即生效。正文仍由 load_skill 按需加载。
-        maybe_inject_skill_catalog(messages)
+        if IS_MOD_MODE or _messages_hint_mod(messages):
+            maybe_inject_skill_catalog(messages)
 
         # ── Layer 0: 排空后台通知（第 8 课）──
         # 在 micro_compact 之前注入，让通知作为新数据参与后续 compact 估算
