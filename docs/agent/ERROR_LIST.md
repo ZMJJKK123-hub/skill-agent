@@ -622,3 +622,11 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **`Registry.get(...)` returns `Optional<Reference<T>>`** now, not T — unwrap with `.value()` after presence check.
 - **`InteractionResultHolder` class does NOT exist** in 1.21.11: `Item#use` returns `InteractionResult` directly (sealed interface: Success/PASS/FAIL...).
 - **Deprecation warnings (for removal)**: `ModLoadingContext.get()` and `FMLJavaModLoadingContext.get()` — config/bus registration should migrate to the new context injection when available.
+## 2026-08-21 itertest19 Mood Lamp - BlockBehaviour hook signature overhaul (44-build grind, high value)
+
+- **`getStateForPlacement(BlockPlaceContext)` no longer overrides Block** (compile: method does not override). The placement hook was renamed/re-signed in 1.21.11 — check `BlockBehaviour`/`Block` in mc_java_sources for the current name (agent resolved it by reading source; do NOT assume the old name).
+- **`neighborChanged` new signature**: `neighborChanged(BlockState, Level, BlockPos, Block, Orientation, boolean...)` — the old 5th param `BlockPos` is now an **`Orientation`** object (new class; import from mc_java_sources, do not guess the package).
+- **`Orientation`** is a new parameter type threaded through block hooks (placement/rotation/neighbor logic); conversions from BlockPos no longer compile.
+- **`isClientSide` private field trap repeats**: agents keep writing `level.isClientSide` — ERROR_LIST entry exists but sessions still hit it; prefer `level.isClientSide()` method form everywhere.
+- **Deprecation warnings pile**: `ModLoadingContext.get()` / `FMLJavaModLoadingContext.get()` marked for removal (seen again).
+- Flow note: this session needed 44 compile iterations — block-hook area is the densest API-diff zone so far; budget extra cycles when a task touches custom BlockBehaviour overrides.
