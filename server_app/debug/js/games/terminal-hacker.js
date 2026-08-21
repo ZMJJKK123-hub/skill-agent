@@ -25,9 +25,12 @@ class TerminalHacker extends BaseGame {
     this.gameOver = false;
     this.threat = null;
     this.threatTimer = null;
+    this.bestScore = parseInt(localStorage.getItem('thBest') || '0');
     this.out('=== TERMINAL HACKER v1.0 ===', 'green');
     this.out('Decrypt threats and block them!', 'dim');
     this.out('Type: block <decrypted_text>', 'cyan');
+    this.out('Type: agent init for multi-agent mode', 'dim');
+    this.out('Best Score: ' + this.bestScore, 'dim');
     this.out('', '');
     this.newLine();
     this.spawnThreat();
@@ -247,12 +250,14 @@ class TerminalHacker extends BaseGame {
     clearInterval(this.threatTimer);
     if (this.gameOver) return;
     this.gameOver = true;
+    if (this.score > this.bestScore) { this.bestScore = this.score; localStorage.setItem('thBest', this.bestScore); }
     this.div.style.animation = 'shake 0.3s';
     setTimeout(() => { this.div.style.animation = ''; }, 300);
     this.out('', '');
     this.out('########## BREACH ##########', 'red');
     this.out('Server compromised! Final score: ' + this.score, 'red');
     this.out('Defended: ' + this.defended, 'dim');
+    this.out('Best Score: ' + this.bestScore, 'dim');
   }
 
   update() {}

@@ -37,6 +37,7 @@ class TrafficBreakout extends BaseGame {
     this.level = 1;
     this.bricksLeft = 0;
     this.tunnelTimer = 0;
+    this.bestScore = parseInt(localStorage.getItem('bkBest') || '0');
     this.makeBricks(1);
   }
 
@@ -167,10 +168,16 @@ class TrafficBreakout extends BaseGame {
     c.font = '14px monospace';
     c.textAlign = 'left';
     c.fillText('Score: ' + this.score + '  Lv.' + this.level + '  Balls: ' + this.balls.length, 10, 20);
+    c.fillStyle = '#5a6a7a';
+    c.font = '9px monospace';
+    c.textAlign = 'right';
+    c.fillText('Best: ' + this.bestScore, this.w - 8, 20);
+    c.textAlign = 'left';
   }
 
   gameOver() {
     this.stop(); sfx('die');
+    if (this.score > this.bestScore) { this.bestScore = this.score; localStorage.setItem('bkBest', this.bestScore); }
     var c = this.ctx;
     c.fillStyle = 'rgba(0,0,0,.8)';
     c.fillRect(0, 0, this.w, this.h);
@@ -181,6 +188,9 @@ class TrafficBreakout extends BaseGame {
     c.fillStyle = '#c8d6e5';
     c.font = '14px monospace';
     c.fillText('Score: ' + this.score, this.w / 2, this.h / 2 + 16);
+    c.fillStyle = '#5a6a7a';
+    c.font = '12px monospace';
+    c.fillText('Best: ' + this.bestScore, this.w / 2, this.h / 2 + 34);
   }
 
   stop() { super.stop(); this.canvas.removeEventListener('mousemove', this._mm); this.canvas.removeEventListener('touchmove', this._tm); }
