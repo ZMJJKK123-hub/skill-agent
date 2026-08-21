@@ -689,3 +689,9 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 
 - **PowerShell `Set-Content -Encoding UTF8` writes a BOM**: `_load_env_file` then sees the first key as `\ufeffDEEPSEEK_API_KEY` and "auto" mode finds no key.
   - Fix: write `.env` with `[IO.File]::WriteAllText($path, $text, [Text.UTF8Encoding]::new($false))` (no BOM), or strip BOM on parse.
+## 2026-08-21 model switch - GLM-5.2 stability observations (itertest28, first GLM session)
+
+- **GLM-5.2 on llmapi.paratera.com**: endpoint responds (verified via minimal chat call), but content may be None for tiny max_tokens — reasoning output lives in `reasoning_content` (project already passes it back).
+- **Agentic-loop stability is markedly worse than DeepSeek-V4-Flash so far**: within ~10 minutes the first GLM session produced 3 empty responses, ignored write-first-stop twice, then HARD-HUNG twice (zero log output, process alive = LLM call without timeout; same failure shape as itertest26).
+  - Recovery used: kill session python + `run_task.py` relaunch with `DSH_RESUME=1`.
+  - Recommendation: add an HTTP timeout + retry to the OpenAI client in core/config.py; keep DeepSeek as fallback default until GLM-5.2 completes a full MOD unattended.
