@@ -584,3 +584,23 @@ Post-write research budget (`build-now-stop`) was not active because the agent w
 - **`import net.minecraft.gametest.framework.GameTest` cannot find symbol**:
   - Forge 1.21.11 `@GameTest` lives in `net.minecraftforge.gametest.GameTest` (attribute is `structure()`, default `forge:empty3x3x3`; no `template()`).
   - Fix: `import net.minecraftforge.gametest.GameTest;`
+## 2026-08-21 itertest12/15/16 - missed API facts backfilled from session logs
+
+Backfill pass (user request): re-scanned itertest11~16 run.logs for compile errors that were fixed but never written to this file. Adding the missing entries:
+
+- **`CompoundTag#getString(String)` returns `Optional<String>`** (itertest12):
+  - Symptom: `incompatible types: Optional<String> cannot be converted to String`.
+  - Fix: `tag.getString(KEY).orElse("")` (same pattern for getInt/getLong etc. where they return Optional).
+- **`Registry#getValue(Identifier)` / `BuiltInRegistries.ITEM.getValue(...)` uncertain in 1.21.11** (itertest12):
+  - Safe pattern: store the item as its registry-id STRING in NBT, resolve with `ForgeRegistries.ITEMS.getValue(Identifier)`; do NOT guess vanilla Registry accessors.
+- **`SnowballEntity` class name not found in 1.21.11 sources** (itertest15):
+  - Fix: extend `net.minecraft.world.entity.projectile.ThrowableProjectile` directly for thrown projectiles.
+- **`EntityRenderer` is now generic `EntityRenderer<T, S extends EntityRenderState>`** (itertest15):
+  - Minimal custom-entity renderer trio: a custom `EntityRenderState` subclass + renderer extending `EntityRenderer<T,S>` + registration via `EntityRenderers.register`, all wired through `DistExecutor.unsafeRunWhenOn(Dist.CLIENT, ...)`.
+- **`Level.isClientSide` field access can fail depending on accessor chain** (itertest15):
+  - Prefer the method call `level.isClientSide()` when available; verify against mc_java_sources before using the bare field.
+
+## 2026-08-21 itertest13 Feeding Helmet - extra API facts
+
+- **`ArmorItem` class not found**:
+  - 1.21.11 wearable items use `Item.Properties().equippable(EquipmentSlot.HEAD)` (internally `Equippable.builder(...).build()`); no ArmorMaterial needed for basic equipping.
