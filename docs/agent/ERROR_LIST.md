@@ -549,3 +549,12 @@ Post-write research budget (`build-now-stop`) was not active because the agent w
 - **`BlockState#getDrops` signature changed to LootParams.Builder**:
   - Old `getDrops(ServerLevel, BlockPos, BlockEntity)` / `getDrops(LootContext.Builder)` no longer exist.
   - Fix: build `LootParams.Builder` with ORIGIN/TOOL/BLOCK_ENTITY params, then call `state.getDrops(builder)`.
+## 2026-08-21 itertest12 Rune Altar - full-flow observations and new API facts
+
+- **`InteractionResult.sidedSuccess(boolean)` not found**:
+  - 1.21.11 `InteractionResult` is a sealed interface; `sidedSuccess` does not exist.
+  - Fix: use `InteractionResult.SUCCESS` on server and `InteractionResult.CONSUME` on client (or `PASS`/`FAIL`).
+- **`BlockEntityType.Builder` may not be used as outer class in this Forge/Mojang mapping**:
+  - Prefer `new BlockEntityType<>(factory, Set.of(blocks))` (already in ERROR_LIST) or `BlockEntityType.Builder.of(...)` only if the compiler proves it exists.
+- **Full flow gametest-check false negative**:
+  - `run_test_gametest` actually passed (`All 1 required tests passed`) and was in tool history, but `<gametest-check> FAILED` fired once; agent satisfied it by running full `run_mod_test_cycle` (RESULT: PASS). This indicates the checker may miss spilled/compressed tool outputs; keep using `run_mod_test_cycle` as the authoritative final proof.
