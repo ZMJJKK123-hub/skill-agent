@@ -363,6 +363,21 @@ def _is_mod_request(messages: list) -> bool:
     return False
 
 
+def _friendly_agent_error(e: Exception) -> str:
+    """把底层异常转成用户可读的提示文本。"""
+    msg = str(e)
+    low = msg.lower()
+    if "missing credentials" in low or "deepseek_api_key" in low or "openai_api_key" in low:
+        return "⚠️ AI 服务配置错误：缺少 DeepSeek API Key，请检查服务器 .env 配置。"
+    if "invalid credential" in low:
+        return "⚠️ AI 服务配置错误：DeepSeek API Key 无效。"
+    if "timeout" in low or "响应超时" in msg:
+        return "⚠️ AI 服务响应超时，请稍后再试。"
+    if "初始化失败" in msg or "进程已退出" in msg:
+        return f"⚠️ AI 服务不可用：{msg}"
+    return f"⚠️ AI 服务暂时不可用：{msg}"
+
+
 def _append_web_hint(text: str, mod_related: bool = False) -> str:
     """仅在用户涉及 MOD 需求时，在回复末尾提示移步网页版完整功能。"""
     if not mod_related:
@@ -405,6 +420,18 @@ def _ensure_session_daemon(session_root: Path) -> None:
             stderr=subprocess.STDOUT,
         )
         _session_daemons[key] = proc
+        # 快速失败检测：2 秒内如进程退出，说明初始化失败（如缺 API Key）
+        time.sleep(2)
+        if proc.poll() is not None:
+            _session_daemons.pop(key, None)
+            tail = ""
+            try:
+                with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+                    _lines = f.read().splitlines()
+                tail = " | ".join(_lines[-3:])
+            except Exception:  # noqa: BLE001
+                pass
+            raise RuntimeError("AI 服务初始化失败：" + (tail if tail else "daemon 进程异常退出"))
 
 
 def _submit_daemon_request(session_root: Path, messages: list) -> str:
@@ -418,6 +445,7 @@ def _submit_daemon_request(session_root: Path, messages: list) -> str:
 def _wait_daemon_result(session_root: Path, rid: str, timeout: int = 900) -> dict:
     rfile = session_root / "daemon" / "results" / f"{rid}.json"
     deadline = time.time() + timeout
+    proc = _session_daemons.get(str(session_root))
     while time.time() < deadline:
         if rfile.exists():
             data = json.loads(rfile.read_text(encoding="utf-8-sig"))
@@ -426,8 +454,10 @@ def _wait_daemon_result(session_root: Path, rid: str, timeout: int = 900) -> dic
             except OSError:
                 pass
             return data
+        if proc is not None and proc.poll() is not None and not rfile.exists():
+            raise RuntimeError("AI 服务进程已退出，请检查服务配置")
         time.sleep(0.2)
-    raise RuntimeError("agent daemon timeout")
+    raise RuntimeError("AI 服务响应超时")
 
 
 def _run_agent(messages: list, session_id: str, base_url: str,
@@ -500,8 +530,20 @@ async def chat_completions(
     # 非流式：完整 Agent 跑完再返回
     try:
         final, attachments = _run_agent(messages, session_id, base_url)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"agent error: {e}")
+    except Exception as e:  # noqa: BLE001
+        err_msg = _friendly_agent_error(e)
+        return JSONResponse({
+            "id": _new_id(),
+            "object": "chat.completion",
+            "created": int(time.time()),
+            "model": "tsinghua-agent",
+            "choices": [{
+                "index": 0,
+                "message": {"role": "assistant", "content": err_msg},
+                "finish_reason": "stop",
+            }],
+            "usage": _usage_zero(),
+        })
 
     payload = {
         "id": _new_id(),
@@ -573,11 +615,11 @@ def _stream_agent(messages: list, session_id: str, base_url: str):
             raise RuntimeError("agent daemon timeout")
         attachments = _collect_attachments(start_ts, base_url, scope=session_root)
     except Exception as e:  # noqa: BLE001
-        yield _sse_frame(
-            cid, created, {},
-            finish_reason="stop",
-            error={"type": "upstream_error", "message": str(e)},
-        )
+        err_msg = _friendly_agent_error(e)
+        err_step = 8
+        for i in range(0, len(err_msg), err_step):
+            yield _sse_frame(cid, created, {"content": err_msg[i:i + err_step]})
+        yield _sse_frame(cid, created, {}, finish_reason="stop", usage=_usage_zero())
         yield "data: [DONE]\n\n"
         return
     finally:
