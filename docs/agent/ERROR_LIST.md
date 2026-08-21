@@ -630,3 +630,12 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **`isClientSide` private field trap repeats**: agents keep writing `level.isClientSide` — ERROR_LIST entry exists but sessions still hit it; prefer `level.isClientSide()` method form everywhere.
 - **Deprecation warnings pile**: `ModLoadingContext.get()` / `FMLJavaModLoadingContext.get()` marked for removal (seen again).
 - Flow note: this session needed 44 compile iterations — block-hook area is the densest API-diff zone so far; budget extra cycles when a task touches custom BlockBehaviour overrides.
+## 2026-08-21 itertest20 Weighted Backpack - Inventory refactor + tick event facts
+
+- **Player inventory refactor**: equipment no longer lives on `Inventory` — fields `armor` / `offhand` are GONE.
+  - Equipment is now in **`EntityEquipment`** (an `EnumMap<EquipmentSlot, ItemStack>` wrapper): `get(slot)` / `set(slot, stack)` / `isEmpty()` / `size()`.
+  - Main-inventory stacks: `player.getInventory().getNonEquipmentItems()`.
+  - Selected slot: `Inventory#getSelectedSlot()` (no more `selected` field access).
+- **`getCarried()` not found** on the old receiver: carried/open-container stack accessor moved (verify exact owner in mc_java_sources before use).
+- **Tick event relocation**: old `net.minecraftforge.event.TickEvent` path glob-empty in this mapping; locate the new tick event class before wiring `.BUS`. `ServerTickEvent.Pre` no longer exposes `getServer()` — pull the server from the event record field or `level`.
+- **Attribute API note**: holder-style attribute access + `AttributeInstance` add/remove modifier calls COMPILED as guessed this round (Attributes.MOVEMENT_SPEED holder path OK).
