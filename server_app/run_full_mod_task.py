@@ -66,6 +66,12 @@ def main() -> int:
     print(f"[run_full] 使用完整 server._copy_template 创建会话: {mod_dir}")
     _copy_template("minecraft", mod_dir, "forge", "1.21.11")
 
+    # 复制提示词到会话外的稳定位置，避免启动器清理会话目录时把它删掉
+    import tempfile, shutil as _sh
+    _stable_prompt = Path(os.environ.get("TEMP", str(PROJECT_ROOT))) / ("dsh_prompt_" + session_id + ".txt")
+    _sh.copyfile(prompt_file, _stable_prompt)
+    prompt_file = _stable_prompt
+
     env = {
         **os.environ,
         "PYTHONUNBUFFERED": "1",
