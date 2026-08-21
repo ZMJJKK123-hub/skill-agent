@@ -679,3 +679,9 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **Custom particle working pattern (1.21.11)**: `DeferredRegister<ParticleType<?>>` over the particle registry; register a `SimpleParticleType(true)` per particle; client provider wired via `DistExecutor.runWhenOn(Dist.CLIENT, () -> ClientClass::addParticleProviderListener)`.
 - Server spawn via `ServerLevel.sendParticles(...)` (signatures verified in source).
 - **FLOW DEFECT — wrap-up hang**: session hung twice with zero log output while process alive (LLM call without timeout during final wrap-up). Recovery: kill only that session's python + relaunch `run_task.py` with `DSH_RESUME=1`; breakpoint restored and completion state was intact. Consider adding an HTTP timeout to the LLM client.
+## 2026-08-21 itertest27 Gem Trader - villager trade API facts
+
+- **Trade offers moved to `net.minecraft.world.item.trading`**: `MerchantOffer` constructor now takes **`ItemCost`** objects (not raw ItemStacks) — verify `public ItemCost(...)` overloads in source before building offers.
+- **Villager offer injection pattern**: read `AbstractVillager#getOffers()`, append a `MerchantOffer`, guard duplicates by checking an equivalent offer already exists; server-side interaction only.
+- Grind note: heaviest session so far (~110 compile iterations) — trade/offer zone plus client-render deliberation; budget cycles accordingly.
+- Agent misflagged `Item id not set` NPE as NEW_ERROR; it is already documented (setId requirement). Reminder: grep ERROR_LIST before claiming NEW_ERROR.
