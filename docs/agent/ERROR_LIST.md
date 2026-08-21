@@ -737,3 +737,9 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **`Entity.spawnAtLocation(ItemStack)` not found**: now requires a `ServerLevel` first arg (e.g. `spawnAtLocation(serverLevel, stack)`).
 - **`InteractionResult.sidedSuccess(...)` gone (re-confirms sealed InteractionResult)** — return SUCCESS/SUCCESS_SERVER/CONSUME/PASS directly.
 - End-to-end RESULT: PASS; jar `torchbow-1.0.0.jar`.
+## 2026-08-21 itertest34 Beacon Compass - tooltip/scan facts
+
+- **Tooltip hook**: agent verified the current appendHoverText-equivalent signature directly from Item source before use (historically renamed; always re-check `Item.java` for the exact name in this mapping).
+- **`Level.hasChunkAt` now takes a BlockPos** (not int coords) — relevant for cube scans around a player.
+- Minor self-import clash (`ModConfig` defined twice in same compilation unit) — mod-specific naming, not an API fact.
+- End-to-end RESULT: PASS; jar `beaconcompass-1.0.0.jar`.
