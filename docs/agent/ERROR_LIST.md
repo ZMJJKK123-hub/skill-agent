@@ -565,3 +565,14 @@ Post-write research budget (`build-now-stop`) was not active because the agent w
   - `gradlew clean` alone does NOT fix it (clean recompiles the leftover source).
   - Fix: delete/rename all template example source files under `src/main/java/com/example`, then `gradlew clean` + rebuild/`run_test_gametest`.
 - **`gametest-check` false negative repeats** when `run_test_gametest` passed but checker still said FAILED; running `run_mod_test_cycle` once (all-in-one) refreshed state and passed. Recorded earlier as full-flow observation; it happened again in itertest13.
+## 2026-08-21 itertest14 Soulbound Key - new API facts
+
+- **`Registries.ITEM.getKey(Item)` cannot resolve symbol**:
+  - In 1.21.11 `net.minecraft.core.registries.Registries.ITEM` is a `ResourceKey<Registry<Item>>`, not a `Registry`.
+  - Fix: use `net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(item)` for level-less static registry lookup.
+- **`Identifier.parseOrThrow(String)` does not exist**:
+  - Use `Identifier.parse(id)` (throws on invalid; wrap in try/catch if needed).
+- **`Player#isSneaking()` does not exist**:
+  - Use `Entity#isShiftKeyDown()` or `Entity#isCrouching()`.
+- **`PlayerEvent.PlayerRespawnEvent#getPlayer()` not found**:
+  - The typed event is a record accessor: use `event.getEntity()` (same for `LivingDeathEvent`).
