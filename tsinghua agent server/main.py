@@ -716,10 +716,20 @@ def _append_service_notice(text: str) -> str:
     return text
 
 
+def _mod_switch_reply() -> str:
+    """chat 模式下用户要做 MOD 时的友好回复，替代内部标记。"""
+    return (
+        "🛠️ 制作 MOD 需要在完整版网站进行哦～清小搭这边暂时只支持普通对话。\n"
+        f"请移步到网页版，我会在那里带着完整工作区帮你做 MOD：{WEB_URL}"
+    )
+
+
 def _append_web_hint(text: str, mod_related: bool = False) -> str:
     """仅在用户涉及 MOD 需求时，在回复末尾提示移步网页版完整功能。"""
     if not mod_related:
         return text
+    if text.strip().upper().startswith("MOD_SWITCH_REQUEST"):
+        text = _mod_switch_reply()
     hint = (
         f"\n\n> ⚠️ 轻小搭平台上的对话功能暂时比较匮乏，仅支持 Chat 模式，"
         f"不支持修改文件或制作 MOD。\n"
