@@ -639,3 +639,10 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **`getCarried()` not found** on the old receiver: carried/open-container stack accessor moved (verify exact owner in mc_java_sources before use).
 - **Tick event relocation**: old `net.minecraftforge.event.TickEvent` path glob-empty in this mapping; locate the new tick event class before wiring `.BUS`. `ServerTickEvent.Pre` no longer exposes `getServer()` — pull the server from the event record field or `level`.
 - **Attribute API note**: holder-style attribute access + `AttributeInstance` add/remove modifier calls COMPILED as guessed this round (Attributes.MOVEMENT_SPEED holder path OK).
+## 2026-08-21 itertest21 Gem Kit - creative tab + eventbus facts
+
+- **Vanilla tab references are `ResourceKey<CreativeModeTab>` constants**: `CreativeModeTabs.BUILDING_BLOCKS` etc. are created via `createKey("building_blocks")` — do NOT treat them as CreativeModeTab instances; pass the key to `CreativeModeTab.Builder` copies/`output.accept` contexts accordingly.
+- **Working custom-tab pattern this round**: DeferredRegister-style tab registration + `displayItems` -> `output.accept(item)`; `BuildCreativeModeTabContentsEvent` (typed `.BUS`) available for appends.
+- **`IEventBus` not found (independent repro)**: second session confirmed eventbus change — use `net.minecraftforge.eventbus.api.bus.BusGroup` / `getModBusGroup()`.
+- **FLOW DEFECT — start-phase read loop**: nearly every new session burns 5-10 rounds re-reading `mc_java_sources/starter` before the first write, despite `<write-first-stop>` firing 2-4 times (this session reached supervisor ALERT). Recommendation: on session start, force-inject a ready-to-edit minimal main-class template instead of only warning.
+- Grind note: main build took ~21 compile iterations (creative-tab zone); test cycle needed one retry before RESULT: PASS.
