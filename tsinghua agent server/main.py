@@ -358,7 +358,7 @@ def _is_mod_request(messages: list) -> bool:
         if not isinstance(content, str):
             continue
         low = content.lower()
-        if any(k in low for k in ("mod", "/mod", "模组", "我的世界", "forge")):
+        if re.search(r"(?i)(/mod|\bmod\b|模组|mod制作|我的世界.*(?:mod|模组)|forge)", low):
             return True
     return False
 
@@ -587,6 +587,7 @@ def _stream_agent(messages: list, session_id: str, base_url: str):
     rid = _submit_daemon_request(session_root, messages)
     reasoning_file = session_root / "daemon" / "reasoning" / f"{rid}.jsonl"
     result_file = session_root / "daemon" / "results" / f"{rid}.json"
+    daemon_proc = _session_daemons.get(str(session_root))
     final = None
     last_idx = 0
     deadline = time.time() + 900
@@ -610,6 +611,8 @@ def _stream_agent(messages: list, session_id: str, base_url: str):
                     raise RuntimeError(data["error"])
                 final = data.get("text") or "(no response)"
                 break
+            if daemon_proc is not None and daemon_proc.poll() is not None:
+                raise RuntimeError("AI 服务进程已退出，请检查服务配置")
             time.sleep(0.1)
         if final is None:
             raise RuntimeError("agent daemon timeout")

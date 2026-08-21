@@ -39,6 +39,9 @@ reasoning_dir = session_dir / "daemon" / "reasoning"
 for d in (queue_dir, results_dir, reasoning_dir):
     d.mkdir(parents=True, exist_ok=True)
 
+IDLE_TIMEOUT = float(os.environ.get("DSH_DAEMON_IDLE_TIMEOUT", "600"))
+last_activity = time.time()
+
 from core.agent import agent_loop, set_reasoning_sink  # noqa: E402
 
 
@@ -50,6 +53,8 @@ def _write_json(path: Path, data: dict) -> None:
 
 
 def _process_request(req_path: Path) -> None:
+    global last_activity
+    last_activity = time.time()
     rid = req_path.stem
     reasoning_file = reasoning_dir / f"{rid}.jsonl"
     result_file = results_dir / f"{rid}.json"
@@ -90,6 +95,9 @@ def main() -> None:
                 _process_request(req_path)
         except Exception as e:  # noqa: BLE001
             print(f"[session_daemon] loop error: {e}", flush=True)
+        if time.time() - last_activity > IDLE_TIMEOUT:
+            print(f"[session_daemon] idle timeout ({IDLE_TIMEOUT}s), exit", flush=True)
+            break
         time.sleep(0.2)
 
 
