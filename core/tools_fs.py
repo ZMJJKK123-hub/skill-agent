@@ -51,6 +51,9 @@ def _is_mc_java_sources(fp: Path) -> bool:
                 return True
     except Exception:  # noqa: BLE001
         pass
+        docs_agent = (repo_root / "docs" / "agent").resolve()
+        if docs_agent.exists() and resolved.is_relative_to(docs_agent):
+            return True
     return False
 
 
