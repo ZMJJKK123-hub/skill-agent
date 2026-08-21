@@ -15,6 +15,7 @@ class DimensionParkour extends BaseGame {
     this._kd = e => {
       if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w') { e.preventDefault(); this.jump(); }
       if (e.key === 'ArrowDown' || e.key === 's') { this.flipGravity(); }
+      if (e.key === 'Enter') { this.activateFlatWorld(); }
     };
     this._tap = () => this.jump();
     addEventListener('keydown', this._kd);
@@ -41,6 +42,15 @@ class DimensionParkour extends BaseGame {
     if (this.player.onGround) { this.player.vy = -9 * this.gravityDir; this.player.onGround = false; sfx('eat'); }
   }
 
+  activateFlatWorld() {
+    if (this.gameOver || this.energy < 100) return;
+    this.flatWorld = 480; // ~8 seconds at 60fps
+    this.energy = 0;
+    this.spd = 6;
+    sfx('powerup');
+    toast('SUPER FLAT WORLD!');
+  }
+
   flipGravity() {
     if (this.gameOver || !this.player.onGround) return;
     this.gravityDir *= -1;
@@ -65,6 +75,7 @@ class DimensionParkour extends BaseGame {
     if (this.flatWorld > 0) {
       this.flatWorld--;
       this.obstacles = this.obstacles.filter(o => o.x > 0);
+      if (this.flatWorld <= 0) { this.spd = 3; } // restore speed
     } else if (this.tick % Math.max(40, 90 - Math.floor(this.score / 5)) === 0) {
       this.spawnObstacle();
     }
@@ -91,7 +102,20 @@ class DimensionParkour extends BaseGame {
     c.fillStyle = '#050810';
     c.fillRect(0, 0, this.w, this.h);
     c.save();
-    if (this.flatWorld > 0) { c.fillStyle = 'rgba(0,255,159,' + (this.flatWorld / 200) + ')'; c.fillRect(0, 0, this.w, this.h); }
+    if (this.flatWorld > 0) {
+      // Chunk loading effect: green overlay + flashing grid lines
+      c.fillStyle = 'rgba(0,255,159,' + (this.flatWorld / 480 * 0.15) + ')';
+      c.fillRect(0, 0, this.w, this.h);
+      c.strokeStyle = 'rgba(0,255,159,' + (0.3 + 0.2 * Math.sin(this.tick * 0.3)) + ')';
+      c.lineWidth = 1;
+      var off = this.bgOffset % 40;
+      for (var gx = -off; gx < this.w; gx += 40) {
+        c.beginPath(); c.moveTo(gx, 0); c.lineTo(gx, this.h); c.stroke();
+      }
+      for (var gy = 0; gy < this.h; gy += 40) {
+        c.beginPath(); c.moveTo(0, gy); c.lineTo(this.w, gy); c.stroke();
+      }
+    }
     c.fillStyle = this.gravityDir > 0 ? '#1a2332' : '#2a1a32';
     c.fillRect(0, this.h - 4, this.w, 4);
     c.fillRect(0, 0, this.w, 4);
@@ -134,7 +158,7 @@ class DimensionParkour extends BaseGame {
     c.fillRect(8, 24, 100, 4);
     c.fillStyle = '#00d4ff';
     c.fillRect(8, 24, this.energy, 4);
-    if (this.energy >= 100) { c.fillStyle = '#00ff9f'; c.font = '9px monospace'; c.fillText('ENTER=FLAT WORLD', 114, 28); }
+    if (this.energy >= 100) { c.fillStyle = '#00ff9f'; c.font = '9px monospace'; c.fillText('ENTER=SUPER FLAT', 114, 28); }
   }
 
   die() {
