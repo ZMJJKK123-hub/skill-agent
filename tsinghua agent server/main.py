@@ -445,6 +445,10 @@ def _easter_egg_response(messages: list) -> str | None:
             return "pong 🏓（彩蛋：Ping-Pong！）"
         if c in ("彩蛋", "easter egg", "easteregg"):
             return "🎉 你发现了一个彩蛋！谢谢你的好奇，祝你今天也开开心心～"
+        if c in ("早安", "早上好", "good morning"):
+            return "☀️ 早安呀！新的一天从好心情开始～有什么想让我帮忙的吗？"
+        if c in ("晚安", "我要睡了", "我去睡了", "good night"):
+            return "🌙 晚安～做个好梦，明天见！记得盖好被子～"
         if c in ("小贴士", "tip", "来个贴士"):
             return "💡 小贴士：" + random.choice([
                 "把大任务拆成 5 分钟小任务，更容易开始～",
