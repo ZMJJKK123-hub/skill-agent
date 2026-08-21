@@ -1,5 +1,6 @@
 import json
 import os
+import subprocess
 from pathlib import Path
 
 from . import config
@@ -322,7 +323,34 @@ def _dump_round_messages(round_idx: int, messages: list, tool_counts: dict) -> N
         logger.warning(f"round dump failed: {e}")
 
 
+def _ensure_mc_java_sources():
+    """若工作区缺少 mc_java_sources，则链接到仓库 mc_java_sources_1.21.11。
+
+    手动复制的 mod 模板不会自动带 server 建的 junction；这里补上，
+    保证 search_api/read_file 能在工作区内读到完整 MC/Forge 源码。
+    """
+    if not IS_MOD_MODE:
+        return
+    target = Path.cwd() / "mc_java_sources"
+    source = Path(__file__).resolve().parent.parent / "mc_java_sources_1.21.11"
+    if target.exists() or not source.exists():
+        return
+    try:
+        if os.name == "nt":
+            subprocess.run(
+                ["cmd", "/c", "mklink", "/J", str(target), str(source)],
+                check=True, capture_output=True,
+            )
+        else:
+            target.symlink_to(source, target_is_directory=True)
+        logger.info(f"已补建 mc_java_sources junction -> {source}")
+    except Exception as e:
+        logger.warning(f"补建 mc_java_sources 失败: {e}")
+
+
 def agent_loop(messages: list) -> str:
+    # 确保工作区能看到 MC/Forge 源码（手动建会话时最容易缺这一项）
+    _ensure_mc_java_sources()
     rounds_since_todo = 0
     # ── 第 13 课：代码强制派发监管 Agent（不依赖主 agent 主动调 task）──
     # 每次任务开始必然启动后台监管线程；幂等（已在跑则不重复启动）。
