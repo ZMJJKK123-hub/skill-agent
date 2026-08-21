@@ -363,14 +363,32 @@ def _is_mod_request(messages: list) -> bool:
     return False
 
 
+def _easter_egg_response(messages: list) -> str | None:
+    """轻量彩蛋：用户发 ping 或彩蛋时快速返回趣味回复。"""
+    for m in messages:
+        if not isinstance(m, dict) or m.get("role") != "user":
+            continue
+        content = m.get("content", "")
+        if not isinstance(content, str):
+            continue
+        c = content.strip().lower()
+        if c == "ping":
+            return "pong 🏓（彩蛋：Ping-Pong！）"
+        if c in ("彩蛋", "easter egg", "easteregg"):
+            return "🎉 你发现了一个彩蛋！谢谢你的好奇，祝你今天也开开心心～"
+    return None
+
+
 def _friendly_agent_error(e: Exception) -> str:
     """把底层异常转成用户可读的提示文本。"""
     msg = str(e)
     low = msg.lower()
     if "missing credentials" in low or "deepseek_api_key" in low or "openai_api_key" in low:
         return "⚠️ AI 服务配置错误：缺少 DeepSeek API Key，请检查服务器 .env 配置。"
-    if "invalid credential" in low:
-        return "⚠️ AI 服务配置错误：DeepSeek API Key 无效。"
+    if "invalid credential" in low or "unauthorized" in low or "authentication" in low:
+        return "⚠️ AI 服务配置错误：DeepSeek API Key 无效或未授权。"
+    if "connection refused" in low or "connect" in low or "network" in low:
+        return "⚠️ AI 服务连接失败，请检查网络或稍后再试。"
     if "timeout" in low or "响应超时" in msg:
         return "⚠️ AI 服务响应超时，请稍后再试。"
     if "初始化失败" in msg or "进程已退出" in msg:
@@ -519,6 +537,34 @@ async def chat_completions(
 
     # 公网 URL 基址：附件 fileUrl 用它拼出（可用 DSH_PUBLIC_BASE_URL 覆盖）
     base_url = os.environ.get("DSH_PUBLIC_BASE_URL") or str(request.base_url).rstrip("/")
+
+    # 轻量彩蛋：先于 agent 返回，保证快速、有趣
+    egg = _easter_egg_response(messages)
+    if egg is not None:
+        if stream:
+            egg_cid = _new_id()
+            egg_created = int(time.time())
+
+            def egg_gen():
+                yield _sse_frame(egg_cid, egg_created, {"role": "assistant"})
+                for i in range(0, len(egg), 8):
+                    yield _sse_frame(egg_cid, egg_created, {"content": egg[i:i + 8]})
+                yield _sse_frame(egg_cid, egg_created, {}, finish_reason="stop", usage=_usage_zero())
+                yield "data: [DONE]\n\n"
+
+            return StreamingResponse(egg_gen(), media_type="text/event-stream")
+        return JSONResponse({
+            "id": _new_id(),
+            "object": "chat.completion",
+            "created": int(time.time()),
+            "model": "tsinghua-agent",
+            "choices": [{
+                "index": 0,
+                "message": {"role": "assistant", "content": egg},
+                "finish_reason": "stop",
+            }],
+            "usage": _usage_zero(),
+        })
 
     if stream:
         return StreamingResponse(
