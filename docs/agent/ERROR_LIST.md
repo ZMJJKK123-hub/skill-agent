@@ -747,3 +747,9 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 
 - **ItemStack damage accessors in 1.21.11** (verified from source this round): `getDamageValue(ItemStack)`-style statics on the class were NOT the shape used; agent resolved via `ItemStack.java` — record whatever compiled: damage read/write goes through the DataComponents-backed accessors (`stack.set(DataComponents.DAMAGE, n)` / `stack.get(...)`), not legacy `setDamageValue`.
 - End-to-end RESULT: PASS first cycle; jar `anvilrepair-1.0.0.jar` (8,712 B). Clean session (one early write-first-stop only).
+## 2026-08-21 itertest36 Growth Powder - blockstate property iteration fact
+
+- **`BlockState#getProperties()` returns `Collection<Property<?>>`, not a Map** — `.keySet()` does not exist.
+  - Fix: iterate the collection directly (`for (Property<?> p : state.getProperties())`), or use `getValues().keySet()` if a key view is needed.
+- Crop age boost via `AGE_*` IntegerProperty worked with manual clamping; particles via ServerLevel.sendParticles fine.
+- End-to-end RESULT: PASS; jar `growthpowder-1.0.0.jar`.
