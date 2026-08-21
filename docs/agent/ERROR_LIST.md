@@ -775,3 +775,8 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
   - PROCESS FIX (upstream): `run_mod_test_cycle`/launcher should delete the entire `build/` directory once before GameTest when a BROKEN-mod error is detected; or template sessions should never ship pre-built `build/` dirs.
   - Main jar DID build (`featherfall-1.0.0.jar`, 12,244 B) — failure is GameTest-environment only.
 - First FAIL of the series since itertest11-era; retry scheduled as itertest40 with explicit `rmdir /s /q build` instruction.
+## 2026-08-21 itertest40 Feather Fall retry - SESSION FAILED again (model capability boundary?)
+
+- **Second consecutive FAIL on Feather Fall**: this time NOT the BROKEN-mod trap (anti-BROKEN checklist worked) but repeated `找不到符号` compile errors inside the GameTest sources across many attempts; session ended with no dist jar.
+- Pattern: fall-damage event + per-item charge DataComponent + tooltip combination proved too hard for **GLM-4.5-Flash** to converge within a session, while it completed Honey Slide fine.
+- Takeaway: GLM-4.5-Flash handles single-hook features well but struggles with multi-fact compositions; prefer simpler tasks or add explicit event-name facts to prompts when using it.
