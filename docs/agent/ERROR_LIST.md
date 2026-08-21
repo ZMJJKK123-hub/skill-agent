@@ -753,3 +753,8 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
   - Fix: iterate the collection directly (`for (Property<?> p : state.getProperties())`), or use `getValues().keySet()` if a key view is needed.
 - Crop age boost via `AGE_*` IntegerProperty worked with manual clamping; particles via ServerLevel.sendParticles fine.
 - End-to-end RESULT: PASS; jar `growthpowder-1.0.0.jar`.
+## 2026-08-21 itertest37 Soul Lantern Pet - inventoryTick fact
+
+- **`Item#inventoryTick(ItemStack, Level, Entity, int slot, boolean selected)` still exists** (CompassItem.java:34 reference) — per-item tick logic is available directly on the Item, no event needed for inventory-scoped behavior.
+- Push-away via `setDeltaMovement`/`deltaMovement` accessors compiled fine this round (name check done against LivingEntity source).
+- End-to-end RESULT: PASS; jar `soul-lantern-pet-1.0.0.jar`.
