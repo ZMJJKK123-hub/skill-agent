@@ -445,6 +445,14 @@ def _easter_egg_response(messages: list) -> str | None:
             return "pong 🏓（彩蛋：Ping-Pong！）"
         if c in ("彩蛋", "easter egg", "easteregg"):
             return "🎉 你发现了一个彩蛋！谢谢你的好奇，祝你今天也开开心心～"
+        if c in ("今日运势", "每日运势", "运势"):
+            return random.choice([
+                "🔮 今日运势：大吉！适合尝试新玩法，比如换个人格～",
+                "🌟 今日运势：小吉。多喝水，少熬夜，好运自然来！",
+                "🍀 今日运势：上上签！你可能会在今天发现新的彩蛋～",
+            ])
+        if c in ("谢谢", "感谢", "thank you", "thanks"):
+            return "不客气～能帮到你我也很开心！有需要随时找我 ✨"
         if c in ("所有彩蛋", "彩蛋列表", "有什么彩蛋", "彩蛋"):
             return ("🎁 目前彩蛋：\n"
                     "· ping → pong 🏓\n"
@@ -755,6 +763,17 @@ async def chat_completions(
             reply = "我是你的专属 AI 助手。当前人格：高冷技术助理。想换人格就说“切换成喵娘”。"
         else:
             reply = f"我是你的专属 AI 助手，当前人格：{display}。想换人格的话，跟我说“切换成喵娘”就好啦～"
+        return _quick_chat_response(reply, stream)
+
+    # 服务状态快捷回复
+    status_queries = {"服务器状态", "服务状态", "系统状态"}
+    if any(
+        isinstance(m, dict) and m.get("role") == "user" and str(m.get("content", "")).strip() in status_queries
+        for m in messages
+    ):
+        key = _resolve_persona_key(session_id)
+        display = PERSONA_DISPLAY.get(key, key or "通用")
+        reply = f"✅ 服务运行中，AI 引擎在线，当前人格：{display}。我可以聊天、写代码、查资料～"
         return _quick_chat_response(reply, stream)
 
     # 轻量彩蛋：先于 agent 返回，保证快速、有趣
