@@ -445,6 +445,11 @@ def _easter_egg_response(messages: list) -> str | None:
             return "pong 🏓（彩蛋：Ping-Pong！）"
         if c in ("彩蛋", "easter egg", "easteregg"):
             return "🎉 你发现了一个彩蛋！谢谢你的好奇，祝你今天也开开心心～"
+        if c in ("取个名字", "起个名", "帮我取名字", "帮我起名"):
+            return "🌟 送你一个名字：" + random.choice(["小星", "阿哲", "洛洛", "云乔", "橙子", "喵子", "北辰", "可可"])
+        if c in ("今天星期几", "星期几", "今天是星期几"):
+            weekday = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"][int(time.strftime("%w"))]
+            return f"📅 今天是{weekday}！"
         if c in ("自我介绍", "介绍你自己", "介绍一下你"):
             return "我是你的专属 AI 助手：能聊天、写代码、查资料、处理文件，还能切换不同人格陪你玩～比如“切换成喵娘”。"
         if c in ("我喜欢你", "我好喜欢你", "喜欢你"):
