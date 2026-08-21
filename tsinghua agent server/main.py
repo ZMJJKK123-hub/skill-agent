@@ -445,6 +445,12 @@ def _easter_egg_response(messages: list) -> str | None:
             return "pong 🏓（彩蛋：Ping-Pong！）"
         if c in ("彩蛋", "easter egg", "easteregg"):
             return "🎉 你发现了一个彩蛋！谢谢你的好奇，祝你今天也开开心心～"
+        if c in ("你吃饭了吗", "吃饭了吗", "你吃了吗"):
+            return "😋 我刚吃过一段全是 0 和 1 组成的代码大餐！你呢？"
+        if c in ("你多大了", "你几岁", "你的年龄"):
+            return "📅 我诞生于 2026 年，年龄嘛……保密～"
+        if c in ("你喜欢什么", "你喜欢什么颜色", "你喜欢做什么"):
+            return "✨ 我最喜欢代码一次跑通时的爽感，还有和你聊天这件事！"
         if c in ("你心情怎么样", "心情", "你现在心情如何"):
             return "😊 我心情超好！因为能和你聊天呀～"
         if c in ("天气", "今天天气", "下雨了吗"):
