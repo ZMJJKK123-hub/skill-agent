@@ -69,7 +69,7 @@ class ServerDefense extends BaseGame {
       e.y += dy / d * e.spd;
       if (this.upgrades.range > 0 && this.time % 30 === 0) {
         var rd = 60 + this.upgrades.range * 30;
-        if (d < rd) { e.hp -= 0.5; this.particles.push({ x: e.x, y: e.y, r: 3, life: 5, color: '#00d4ff' }); }
+        if (d < rd) { e.hp -= 0.5; this.spawnParticle(e.x, e.y, 0, 0, 5, '#00d4ff', 3); }
       }
     });
 
@@ -78,7 +78,7 @@ class ServerDefense extends BaseGame {
         if (dist(b.x, b.y, e.x, e.y) < e.r + 4) {
           e.hp -= b.dmg;
           b.dead = true;
-          this.particles.push({ x: e.x, y: e.y, r: 4, life: 8, color: '#ff0' });
+          this.spawnParticle(e.x, e.y, 0, 0, 8, '#ff0', 4);
         }
       });
     });
@@ -91,7 +91,14 @@ class ServerDefense extends BaseGame {
         this.exp++;
         this.shards.push({ x: e.x, y: e.y, r: 3, life: 60, vx: (Math.random() - 0.5) * 2, vy: (Math.random() - 0.5) * 2, pts: e.pts });
         sfx('hit');
-        for (var i = 0; i < 8; i++) this.particles.push({ x: e.x, y: e.y, r: Math.random() * 3 + 1, life: 15, vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4, color: '#f85' });
+        // Bigger explosion with ring effect
+        for (var i = 0; i < 12; i++) {
+          var ang = (i / 12) * Math.PI * 2;
+          var spd = 2 + Math.random() * 3;
+          this.spawnParticle(e.x, e.y, Math.cos(ang) * spd, Math.sin(ang) * spd, 20, e.type === '502' ? '#bb44ff' : '#ff8800', Math.random() * 3 + 1);
+        }
+        // Ring shockwave
+        this.spawnParticle(e.x, e.y, 0, 0, 12, '#fff', 20);
         return false;
       }
       if (dist(p.x, p.y, e.x, e.y) < p.r + e.r) {
@@ -122,6 +129,22 @@ class ServerDefense extends BaseGame {
     else { x = rnd(0, this.w); y = this.h; }
     var type = rnd(0, 2) === 0 ? '502' : '404';
     this.enemies.push({ x: x, y: y, r: type === '502' ? 14 : 10, hp: type === '502' ? 3 : 1, spd: type === '502' ? 0.6 : 1.2, type: type, pts: type === '502' ? 3 : 1 });
+  }
+
+  spawnParticle(x, y, vx, vy, life, color, r) {
+    // Object pool: find a dead particle to reuse
+    var dead = null;
+    for (var i = 0; i < this.particles.length; i++) {
+      if (this.particles[i].life <= 0) { dead = this.particles[i]; break; }
+    }
+    if (dead) {
+      dead.x = x; dead.y = y; dead.vx = vx; dead.vy = vy;
+      dead.life = life; dead.color = color; dead.r = r || 2;
+    } else {
+      if (this.particles.length < 300) {
+        this.particles.push({ x: x, y: y, vx: vx, vy: vy, life: life, color: color, r: r || 2 });
+      }
+    }
   }
 
   fire() {

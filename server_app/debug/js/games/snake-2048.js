@@ -135,9 +135,21 @@ class Snake2048 extends BaseGame {
   render() {
     var c = this.ctx;
     var scanning = this.autoActive > 0;
-    c.fillStyle = scanning ? '#1a0033' : '#050810';
+    c.fillStyle = scanning ? '#0a0010' : '#050810';
     c.fillRect(0, 0, this.w, this.h);
-    c.strokeStyle = scanning ? 'rgba(255,0,255,.1)' : 'rgba(0,255,159,.05)';
+    if (scanning) {
+      // High contrast red-blue scanlines
+      c.strokeStyle = 'rgba(0,100,255,.08)';
+      c.lineWidth = 1;
+      for (var sy = 0; sy < this.h; sy += 4) {
+        c.beginPath(); c.moveTo(0, sy); c.lineTo(this.w, sy); c.stroke();
+      }
+      c.strokeStyle = 'rgba(255,0,100,.1)';
+      for (var sx = 0; sx < this.w; sx += 4) {
+        c.beginPath(); c.moveTo(sx, 0); c.lineTo(sx, this.h); c.stroke();
+      }
+    }
+    c.strokeStyle = scanning ? 'rgba(255,0,255,.15)' : 'rgba(0,255,159,.05)';
     c.lineWidth = 1;
     for (var i = 0; i <= this.cols; i++) { c.beginPath(); c.moveTo(i * this.cell, 0); c.lineTo(i * this.cell, this.h); c.stroke(); }
     for (var j = 0; j <= this.rows; j++) { c.beginPath(); c.moveTo(0, j * this.cell); c.lineTo(this.w, j * this.cell); c.stroke(); }
