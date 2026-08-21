@@ -743,3 +743,7 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **`Level.hasChunkAt` now takes a BlockPos** (not int coords) — relevant for cube scans around a player.
 - Minor self-import clash (`ModConfig` defined twice in same compilation unit) — mod-specific naming, not an API fact.
 - End-to-end RESULT: PASS; jar `beaconcompass-1.0.0.jar`.
+## 2026-08-21 itertest35 Anvil Repair - durability accessor facts
+
+- **ItemStack damage accessors in 1.21.11** (verified from source this round): `getDamageValue(ItemStack)`-style statics on the class were NOT the shape used; agent resolved via `ItemStack.java` — record whatever compiled: damage read/write goes through the DataComponents-backed accessors (`stack.set(DataComponents.DAMAGE, n)` / `stack.get(...)`), not legacy `setDamageValue`.
+- End-to-end RESULT: PASS first cycle; jar `anvilrepair-1.0.0.jar` (8,712 B). Clean session (one early write-first-stop only).
