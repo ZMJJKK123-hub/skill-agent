@@ -666,3 +666,11 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **`Level.playSound(...)` takes `SoundEvent`, NOT `Holder.Reference<SoundEvent>`**: vanilla constants like `SoundEvents.NOTE_BLOCK_PLING` are Holders now.
   - Fix: `level.playSound(null, pos, SoundEvents.NOTE_BLOCK_PLING.value(), SoundSource.BLOCKS, vol, pitch)`.
 - **Recurring flow defect — jar name staleness**: forgetting `rootProject.name`/archivesBaseName rename produces a stale `examplemod-1.0.0.jar` alongside the real one; agent caught and cleaned this round, but the check belongs in the standard rename checklist.
+## 2026-08-21 itertest25 Pebble Golem - spawn egg / RenderType / renderer pipeline facts
+
+- **`TypedEntityData.create(EntityType)` does NOT exist**: factory is `TypedEntityData.of(T, CompoundTag)`.
+  - SpawnEggItem in 1.21.11 takes only `Item.Properties` and learns its entity via **`DataComponents.ENTITY_DATA`**:
+    `new SpawnEggItem(new Item.Properties().setId(ITEMS.key("egg")).component(DataComponents.ENTITY_DATA, TypedEntityData.of(TYPE.get(), new CompoundTag())))`.
+- **`RenderType` moved** to `net.minecraft.client.renderer.rendertype` subpackage (old import fails).
+- **EntityRenderer abstract surface changed again**: no-arg `createRenderState()` override; old `render(PoseStack, MultiBufferSource, int)` gone — drawing goes through the new submit/`render*` pipeline; follow a vanilla minimal renderer (LlamaSpit pattern from itertest15 still applies for the trio structure).
+- Attributes event: entity attribute registration event located and used successfully this round (name per mc_java_sources).
