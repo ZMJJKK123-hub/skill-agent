@@ -364,9 +364,33 @@ def _ensure_mc_java_sources():
         logger.warning(f"补建 mc_java_sources 失败: {e}")
 
 
+def _ensure_docs_agent():
+    """在会话工作区创建 docs/agent 软链接，指向仓库根的参考文档（只读，不复制）。"""
+    if os.environ.get("DSH_ALLOW_MC_SOURCES") != "1" and not IS_MOD_MODE:
+        return
+    repo_root = Path(__file__).resolve().parent.parent
+    docs_src = repo_root / "docs" / "agent"
+    target = Path.cwd() / "docs" / "agent"
+    if target.exists() or not docs_src.is_dir():
+        return
+    try:
+        if os.name == "nt":
+            subprocess.run(
+                ["cmd", "/c", "mklink", "/J", str(target), str(docs_src)],
+                check=True, capture_output=True,
+            )
+        else:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.symlink_to(docs_src, target_is_directory=True)
+        logger.info(f"已补建 docs/agent junction -> {docs_src}")
+    except Exception as e:
+        logger.warning(f"补建 docs/agent 失败: {e}")
+
+
 def agent_loop(messages: list) -> str:
     # 确保工作区能看到 MC/Forge 源码（手动建会话时最容易缺这一项）
     _ensure_mc_java_sources()
+    _ensure_docs_agent()
     rounds_since_todo = 0
     # ── 第 13 课：代码强制派发监管 Agent（不依赖主 agent 主动调 task）──
     # 每次任务开始必然启动后台监管线程；幂等（已在跑则不重复启动）。
