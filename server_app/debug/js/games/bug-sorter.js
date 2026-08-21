@@ -107,7 +107,10 @@ class BugSorter extends BaseGame {
   spawn() {
     var lane = rnd(0, 2);
     var types = ['UI', 'API', 'SQL'];
-    this.notes.push({ lane: lane, y: -20, spd: 3 + Math.random() * 1.5, type: types[lane], color: this.lanes[lane].color });
+    var spd = 3 + Math.random() * 1.5 + this.score / 300;
+    // Occasionally spawn fast "critical" bug (bigger, more points)
+    var isCritical = this.score > 100 && Math.random() < 0.1;
+    this.notes.push({ lane: lane, y: -20, spd: isCritical ? spd * 1.6 : spd, type: isCritical ? 'CRIT' : types[lane], color: isCritical ? '#ff44aa' : this.lanes[lane].color, critical: isCritical, r: isCritical ? 16 : 12 });
   }
 
   hit(lane) {
@@ -116,13 +119,16 @@ class BugSorter extends BaseGame {
       var best = hits.sort(function(a, b) { return Math.abs(a.y - this.judgeLineY) - Math.abs(b.y - this.judgeLineY); }.bind(this))[0];
       best.dead = true;
       var acc = Math.abs(best.y - this.judgeLineY);
-      if (acc < 10) { this.score += 100; this.judgeText.push({ text: 'PERFECT', x: this.lanes[lane].x, y: this.judgeLineY, life: 30, color: '#00ff9f' }); }
-      else { this.score += 50; this.judgeText.push({ text: 'GOOD', x: this.lanes[lane].x, y: this.judgeLineY, life: 30, color: '#ffcc00' }); }
+      var basePts = best.critical ? 200 : 100;
+      if (acc < 10) { this.score += basePts; this.judgeText.push({ text: 'PERFECT', x: this.lanes[lane].x, y: this.judgeLineY, life: 30, color: '#00ff9f' }); }
+      else { this.score += Math.floor(basePts / 2); this.judgeText.push({ text: 'GOOD', x: this.lanes[lane].x, y: this.judgeLineY, life: 30, color: '#ffcc00' }); }
       this.combo++;
       this.maxCombo = Math.max(this.maxCombo, this.combo);
       this.hitFlash[lane] = 1;
-      if (this.combo > 0 && this.combo % 5 === 0) { this.score += 50; sfx('combo'); }
-      sfx('eat');
+      // Combo multiplier bonus
+      var mult = 1 + Math.floor(this.combo / 10);
+      if (this.combo > 0 && this.combo % 5 === 0) { this.score += 50 * mult; sfx('combo'); }
+      sfx(best.critical ? 'powerup' : 'eat');
     } else {
       this.miss++;
       this.combo = 0;
@@ -160,9 +166,16 @@ class BugSorter extends BaseGame {
     c.stroke();
     this.notes.forEach(function(n) {
       c.fillStyle = n.color;
-      c.fillRect(n.lane * 160 + 50, n.y - 12, 60, 24);
+      var w = n.critical ? 70 : 60;
+      var h2 = n.critical ? 28 : 24;
+      c.fillRect(n.lane * 160 + 80 - w / 2, n.y - h2 / 2, w, h2);
+      if (n.critical) {
+        c.strokeStyle = '#fff';
+        c.lineWidth = 1;
+        c.strokeRect(n.lane * 160 + 80 - w / 2, n.y - h2 / 2, w, h2);
+      }
       c.fillStyle = '#fff';
-      c.font = '10px monospace';
+      c.font = n.critical ? '11px monospace' : '10px monospace';
       c.textAlign = 'center';
       c.textBaseline = 'middle';
       c.fillText(n.type, n.lane * 160 + 80, n.y);

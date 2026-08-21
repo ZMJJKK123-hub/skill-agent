@@ -262,6 +262,20 @@ class DimensionParkour extends BaseGame {
     c.fillRect(8, 24, this.energy, 4);
     if (this.energy >= 100) { c.fillStyle = '#00ff9f'; c.font = '9px monospace'; c.fillText('ENTER=SUPER FLAT', 114, 28); }
     else { c.fillStyle = '#5a6a7a'; c.font = '8px monospace'; c.fillText('Space=jump, Down=flip, Enter=flat', 114, 28); }
+    // Flat world timer
+    if (this.flatWorld > 0) {
+      c.fillStyle = '#00ff9f';
+      c.font = '10px monospace';
+      c.textAlign = 'right';
+      c.fillText('FLAT: ' + Math.ceil(this.flatWorld / 60) + 's', this.w - 8, 34);
+      c.textAlign = 'left';
+    }
+    // Gravity indicator
+    c.fillStyle = this.gravityDir > 0 ? '#5a6a7a' : '#bb44ff';
+    c.font = '8px monospace';
+    c.textAlign = 'right';
+    c.fillText(this.gravityDir > 0 ? 'GRAV: DOWN' : 'GRAV: UP', this.w - 8, 46);
+    c.textAlign = 'left';
   }
 
   die() {
