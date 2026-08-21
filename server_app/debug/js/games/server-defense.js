@@ -191,7 +191,24 @@ class ServerDefense extends BaseGame {
     this.particles.forEach(p => { c.beginPath(); c.arc(p.x, p.y, Math.max(0.5, p.r), 0, Math.PI * 2); c.fillStyle = p.color || '#ff0'; c.globalAlpha = p.life / 15; c.fill(); c.globalAlpha = 1; });
     this.shards.forEach(s => { c.fillStyle = 'rgba(0,255,159,' + (s.life / 60) + ')'; c.beginPath(); c.arc(s.x, s.y, 3, 0, Math.PI * 2); c.fill(); });
     this.enemies.forEach(e => { c.fillStyle = e.type === '502' ? '#bb44ff' : '#ff3355'; c.beginPath(); c.arc(e.x, e.y, e.r, 0, Math.PI * 2); c.fill(); c.fillStyle = '#fff'; c.font = '8px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(e.type, e.x, e.y); });
-    this.bullets.forEach(b => { c.fillStyle = '#00ff9f'; c.beginPath(); c.arc(b.x, b.y, 3, 0, Math.PI * 2); c.fill(); });
+    this.bullets.forEach(b => {
+      // Render as laser beam: glowing line + bright tip
+      c.strokeStyle = 'rgba(0,255,159,.3)';
+      c.lineWidth = 4;
+      c.beginPath();
+      c.moveTo(b.x - b.dx * 2, b.y - b.dy * 2);
+      c.lineTo(b.x, b.y);
+      c.stroke();
+      c.fillStyle = '#00ff9f';
+      c.beginPath();
+      c.arc(b.x, b.y, 3, 0, Math.PI * 2);
+      c.fill();
+      // Glow
+      c.fillStyle = 'rgba(0,255,159,.3)';
+      c.beginPath();
+      c.arc(b.x, b.y, 6, 0, Math.PI * 2);
+      c.fill();
+    });
     c.fillStyle = '#00ff9f'; c.beginPath(); c.arc(this.player.x, this.player.y, this.player.r, 0, Math.PI * 2); c.fill();
     c.strokeStyle = '#00ff9f'; c.lineWidth = 1; c.beginPath(); c.arc(this.player.x, this.player.y, this.player.r + 4, 0, Math.PI * 2); c.stroke();
     if (this.upgrades.shield > 0) { c.strokeStyle = 'rgba(0,212,255,.3)'; c.lineWidth = 2; c.beginPath(); c.arc(this.player.x, this.player.y, this.player.r + 10, 0, Math.PI * 2); c.stroke(); }

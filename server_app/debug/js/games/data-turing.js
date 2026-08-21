@@ -28,6 +28,20 @@ class DataTuring extends BaseGame {
     this.btn.style.cssText = 'margin:8px auto;display:block;padding:8px 24px;border-radius:8px;border:1px solid var(--green-d);background:var(--card);color:var(--green);cursor:pointer;font-family:inherit';
     this.btn.onclick = () => this.run();
     c.appendChild(this.btn);
+    // Add node buttons
+    var btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:8px;justify-content:center;margin-bottom:4px';
+    var addSplit = document.createElement('button');
+    addSplit.textContent = '+ Splitter';
+    addSplit.style.cssText = 'padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--purple);cursor:pointer;font-family:inherit;font-size:.75em';
+    addSplit.onclick = () => this.addNode('splitter');
+    var addAdder = document.createElement('button');
+    addAdder.textContent = '+ Adder';
+    addAdder.style.cssText = 'padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--cyan);cursor:pointer;font-family:inherit;font-size:.75em';
+    addAdder.onclick = () => this.addNode('adder');
+    btnRow.appendChild(addSplit);
+    btnRow.appendChild(addAdder);
+    c.appendChild(btnRow);
     this.reset();
   }
 
@@ -54,6 +68,17 @@ class DataTuring extends BaseGame {
     this.tick = 0;
     this.success = false;
     this.fail = false;
+  }
+
+  addNode(type) {
+    var idx = this.nodes.length;
+    var label = type === 'splitter' ? 'even?' : '+1';
+    this.nodes.push({ x: rnd(100, 500), y: rnd(60, 340), type: type, label: label });
+    // Connect from source or last node to this new node
+    var src = this.connections.length > 0 ? this.connections[this.connections.length - 1].to : 0;
+    this.connections.push({ from: 0, to: idx });
+    this.connections.push({ from: idx, to: 1 });
+    toast('Added ' + type);
   }
 
   findNode(x, y) {

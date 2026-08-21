@@ -119,7 +119,7 @@ class DimensionParkour extends BaseGame {
     c.fillStyle = this.gravityDir > 0 ? '#1a2332' : '#2a1a32';
     c.fillRect(0, this.h - 4, this.w, 4);
     c.fillRect(0, 0, this.w, 4);
-    var bgChars = '01</>{}[]()=+-*'.split('');
+    var bgChars = ['<div','</div','<span','</span','<p>','</p>','{','}','[',']','(',')','=>','&&','||','!=','==','++','--','//','/*','<img','<a ','</a>','404','ERR','<br>','href','class','div=','id='];
     c.fillStyle = 'rgba(0,255,159,.08)';
     c.font = '10px monospace';
     for (var i = 0; i < 20; i++) {

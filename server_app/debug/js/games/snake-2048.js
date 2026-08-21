@@ -180,7 +180,12 @@ class Snake2048 extends BaseGame {
       var col = i === 0 ? (scanning ? '#ff00ff' : (sc[s.v] || '#00ff9f')) : (sc[s.v] || '#2ea043');
       if (this.mergeFlash > 0 && i === 0) col = '#fff';
       c.fillStyle = col;
-      c.fillRect(s.x * this.cell + 2, s.y * this.cell + 2, this.cell - 4, this.cell - 4);
+      // Spring pop effect on merge
+      var scale = 1;
+      if (this.mergeFlash > 5 && i === 0) scale = 1 + (this.mergeFlash - 5) * 0.03;
+      var sz = (this.cell - 4) * scale;
+      var off = (this.cell - sz) / 2;
+      c.fillRect(s.x * this.cell + off, s.y * this.cell + off, sz, sz);
       c.fillStyle = '#fff';
       c.font = '11px monospace';
       c.textAlign = 'center';

@@ -42,6 +42,25 @@ class TerminalHacker extends BaseGame {
     this.div.scrollTop = this.div.scrollHeight;
   }
 
+  outTypewriter(text, cls, callback) {
+    var d = document.createElement('div');
+    d.className = 'tl';
+    if (cls) d.classList.add('t-' + cls);
+    this.div.appendChild(d);
+    var i = 0;
+    var self = this;
+    var iv = setInterval(function() {
+      if (i < text.length) {
+        d.textContent += text[i];
+        i++;
+        self.div.scrollTop = self.div.scrollHeight;
+      } else {
+        clearInterval(iv);
+        if (callback) callback();
+      }
+    }, 15);
+  }
+
   newLine() {
     var w = document.createElement('div');
     w.className = 'input-row';
@@ -72,11 +91,14 @@ class TerminalHacker extends BaseGame {
     var encoded = method(word);
     this.threat = { word: word, encoded: encoded };
     this.timer = 15;
-    this.out('THREAT DETECTED [' + (this.threats.length + 1) + ']', 'red');
-    this.out('  Encrypted: ' + encoded, 'yellow');
-    this.out('  Decrypt and type: block <plaintext>', 'dim');
-    this.out('  Time: 15s', 'dim');
-    this.out('', '');
+    var self = this;
+    this.outTypewriter('THREAT DETECTED [' + (this.threats.length + 1) + ']', 'red', function() {
+      self.outTypewriter('  Encrypted: ' + encoded, 'yellow', function() {
+        self.out('  Decrypt and type: block <plaintext>', 'dim');
+        self.out('  Time: 15s', 'dim');
+        self.out('', '');
+      });
+    });
     this.threats.push({ word: word });
     var self = this;
     this.threatTimer = setInterval(function() {

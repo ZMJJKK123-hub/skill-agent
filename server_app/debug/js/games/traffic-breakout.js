@@ -81,7 +81,10 @@ class TrafficBreakout extends BaseGame {
             self.score++;
             self.bricksLeft--;
             sfx('hit');
-            for (var i = 0; i < 6; i++) self.particles.push({ x: br.x + br.w / 2, y: br.y + br.h / 2, vx: (Math.random() - 0.5) * 4, vy: Math.random() * 2, life: 30, char: '404'[rnd(0, 2)], color: '#f85' });
+            for (var i = 0; i < 8; i++) {
+              var chars = '404 ERR NULL void int return null undefined'.split(' ');
+              self.particles.push({ x: br.x + br.w / 2, y: br.y + br.h / 2, vx: (Math.random() - 0.5) * 4, vy: Math.random() * 2, life: 40, char: chars[rnd(0, chars.length - 1)], color: '#f85' });
+            }
             if (br.type === 'fork') {
               for (var a = -1; a <= 1; a += 2) { self.balls.push({ x: b.x, y: b.y, dx: b.dx * a, dy: -Math.abs(b.dy), r: 6 }); }
               sfx('powerup');
