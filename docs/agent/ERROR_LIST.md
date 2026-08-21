@@ -768,3 +768,10 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **`getFriction()` override compiled on the custom block this round** (0.15f low-friction value); the hook name survived in this mapping (unlike getStateForPlacement/neighborChanged). Always verify against BlockBehaviour source per-block-hook anyway.
 - **GLM-4.5-Flash first full-session SUCCESS** after provider access change: healthy start, wrote main class promptly, end-to-end RESULT: PASS. (GLM-4.5-Flash behaves far better in the loop than GLM-5.2 did.)
 - Recurring flow defect re-hit: dist jar still named `examplemod-1.0.0.jar` — the rootProject.name rename checklist keeps being skipped; consider enforcing via prompt template or launcher-side check.
+## 2026-08-21 itertest39 Feather Fall - SESSION FAILED (BROKEN mod persisted)
+
+- **Session ended RESULT: FAIL** after many attempts: FML kept reporting `mods.toml missing metadata for modid examplemod` / `constructed N mods: [BROKEN,...]` during GameTest, despite deleting com/example sources and editing mods.toml/build.gradle.
+  - Root cause analysis: stale compiled outputs under `build/sourceSets/main` survived every partial fix; agents edited sources/metadata but did not reliably purge the whole `build/` directory.
+  - PROCESS FIX (upstream): `run_mod_test_cycle`/launcher should delete the entire `build/` directory once before GameTest when a BROKEN-mod error is detected; or template sessions should never ship pre-built `build/` dirs.
+  - Main jar DID build (`featherfall-1.0.0.jar`, 12,244 B) — failure is GameTest-environment only.
+- First FAIL of the series since itertest11-era; retry scheduled as itertest40 with explicit `rmdir /s /q build` instruction.
