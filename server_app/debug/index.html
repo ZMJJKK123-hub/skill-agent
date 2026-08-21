@@ -1,245 +1,89 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🔧 系统维护中 — skill-agent</title>
-<style>
-:root{--bg:#0a0e14;--bg2:#0d1117;--card:rgba(22,27,34,.85);--border:#30363d;--border-hi:#484f58;--green:#3fb950;--green-d:#2ea043;--green-l:#56d364;--cyan:#58a6ff;--cyan-d:#1f6feb;--yellow:#d29922;--orange:#e3b341;--red:#f85149;--red-d:#da3633;--purple:#bc8cff;--pink:#f778ba;--text:#e6edf3;--dim:#8b949e;--dimmer:#6e7681;--radius:12px;--shadow:0 3px 12px rgba(0,0,0,.4)}
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--bg);color:var(--text);font-family:'SF Mono','Cascadia Code','Fira Code',Consolas,monospace;overflow-x:hidden;min-height:100vh}
-#bgCanvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;pointer-events:none;opacity:.4}
-.container{max-width:980px;margin:0 auto;padding:20px 14px 80px;position:relative;z-index:1}
-.hdr{text-align:center;padding:28px 0 20px}
-.hdr .emoji{font-size:3.2em;filter:drop-shadow(0 0 12px rgba(63,185,80,.3));animation:bob 3s ease-in-out infinite}
-@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
-.hdr h1{font-size:1.5em;font-weight:700;margin:10px 0 6px;letter-spacing:.5px}
-.hdr .badge{display:inline-flex;align-items:center;gap:6px;padding:5px 16px;border-radius:24px;font-size:.8em;font-weight:600;letter-spacing:.5px}
-.badge-main{background:rgba(63,185,80,.12);color:var(--green);border:1px solid rgba(63,185,80,.4)}
-.badge-online{background:rgba(88,166,255,.12);color:var(--cyan);border:1px solid rgba(88,166,255,.4)}
-.badge .dot{width:7px;height:7px;border-radius:50%;background:currentColor;animation:blink2 1.5s infinite}
-@keyframes blink2{0%,100%{opacity:1}50%{opacity:.3}}
-.hdr .msg{color:var(--dim);font-size:.88em;margin:10px auto 0;max-width:480px;line-height:1.65}
-.hdr .msg strong{color:var(--green)}
-.topbar{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:10px 16px;z-index:200;backdrop-filter:blur(10px);background:rgba(10,14,20,.6);border-bottom:1px solid var(--border)}
-.topbar .health{display:flex;align-items:center;gap:6px;font-size:.72em;color:var(--dim)}
-.topbar .health .hdot{width:8px;height:8px;border-radius:50%;animation:blink2 1.5s infinite}
-.topbar .health .hdot.red{background:var(--red);box-shadow:0 0 6px var(--red)}
-.topbar .health .hdot.green{background:var(--green);box-shadow:0 0 6px var(--green)}
-.topbar .controls{display:flex;gap:8px}
-.topbar .icon-btn{width:34px;height:34px;border-radius:8px;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1em;transition:all .2s}
-.topbar .icon-btn:hover{border-color:var(--green-d);transform:translateY(-1px)}
-.tabs{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:8px 0 20px}
-.tab{padding:7px 14px;border-radius:8px;background:var(--card);border:1px solid var(--border);color:var(--dim);cursor:pointer;transition:all .2s;font-size:.8em;font-family:inherit;display:flex;align-items:center;gap:5px}
-.tab:hover{border-color:var(--border-hi);color:var(--text);transform:translateY(-1px)}
-.tab.active{background:rgba(63,185,80,.08);border-color:rgba(63,185,80,.5);color:var(--green);box-shadow:0 0 0 1px rgba(63,185,80,.2)}
-.panel{display:none;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:16px;backdrop-filter:blur(6px);box-shadow:var(--shadow)}
-.panel.active{display:block;animation:fadeIn .3s}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.p-title{font-size:1em;font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:8px}
-.p-desc{color:var(--dim);font-size:.78em;margin-bottom:14px;line-height:1.5}
-#term{background:#010409;border:1px solid var(--border);border-radius:8px;height:360px;overflow-y:auto;padding:14px;font-size:.8em;line-height:1.65;cursor:text}
-#term::-webkit-scrollbar{width:6px}
-#term::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-.tl{white-space:pre-wrap;word-break:break-word}
-.t-green{color:var(--green)}.t-cyan{color:var(--cyan)}.t-yellow{color:var(--yellow)}.t-red{color:var(--red)}.t-purple{color:var(--purple)}.t-dim{color:var(--dimmer)}.t-bold{font-weight:700}
-.t-input-row{display:flex;align-items:center;gap:6px}
-.t-prompt{color:var(--green);white-space:nowrap}
-#term-input{flex:1;background:transparent;border:none;color:var(--text);font-family:inherit;font-size:1em;outline:none;caret-color:var(--green)}
-.gw{display:flex;flex-direction:column;align-items:center;gap:10px}
-.gc{border:1px solid var(--border);border-radius:8px;background:#010409;touch-action:none;display:block}
-.gs{display:flex;gap:20px;font-size:.8em;color:var(--dim);flex-wrap:wrap;justify-content:center}
-.gs span b{color:var(--green);font-weight:600}
-.gs span.gold b{color:var(--yellow)}
-.btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
-.btn{padding:7px 18px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font-family:inherit;font-size:.8em;transition:all .15s}
-.btn:hover{border-color:var(--green-d);background:rgba(63,185,80,.06);transform:translateY(-1px)}
-.btn:active{transform:translateY(0)}
-.btn-p{border-color:rgba(63,185,80,.5);color:var(--green)}
-.btn-p:hover{background:rgba(63,185,80,.12)}
-.btn-sm{padding:4px 10px;font-size:.72em}
-.hint{font-size:.72em;color:var(--dimmer);text-align:center;margin-top:2px}
-#grid2048{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:var(--border);padding:6px;border-radius:8px;width:300px;margin:0 auto}
-.c2048{width:100%;aspect-ratio:1;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.78em;transition:all .12s;cursor:default}
-.ce{background:#21262d}.c2{background:#1a3a1a;color:#56d364}.c4{background:#1a4a1a;color:#56d364}.c8{background:#0d3a6e;color:#79c0ff}.c16{background:#1a5a8e;color:#79c0ff}.c32{background:#5a4a0d;color:#e3b341}.c64{background:#7a6a1d;color:#e3b341}.c128{background:#4a2a6e;color:#bc8cff}.c256{background:#6a3a8e;color:#bc8cff}.c512{background:#6e1a2a;color:#f778ba}.c1024{background:#8e2a3a;color:#f778ba;font-size:.65em}.c2048{background:#1a6e4a;color:#56d364;font-size:.6em;box-shadow:0 0 10px rgba(63,185,80,.4)}
-#bugArena{position:relative;width:100%;height:320px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:radial-gradient(ellipse at center,#0d1117 0%,#010409 100%)}
-.bug{position:absolute;font-size:1.4em;cursor:pointer;user-select:none;transition:transform .08s;line-height:1}
-.bug:hover{transform:scale(1.25)}
-.bug.gold{filter:hue-rotate(30deg) brightness(1.3)}
-.bug.hit{animation:squish .35s forwards}
-@keyframes squish{0%{transform:scale(1.25) rotate(0)}40%{transform:scale(1.5) rotate(10deg)}100%{transform:scale(0) rotate(180deg);opacity:0}}
-.pop{position:absolute;color:var(--green);font-weight:700;font-size:.75em;pointer-events:none;animation:floatUp 1s forwards;text-shadow:0 0 4px rgba(63,185,80,.5)}
-.pop.gold{color:var(--yellow);text-shadow:0 0 4px rgba(210,153,34,.5)}
-@keyframes floatUp{to{transform:translateY(-50px);opacity:0}}
-.timerbar{width:100%;height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:8px}
-.timerbar .fill{height:100%;background:var(--green);transition:width .2s linear;border-radius:2px}
-.timerbar .fill.warn{background:var(--yellow)}
-.timerbar .fill.danger{background:var(--red)}
-.pwr{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:4px}
-.pwr .chip{padding:3px 10px;border-radius:12px;font-size:.7em;border:1px solid var(--border);display:flex;align-items:center;gap:4px}
-.pwr .chip.on{border-color:var(--cyan);color:var(--cyan);background:rgba(88,166,255,.08)}
-#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--green-d);color:var(--text);padding:10px 24px;border-radius:8px;font-size:.82em;z-index:9999;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;box-shadow:var(--shadow)}
-#toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
-#konamiOv{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9998;display:none;pointer-events:none}
-#konamiCv{width:100%;height:100%}
-.footer{text-align:center;color:var(--dimmer);font-size:.72em;padding:20px 0;line-height:1.6}
-.footer a{color:var(--cyan);text-decoration:none}
-.footer a:hover{text-decoration:underline}
-@media(max-width:600px){.hdr .emoji{font-size:2.4em}.hdr h1{font-size:1.15em}.tab{padding:5px 10px;font-size:.72em}#term{height:280px;font-size:.72em}#grid2048{width:240px}.gc{max-width:100%}.gs{gap:10px}}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SYSTEM MAINTENANCE — Debug Playground</title>
+  <link rel="stylesheet" href="/debug/css/style.css">
 </head>
 <body>
-<canvas id="bgCanvas"></canvas>
-<div class="topbar">
-  <div class="health"><span class="hdot red" id="hDot"></span><span id="hText">正在检查服务状态...</span></div>
-  <div class="controls">
-    <div class="icon-btn" id="soundBtn" title="静音/开音">🔇</div>
-    <div class="icon-btn" id="themeBtn" title="主题">🎨</div>
-  </div>
-</div>
-<div class="container">
-  <div class="hdr">
-    <div class="emoji" id="mEmoji">🔧</div>
-    <h1 id="mTitle">系统维护中</h1>
-    <div class="badge badge-main" id="mBadge"><span class="dot"></span> MAINTAINING</div>
-    <div class="msg" id="mMsg">加载中...</div>
-  </div>
-  <div class="tabs" id="tabs">
-    <div class="tab active" data-t="term">💻 模拟终端</div>
-    <div class="tab" data-t="snake">🐍 贪吃蛇</div>
-    <div class="tab" data-t="bk">🧱 打砖块</div>
-    <div class="tab" data-t="g2048">🔢 2048</div>
-    <div class="tab" data-t="bug">🐛 消灭Bug</div>
-  </div>
-  <div class="panel active" id="p-term">
-    <div class="p-title">💻 模拟终端 <span style="font-size:.7em;color:var(--dimmer)">— Debug Shell v1.0</span></div>
-    <div class="p-desc">输入 <b style="color:var(--green)">help</b> 查看全部命令 · 支持 Tab 补全 · 上下键浏览历史</div>
-    <div id="term"></div>
-  </div>
-  <div class="panel" id="p-snake">
-    <div class="p-title">🐍 贪吃蛇 — 量子蛇</div>
-    <div class="p-desc">吃 📦 长身 · 吃 ⚡ 加速 · 吃 🛡️ 穿墙 · 吃 ✨ 双倍分 · 每50分升1关</div>
-    <div class="gw">
-      <canvas class="gc" id="snakeCv" width="380" height="380"></canvas>
-      <div class="gs"><span>得分 <b id="snScore">0</b></span><span>关卡 <b id="snLevel">1</b></span><span>长度 <b id="snLen">3</b></span><span class="gold">最高 <b id="snBest">0</b></span></div>
-      <div class="pwr" id="snPwr"></div>
-      <div class="btns"><button class="btn btn-p" onclick="snStart()">▶ 开始</button><button class="btn" onclick="snPause()">⏸ 暂停</button></div>
-      <div class="hint">方向键 / WASD · 移动端滑动</div>
+  <canvas id="bgParticles"></canvas>
+
+  <div id="app">
+    <div class="topbar">
+      <div class="left">
+        <span class="clock" id="clock">00:00:00</span>
+        <span class="banner">SYSTEM MAINTENANCE IN PROGRESS</span>
+        <div class="progress-wrap">
+          <span class="progress-label">REPAIR</span>
+          <div class="progress-bar"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+          <span class="progress-pct" id="progPct">0%</span>
+        </div>
+      </div>
+      <div class="right">
+        <div class="icon-btn" id="soundBtn" title="Sound">🔇</div>
+        <div class="icon-btn" id="homeBtn" title="Retry Home">⟳</div>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="desktop">
+        <div class="desktop-title">// MAINTENANCE PROTOCOL APPLICATIONS</div>
+        <div class="app-grid" id="appGrid"></div>
+      </div>
+      <div class="log-panel">
+        <div class="log-title">SYSTEM LOG</div>
+        <div class="log-body" id="logBody"></div>
+      </div>
     </div>
   </div>
-  <div class="panel" id="p-bk">
-    <div class="p-title">🧱 打砖块 — Bug Hunter</div>
-    <div class="p-desc">打掉 🐛 Bug 砖块 · 掉落道具：🔵 多球 🟢 大板 🔴 激光 · 3 关通关</div>
-    <div class="gw">
-      <canvas class="gc" id="bkCv" width="380" height="440"></canvas>
-      <div class="gs"><span>已修复 <b id="bkScore">0</b></span><span>关卡 <b id="bkLevel">1</b></span><span>球数 <b id="bkBalls">1</b></span><span class="gold">最高 <b id="bkBest">0</b></span></div>
-      <div class="btns"><button class="btn btn-p" onclick="bkStart()">▶ 开始</button></div>
-      <div class="hint">鼠标 / 手指移动挡板</div>
+
+  <div id="modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span class="title" id="modalTitle">Game</span>
+        <button class="close" id="modalClose">✕</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
     </div>
   </div>
-  <div class="panel" id="p-g2048">
-    <div class="p-title">🔢 2048 — 版本升级之路</div>
-    <div class="p-desc">合并方块升级版本 v1.0→v2.0→...→MAX · 支持撤销 · 数据自动保存</div>
-    <div class="gw">
-      <div id="grid2048"></div>
-      <div class="gs"><span>分数 <b id="g2kScore">0</b></span><span class="gold">最高 <b id="g2kBest">0</b></span></div>
-      <div class="btns"><button class="btn btn-p" onclick="g2kInit()">🔄 新游戏</button><button class="btn btn-sm" onclick="g2kUndo()">↩ 撤销</button></div>
-      <div class="hint">方向键 / WASD · 移动端滑动</div>
-    </div>
+
+  <div id="konamiCheat">
+    <h2>🎮 CHEAT MENU (CJB)</h2>
+    <div class="cheat-item" id="cheatGod"><span>God Mode (unlock max scores)</span><div class="switch"></div></div>
+    <div class="cheat-item" id="cheatGravity"><span>Gravity Anomaly (elements fall)</span><div class="switch"></div></div>
+    <div class="cheat-item" id="cheatDeploy"><span>One-Click Deploy (go home)</span><div class="switch"></div></div>
   </div>
-  <div class="panel" id="p-bug">
-    <div class="p-title">🐛 消灭 Bug — 压力测试</div>
-    <div class="p-desc">🐛 慢(+1) · 🦗 快(+3) · 🕷️ 金色(+5) · 60秒内拍尽可能多 · 连击翻倍</div>
-    <div class="gw">
-      <div class="timerbar"><div class="fill" id="bugTimer" style="width:100%"></div></div>
-      <div id="bugArena"></div>
-      <div class="gs"><span>拍扁 <b id="bgScore">0</b></span><span>连击 <b id="bgCombo">0</b></span><span>倍率 <b id="bgMult">×1</b></span><span class="gold">最高 <b id="bgBest">0</b></span></div>
-      <div class="btns"><button class="btn btn-p" onclick="bgStart()">▶ 开始(60s)</button><button class="btn" onclick="bgStop()">⏹ 停止</button></div>
-    </div>
+
+  <div id="toast"></div>
+
+  <div class="health-indicator">
+    <span class="hdot red" id="hDot"></span>
+    <span id="hText">Checking...</span>
   </div>
-</div>
-<div id="konamiOv"><canvas id="konamiCv"></canvas></div>
-<div id="toast"></div>
-<div class="footer">skill-agent Debug Page · Forge 1.21.11 / Java 21<br>↑↑↓↓←→←→BA 🎉 · <a href="http://49.232.37.238:8000/">返回首页</a></div>
-<script>
-var $=function(id){return document.getElementById(id)};
-function toast(m){var t=$("toast");t.textContent=m;t.classList.add("show");setTimeout(function(){t.classList.remove("show")},2200)}
-function rnd(a,b){return Math.floor(Math.random()*(b-a+1))+a}
-function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v))}
-var sndOn=false,aCtx=null;
-function beep(f,d,v){if(!sndOn)return;try{if(!aCtx)aCtx=new(window.AudioContext||window.webkitAudioContext)();var o=aCtx.createOscillator(),g=aCtx.createGain();o.connect(g);g.connect(aCtx.destination);o.frequency.value=f||440;o.type="square";g.gain.value=v||.08;o.start();g.gain.exponentialRampToValueAtTime(.001,aCtx.currentTime+(d||.1));o.stop(aCtx.currentTime+(d||.1))}catch(e){}}
-function sfx(t){if(!sndOn)return;if(t==="eat")beep(660,.08,.08);else if(t==="powerup"){beep(523,.06,.06);setTimeout(function(){beep(880,.06,.06)},60);setTimeout(function(){beep(1320,.08,.08)},120)}else if(t==="die")beep(200,.3,.12);else if(t==="click")beep(800,.04,.05);else if(t==="win"){[523,659,784,1047].forEach(function(n,i){setTimeout(function(){beep(n,.08,.06)},i*80)})}else if(t==="lose"){[330,220,110].forEach(function(n,i){setTimeout(function(){beep(n,.1,.08)},i*100)})}}
-$("soundBtn").onclick=function(){sndOn=!sndOn;this.textContent=sndOn?"🔊":"🔇";if(sndOn&&aCtx)aCtx.resume();if(sndOn)beep(660,.05,.06)};
-$("themeBtn").onclick=function(){toast("🎨 当前为暗色终端主题")};
-// BG particles
-(function(){var cv=$("bgCanvas"),ctx=cv.getContext("2d"),pts=[];function resize(){cv.width=innerWidth;cv.height=innerHeight}resize();addEventListener("resize",resize);for(var i=0;i<40;i++)pts.push({x:Math.random()*cv.width,y:Math.random()*cv.height,vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3,r:Math.random()*2+.5});function loop(){ctx.clearRect(0,0,cv.width,cv.height);pts.forEach(function(p){p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>cv.width)p.vx=-p.vx;if(p.y<0||p.y>cv.height)p.vy=-p.vy;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle="rgba(63,185,80,"+(.15+p.r/8)+")";ctx.fill()});for(var i=0;i<pts.length;i++)for(var j=i+1;j<pts.length;j++){var dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy);if(d<120){ctx.beginPath();ctx.moveTo(pts[i].x,pts[i].y);ctx.lineTo(pts[j].x,pts[j].y);ctx.strokeStyle="rgba(63,185,80,"+(.06*(1-d/120))+")";ctx.lineWidth=.5;ctx.stroke()}}requestAnimationFrame(loop)}loop()})();
-var MMSGS=["🔧 主人正在修复我，请稍等片刻～下面的小游戏可以打发时间 🎮","🐱 系统正在升级中…就像给猫换毛，需要一点时间","⌨️ 工程师正在疯狂敲键盘，请稍候","📦 我正在重新打包自己，马上回来","🐛 Bug 正被一个个消灭…你可以帮忙拍几个","☕ 服务正在重启大脑…就像我早上需要咖啡一样","🍚 代码正在编译…这比煮饭还慢一点","🔧 就像装修房子，完工前总得乱一阵子"];
-$("mMsg").innerHTML="<strong>"+MMSGS[rnd(0,MMSGS.length-1)]+"</strong>";
-document.querySelectorAll(".tab").forEach(function(t){t.onclick=function(){document.querySelectorAll(".tab").forEach(function(x){x.classList.remove("active")});document.querySelectorAll(".panel").forEach(function(x){x.classList.remove("active")});t.classList.add("active");$("p-"+t.dataset.t).classList.add("active");if(t.dataset.t==="snake")snDraw();if(t.dataset.t==="bk")bkDraw()}});
-// TERMINAL
-(function(){var T=$("term"),hist=[],hi=0;
-function out(t,cls){var d=document.createElement("div");d.className="tl"+(cls?" t-"+cls:"");d.textContent=t;T.appendChild(d);T.scrollTop=T.scrollHeight}
-function outH(h){var d=document.createElement("div");d.className="tl";d.innerHTML=h;T.appendChild(d);T.scrollTop=T.scrollHeight}
-function mkInput(){var w=document.createElement("div");w.className="t-input-row";var p=document.createElement("span");p.className="t-prompt";p.textContent="visitor@debug:~$";var i=document.createElement("input");i.id="term-input";i.spellcheck=false;i.autocomplete="off";i.setAttribute("autocapitalize","off");w.appendChild(p);w.appendChild(i);T.appendChild(w);T.scrollTop=T.scrollHeight;i.focus();i.addEventListener("keydown",function(e){if(e.key==="Enter"){var v=i.value;i.disabled=true;hist.push(v);hi=hist.length;out("visitor@debug:~$ "+v);exec(v);mkInput()}else if(e.key==="ArrowUp"){e.preventDefault();if(hi>0){hi--;i.value=hist[hi]||""}}else if(e.key==="ArrowDown"){e.preventDefault();if(hi<hist.length-1){hi++;i.value=hist[hi]||""}else{hi=hist.length;i.value=""}}else if(e.key==="Tab"){e.preventDefault();var c2=Object.keys(CMDS).filter(function(c){return c.startsWith(i.value)});if(c2.length===1)i.value=c2[0]}})}
-T.addEventListener("click",function(){var i=$("term-input");if(i)i.focus()});
-var CMDS={help:function(){outH('<span class="t-cyan t-bold">=== 可用命令 ===</span>');out("  help          显示帮助");out("  ping          测试连接");out("  status        服务状态");out("  ls            列出文件");out("  cat <file>    查看文件");out("  whoami        你是谁");out("  echo <text>   回显文本");out("  date          当前时间");out("  uname         系统信息");out("  neofetch      系统概览");out("  history       命令历史");out("  sudo <cmd>    管理员权限(?)");out("  matrix        数字雨");out("  hack          入侵系统(?)");out("  game          推荐游戏");out("  coffee        咖啡");out("  bug           Bug");out("  konami        神秘提示");out("  clear         清屏");out("  exit          退出(?)")},ping:function(){out("PING 49.232.37.238...");var n=0;var iv=setInterval(function(){n++;out("64 bytes from 49.232.37.238: icmp_seq="+n+" time="+(Math.random()*2).toFixed(1)+"ms");if(n>=4){clearInterval(iv);out("--- 4 packets, 4 received, 0% loss","t-green")}},300)},status:function(){out("Service:    skill-agent","t-green");out("Status:     MAINTAINING","t-yellow");out("Mode:       chat (read-only)");out("Version:    Forge 1.21.11 / Java 21");out("Uptime:     正在重启中...");out("Sessions:   "+rnd(1,99)+" 个历史会话");out("Personas:   7 种人格可用");out("Easter Eggs: 30+ 个彩蛋")},ls:function(){out("drwxr-xr-x  core/");out("drwxr-xr-x  server_app/");out("drwxr-xr-x  tsinghua_agent_server/");out("drwxr-xr-x  mc_java_sources/ (symlink)");out("drwxr-xr-x  mod_templates/");out("-rw-r--r--  .env");out("-rw-r--r--  requirements.txt")},cat:function(a){var f=a.join(" ");if(f==="status.log"){out("[2026-08-21 14:00:01] INFO  Starting daemon...");out("[2026-08-21 14:00:03] INFO  Loading skills (169 files)...");out("[2026-08-21 14:00:05] INFO  Skills loaded.");out("[2026-08-21 14:00:06] WARN  mc_java_sources symlinked");out("[2026-08-21 14:00:07] INFO  DeepSeek API connected.");out("[2026-08-21 14:00:08] ERROR Connection timeout, retrying...");out("[2026-08-21 14:00:10] WARN  Maintenance mode.")}else if(f===".env"){out("DEEPSEEK_API_KEY=sk--****","t-yellow");out("DSH_BASE_URL=https://llmapi.paratera.com");out("DSH_MODEL=DeepSeek-V4-Flash-0731")}else{out("cat: "+f+": No such file or directory","t-red")}},whoami:function(){out("你是访客 #"+rnd(10000,99999)+" · 一个正在耐心等待的玩家")},echo:function(a){out(a.join(" ")||"")},date:function(){out(new Date().toLocaleString("zh-CN"))},uname:function(){out("Linux skill-agent 6.x #"+rnd(100,999)+" SMP x86_64 GNU/Linux")},neofetch:function(){outH('<span class="t-green">       _____</span>');outH('<span class="t-green">      /     \\</span>   <span class="t-cyan">visitor@debug</span>');outH('<span class="t-green">     |  (•)  |</span>   <span class="t-dim">OS: Linux</span>');outH('<span class="t-green">      \\_____/</span>   <span class="t-dim">Shell: Debug Terminal</span>');out("  Forge: 1.21.11","t-dim");out("  Java:  21","t-dim");out("  Skills: 169 loaded","t-dim");out("  Status: 维护中","t-yellow")},history:function(){if(hist.length===0)out("无历史命令");else hist.forEach(function(h,i){out("  "+(i+1)+"  "+h)})},sudo:function(a){var c=a.join(" ");if(c==="fix-bug"){out("权限不足：程序员正在拼命敲代码！","t-red");out("你可以在消灭Bug游戏里帮忙拍几个")}else if(c==="rm -rf /"){out("nice try","t-red")}else{out("sudo: "+c+": command not found","t-red")}},matrix:function(){out("Entering the Matrix...","t-green");startMatrix()},hack:function(){out("INITIALIZING HACK...","t-green");var s=["Bypassing firewall...","Decrypting RSA-2048...","Injecting payload...","Accessing mainframe..."];s.forEach(function(x,i){setTimeout(function(){out(x);if(i===s.length-1)setTimeout(function(){out("ACCESS GRANTED","t-green");out("Just kidding 这是模拟终端")},500)},i*600)})},game:function(){out("推荐游戏：");out("  1. 贪吃蛇 — 道具加速/穿墙/双倍分");out("  2. 打砖块 — 多球+激光+大板道具");out("  3. 2048 — 版本号合并升级+撤销");out("  4. 消灭Bug — 60秒计时连击翻倍");out("  5. Konami秘技 — 上上下下左右左右BA")},coffee:function(){out("  ☕☕☕","t-yellow");out("  给你虚拟咖啡一杯")},bug:function(){out("  🐛🐛🐛","t-red");out("  去消灭Bug游戏拍扁它们")},konami:function(){out("你在找什么？试试 上上下下左右左右BA","t-purple")},clear:function(){T.innerHTML="";mkInput()},exit:function(){out("Nice try 没那么容易离开");out("要不玩个游戏？","t-green")}};
-function exec(cmd){cmd=cmd.trim();if(!cmd)return;var p=cmd.split(/\s+/);var b=p[0];var a=p.slice(1);if(CMDS[b])CMDS[b](a);else out(b+": command not found. 输入 help","t-red")}
-out("──────────────────────────────────────────","t-dim");out("  skill-agent Debug Terminal v1.0","t-green");out("  Forge 1.21.11 / Java 21 / Chat Mode","t-dim");out("──────────────────────────────────────────","t-dim");out("");out('Type "help" to see available commands',"t-cyan");out('Type "neofetch" for system info',"t-dim");out("");mkInput()})();
-function startMatrix(){var c=document.createElement("canvas");c.style.cssText="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9997;cursor:pointer";document.body.appendChild(c);c.width=innerWidth;c.height=innerHeight;var ctx=c.getContext("2d"),chars="01アイウエオカキクケコサシスセソ".split(""),fs=14,cols=Math.floor(c.width/fs),drops=[];for(var i=0;i<cols;i++)drops[i]=Math.random()*c.height;var iv=setInterval(function(){ctx.fillStyle="rgba(0,0,0,.05)";ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle="#0f0";ctx.font=fs+"px monospace";for(var i=0;i<drops.length;i++){ctx.fillText(chars[rnd(0,chars.length-1)],i*fs,drops[i]*fs);if(drops[i]*fs>c.height&&Math.random()>.975)drops[i]=0;drops[i]++}},33);c.onclick=function(){clearInterval(iv);c.remove()}}
-// SNAKE
-var sn={cv:null,ctx:null,g:19,cell:0,snake:[],dir:{x:1,y:0},ndir:{x:1,y:0},food:null,score:0,level:1,best:0,running:false,loop:null,spd:130,powerups:[],activeShield:0,activeDouble:0,activeBoost:0,pwSpawn:0};
-sn.best=parseInt(localStorage.getItem("snBest")||"0");$("snBest").textContent=sn.best;
-function snInit(){sn.cv=$("snakeCv");sn.ctx=sn.cv.getContext("2d");sn.cell=sn.cv.width/sn.g;sn.snake=[{x:5,y:9},{x:4,y:9},{x:3,y:9}];sn.dir={x:1,y:0};sn.ndir={x:1,y:0};sn.score=0;sn.level=1;sn.spd=130;sn.powerups=[];sn.activeShield=0;sn.activeDouble=0;sn.activeBoost=0;sn.pwSpawn=0;sn.food=snNewFood();snDraw()}
-function snNewFood(){return{x:rnd(0,sn.g-1),y:rnd(0,sn.g-1)}}
-function snNewPwr(){var ts=["boost","shield","double"];return{x:rnd(0,sn.g-1),y:rnd(0,sn.g-1),type:ts[rnd(0,2)],life:50}}
-function snDraw(){var c=sn.ctx,w=sn.cv.width;c.fillStyle="#010409";c.fillRect(0,0,w,w);c.strokeStyle="rgba(48,54,61,.4)";c.lineWidth=1;for(var i=0;i<=sn.g;i++){c.beginPath();c.moveTo(i*sn.cell,0);c.lineTo(i*sn.cell,w);c.stroke();c.beginPath();c.moveTo(0,i*sn.cell);c.lineTo(w,i*sn.cell);c.stroke()}c.font=(sn.cell*.7)+"px serif";c.textAlign="center";c.textBaseline="middle";c.fillText("📦",sn.food.x*sn.cell+sn.cell/2,sn.food.y*sn.cell+sn.cell/2);sn.powerups.forEach(function(p){var icon=p.type==="boost"?"⚡":p.type==="shield"?"🛡️":"✨";c.font=(sn.cell*.6)+"px serif";c.globalAlpha=clamp(p.life/20,.3,1);c.fillText(icon,p.x*sn.cell+sn.cell/2,p.y*sn.cell+sn.cell/2);c.globalAlpha=1});sn.snake.forEach(function(s,i){var col=i===0?"#3fb950":"#2ea043";if(sn.activeShield>0)col=i===0?"#58a6ff":"#1f6feb";if(sn.activeDouble>0&&i===0)col="#e3b341";c.fillStyle=col;c.fillRect(s.x*sn.cell+1,s.y*sn.cell+1,sn.cell-2,sn.cell-2);if(i===0){c.fillStyle="#010409";c.fillRect(s.x*sn.cell+sn.cell*.25,s.y*sn.cell+sn.cell*.25,sn.cell*.2,sn.cell*.2);c.fillRect(s.x*sn.cell+sn.cell*.55,s.y*sn.cell+sn.cell*.25,sn.cell*.2,sn.cell*.2)}});$("snScore").textContent=sn.score;$("snLevel").textContent=sn.level;$("snLen").textContent=sn.snake.length;var pw=$("snPwr");pw.innerHTML="";var cs=[{a:sn.activeBoost,icon:"⚡",n:"加速"},{a:sn.activeShield,icon:"🛡️",n:"穿墙"},{a:sn.activeDouble,icon:"✨",n:"双倍"}];cs.forEach(function(c2){if(c2.a>0){var d=document.createElement("div");d.className="chip on";d.textContent=c2.icon+" "+c2.n+" "+c2.a;d.style.color=c2.icon==="⚡"?"var(--yellow)":c2.icon==="🛡️"?"var(--cyan)":"var(--orange)";pw.appendChild(d)}})}
-function snStep(){if(!sn.running)return;sn.dir=sn.ndir;var hx=sn.snake[0].x+sn.dir.x,hy=sn.snake[0].y+sn.dir.y;if(sn.activeShield>0){if(hx<0)hx=sn.g-1;if(hx>=sn.g)hx=0;if(hy<0)hy=sn.g-1;if(hy>=sn.g)hy=0}else{if(hx<0||hx>=sn.g||hy<0||hy>=sn.g){snGameOver();return}}for(var i=0;i<sn.snake.length;i++){if(hx===sn.snake[i].x&&hy===sn.snake[i].y){if(sn.activeShield>0)continue;snGameOver();return}}sn.snake.unshift({x:hx,y:hy});if(hx===sn.food.x&&hy===sn.food.y){var pts=10;if(sn.activeDouble>0)pts=20;sn.score+=pts;sfx("eat");sn.food=snNewFood();if(sn.score>=sn.level*50){sn.level++;sn.spd=Math.max(60,sn.spd-10);toast("关卡 "+sn.level+"！速度提升");sfx("powerup")}sn.pwSpawn++}else sn.snake.pop();if(sn.pwSpawn>=3&&sn.powerups.length<2&&Math.random()<.3){sn.powerups.push(snNewPwr());sn.pwSpawn=0}sn.powerups=sn.powerups.filter(function(p){p.life--;return p.life>0});sn.powerups=sn.powerups.filter(function(p){if(hx===p.x&&hy===p.y){if(p.type==="boost"){sn.activeBoost=20;sfx("powerup");toast("⚡ 加速！")}else if(p.type==="shield"){sn.activeShield=15;sfx("powerup");toast("🛡️ 穿墙！")}else{sn.activeDouble=15;sfx("powerup");toast("✨ 双倍分数！")}return false}return true});if(sn.activeBoost>0)sn.activeBoost--;if(sn.activeShield>0)sn.activeShield--;if(sn.activeDouble>0)sn.activeDouble--;var spd=sn.spd;if(sn.activeBoost>0)spd=Math.max(40,sn.spd-60);clearInterval(sn.loop);sn.loop=setInterval(snStep,spd);snDraw()}
-function snStart(){if(sn.running)return;snInit();sn.running=true;sn.loop=setInterval(snStep,sn.spd)}
-function snPause(){if(!sn.running)return;clearInterval(sn.loop);sn.running=false}
-function snGameOver(){clearInterval(sn.loop);sn.running=false;sfx("die");if(sn.score>sn.best){sn.best=sn.score;localStorage.setItem("snBest",sn.best);$("snBest").textContent=sn.best;toast("🎉 新纪录！")}var c=sn.ctx;c.fillStyle="rgba(0,0,0,.75)";c.fillRect(0,0,sn.cv.width,sn.cv.height);c.fillStyle="#f85149";c.font="22px monospace";c.textAlign="center";c.fillText("GAME OVER",sn.cv.width/2,sn.cv.height/2-10);c.fillStyle="#8b949e";c.font="12px monospace";c.fillText("得分 "+sn.score+" · 点击开始重玩",sn.cv.width/2,sn.cv.height/2+18)}
-addEventListener("keydown",function(e){if(!$("p-snake").classList.contains("active"))return;var k=e.key.toLowerCase(),d=sn.dir;if((k==="arrowup"||k==="w")&&d.y!==1){sn.ndir={x:0,y:-1};e.preventDefault()}else if((k==="arrowdown"||k==="s")&&d.y!==-1){sn.ndir={x:0,y:1};e.preventDefault()}else if((k==="arrowleft"||k==="a")&&d.x!==1){sn.ndir={x:-1,y:0};e.preventDefault()}else if((k==="arrowright"||k==="d")&&d.x!==-1){sn.ndir={x:1,y:0};e.preventDefault()}});
-var snTS=null;$("snakeCv").addEventListener("touchstart",function(e){snTS={x:e.touches[0].clientX,y:e.touches[0].clientY}},{passive:true});$("snakeCv").addEventListener("touchend",function(e){if(!snTS)return;var dx=e.changedTouches[0].clientX-snTS.x,dy=e.changedTouches[0].clientY-snTS.y;if(Math.abs(dx)>Math.abs(dy))sn.ndir={x:dx>0?1:-1,y:0};else sn.ndir={x:0,y:dy>0?1:-1};snTS=null},{passive:true});snInit();
-// BREAKOUT
-var bk={cv:null,ctx:null,paddle:null,balls:[],bricks:[],score:0,level:1,best:0,running:false,loop:null,pwDrops:[],laser:0,bigPaddle:0};
-bk.best=parseInt(localStorage.getItem("bkBest")||"0");$("bkBest").textContent=bk.best;
-function bkInit(){bk.cv=$("bkCv");bk.ctx=bk.cv.getContext("2d");bk.paddle={x:bk.cv.width/2-40,y:bk.cv.height-14,w:80,h:8};bk.balls=[{x:bk.cv.width/2,y:bk.cv.height-24,dx:3,dy:-3,r:5}];bk.score=0;bk.level=1;bk.pwDrops=[];bk.laser=0;bk.bigPaddle=0;bkBricks(1);bkDraw()}
-function bkBricks(lvl){bk.bricks=[];var rows=Math.min(3+lvl,6),cols=8,pad=4,bw=(bk.cv.width-pad*(cols+1))/cols,bh=14;for(var r=0;r<rows;r++)for(var c=0;c<cols;c++){bk.bricks.push({x:pad+c*(bw+pad),y:28+r*(bh+pad),w:bw,h:bh,alive:true,hp:1})}if(lvl>=2){var si=rnd(0,bk.bricks.length-1);bk.bricks[si].hp=2}}
-function bkDraw(){var c=bk.ctx,w=bk.cv.width,h=bk.cv.height;c.fillStyle="#010409";c.fillRect(0,0,w,h);bk.bricks.forEach(function(b){if(!b.alive)return;c.fillStyle=b.hp>1?"#e3b341":"#f85149";c.fillRect(b.x,b.y,b.w,b.h);c.font="8px serif";c.textAlign="center";c.textBaseline="middle";c.fillText("🐛",b.x+b.w/2,b.y+b.h/2)});bk.pwDrops.forEach(function(p){c.font="14px serif";c.textAlign="center";c.fillText(p.icon,p.x,p.y)});var pw=bk.bigPaddle>0?120:80;c.fillStyle="#3fb950";c.fillRect(bk.paddle.x,bk.paddle.y,pw,bk.paddle.h);if(bk.laser>0){c.strokeStyle="rgba(88,166,255,.5)";c.lineWidth=2;c.beginPath();c.moveTo(bk.paddle.x+pw/2,bk.paddle.y);c.lineTo(bk.paddle.x+pw/2,0);c.stroke()}bk.balls.forEach(function(b){c.beginPath();c.arc(b.x,b.y,b.r,0,Math.PI*2);c.fillStyle="#58a6ff";c.fill();c.closePath()});$("bkScore").textContent=bk.score;$("bkLevel").textContent=bk.level;$("bkBalls").textContent=bk.balls.length}
-function bkStep(){if(!bk.running)return;bk.balls.forEach(function(b,idx){b.x+=b.dx;b.y+=b.dy;if(b.x<b.r||b.x>bk.cv.width-b.r)b.dx=-b.dx;if(b.y<b.r)b.dy=-b.dy;if(b.y>bk.cv.height){bk.balls.splice(idx,1);if(bk.balls.length===0){bkGameOver();return}}if(b.y+b.dy>=bk.paddle.y&&b.x>=bk.paddle.x&&b.x<=bk.paddle.x+(bk.bigPaddle>0?120:80))b.dy=-Math.abs(b.dy);bk.bricks.forEach(function(br){if(!br.alive)return;if(b.x>=br.x&&b.x<=br.x+br.w&&b.y>=br.y&&b.y<=br.y+br.h){br.hp--;if(br.hp<=0){br.alive=false;bk.score++;sfx("click");showBkPop();if(Math.random()<.18)bk.pwDrops.push({x:br.x+br.w/2,y:br.y,icon:["🔵","🟢","🔴"][rnd(0,2)],vy:2})}b.dy=-b.dy}})});bk.pwDrops.forEach(function(p){p.y+=p.vy;if(p.y>=bk.paddle.y&&p.x>=bk.paddle.x&&p.x<=bk.paddle.x+80){if(p.icon==="🔵"){bk.balls.push({x:bk.paddle.x+40,y:bk.paddle.y-10,dx:3,dy:-3,r:5});toast("🔵 多球！")}else if(p.icon==="🟢"){bk.bigPaddle=300;sfx("powerup");toast("🟢 大板！")}else{bk.laser=200;sfx("powerup");toast("🔴 激光！")}p.collected=true}});bk.pwDrops=bk.pwDrops.filter(function(p){return!p.collected&&p.y<bk.cv.height});if(bk.laser>0){bk.bricks.forEach(function(br){if(!br.alive)return;if(Math.random()<.02){br.hp--;if(br.hp<=0){br.alive=false;bk.score++}}});bk.laser--}if(bk.bigPaddle>0)bk.bigPaddle--;if(bk.bricks.every(function(b){return!b.alive})){bk.level++;if(bk.level>3){bkWin();return}toast("关卡 "+bk.level+"！");bkBricks(bk.level);bk.balls=[{x:bk.cv.width/2,y:bk.cv.height-24,dx:3,dy:-3,r:5}]}bkDraw()}
-function showBkPop(){var d=document.createElement("div");d.className="pop";d.textContent="已修复1个Bug ✅";d.style.left=rnd(20,80)+"%";d.style.top="50%";$("p-bk").appendChild(d);setTimeout(function(){d.remove()},1000)}
-function bkStart(){bkInit();bk.running=true;bk.loop=setInterval(bkStep,16)}
-function bkGameOver(){clearInterval(bk.loop);bk.running=false;sfx("lose");if(bk.score>bk.best){bk.best=bk.score;localStorage.setItem("bkBest",bk.best);$("bkBest").textContent=bk.best}var c=bk.ctx;c.fillStyle="rgba(0,0,0,.75)";c.fillRect(0,0,bk.cv.width,bk.cv.height);c.fillStyle="#f85149";c.font="20px monospace";c.textAlign="center";c.fillText("GAME OVER",bk.cv.width/2,bk.cv.height/2-8);c.fillStyle="#8b949e";c.font="12px monospace";c.fillText("修复了 "+bk.score+" 个Bug",bk.cv.width/2,bk.cv.height/2+16)}
-function bkWin(){clearInterval(bk.loop);bk.running=false;sfx("win");var c=bk.ctx;c.fillStyle="rgba(0,0,0,.75)";c.fillRect(0,0,bk.cv.width,bk.cv.height);c.fillStyle="#3fb950";c.font="18px monospace";c.textAlign="center";c.fillText("🎉 全部Bug已修复！",bk.cv.width/2,bk.cv.height/2-8);c.fillStyle="#8b949e";c.font="12px monospace";c.fillText("你是Bug终结者！",bk.cv.width/2,bk.cv.height/2+16)}
-$("bkCv").addEventListener("mousemove",function(e){var r=bk.cv.getBoundingClientRect();bk.paddle.x=clamp(e.clientX-r.left-40,0,bk.cv.width-80)});
-$("bkCv").addEventListener("touchmove",function(e){e.preventDefault();var r=bk.cv.getBoundingClientRect();bk.paddle.x=clamp(e.touches[0].clientX-r.left-40,0,bk.cv.width-80)},{passive:false});bkInit();
-// 2048
-var g2k={grid:[],score:0,best:0,undo:null};
-g2k.best=parseInt(localStorage.getItem("g2kBest")||"0");$("g2kBest").textContent=g2k.best;
-function g2kInit(){g2k.grid=Array(4).fill(null).map(function(){return Array(4).fill(0)});g2k.score=0;g2k.undo=null;g2kAdd();g2kAdd();g2kDraw()}
-function g2kAdd(){var e=[];for(var r=0;r<4;r++)for(var c=0;c<4;c++)if(g2k.grid[r][c]===0)e.push([r,c]);if(!e.length)return;var p=e[rnd(0,e.length-1)];g2k.grid[p[0]][p[1]]=Math.random()<.9?2:4}
-function g2kDraw(){var el=$("grid2048");el.innerHTML="";var lb={2:"v1.0",4:"v2.0",8:"v3.0",16:"v4.0",32:"v5.0",64:"v6.0",128:"v7.0",256:"v8.0",512:"v9.0",1024:"v10",2048:"MAX"};for(var r=0;r<4;r++)for(var c=0;c<4;c++){var v=g2k.grid[r][c];var d=document.createElement("div");d.className="c2048 "+(v?"c"+v:"ce");d.textContent=v?lb[v]||v:"";el.appendChild(d)}$("g2kScore").textContent=g2k.score}
-function g2kUndo(){if(!g2k.undo){toast("无撤销");return}g2k.grid=g2k.undo.grid;g2k.score=g2k.undo.score;g2k.undo=null;g2kDraw();toast("↩ 已撤销")}
-function g2kSlide(row){var arr=row.filter(function(v){return v});var ch=false;for(var i=0;i<arr.length-1;i++){if(arr[i]===arr[i+1]){arr[i]*=2;arr.splice(i+1,1);g2k.score+=arr[i];sfx("eat");ch=true}}while(arr.length<4)arr.push(0);if(JSON.stringify(arr)!==JSON.stringify(row))ch=true;return{arr:arr,changed:ch}}
-function g2kMove(dir){var ch=false,g=g2k.grid;g2k.undo=JSON.parse(JSON.stringify({grid:g,score:g2k.score}));if(dir==="left"){for(var r=0;r<4;r++){var res=g2kSlide(g[r]);g[r]=res.arr;if(res.changed)ch=true}}else if(dir==="right"){for(var r=0;r<4;r++){var rev=g[r].slice().reverse();var res=g2kSlide(rev);g[r]=res.arr.reverse();if(res.changed)ch=true}}else if(dir==="up"){for(var c=0;c<4;c++){var col=[g[0][c],g[1][c],g[2][c],g[3][c]];var res=g2kSlide(col);for(var r=0;r<4;r++)g[r][c]=res.arr[r];if(res.changed)ch=true}}else if(dir==="down"){for(var c=0;c<4;c++){var col=[g[3][c],g[2][c],g[1][c],g[0][c]];var res=g2kSlide(col);for(var r=0;r<4;r++)g[r][c]=res.arr[3-r];if(res.changed)ch=true}}if(ch){g2kAdd();g2kDraw();if(g2k.score>g2k.best){g2k.best=g2k.score;localStorage.setItem("g2kBest",g2k.best);$("g2kBest").textContent=g2k.best}if(g.some(function(r){return r.includes(2048)}))setTimeout(function(){toast("🎉 终极版本 MAX 达成！");sfx("win")},200);if(!g2kCanMove())setTimeout(function(){toast("💀 游戏结束！得分："+g2k.score);sfx("lose")},200)}else g2k.undo=null}
-function g2kCanMove(){for(var r=0;r<4;r++)for(var c=0;c<4;c++){if(g2k.grid[r][c]===0)return true;if(c<3&&g2k.grid[r][c]===g2k.grid[r][c+1])return true;if(r<3&&g2k.grid[r][c]===g2k.grid[r+1][c])return true}return false}
-addEventListener("keydown",function(e){if(!$("p-g2048").classList.contains("active"))return;var k=e.key.toLowerCase();if(k==="arrowleft"||k==="a"){g2kMove("left");e.preventDefault()}else if(k==="arrowright"||k==="d"){g2kMove("right");e.preventDefault()}else if(k==="arrowup"||k==="w"){g2kMove("up");e.preventDefault()}else if(k==="arrowdown"||k==="s"){g2kMove("down");e.preventDefault()}});
-var g2kTS=null;$("grid2048").addEventListener("touchstart",function(e){g2kTS={x:e.touches[0].clientX,y:e.touches[0].clientY}},{passive:true});$("grid2048").addEventListener("touchend",function(e){if(!g2kTS)return;var dx=e.changedTouches[0].clientX-g2kTS.x,dy=e.changedTouches[0].clientY-g2kTS.y;if(Math.abs(dx)>Math.abs(dy))g2kMove(dx>0?"right":"left");else g2kMove(dy>0?"down":"up");g2kTS=null},{passive:true});g2kInit();
-// BUG WHACK
-var bugG={running:false,score:0,combo:0,mult:1,comboTimer:null,spawnTimer:null,gameTimer:null,timeLeft:60,best:0};
-bugG.best=parseInt(localStorage.getItem("bgBest")||"0");$("bgBest").textContent=bugG.best;
-function bgStart(){bugG.running=true;bugG.score=0;bugG.combo=0;bugG.mult=1;bugG.timeLeft=60;$("bgScore").textContent=0;$("bgCombo").textContent=0;$("bgMult").textContent="x1";$("bugArena").innerHTML="";var fill=$("bugTimer");fill.style.width="100%";fill.className="fill";bgTick();bgSpawn()}
-function bgStop(){bugG.running=false;clearTimeout(bugG.spawnTimer);clearTimeout(bugG.comboTimer);clearInterval(bugG.gameTimer)}
-function bgTick(){bugG.gameTimer=setInterval(function(){if(!bugG.running)return;bugG.timeLeft--;var pct=(bugG.timeLeft/60)*100;var fill=$("bugTimer");fill.style.width=pct+"%";fill.className="fill"+(pct<20?" danger":pct<40?" warn":"");if(bugG.timeLeft<=0)bgEnd()},1000)}
-function bgSpawn(){if(!bugG.running)return;var types=[{icon:"🐛",pts:1,sp:.3},{icon:"🦗",pts:3,sp:1},{icon:"🕷️",pts:5,sp:.6,gold:true}];var w=types[0];if(Math.random()<.15)w=types[2];else if(Math.random()<.35)w=types[1];var arena=$("bugArena");var bug=document.createElement("div");bug.className="bug"+(w.gold?" gold":"");bug.textContent=w.icon;bug.style.left=rnd(3,90)+"%";bug.style.top=rnd(3,80)+"%";var dx=(Math.random()-.5)*w.sp*2,dy=(Math.random()-.5)*w.sp*2;var move=function(){if(!bug.parentNode||!bugG.running)return;var l=parseFloat(bug.style.left),t=parseFloat(bug.style.top);l+=dx;t+=dy;if(l<2||l>93)dx=-dx;if(t<2||t>85)dy=-dy;bug.style.left=l+"%";bug.style.top=t+"%";requestAnimationFrame(move)};move();bug.onclick=function(){if(bug.classList.contains("hit"))return;bug.classList.add("hit");var pts=w.pts*bugG.mult;bugG.score+=pts;bugG.combo++;bugG.mult=1+Math.floor(bugG.combo/5);$("bgScore").textContent=bugG.score;$("bgCombo").textContent=bugG.combo;$("bgMult").textContent="x"+bugG.mult;sfx("click");var pop=document.createElement("div");pop.className="pop"+(w.gold?" gold":"");pop.textContent="+"+pts;pop.style.left=bug.style.left;pop.style.top=bug.style.top;arena.appendChild(pop);setTimeout(function(){pop.remove()},1000);clearTimeout(bugG.comboTimer);bugG.comboTimer=setTimeout(function(){bugG.combo=0;bugG.mult=1;$("bgCombo").textContent=0;$("bgMult").textContent="x1"},2500);setTimeout(function(){bug.remove()},350)};arena.appendChild(bug);var delay=Math.max(300,1200-bugG.score*2);bugG.spawnTimer=setTimeout(bgSpawn,delay+Math.random()*400)}
-function bgEnd(){bgStop();if(bugG.score>bugG.best){bugG.best=bugG.score;localStorage.setItem("bgBest",bugG.best);$("bgBest").textContent=bugG.best;toast("🎉 新纪录！")}var a=$("bugArena");a.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:8px"><div style="font-size:2em">⏰</div><div style="color:var(--green);font-size:1.2em;font-weight:700">时间到！</div><div style="color:var(--dim)">拍扁了 '+bugG.score+' 个Bug</div><button class="btn btn-p" onclick="bgStart()" style="margin-top:8px">▶ 再来一局</button></div>'}
-bgStop();
-// KONAMI
-var kSeq=["ArrowUp","ArrowUp","ArrowDown","ArrowDown","ArrowLeft","ArrowRight","ArrowLeft","ArrowRight","b","a"],kIdx=0;
-addEventListener("keydown",function(e){var k=e.key;if(k==="b"||k==="a"||k==="B"||k==="A")k=k.toLowerCase();if(k===kSeq[kIdx]){kIdx++;if(kIdx===kSeq.length){kIdx=0;fireKonami()}}else{kIdx=0;if(k===kSeq[0])kIdx=1}});
-function fireKonami(){sfx("win");toast("🎉 KONAMI CODE! 全屏礼花！");var ov=$("konamiOv"),cv=$("konamiCv");ov.style.display="block";cv.width=innerWidth;cv.height=innerHeight;var ctx=cv.getContext("2d"),pts=[],colors=["#f85149","#3fb950","#58a6ff","#d29922","#bc8cff","#ffa657","#f778ba"];for(var i=0;i<300;i++){pts.push({x:innerWidth/2,y:innerHeight/2,vx:(Math.random()-.5)*18,vy:(Math.random()-.5)*18-5,color:colors[rnd(0,colors.length-1)],size:rnd(4,12),life:1,rot:Math.random()*6})}var start=Date.now();function anim(){var t=(Date.now()-start)/1000;ctx.clearRect(0,0,cv.width,cv.height);pts.forEach(function(p){p.x+=p.vx;p.y+=p.vy;p.vy+=.35;p.life=1-t/3.5;if(p.life<=0)return;ctx.save();ctx.globalAlpha=p.life;ctx.translate(p.x,p.y);ctx.rotate(p.rot);ctx.fillStyle=p.color;ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size);ctx.restore()});if(t<3.5)requestAnimationFrame(anim);else{ov.style.display="none";ctx.clearRect(0,0,cv.width,cv.height)}}anim()}
-// HEALTH POLLING
-function checkHealth(){var dot=$("hDot"),text=$("hText"),badge=$("mBadge"),emoji=$("mEmoji"),title=$("mTitle");fetch("/api/health",{method:"GET",signal:AbortSignal.timeout(5000)}).then(function(r){if(r.ok){dot.className="hdot green";text.textContent="✅ 服务已恢复！正在跳转...";badge.className="badge badge-online";badge.innerHTML='<span class="dot"></span> ONLINE';emoji.textContent="✅";title.textContent="服务已恢复";setTimeout(function(){location.href="/"},2500)}else{dot.className="hdot red";text.textContent="服务维护中 · 自动检查中"}}).catch(function(){dot.className="hdot red";text.textContent="服务维护中 · 自动检查中"})}
-checkHealth();setInterval(checkHealth,15000);
-</script>
+
+  <!-- Scripts: utils first, then games, then main -->
+  <script src="/debug/js/utils.js"></script>
+  <script src="/debug/js/games/server-defense.js"></script>
+  <script src="/debug/js/games/terminal-hacker.js"></script>
+  <script src="/debug/js/games/snake-2048.js"></script>
+  <script src="/debug/js/games/traffic-breakout.js"></script>
+  <script src="/debug/js/games/dimension-parkour.js"></script>
+  <script src="/debug/js/games/bug-sorter.js"></script>
+  <script src="/debug/js/games/data-turing.js"></script>
+  <script>
+    // Register apps (must run after all game classes are defined)
+    APPS = [
+      { icon: '🛡️', name: 'Server Defense', desc: 'Vampire Survivors tower defense', badge: 'HOT', init: c => new ServerDefense(c) },
+      { icon: '💻', name: 'Terminal Hacker', desc: 'Decrypt threat defense', init: c => new TerminalHacker(c) },
+      { icon: '🐍', name: 'Snake 2048', desc: 'Snake x 2048 fusion', init: c => new Snake2048(c) },
+      { icon: '🧱', name: 'Traffic Breakout', desc: 'Tunnel + fork breakout', init: c => new TrafficBreakout(c) },
+      { icon: '🏃', name: 'Dimension Parkour', desc: 'Gravity flip runner', badge: 'NEW', init: c => new DimensionParkour(c) },
+      { icon: '🎵', name: 'Bug Sorter', desc: '3-lane rhythm game', init: c => new BugSorter(c) },
+      { icon: '🔌', name: 'Data Turing', desc: 'Node wiring puzzle', init: c => new DataTuring(c) }
+    ];
+    // init() in main.js uses DOMContentLoaded, so it will pick up APPS
+  </script>
+  <script src="js/main.js"></script>
 </body>
 </html>

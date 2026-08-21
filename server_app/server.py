@@ -1351,6 +1351,12 @@ def delete_history_batch(req: HistoryBatchDelete, authorization: str = Header(de
     return {"history": _history_with_jar(username)}
 
 
+# ---------- 健康检查（debug 页面探活用）----------
+@app.get("/api/health")
+def health_check():
+    return {"status": "ok", "service": "skill-agent web", "port": 8000}
+
+
 # ---------- 前端静态资源 ----------
 WEB_DIR.mkdir(exist_ok=True)
 
@@ -1363,6 +1369,24 @@ def index():
         return FileResponse(str(index_file))
     return {"error": "index.html not found", "web_dir": str(WEB_DIR)}
 
+
+# Debug 维护占位页（8000 挂了时用 Nginx 跳转，或直接访问 /debug/）
+DEBUG_DIR = Path(__file__).resolve().parent / "debug"
+
+@app.get("/debug")
+@app.get("/debug/")
+async def debug_page():
+    idx = DEBUG_DIR / "index.html"
+    if idx.exists():
+        return FileResponse(str(idx))
+    return {"error": "debug page not found"}
+
+@app.get("/debug/{filepath:path}")
+async def debug_static(filepath: str):
+    f = DEBUG_DIR / filepath
+    if f.is_file():
+        return FileResponse(str(f))
+    raise HTTPException(404, "Not found")
 
 # 兜底：web 目录里其余静态资源（html 默认返回 index）
 app.mount("/", StaticFiles(directory=str(WEB_DIR), html=True), name="web")
