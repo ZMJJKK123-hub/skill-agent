@@ -646,3 +646,10 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **`IEventBus` not found (independent repro)**: second session confirmed eventbus change — use `net.minecraftforge.eventbus.api.bus.BusGroup` / `getModBusGroup()`.
 - **FLOW DEFECT — start-phase read loop**: nearly every new session burns 5-10 rounds re-reading `mc_java_sources/starter` before the first write, despite `<write-first-stop>` firing 2-4 times (this session reached supervisor ALERT). Recommendation: on session start, force-inject a ready-to-edit minimal main-class template instead of only warning.
 - Grind note: main build took ~21 compile iterations (creative-tab zone); test cycle needed one retry before RESULT: PASS.
+## 2026-08-21 itertest22 Lucky Pickaxe - component/event accessor facts
+
+- **`Item.Properties.component(RegistryObject<DataComponentType<T>>, T)` does NOT compile**: `component` is generic `<T>component(DataComponentType<T>, T)` and rejects RegistryObject.
+  - Fix: dereference first — `.component(ModComponents.LUCKY.get(), Unit.INSTANCE)`.
+- **`BlockEvent.BreakEvent#getLevel()` returns `LevelAccessor`, not `Level`** (typed event record accessor).
+  - Fix: hold as `LevelAccessor`, `instanceof ServerLevel serverLevel`, then use it for drops / `Block.popResource`.
+- **FLOW DEFECT — template pollution**: the forge starter auto-copied an UNRELATED "SwapGame" template alongside examplemod files; agents must detect and delete both or the extra @Mod breaks FML. Template dir needs a cleanup upstream.
