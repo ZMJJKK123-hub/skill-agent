@@ -445,6 +445,10 @@ def _easter_egg_response(messages: list) -> str | None:
             return "pong 🏓（彩蛋：Ping-Pong！）"
         if c in ("彩蛋", "easter egg", "easteregg"):
             return "🎉 你发现了一个彩蛋！谢谢你的好奇，祝你今天也开开心心～"
+        if c in ("你心情怎么样", "心情", "你现在心情如何"):
+            return "😊 我心情超好！因为能和你聊天呀～"
+        if c in ("天气", "今天天气", "下雨了吗"):
+            return "🌤️ 我是 AI 看不到实时天气，不过建议看看窗外～如果是雨天，记得带伞哦！"
         if c in ("早安", "早上好", "good morning"):
             return "☀️ 早安呀！新的一天从好心情开始～有什么想让我帮忙的吗？"
         if c in ("晚安", "我要睡了", "我去睡了", "good night"):
