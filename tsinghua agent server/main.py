@@ -615,6 +615,17 @@ def _friendly_agent_error(e: Exception) -> str:
     return f"⚠️ AI 服务暂时不可用：{msg}"
 
 
+def _append_persona_guide(text: str, messages: list) -> str:
+    """如果是会话第一轮（还没有 assistant 回复），就在回复末尾展示可选模式。"""
+    if any(isinstance(m, dict) and m.get("role") == "assistant" for m in messages):
+        return text
+    guide = (
+        "\n\n✨ 我可以切换不同模式陪你聊：默认、喵娘、高冷技术助理、元气少女、优雅姐姐、神秘占卜师、学长前辈。"
+        "如果你感兴趣，直接跟我说“切换成喵娘”就可以啦～"
+    )
+    return text + guide
+
+
 def _append_service_notice(text: str) -> str:
     """如果配置了 DSH_SERVICE_NOTICE，就在回复末尾追加服务提示。"""
     notice = os.environ.get("DSH_SERVICE_NOTICE", "").strip()
@@ -772,6 +783,7 @@ def _run_agent(messages: list, session_id: str, base_url: str,
     text = result.get("text") or "(no response)"
     text = _append_web_hint(text, mod_related)
     text = _append_service_notice(text)
+    text = _append_persona_guide(text, messages)
     attachments = _collect_attachments(start_ts, base_url, scope=session_root)
     return text, attachments
 
@@ -996,6 +1008,7 @@ def _stream_agent(messages: list, session_id: str, base_url: str):
                 if data.get("error"):
                     raise RuntimeError(data["error"])
                 final = data.get("text") or "(no response)"
+                final = _append_persona_guide(final, messages)
                 break
             if daemon_proc is not None and daemon_proc.poll() is not None:
                 raise RuntimeError("AI 服务进程已退出，请检查服务配置")
