@@ -659,3 +659,10 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
   - Working pattern: custom MobEffect via `DeferredRegister.create(Registries.MOB_EFFECT, MODID)` (Holder-based vanilla registry); resolve the active effect with `BuiltInRegistries.MOB_EFFECT.getOrThrow(ResourceKey<MobEffect>)` (note: `getOrThrow`, not `getHolderOrThrow`).
 - MobEffectInstance construction unchanged (`new MobEffectInstance(holder, duration, amplifier)`), apply via `player.addEffect(...)`.
 - Session note: one ~2min silent LLM turn occurred pre-write (low CPU = network wait, not a hang); recovered and completed normally.
+## 2026-08-21 itertest24 Tuning Fork - GameTestHolder removal + sound Holder facts
+
+- **`GameTestHolder` is GONE in BOTH packages** (`net.minecraftforge.gametest` and `net.minecraft.gametest.framework` both "cannot find symbol").
+  - Fix: class-level `@net.minecraftforge.gametest.GameTestNamespace(...)` only (`value()` defaults to modid).
+- **`Level.playSound(...)` takes `SoundEvent`, NOT `Holder.Reference<SoundEvent>`**: vanilla constants like `SoundEvents.NOTE_BLOCK_PLING` are Holders now.
+  - Fix: `level.playSound(null, pos, SoundEvents.NOTE_BLOCK_PLING.value(), SoundSource.BLOCKS, vol, pitch)`.
+- **Recurring flow defect — jar name staleness**: forgetting `rootProject.name`/archivesBaseName rename produces a stale `examplemod-1.0.0.jar` alongside the real one; agent caught and cleaned this round, but the check belongs in the standard rename checklist.
