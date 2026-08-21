@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔧 系统维护中 — skill-agent</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0d1117;--card:#161b22;--border:#30363d;--green:#3fb950;--green-dim:#2ea043;--cyan:#58a6ff;--yellow:#d29922;--red:#f85149;--purple:#bc8cff;--text:#e6edf3;--text-dim:#8b949e;--radius:12px}
+body{background:var(--bg);color:var(--text);font-family:'SF Mono','Cascadia Code','Fira Code',Consolas,'Courier New',monospace;overflow-x:hidden;min-height:100vh}
+/* === Layout === */
+.container{max-width:960px;margin:0 auto;padding:24px 16px 60px}
+.header{text-align:center;margin-bottom:32px}
+.header .logo{font-size:3em;margin-bottom:8px}
+.header h1{font-size:1.4em;font-weight:600;margin-bottom:6px}
+.header .status{display:inline-block;padding:4px 14px;border-radius:20px;font-size:.85em;font-weight:600;animation:pulse 2s infinite}
+.status-maintaining{background:rgba(63,185,80,.15);color:var(--green);border:1px solid var(--green-dim)}
+.status-online{background:rgba(88,166,255,.15);color:var(--cyan);border:1px solid var(--cyan)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.header .msg{color:var(--text-dim);font-size:.9em;margin-top:8px;max-width:500px;margin-left:auto;margin-right:auto;line-height:1.6}
+/* === Nav Tabs === */
+.tabs{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:24px}
+.tab{padding:8px 16px;border-radius:8px;background:var(--card);border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all .2s;font-size:.85em;font-family:inherit}
+.tab:hover{border-color:var(--green-dim);color:var(--text)}
+.tab.active{background:rgba(63,185,80,.1);border-color:var(--green);color:var(--green)}
+/* === Panels === */
+.panel{display:none;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px}
+.panel.active{display:block}
+.panel-title{font-size:1em;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.panel-desc{color:var(--text-dim);font-size:.8em;margin-bottom:16px}
+/* === Terminal === */
+#terminal{background:#010409;border:1px solid var(--border);border-radius:8px;height:340px;overflow-y:auto;padding:14px;font-size:.82em;line-height:1.6}
+.term-line{white-space:pre-wrap;word-break:break-word}
+.term-input-line{display:flex;align-items:center;gap:6px}
+.term-prompt{color:var(--green);white-space:nowrap}
+#term-input{flex:1;background:transparent;border:none;color:var(--text);font-family:inherit;font-size:1em;outline:none}
+.term-cursor{animation:blink 1s infinite}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+/* === Game Canvas === */
+.game-wrapper{display:flex;flex-direction:column;align-items:center;gap:12px}
+.game-canvas{border:1px solid var(--border);border-radius:8px;background:#010409;touch-action:none}
+.game-score{display:flex;gap:24px;font-size:.85em;color:var(--text-dim)}
+.game-score span{color:var(--green);font-weight:600}
+.game-controls{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.btn{padding:8px 20px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font-family:inherit;font-size:.82em;transition:all .2s}
+.btn:hover{border-color:var(--green-dim);background:rgba(63,185,80,.08)}
+.btn-primary{border-color:var(--green);color:var(--green)}
+.btn-primary:hover{background:rgba(63,185,80,.15)}
+.game-hint{font-size:.78em;color:var(--text-dim);text-align:center;margin-top:4px}
+/* === 2048 Grid === */
+#grid-2048{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;background:var(--border);padding:8px;border-radius:8px;width:320px;margin:0 auto}
+.cell-2048{width:100%;aspect-ratio:1;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9em;transition:all .15s}
+.c-empty{background:#21262d}
+.c-2{background:#2ea043;color:#fff}
+.c-4{background:#3fb950;color:#fff}
+.c-8{background:#58a6ff;color:#fff}
+.c-16{background:#79c0ff;color:#fff}
+.c-32{background:#d29922;color:#fff}
+.c-64{background:#e3b341;color:#fff}
+.c-128{background:#bc8cff;color:#fff}
+.c-256{background:#d2a8ff;color:#000}
+.c-512{background:#f85149;color:#fff}
+.c-1024{background:#ff7b72;color:#fff;font-size:.75em}
+.c-2048{background:#ffa657;color:#000;font-size:.7em}
+/* === Bug Whack === */
+#bug-arena{position:relative;width:100%;height:300px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:#010409}
+.bug{position:absolute;font-size:1.5em;cursor:pointer;user-select:none;transition:transform .1s}
+.bug:hover{transform:scale(1.2)}
+.bug.squashed{animation:squash .3s forwards}
+@keyframes squash{to{transform:scale(0) rotate(180deg);opacity:0}}
+.score-pop{position:absolute;color:var(--green);font-weight:700;font-size:.8em;pointer-events:none;animation:float-up 1s forwards}
+@keyframes float-up{to{transform:translateY(-40px);opacity:0}}
+/* === Konami === */
+#konami-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9999;display:none;pointer-events:none}
+#konami-canvas{width:100%;height:100%}
+/* === Sound toggle === */
+.sound-toggle{position:fixed;top:16px;right:16px;z-index:100;background:var(--card);border:1px solid var(--border);border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1.1em;transition:all .2s}
+.sound-toggle:hover{border-color:var(--green-dim)}
+/* === Health indicator === */
+.health-bar{position:fixed;top:16px;left:16px;z-index:100;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:.75em;display:flex;align-items:center;gap:6px}
+.health-dot{width:8px;height:8px;border-radius:50%;animation:pulse 2s infinite}
+.health-dot.red{background:var(--red)}
+.health-dot.green{background:var(--green)}
+/* === Confetti === */
+.confetti{position:fixed;width:10px;height:10px;z-index:9998;pointer-events:none}
+/* === Responsive === */
+@media(max-width:600px){.header .logo{font-size:2.2em}.header h1{font-size:1.1em}.tabs{gap:4px}.tab{padding:6px 10px;font-size:.78em}#terminal{height:260px;font-size:.75em}#grid-2048{width:260px}.game-canvas{max-width:100%}}
+</style>
+</head>
+<body>
+<!-- Sound Toggle -->
+<div class="sound-toggle" id="soundToggle" title="静音/开音">🔇</div>
+<!-- Health Indicator -->
+<div class="health-bar"><span class="health-dot red" id="healthDot"></span><span id="healthText">正在检查服务状态...</span></div>
+
+<div class="container">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo" id="mainEmoji">🔧</div>
+    <h1 id="mainTitle">系统维护中</h1>
+    <div class="status status-maintaining" id="statusBadge">MAINTAINING</div>
+    <div class="msg" id="maintMsg">主人正在修复我，请稍等片刻～你可以在下面玩点小游戏打发时间 🎮</div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" data-tab="terminal">💻 模拟终端</div>
+    <div class="tab" data-tab="snake">🐍 贪吃蛇</div>
+    <div class="tab" data-tab="breakout">🧱 打砖块</div>
+    <div class="tab" data-tab="2048">🔢 2048</div>
+    <div class="tab" data-tab="bugwhack">🐛 消灭Bug</div>
+  </div>
+
+  <!-- Terminal Panel -->
+  <div class="panel active" id="panel-terminal">
+    <div class="panel-title">💻 模拟终端</div>
+    <div class="panel-desc">输入 help 查看可用命令 · 输入 ping 检查连接 · 输入 sudo fix-bug 试试看</div>
+    <div id="terminal"></div>
+  </div>
+
+  <!-- Snake Panel -->
+  <div class="panel" id="panel-snake">
+    <div class="panel-title">🐍 贪吃蛇 — 吃「版本更新包」</div>
+    <div class="panel-desc">方向键或 WASD 控制 · 吃到 📦 增长 · 撞墙/自己 = 结束</div>
+    <div class="game-wrapper">
+      <canvas class="game-canvas" id="snakeCanvas" width="360" height="360"></canvas>
+      <div class="game-score">得分: <span id="snakeScore">0</span> · 长度: <span id="snakeLen">3</span></div>
+      <div class="game-controls"><button class="btn btn-primary" onclick="snakeStart()">开始</button><button class="btn" onclick="snakePause()">暂停</button></div>
+      <div class="game-hint">移动端可在画布上滑动操作</div>
+    </div>
+  </div>
+
+  <!-- Breakout Panel -->
+  <div class="panel" id="panel-breakout">
+    <div class="panel-title">🧱 打砖块 — 打掉每个Bug</div>
+    <div class="panel-desc">鼠标/手指移动挡板 · 弹球打掉「Bug」砖块 · 每打一块弹出"已修复1个Bug"</div>
+    <div class="game-wrapper">
+      <canvas class="game-canvas" id="bkCanvas" width="360" height="420"></canvas>
+      <div class="game-score">已修复: <span id="bkScore">0</span> / <span id="bkTotal">0</span></div>
+      <div class="game-controls"><button class="btn btn-primary" onclick="bkStart()">开始</button></div>
+    </div>
+  </div>
+
+  <!-- 2048 Panel -->
+  <div class="panel" id="panel-2048">
+    <div class="panel-title">🔢 2048 — 版本升级</div>
+    <div class="panel-desc">方向键合并 · v1.0→v2.0→...→v5.0 = 通关 · 合到 2048 = 终极版本</div>
+    <div class="game-wrapper">
+      <div id="grid-2048"></div>
+      <div class="game-score">分数: <span id="g2048Score">0</span></div>
+      <div class="game-controls"><button class="btn btn-primary" onclick="g2048Init()">新游戏</button></div>
+      <div class="game-hint">移动端可在网格上滑动操作</div>
+    </div>
+  </div>
+
+  <!-- Bug Whack Panel -->
+  <div class="panel" id="panel-bugwhack">
+    <div class="panel-title">🐛 消灭 Bug — 点击解压</div>
+    <div class="panel-desc">Bug 会从各角落随机爬出 · 点击拍扁 · 连击有额外加分</div>
+    <div class="game-wrapper">
+      <div id="bug-arena"></div>
+      <div class="game-score">拍扁: <span id="bugScore">0</span> · 连击: <span id="bugCombo">0</span></div>
+      <div class="game-controls"><button class="btn btn-primary" onclick="bugStart()">开始</button><button class="btn" onclick="bugStop()">停止</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- Konami overlay -->
+<div id="konami-overlay"><canvas id="konami-canvas"></canvas></div>
+
+<script>
+// ===================== CONFIG =====================
+var SOUND_ON=false;
+var HEALTH_URL='/api/health';
+var HOME_URL='/';
+var POLL_INTERVAL=15000; // 15s
+
+// ===================== SOUND =====================
+var audioCtx=null;
+function beep(freq,dur,vol){if(!SOUND_ON)return;try{if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();var o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=freq||440;o.type='square';g.gain.value=vol||.1;o.start();g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+(dur||.1));o.stop(audioCtx.currentTime+(dur||.1))}catch(e){}}
+document.getElementById('soundToggle').onclick=function(){SOUND_ON=!SOUND_ON;this.textContent=SOUND_ON?'🔊':'🔇';if(SOUND_ON&&audioCtx)audioCtx.resume()};
+
+// ===================== MAINTENANCE MESSAGES =====================
+var MSGS=[
+ "主人正在修复我，请稍等片刻～你可以在下面玩点小游戏打发时间 🎮",
+ "系统正在升级中…就像给猫换毛，需要一点时间 🐱",
+ "工程师正在疯狂敲键盘，请稍候 🔧",
+ "我正在重新打包自己，马上回来 📦",
+ "Bug 正在被一个个消灭中…你可以帮忙拍几个 🐛",
+ "服务正在重启大脑…就像我早上需要咖啡一样 ☕",
+ "代码正在编译…这比煮饭还慢一点 🍚",
+];
+document.getElementById('maintMsg').textContent=MSGS[Math.floor(Math.random()*MSGS.length)];
+
+// ===================== TABS =====================
+document.querySelectorAll('.tab').forEach(function(t){t.onclick=function(){document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});document.querySelectorAll('.panel').forEach(function(x){x.classList.remove('active')});t.classList.add('active');document.getElementById('panel-'+t.dataset.tab).classList.add('active')}});
+
+// ===================== TERMINAL =====================
+(function(){
+var term=document.getElementById('terminal');
+var history=[];
+var histIdx=0;
+function out(text,cls){var d=document.createElement('div');d.className='term-line'+(cls?' '+cls:'');d.textContent=text;term.appendChild(d);term.scrollTop=term.scrollHeight}
+function outHTML(html){var d=document.createElement('div');d.className='term-line';d.innerHTML=html;term.appendChild(d);term.scrollTop=term.scrollHeight}
+function inputLine(){var wrap=document.createElement('div');wrap.className='term-input-line';var p=document.createElement('span');p.className='term-prompt';p.textContent='skill-agent@debug:~$';var inp=document.createElement('input');inp.id='term-input';inp.spellcheck=false;inp.autocomplete='off';wrap.appendChild(p);wrap.appendChild(inp);term.appendChild(wrap);term.scrollTop=term.scrollHeight;inp.focus();inp.addEventListener('keydown',function(e){if(e.key==='Enter'){var v=inp.value;history.push(v);histIdx=history.length;inp.disabled=true;out('skill-agent@debug:~$ '+v);process(v);inputLine()}else if(e.key==='ArrowUp'){e.preventDefault();if(histIdx>0){histIdx--;inp.value=history[histIdx]||''}}else if(e.key==='ArrowDown'){e.preventDefault();if(histIdx<history.length-1){histIdx++;inp.value=history[histIdx]||''}else{histIdx=history.length;inp.value=''}}})}
+term.addEventListener('click',function(){var i=document.getElementById('term-input');if(i)i.focus()});
+var cmds={
+ help:function(){outHTML('<span style="color:#58a6ff">Available commands:</span><br>  help        — 显示帮助<br>  ping        — 测试连接<br>  status      — 服务状态<br>  ls          — 列出文件<br>  cat status.log — 查看日志<br>  sudo fix-bug — 修复Bug(试试看)<br>  matrix      — 数字雨<br>  whoami      — 你是谁<br>  echo [text] — 回显<br>  clear       — 清屏<br>  exit        — 退出(不会真的退出)<br>  game        — 推荐小游戏<br>  konami      — 神秘提示')},
+ ping:function(){out('PING skill-agent...');setTimeout(function(){out('64 bytes from skill-agent: time=0.1ms ✅','term-green');out('1 packet transmitted, 1 received, 0% packet loss')},500)},
+ status:function(){out('Service:  skill-agent');out('Status:   MAINTAINING 🔧');out('Mode:    chat (read-only)');out('Version: Forge 1.21.11 / Java 21');out('Uptime:  正在重启中...');out('','')},
+ ls:function(){out('drwxr-xr-x  core/');out('drwxr-xr-x  server_app/');out('drwxr-xr-x  tsinghua agent server/');out('drwxr-xr-x  mc_java_sources/ → (symlink)');out('-rw-r--r--  .env');out('-rw-r--r--  README.md')},
+ 'cat status.log':function(){out('[2026-08-21 14:00:01] INFO  Starting agent daemon...');out('[2026-08-21 14:00:03] INFO  Loading skills (169 files)...');out('[2026-08-21 14:00:05] INFO  Skills loaded.');out('[2026-08-21 14:00:06] WARN  mc_java_sources symlinked (not copied)');out('[2026-08-21 14:00:07] INFO  DeepSeek API connected.');out('[2026-08-21 14:00:08] ERROR Connection timeout, retrying...');out('[2026-08-21 14:00:10] WARN  Service entering maintenance mode.')},
+ 'sudo fix-bug':function(){out('⚠  权限不足：程序员正在拼命敲代码！','term-red');out('💡 提示：你可以在「消灭Bug」小游戏里帮忙拍几个 🐛')},
+ matrix:function(){out('Entering the Matrix...');startMatrix()},
+ whoami:function(){out('你是访客 #'+Math.floor(Math.random()*99999)+' · 一个正在等待服务恢复的耐心用户 😊')},
+ echo:function(args){out(args.join(' ')||'')},
+ clear:function(){term.innerHTML='';inputLine()},
+ exit:function(){out('Nice try 😏 没那么容易离开～')},
+ game:function(){outHTML('🎮 推荐小游戏：<br>  1. 贪吃蛇 — 吃「版本更新包」长大<br>  2. 打砖块 — 每打一块「Bug」就修复一个<br>  3. 2048 — 版本号合并升级<br>  4. 消灭Bug — 点击解压<br>  5. Konami秘技 — ↑↑↓↓←→←→BA')},
+ konami:function(){out('🤫 你在找什么…？试试 ↑↑↓↓←→←→BA')}
+};
+function process(cmd){cmd=cmd.trim();if(!cmd)return;var parts=cmd.split(/\\s+/);var base=parts[0];var full=cmd;if(full==='cat status.log'){cmds['cat status.log']();return}if(full==='sudo fix-bug'){cmds['sudo fix-bug']();return}if(cmds[base]){cmds[base](parts.slice(1))}else{out('command not found: '+base+' — 输入 help 查看可用命令','term-red')}}
+out('Welcome to skill-agent Debug Terminal v1.0','term-green');out('Type "help" to see available commands.','');out('','');inputLine()
+})();
+
+// ===================== MATRIX RAIN =====================
+function startMatrix(){
+ var c=document.createElement('canvas');c.style.position='fixed';c.style.top='0';c.style.left='0';c.style.width='100vw';c.style.height='100vh';c.style.zIndex='9998';c.style.background='#000';c.style.cursor='pointer';document.body.appendChild(c);c.width=window.innerWidth;c.height=window.innerHeight;var ctx=c.getContext('2d');var chars='01ﾊﾐﾋｰｳｼﾅﾓﾆｻﾜﾂｵﾘｱﾎﾃﾏｹﾒｦｴｺｿ'.split('');var fontSize=14;var cols=Math.floor(c.width/fontSize);var drops=[];for(var i=0;i<cols;i++)drops[i]=Math.random()*c.height;var interval=setInterval(function(){ctx.fillStyle='rgba(0,0,0,.05)';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#0f0';ctx.font=fontSize+'px monospace';for(var i=0;i<drops.length;i++){ctx.fillText(chars[Math.floor(Math.random()*chars.length)],i*fontSize,drops[i]*fontSize);if(drops[i]*fontSize>c.height&&Math.random()>.975)drops[i]=0;drops[i]++}},33);c.onclick=function(){clearInterval(interval);c.remove()}}
+}
+
+// ===================== SNAKE =====================
+var snakeGame={canvas:null,ctx:null,grid:18,cell:0,snake:[],dir:{x:1,y:0},food:{x:10,y:10},score:0,running:false,loop:null};
+function snakeInit(){snakeGame.canvas=document.getElementById('snakeCanvas');snakeGame.ctx=snakeGame.canvas.getContext('2d');snakeGame.cell=snakeGame.canvas.width/snakeGame.grid;snakeGame.snake=[{x:5,y:9},{x:4,y:9},{x:3,y:9}];snakeGame.dir={x:1,y:0};snakeGame.score=0;snakeGame.food={x:Math.floor(Math.random()*snakeGame.grid),y:Math.floor(Math.random()*snakeGame.grid)};snakeDraw()}
+function snakeDraw(){var c=snakeGame.ctx,w=snakeGame.canvas.width;c.fillStyle='#010409';c.fillRect(0,0,w,w);c.strokeStyle='#161b22';c.lineWidth=1;for(var i=0;i<=snakeGame.grid;i++){c.beginPath();c.moveTo(i*snakeGame.cell,0);c.lineTo(i*snakeGame.cell,w);c.stroke();c.beginPath();c.moveTo(0,i*snakeGame.cell);c.lineTo(w,i*snakeGame.cell);c.stroke()}c.font=(snakeGame.cell*.6)+'px serif';c.textAlign='center';c.textBaseline='middle';c.fillText('📦',snakeGame.food.x*snakeGame.cell+snakeGame.cell/2,snakeGame.food.y*snakeGame.cell+snakeGame.cell/2);snakeGame.snake.forEach(function(s,i){c.fillStyle=i===0?'#3fb950':'#2ea043';c.fillRect(s.x*snakeGame.cell+1,s.y*snakeGame.cell+1,snakeGame.cell-2,snakeGame.cell-2)});document.getElementById('snakeScore').textContent=snakeGame.score;document.getElementById('snakeLen').textContent=snakeGame.snake.length}
+function snakeStep(){var head={x:snakeGame.snake[0].x+snakeGame.dir.x,y:snakeGame.snake[0].y+snakeGame.dir.y};if(head.x<0||head.x>=snakeGame.grid||head.y<0||head.y>=snakeGame.grid){snakeGameOver();return}for(var i=0;i<snakeGame.snake.length;i++){if(head.x===snakeGame.snake[i].x&&head.y===snakeGame.snake[i].y){snakeGameOver();return}}snakeGame.snake.unshift(head);if(head.x===snakeGame.food.x&&head.y===snakeGame.food.y){snakeGame.score+=10;beep(660,.1,.1);do{snakeGame.food={x:Math.floor(Math.random()*snakeGame.grid),y:Math.floor(Math.random()*snakeGame.grid)}}while(snakeGame.snake.some(function(s){return s.x===snakeGame.food.x&&s.y===snakeGame.food.y}))}else{snakeGame.snake.pop()}snakeDraw()}
+function snakeStart(){if(snakeGame.running)return;snakeInit();snakeGame.running=true;snakeGame.loop=setInterval(snakeStep,120)}
+function snakePause(){if(!snakeGame.running)return;clearInterval(snakeGame.loop);snakeGame.running=false}
+function snakeGameOver(){clearInterval(snakeGame.loop);snakeGame.running=false;beep(200,.3,.15);var c=snakeGame.ctx;c.fillStyle='rgba(0,0,0,.7)';c.fillRect(0,0,snakeGame.canvas.width,snakeGame.canvas.height);c.fillStyle='#f85149';c.font='20px monospace';c.textAlign='center';c.fillText('GAME OVER',snakeGame.canvas.width/2,snakeGame.canvas.height/2-10);c.fillStyle='#8b949e';c.font='12px monospace';c.fillText('点击「开始」重新游玩',snakeGame.canvas.width/2,snakeGame.canvas.height/2+16)}
+document.addEventListener('keydown',function(e){if(!document.getElementById('panel-snake').classList.contains('active'))return;var k=e.key.toLowerCase();var d=snakeGame.dir;if((k==='arrowup'||k==='w')&&d.y!==1){snakeGame.dir={x:0,y:-1};e.preventDefault()}else if((k==='arrowdown'||k==='s')&&d.y!==-1){snakeGame.dir={x:0,y:1};e.preventDefault()}else if((k==='arrowleft'||k==='a')&&d.x!==1){snakeGame.dir={x:-1,y:0};e.preventDefault()}else if((k==='arrowright'||k==='d')&&d.x!==-1){snakeGame.dir={x:1,y:0};e.preventDefault()}});
+// touch
+var snakeTouchStart=null;
+document.getElementById('snakeCanvas').addEventListener('touchstart',function(e){snakeTouchStart={x:e.touches[0].clientX,y:e.touches[0].clientY}},{passive:true});
+document.getElementById('snakeCanvas').addEventListener('touchend',function(e){if(!snakeTouchStart)return;var dx=e.changedTouches[0].clientX-snakeTouchStart.x,dy=e.changedTouches[0].clientY-snakeTouchStart.y;if(Math.abs(dx)>Math.abs(dy)){snakeGame.dir={x:dx>0?1:-1,y:0}}else{snakeGame.dir={x:0,y:dy>0?1:-1}}snakeTouchStart=null},{passive:true});
+snakeInit();
+
+// ===================== BREAKOUT =====================
+var bk={canvas:null,ctx:null,paddle:{x:140,y:400,w:80,h:8},ball:{x:180,y:390,dx:3,dy:-3},bricks:[],score:0,total:0,running:false,loop:null};
+function bkInit(){bk.canvas=document.getElementById('bkCanvas');bk.ctx=bk.canvas.getContext('2d');bk.paddle={x:bk.canvas.width/2-40,y:bk.canvas.height-16,w:80,h:8};bk.ball={x:bk.canvas.width/2,y:bk.canvas.height-24,dx:3,dy:-3};bk.score=0;bk.bricks=[];var rows=4,cols=8,pad=4,bw=(bk.canvas.width-pad*(cols+1))/cols,bh=16;var labels=['U','P','D','A','T','I','N','G'];for(var r=0;r<rows;r++)for(var cI=0;cI<cols;cI++){bk.bricks.push({x:pad+cI*(bw+pad),y:30+r*(bh+pad),w:bw,h:bh,alive:true,label:labels[cI]})}bk.total=bk.bricks.length;document.getElementById('bkTotal').textContent=bk.total;document.getElementById('bkScore').textContent=0;bkDraw()}
+function bkDraw(){var c=bk.ctx,w=bk.canvas.width,h=bk.canvas.height;c.fillStyle='#010409';c.fillRect(0,0,w,h);bk.bricks.forEach(function(b){if(!b.alive)return;c.fillStyle='#f85149';c.fillRect(b.x,b.y,b.w,b.h);c.fillStyle='#0d1117';c.font='10px monospace';c.textAlign='center';c.textBaseline='middle';c.fillText(b.label,b.x+b.w/2,b.y+b.h/2)});c.fillStyle='#3fb950';c.fillRect(bk.paddle.x,bk.paddle.y,bk.paddle.w,bk.paddle.h);c.beginPath();c.arc(bk.ball.x,bk.ball.y,5,0,Math.PI*2);c.fillStyle='#58a6ff';c.fill();c.closePath()}
+function bkStep(){if(!bk.running)return;bk.ball.x+=bk.ball.dx;bk.ball.y+=bk.ball.dy;if(bk.ball.x<5||bk.ball.x>bk.canvas.width-5)bk.ball.dx=-bk.ball.dx;if(bk.ball.y<5)bk.ball.dy=-bk.ball.dy;if(bk.ball.y>bk.canvas.height){bkGameOver();return}if(bk.ball.y+bk.ball.dy>=bk.paddle.y&&bk.ball.x>=bk.paddle.x&&bk.ball.x<=bk.paddle.x+bk.paddle.w)bk.ball.dy=-Math.abs(bk.ball.dy);bk.bricks.forEach(function(b){if(!b.alive)return;if(bk.ball.x>=b.x&&bk.ball.x<=b.x+b.w&&bk.ball.y>=b.y&&bk.ball.y<=b.y+b.h){b.alive=false;bk.score++;document.getElementById('bkScore').textContent=bk.score;bk.ball.dy=-bk.ball.dy;beep(880,.05,.08);showBugFixed()}});if(bk.bricks.every(function(b){return!b.alive})){bkWin();return}bkDraw()}
+function showBugFixed(){var d=document.createElement('div');d.textContent='已修复 1 个 Bug ✅';d.style.cssText='position:absolute;color:#3fb950;font-size:.75em;pointer-events:none;animation:float-up 1s forwards;left:'+(Math.random()*60+20)+'%;top:50%';document.getElementById('panel-breakout').appendChild(d);setTimeout(function(){d.remove()},1000)}
+function bkStart(){bkInit();bk.running=true;bk.loop=setInterval(bkStep,16)}
+function bkGameOver(){clearInterval(bk.loop);bk.running=false;beep(200,.3,.15);var c=bk.ctx;c.fillStyle='rgba(0,0,0,.7)';c.fillRect(0,0,bk.canvas.width,bk.canvas.height);c.fillStyle='#f85149';c.font='18px monospace';c.textAlign='center';c.fillText('GAME OVER',bk.canvas.width/2,bk.canvas.height/2)}
+function bkWin(){clearInterval(bk.loop);bk.running=false;beep(1000,.2,.1);var c=bk.ctx;c.fillStyle='rgba(0,0,0,.7)';c.fillRect(0,0,bk.canvas.width,bk.canvas.height);c.fillStyle='#3fb950';c.font='18px monospace';c.textAlign='center';c.fillText('🎉 全部Bug已修复！',bk.canvas.width/2,bk.canvas.height/2)}
+document.getElementById('bkCanvas').addEventListener('mousemove',function(e){var rect=bk.canvas.getBoundingClientRect();bk.paddle.x=Math.max(0,Math.min(bk.canvas.width-bk.paddle.w,e.clientX-rect.left-bk.paddle.w/2))});
+document.getElementById('bkCanvas').addEventListener('touchmove',function(e){e.preventDefault();var rect=bk.canvas.getBoundingClientRect();bk.paddle.x=Math.max(0,Math.min(bk.canvas.width-bk.paddle.w,e.touches[0].clientX-rect.left-bk.paddle.w/2))},{passive:false});
+bkInit();
+
+// ===================== 2048 =====================
+var g2048={grid:[],score:0};
+function g2048Init(){g2048.grid=Array(4).fill(null).map(function(){return Array(4).fill(0)});g2048.score=0;g2048Add();g2048Add();g2048Draw()}
+function g2048Add(){var empty=[];for(var r=0;r<4;r++)for(var c=0;c<4;c++)if(g2048.grid[r][c]===0)empty.push([r,c]);if(!empty.length)return;var p=empty[Math.floor(Math.random()*empty.length)];g2048.grid[p[0]][p[1]]=Math.random()<.9?2:4}
+function g2048Draw(){var el=document.getElementById('grid-2048');el.innerHTML='';var labels={2:'v1.0',4:'v2.0',8:'v3.0',16:'v4.0',32:'v5.0',64:'v6.0',128:'v7.0',256:'v8.0',512:'v9.0',1024:'v10',2048:'MAX'};for(var r=0;r<4;r++)for(var c=0;c<4;c++){var v=g2048.grid[r][c];var d=document.createElement('div');d.className='cell-2048 '+(v?'c-'+v:'c-empty');d.textContent=v?labels[v]||v:'';el.appendChild(d)}document.getElementById('g2048Score').textContent=g2048.score}
+function g2048Slide(row){var arr=row.filter(function(v){return v});var changed=false;for(var i=0;i<arr.length-1;i++){if(arr[i]===arr[i+1]){arr[i]*=2;arr.splice(i+1,1);g2048.score+=arr[i];beep(440+arr[i]*20,.08,.06);changed=true}}while(arr.length<4)arr.push(0);if(JSON.stringify(arr)!==JSON.stringify(row))changed=true;return{arr:arr,changed:changed}}
+function g2048Move(dir){var changed=false;var g=g2048.grid;if(dir==='left'){for(var r=0;r<4;r++){var res=g2048Slide(g[r]);g[r]=res.arr;if(res.changed)changed=true}}else if(dir==='right'){for(var r=0;r<4;r++){var rev=g[r].slice().reverse();var res=g2048Slide(rev);g[r]=res.arr.reverse();if(res.changed)changed=true}}else if(dir==='up'){for(var c=0;c<4;c++){var col=[g[0][c],g[1][c],g[2][c],g[3][c]];var res=g2048Slide(col);for(var r=0;r<4;r++)g[r][c]=res.arr[r];if(res.changed)changed=true}}else if(dir==='down'){for(var c=0;c<4;c++){var col=[g[3][c],g[2][c],g[1][c],g[0][c]];var res=g2048Slide(col);for(var r=0;r<4;r++)g[r][c]=res.arr[3-r];if(res.changed)changed=true}}if(changed){g2048Add();g2048Draw();if(g2048.grid.some(function(r){return r.includes(2048)})){setTimeout(function(){alert('🎉 恭喜！你合到了 MAX (2048)！终极版本达成！')},200)}if(!g2048CanMove())setTimeout(function(){alert('💀 没有可移动的了！得分：'+g2048.score)},200)}}
+function g2048CanMove(){for(var r=0;r<4;r++)for(var c=0;c<4;c++){if(g2048.grid[r][c]===0)return true;if(c<3&&g2048.grid[r][c]===g2048.grid[r][c+1])return true;if(r<3&&g2048.grid[r][c]===g2048.grid[r+1][c])return true}return false}
+document.addEventListener('keydown',function(e){if(!document.getElementById('panel-2048').classList.contains('active'))return;var k=e.key.toLowerCase();if(k==='arrowleft'||k==='a'){g2048Move('left');e.preventDefault()}else if(k==='arrowright'||k==='d'){g2048Move('right');e.preventDefault()}else if(k==='arrowup'||k==='w'){g2048Move('up');e.preventDefault()}else if(k==='arrowdown'||k==='s'){g2048Move('down');e.preventDefault()}});
+var g2048Touch=null;
+document.getElementById('grid-2048').addEventListener('touchstart',function(e){g2048Touch={x:e.touches[0].clientX,y:e.touches[0].clientY}},{passive:true});
+document.getElementById('grid-2048').addEventListener('touchend',function(e){if(!g2048Touch)return;var dx=e.changedTouches[0].clientX-g2048Touch.x,dy=e.changedTouches[0].clientY-g2048Touch.y;if(Math.abs(dx)>Math.abs(dy))g2048Move(dx>0?'right':'left');else g2048Move(dy>0?'down':'up');g2048Touch=null},{passive:true});
+g2048Init();
+
+// ===================== BUG WHACK =====================
+var bugGame={running:false,score:0,combo:0,comboTimer:null,spawnTimer:null};
+function bugStart(){bugGame.running=true;bugGame.score=0;bugGame.combo=0;document.getElementById('bugScore').textContent=0;document.getElementById('bugCombo').textContent=0;bugSpawn()}
+function bugStop(){bugGame.running=false;clearTimeout(bugGame.spawnTimer);clearTimeout(bugGame.comboTimer)}
+function bugSpawn(){if(!bugGame.running)return;var arena=document.getElementById('bug-arena');var bug=document.createElement('div');bug.className='bug';bug.textContent='🐛';bug.style.left=Math.random()*85+5+'%';bug.style.top=Math.random()*80+5+'%';var dx=(Math.random()-.5)*2,dy=(Math.random()-.5)*2;var move=function(){if(!bug.parentNode)return;var l=parseFloat(bug.style.left),t=parseFloat(bug.style.top);l+=dx*.3;t+=dy*.3;if(l<2||l>94)dx=-dx;if(t<2||t>88)dy=-dy;bug.style.left=l+'%';bug.style.top=t+'%';requestAnimationFrame(move)};move();bug.onclick=function(){if(bug.classList.contains('squashed'))return;bug.classList.add('squashed');bugGame.score++;bugGame.combo++;document.getElementById('bugScore').textContent=bugGame.score;document.getElementById('bugCombo').textContent=bugGame.combo;beep(800,.05,.08);var pop=document.createElement('div');pop.className='score-pop';pop.textContent='+1';pop.style.left=bug.style.left;pop.style.top=bug.style.top;arena.appendChild(pop);setTimeout(function(){pop.remove()},1000);clearTimeout(bugGame.comboTimer);bugGame.comboTimer=setTimeout(function(){bugGame.combo=0;document.getElementById('bugCombo').textContent=0},2000);setTimeout(function(){bug.remove()},300)};arena.appendChild(bug);bugGame.spawnTimer=setTimeout(bugSpawn,800+Math.random()*1200)}
+bugStop();
+
+// ===================== KONAMI CODE =====================
+var konamiSeq=['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+var konamiIdx=0;
+document.addEventListener('keydown',function(e){var k=e.key;if(k==='b'||k==='a'||k==='B'||k==='A')k=k.toLowerCase();if(k===konamiSeq[konamiIdx]){konamiIdx++;if(konamiIdx===konamiSeq.length){konamiIdx=0;triggerKonami()}}else{konamiIdx=0;if(k===konamiSeq[0])konamiIdx=1}});
+function triggerKonami(){beep(880,.2,.1);var overlay=document.getElementById('konami-overlay');var canvas=document.getElementById('konami-canvas');overlay.style.display='block';canvas.width=window.innerWidth;canvas.height=window.innerHeight;var ctx=canvas.getContext('2d');var particles=[];var colors=['#f85149','#3fb950','#58a6ff','#d29922','#bc8cff','#ffa657'];for(var i=0;i<200;i++){particles.push({x:window.innerWidth/2,y:window.innerHeight/2,vx:(Math.random()-.5)*16,vy:(Math.random()-.5)*16-4,color:colors[Math.floor(Math.random()*colors.length)],size:Math.random()*8+4,life:1})}var start=Date.now();var anim=function(){var t=(Date.now()-start)/1000;ctx.clearRect(0,0,canvas.width,canvas.height);particles.forEach(function(p){p.x+=p.vx;p.y+=p.vy;p.vy+=.3;p.life=1-t/3;if(p.life<=0)return;ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.fillRect(p.x,p.size/2,p.size,p.size)});if(t<3)requestAnimationFrame(anim);else{overlay.style.display='none';ctx.clearRect(0,0,canvas.width,canvas.height)}};anim()}
+
+// ===================== HEALTH POLLING =====================
+function checkHealth(){var dot=document.getElementById('healthDot'),text=document.getElementById('healthText'),badge=document.getElementById('statusBadge'),emoji=document.getElementById('mainEmoji'),title=document.getElementById('mainTitle');fetch(HEALTH_URL,{method:'GET',signal:AbortSignal.timeout(5000)}).then(function(r){if(r.ok){dot.className='health-dot green';text.textContent='服务已恢复！正在跳转...';badge.className='status status-online';badge.textContent='ONLINE';emoji.textContent='✅';title.textContent='服务已恢复';setTimeout(function(){window.location.href=HOME_URL},2000)}else{dot.className='health-dot red';text.textContent='服务维护中'}}).catch(function(){dot.className='health-dot red';text.textContent='服务维护中 · 自动检查中'})}
+checkHealth();
+setInterval(checkHealth,POLL_INTERVAL);
+</script>
+</body>
+</html>
