@@ -724,3 +724,10 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **`ServerLevel.setWeatherParameters(...)` signature changed**: now `(int clearTime, int rainTime, boolean raining, boolean thundering)` — 4 args, NO separate thunderTime.
 - SavedData placement registry pattern worked: `DimensionDataStorage.computeIfAbsent(SavedDataType...)` (verify exact overload per source); update loop only touches loaded chunks.
 - End-to-end RESULT: PASS; jar `vane-1.0.0.jar`.
+## 2026-08-21 itertest32 XP Well - ValueIO package + event bus registration facts
+
+- **`ValueOutput`/`ValueInput` live in `net.minecraft.world.level.storage`** (not `net.minecraft.core`); writer methods are `putInt`-style, NOT `writeInt` (reference: AbstractFurnaceBlockEntity#saveAdditional).
+- **`EVENT_BUS.register(modClass)` throws `IllegalArgumentException: Failed to register ... No declared methods found`** when the class has NO `@SubscribeEvent` methods.
+  - Fix: only register classes that actually contain `@SubscribeEvent` handlers; otherwise skip registration entirely.
+- End-to-end RESULT: PASS; jar `xpwell-1.0.0.jar`.
+- Ops note: this session required two kill+resume cycles for no-timeout LLM hangs (endpoint instability tonight); both recoveries clean.
