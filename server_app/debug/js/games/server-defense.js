@@ -100,6 +100,23 @@ class ServerDefense extends BaseGame {
     });
     this.bullets = this.bullets.filter(b => !b.dead);
 
+    // Enemy-enemy collision (soft push)
+    for (var ai = 0; ai < this.enemies.length; ai++) {
+      for (var bi = ai + 1; bi < this.enemies.length; bi++) {
+        var ea = this.enemies[ai], eb = this.enemies[bi];
+        var d2 = dist(ea.x, ea.y, eb.x, eb.y);
+        var minD = ea.r + eb.r;
+        if (d2 < minD && d2 > 0) {
+          var push = (minD - d2) / minD * 0.5;
+          var ang = Math.atan2(eb.y - ea.y, eb.x - ea.x);
+          ea.x -= Math.cos(ang) * push;
+          ea.y -= Math.sin(ang) * push;
+          eb.x += Math.cos(ang) * push;
+          eb.y += Math.sin(ang) * push;
+        }
+      }
+    }
+
     this.enemies = this.enemies.filter(e => {
       if (e.hp <= 0) {
         this.kills++;

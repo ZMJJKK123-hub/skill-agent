@@ -65,7 +65,17 @@ class TrafficBreakout extends BaseGame {
       if (b.x < b.r || b.x > self.w - b.r) b.dx = -b.dx;
       if (b.y < b.r) b.dy = -b.dy;
       if (b.y > self.h) { self.balls.splice(bi, 1); if (self.balls.length === 0) { self.gameOver(); return; } }
-      if (b.y + b.dy >= self.paddle.y && b.x >= self.paddle.x && b.x <= self.paddle.x + self.paddle.w) b.dy = -Math.abs(b.dy);
+      // Paddle bounce with angle based on hit position
+      if (b.y + b.dy >= self.paddle.y && b.x >= self.paddle.x && b.x <= self.paddle.x + self.paddle.w) {
+        b.dy = -Math.abs(b.dy);
+        // Angle based on where ball hits paddle (center = straight, edges = angled)
+        var hitPos = (b.x - self.paddle.x) / self.paddle.w; // 0 to 1
+        var angle = (hitPos - 0.5) * 1.2; // -0.6 to +0.6 radians
+        var speed = Math.sqrt(b.dx * b.dx + b.dy * b.dy);
+        b.dx = Math.sin(angle) * speed;
+        b.dy = -Math.abs(Math.cos(angle) * speed);
+        sfx('click');
+      }
       if (self.tunnel.in.active && dist(b.x, b.y, self.tunnel.in.x, self.tunnel.in.y) < 20) {
         b.x = self.tunnel.out.x;
         b.y = self.tunnel.out.y;

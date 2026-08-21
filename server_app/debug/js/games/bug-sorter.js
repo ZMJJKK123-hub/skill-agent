@@ -60,10 +60,14 @@ class BugSorter extends BaseGame {
     this.tick++;
     if (this.tick % this.spawnRate === 0) {
       this.spawn();
-      this.spawnRate = Math.max(20, 50 - Math.floor(this.score / 20));
+      this.spawnRate = Math.max(18, 50 - Math.floor(this.score / 15));
+      // Occasionally spawn double
+      if (this.score > 200 && Math.random() < 0.3) this.spawn();
     }
+    // Speed up notes based on score
+    var spdBoost = 1 + this.score / 500;
     this.notes.forEach(n => {
-      n.y += n.spd;
+      n.y += n.spd * spdBoost;
       if (n.y > this.judgeLineY + 30) {
         this.miss++;
         this.combo = 0;
