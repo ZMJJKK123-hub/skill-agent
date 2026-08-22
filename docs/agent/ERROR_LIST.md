@@ -772,3 +772,8 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **Climbable hook survived as `isLadder(BlockState, Level, BlockPos, Entity)`** on Block/BlockBehaviour (verified via TrapDoorBlock override and the ForgeHooks#isSprintableClimbable call site).
 - **Right-click-without-item hook is `useWithoutItem`** (not use()) in this mapping — new name for empty-hand block interaction.
 - End-to-end RESULT: PASS; jar `ladderplus-1.0.0.jar`.
+## 2026-08-22 itertest46 Compass Reset - respawn setter signature
+
+- **`ServerPlayer.setRespawnPosition` changed to TWO args**: `setRespawnPosition(ServerPlayer.RespawnConfig, boolean)` where `RespawnConfig` is a nested @Nullable record (dimension+pos+angle bundle). The old 5-arg `(ResourceKey, BlockPos, float, boolean, boolean)` form does NOT exist.
+  - Clear respawn point: `serverPlayer.setRespawnPosition(null, false)`.
+- End-to-end RESULT: PASS; jar `compassreset-1.0.0.jar`.
