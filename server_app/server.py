@@ -845,6 +845,10 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
                  # "你是一个 MOD 制作器…（C:\路径）…"，写进对话历史会污染
                  # 侧栏标题并泄漏服务器路径；run_task 优先用这条写历史。
                  "DSH_USER_PROMPT": req.prompt,
+                 # 本网站接入标记：core/config 的 chat 只读提示词据此引导
+                 # 用户输入 /mod 进入制造模式，而不是把用户导去外部网页版
+                 # （外部平台接入层不注入此变量，保持"去网页版"引导）。
+                 "DSH_WEB_CHAT": "1",
                  "DSH_VISION_ENABLED": "1" if sess.vision_enabled else "0",
                  "DSH_VISION_API_KEY": sess.vision_api_key or "",
                  "DSH_VISION_BASE_URL": sess.vision_base_url or "",

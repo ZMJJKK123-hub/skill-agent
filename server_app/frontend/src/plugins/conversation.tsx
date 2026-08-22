@@ -113,6 +113,17 @@ function ToolResultRow({ ev }: { ev: EventItem }) {
   )
 }
 
+/** 每轮回复大框：与最终回复同款气泡样式，多轮循环中每轮一个 */
+function ReplyRow({ ev }: { ev: EventItem }) {
+  return (
+    <div className="flex justify-start">
+      <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm border border-line bg-panel px-4 py-2 text-sm">
+        {ev.content}
+      </div>
+    </div>
+  )
+}
+
 /** 中间分界线（round / system 事件）：居中显示，不归属任何人 */
 function DividerRow({ ev }: { ev: EventItem }) {
   const text = ev.type === 'round'
@@ -138,6 +149,11 @@ function LogRow({ ev }: { ev: EventItem }) {
   )
 }
 
+/** 用户可见的事件类型白名单：只展示 思考 / 工具调用 / 工具结果 / 回复。
+ *  其余（log/round/system/protocol/worktree/background/todo 等运行日志）
+ *  是给开发者看的内部流水，不进用户时间线。 */
+const VISIBLE_EVENT_TYPES = new Set(['thinking', 'tool_call', 'tool_result', 'reply'])
+
 /** DSH 风格事件渲染器：按类型分派（thinking 由 ThinkingGroup 聚合渲染） */
 function EventView({ ev, t }: { ev: EventItem; t: (k: string) => string }) {
   switch (ev.type) {
@@ -145,6 +161,8 @@ function EventView({ ev, t }: { ev: EventItem; t: (k: string) => string }) {
       return <ToolCallRow ev={ev} />
     case 'tool_result':
       return <ToolResultRow ev={ev} />
+    case 'reply':
+      return <ReplyRow ev={ev} />
     case 'round':
       return <DividerRow ev={ev} />
     case 'todo':
@@ -185,6 +203,19 @@ function Messages() {
   }, [phase, elapsed])
 
   const shownEvents = useMemo(() => events.slice(-120), [events])
+
+  // chat 模式：重开会话时历史 assistant 气泡与 reply 事件是同一内容
+  // （conversation.jsonl 与流式日志各存一份），按前缀匹配去重——
+  // 已有气泡的 reply 不再渲染；实时轮次（尚未入历史）照常实时显示。
+  const assistantPrefixes = useMemo(() => {
+    const s = new Set<string>()
+    if (mode === 'chat') {
+      chatMessages.forEach((m) => {
+        if (m.role === 'assistant' && m.content) s.add(m.content.slice(0, 50))
+      })
+    }
+    return s
+  }, [mode, chatMessages])
 
   // chat 模式：把“当前轮”的事件插在最后一个 assistant 回复之前，
   // 避免最终回答先于思考/工具过程出现；之前的轮次尽量保持原始顺序。
@@ -239,12 +270,16 @@ function Messages() {
           </div>
         )}
 
-        {/* DSH 风格事件流：思考聚合为一个默认收起的分组（防刷屏），*/}
-        {/* 工具调用/结果/日志按行实时展示 */}
+        {/* DSH 风格事件流（白名单）：思考聚合为一个默认收起的分组，*/}
+        {/* 工具调用/结果单行小框，每轮回复用大框，其余运行日志不展示 */}
         <ThinkingGroup events={shownEvents.filter((e) => e.type === 'thinking')} t={t} />
-        {shownEvents.filter((e) => e.type !== 'thinking').map((ev) => (
-          <EventView key={ev.id} ev={ev} t={t} />
-        ))}
+        {shownEvents
+          .filter((e) => e.type !== 'thinking'
+            && VISIBLE_EVENT_TYPES.has(e.type)
+            && !(e.type === 'reply' && assistantPrefixes.has(e.content.slice(0, 50))))
+          .map((ev) => (
+            <EventView key={ev.id} ev={ev} t={t} />
+          ))}
 
         {/* chat 模式：当前轮最终回答放在事件流之后 */}
         {mode === 'chat' && lastAssistant.map((m, i) => (

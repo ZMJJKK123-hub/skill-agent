@@ -249,8 +249,9 @@ async function _pollOnce(sid: string) {
       pending: st.pending ?? 0,
       phase: st.finished ? 'finished' : st.paused ? 'paused' : 'running',
     })
-    // chat 模式：任务结束且还没记录 assistant 回复 → 从 logTail 提取最终回复
-    if (st.finished && state.mode === 'chat') {
+    // chat 模式：任务结束且还没记录 assistant 回复 → 从 logTail 提取最终回复。
+    // 事件流已有 reply 事件（每轮流式回复大框）时跳过——最后一轮 reply 即最终回复，避免重复。
+    if (st.finished && state.mode === 'chat' && !state.events.some((e) => e.type === 'reply')) {
       const last = state.chatMessages[state.chatMessages.length - 1]
       if (last?.role !== 'assistant') {
         const reply = extractFinalReply(st.log_tail)

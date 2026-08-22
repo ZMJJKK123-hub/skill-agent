@@ -47,15 +47,32 @@ def _parse_run_block(text: str) -> list[dict]:
     """把 run.log 的一段新增文本解析为事件列表。
 
     行级识别 + [todo] 块处理（todo 块 = 一行 [todo] 后跟若干缩进行）。
+    [reply] 流式增量（每 token 一行）聚合为一个 reply 事件：连续 [reply]
+    行拼接，遇到任何其他行/空行即收尾（一轮回复结束）。
     """
     events: list[dict] = []
     lines = text.splitlines()
     i = 0
     seq = 0
     skip_final_reply = False
+    reply_buf: list[str] = []
+
+    def _flush_reply() -> None:
+        nonlocal seq
+        if not reply_buf:
+            return
+        joined = "".join(reply_buf).strip()
+        reply_buf.clear()
+        if joined:
+            events.append(_ev("reply", joined, seq)); seq += 1
+
     while i < len(lines):
         line = lines[i].rstrip("\r")
         stripped = line.strip()
+
+        # 任何非 [reply] 行（含空行）都意味着流式回复本轮已结束 → 收尾
+        if not stripped.startswith("[reply]"):
+            _flush_reply()
 
         if not stripped:
             i += 1
@@ -72,10 +89,12 @@ def _parse_run_block(text: str) -> list[dict]:
         if stripped.startswith("[run_task]"):
             # 内部启动/收尾日志不展示给用户；若包含“最终回复”，则后续正文也跳过
             if "最终回复" in stripped:
+                _flush_reply()
                 skip_final_reply = True
             i += 1
             continue
         elif stripped.startswith("[思考]"):
+            _flush_reply()
             events.append(_ev("thinking", _after(stripped, "[思考]"), seq)); seq += 1
         elif stripped.startswith("[teammate 思考]"):
             events.append(_ev("thinking", _after(stripped, "[teammate 思考]"), seq,
@@ -88,10 +107,14 @@ def _parse_run_block(text: str) -> list[dict]:
                               peer="supervisor")); seq += 1
         # ── 新结构化工具日志（core/agent.py 主 agent 输出，DSH 风格渲染用）──
         elif stripped.startswith("[reply]"):
-            # 流式回复增量（每个 token 一行），不单独作为事件，避免刷屏
+            # 流式回复增量（每个 token 一行）：连续行聚合，遇其他行收尾。
+            # 空 after = 换行 token（delta 只有 \n 时打出 "[reply] "）。
+            after = _after(stripped, "[reply]")
+            reply_buf.append("\n" if not after else after)
             i += 1
             continue
         elif stripped.startswith("[tool-result]"):
+            _flush_reply()
             # [tool-result] success|failed\n<输出> —— 多行块：收集后续行，
             # 遇到下一个 [标记行 或 空行 时停止（不能吞掉后续工具事件）
             rest = _after(stripped, "[tool-result]")
@@ -138,6 +161,9 @@ def _parse_run_block(text: str) -> list[dict]:
         else:
             events.append(_ev("log", stripped, seq)); seq += 1
         i += 1
+
+    # 段末残留的流式回复（chunk 正好在回复中间被切开）
+    _flush_reply()
     return events
 
 
