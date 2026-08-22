@@ -26,6 +26,7 @@ class TerminalHacker extends BaseGame {
     this.gameOver = false;
     this.threat = null;
     this.threatTimer = null;
+    this.frozen = false;
     this.bestScore = parseInt(localStorage.getItem('thBest') || '0');
     this.out('=== TERMINAL HACKER v1.0 ===', 'green');
     this.out('Decrypt threats and block them!', 'dim');
@@ -159,6 +160,7 @@ class TerminalHacker extends BaseGame {
       this.out('  status           Show defense statistics');
       this.out('  clear            Clear terminal');
       this.out('  skip             Skip current threat (-50 pts)');
+      this.out('  freeze           Freeze threat timer for 5s');
       this.newLine();
     } else if (cmd === 'status') {
       this.out('=== DEFENSE STATUS ===', 'cyan');
@@ -177,6 +179,22 @@ class TerminalHacker extends BaseGame {
     } else if (cmd.startsWith('solve ')) {
       this.solveUUID(cmd.slice(6).trim());
     } else if (cmd === 'skip') { this.fail(); }
+    else if (cmd === 'freeze') {
+      if (!this.threat || this.frozen) { this.out('No active threat or already frozen', 'dim'); this.newLine(); }
+      else {
+        this.frozen = true;
+        clearInterval(this.threatTimer);
+        this.out('❄️ TIMER FROZEN for 5s', 'cyan');
+        var self = this;
+        setTimeout(function() {
+          if (self.gameOver) return;
+          self.frozen = false;
+          self.threatTimer = setInterval(function() { self.timer--; if (self.timer <= 0) self.fail(); }, 1000);
+          self.out('❄️ Timer resumed', 'dim');
+        }, 5000);
+        this.newLine();
+      }
+    }
     else { this.out('Unknown command. Type: help', 'dim'); this.newLine(); }
   }
 
