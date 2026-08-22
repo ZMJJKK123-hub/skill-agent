@@ -93,7 +93,6 @@
 
 - **Model name not found**
   - Symptom: `There are no healthy deployments for this model=deepseek-v4-flash`
-  - Fix: use `DeepSeek-V4-Flash-0731` (current default).
 
 ## 8. Template / Build
 
@@ -326,7 +325,6 @@
 ## 2026-08-19 Auto-recorded from runtime
 
 - **Auto-recorded:** - **资源（1.21.11）**：每个物品/方块物品需要 `assets/<modid>/items/<name>.json`；模型/贴图引用是命名空间形式**不带**.json/.png；配方用字符串 ingredient + result {id,count}；lang 键 `item.<modid>.<name>` / `block.<modid>.<name>` 必须**同时有 en_us 和 zh_cn**；pack.mcm
-
 
 ## 2026-08-20 Iteration from Explosive Apple test
 
@@ -687,26 +685,11 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - Agent misflagged `Item id not set` NPE as NEW_ERROR; it is already documented (setId requirement). Reminder: grep ERROR_LIST before claiming NEW_ERROR.
 ## 2026-08-21 infra - .env BOM breaks key parsing
 
-- **PowerShell `Set-Content -Encoding UTF8` writes a BOM**: `_load_env_file` then sees the first key as `\ufeffDEEPSEEK_API_KEY` and "auto" mode finds no key.
-  - Fix: write `.env` with `[IO.File]::WriteAllText($path, $text, [Text.UTF8Encoding]::new($false))` (no BOM), or strip BOM on parse.
-## 2026-08-21 model switch - GLM-5.2 stability observations (itertest28, first GLM session)
-
-- **GLM-5.2 on llmapi.paratera.com**: endpoint responds (verified via minimal chat call), but content may be None for tiny max_tokens — reasoning output lives in `reasoning_content` (project already passes it back).
-- **Agentic-loop stability is markedly worse than DeepSeek-V4-Flash so far**: within ~10 minutes the first GLM session produced 3 empty responses, ignored write-first-stop twice, then HARD-HUNG twice (zero log output, process alive = LLM call without timeout; same failure shape as itertest26).
-  - Recovery used: kill session python + `run_task.py` relaunch with `DSH_RESUME=1`.
-  - Recommendation: add an HTTP timeout + retry to the OpenAI client in core/config.py; keep DeepSeek as fallback default until GLM-5.2 completes a full MOD unattended.
-## 2026-08-21 model verdict - reverted to DeepSeek-V4-Flash-0731
-
-- **GLM-5.2 experiment CLOSED**: first session never produced a single file in ~20 minutes (4+ empty responses, 2 hard hangs needing kill+resume). Reverted default to `DeepSeek-V4-Flash-0731` in both `.env` and `core/config.py`; post-revert session wrote its main class within 1 minute.
-- Keep the earlier GLM notes for future retries; prerequisites before retrying: HTTP timeout+retry on the OpenAI client, and verify GLM tool-call streaming shape matches our delta parser.
-## 2026-08-21 itertest28 Raid Horn (post-revert DeepSeek session) - entity spawn/accessor facts
-
 - **`EntityType.ZOMBIE.create(level)` does NOT compile**: 1.21.11 requires an `EntitySpawnReason` argument.
   - Fix: `EntityType.ZOMBIE.create(level, EntitySpawnReason.SPAWN_ITEM_USE)`.
 - **`ServerPlayer#serverLevel()` does NOT exist**: cast instead — `(ServerLevel) serverPlayer.level()`.
 - **GameTest imports recap (hit again)**: method annotation `net.minecraftforge.gametest.GameTest`; `net.minecraft.gametest.framework.GameTestHolder` and `net.minecraftforge.gametest.framework.GameTestHolder` both absent.
 - **Registry lookup in tests**: `registryAccess().registryOrThrow(...)` absent; prefer `ForgeRegistries.ITEMS.containsKey/getValue` for item presence checks.
-- Model note: this was the first post-GLM-revert session on DeepSeek-V4-Flash-0731 — healthy start (main class within ~1 min), full cycle PASS first try after ~5 build iterations.
 ## 2026-08-21 itertest29 Magnet Charm - flow defect: over-broad cleanup
 
 - **FLOW DEFECT — self-deletion by cleanup**: `rmdir /s /q src\\main\\java\\com` (meant to remove template packages) deleted the agent's OWN new classes under the same `com` tree, costing ~17 rebuild iterations.
@@ -755,18 +738,7 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - End-to-end RESULT: PASS; jar `growthpowder-1.0.0.jar`.
 ## 2026-08-21 itertest37 Soul Lantern Pet - inventoryTick fact
 
-- **`Item#inventoryTick(ItemStack, Level, Entity, int slot, boolean selected)` still exists** (CompassItem.java:34 reference) — per-item tick logic is available directly on the Item, no event needed for inventory-scoped behavior.
-- Push-away via `setDeltaMovement`/`deltaMovement` accessors compiled fine this round (name check done against LivingEntity source).
-- End-to-end RESULT: PASS; jar `soul-lantern-pet-1.0.0.jar`.
-## 2026-08-21 infra - endpoint model access changed mid-run
-
-- **`DeepSeek-V4-Flash-0731` revoked by the provider team** (403 `team_model_access_denied`). Allowed list now: GLM-4-Flash / GLM-4.5-Flash / GLM-Z1-Flash / GLM-CogView3-Flash / GLM-4V-Flash / Intern-S2-Preview / PaddleOCR-VL-*.
-- **Switched default to `GLM-4.5-Flash`** (`.env` + `core/config.py`), probe verified: content + reasoning_content both populated, tool-call loop expected OK.
-- Ops: when a session dies with PermissionDeniedError 403 at startup, check the allowed-models list inside the error message and update DSH_MODEL accordingly.
-## 2026-08-21 itertest38 Honey Slide - friction hook + GLM-4.5-Flash first success
-
 - **`getFriction()` override compiled on the custom block this round** (0.15f low-friction value); the hook name survived in this mapping (unlike getStateForPlacement/neighborChanged). Always verify against BlockBehaviour source per-block-hook anyway.
-- **GLM-4.5-Flash first full-session SUCCESS** after provider access change: healthy start, wrote main class promptly, end-to-end RESULT: PASS. (GLM-4.5-Flash behaves far better in the loop than GLM-5.2 did.)
 - Recurring flow defect re-hit: dist jar still named `examplemod-1.0.0.jar` — the rootProject.name rename checklist keeps being skipped; consider enforcing via prompt template or launcher-side check.
 ## 2026-08-21 itertest39 Feather Fall - SESSION FAILED (BROKEN mod persisted)
 
@@ -775,18 +747,7 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
   - PROCESS FIX (upstream): `run_mod_test_cycle`/launcher should delete the entire `build/` directory once before GameTest when a BROKEN-mod error is detected; or template sessions should never ship pre-built `build/` dirs.
   - Main jar DID build (`featherfall-1.0.0.jar`, 12,244 B) — failure is GameTest-environment only.
 - First FAIL of the series since itertest11-era; retry scheduled as itertest40 with explicit `rmdir /s /q build` instruction.
-## 2026-08-21 itertest40 Feather Fall retry - SESSION FAILED again (model capability boundary?)
+## 2026-08-21 itertest40 Feather Fall retry - SESSION FAILED (test-source symbol errors)
 
 - **Second consecutive FAIL on Feather Fall**: this time NOT the BROKEN-mod trap (anti-BROKEN checklist worked) but repeated `找不到符号` compile errors inside the GameTest sources across many attempts; session ended with no dist jar.
-- Pattern: fall-damage event + per-item charge DataComponent + tooltip combination proved too hard for **GLM-4.5-Flash** to converge within a session, while it completed Honey Slide fine.
-- Takeaway: GLM-4.5-Flash handles single-hook features well but struggles with multi-fact compositions; prefer simpler tasks or add explicit event-name facts to prompts when using it.
 ## 2026-08-21 itertest41 Lucky Rabbit Foot - FAILED (max rounds), model strategy adjustment
-
-- **Session hit the 100-round cap without a PASS** (repeated compile errors in test sources: CreativeModeTab titleKey, shouldDrop helper placement, edit_file text-not-found churn). dist jar never produced.
-- **GLM-4.5-Flash scorecard so far**: 1 success (Honey Slide, single-hook block) vs 2 failures (Feather Fall composition, Rabbit Foot event+config+tab).
-- STRATEGY: while on GLM-4.5-Flash, keep tasks to ONE hook + pure-function tests; put exact event/class names in the prompt; avoid creative-tab and tooltip requirements unless necessary.
-## 2026-08-22 infra - switched endpoint to opencode.ai zen (ox-alpha-free)
-
-- Provider switch: `DSH_BASE_URL=https://opencode.ai/zen/go/v1/`, model `ox-alpha-free`, new API key in `.env`.
-- Probe verified: normal content response, tool_calls attribute present (OpenAI-compatible).
-- GLM-4.5-Flash scorecard closed at 1 success / 2 failures; ox-alpha-free starts at itertest42.
