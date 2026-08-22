@@ -767,3 +767,8 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **`FoodProperties.Builder.effect(...)` takes TWO args**: `(Supplier<MobEffectInstance>, float probability)` — e.g. `.effect(() -> new MobEffectInstance(MobEffects.GLOWING, 200, 0), 1.0F)`; a bare single-supplier call does not compile.
 - Nutrition/saturation builder methods compiled as expected; food route avoids events entirely (good fit for simple items).
 - End-to-end RESULT: PASS on ox-alpha-free; jar `glowberryjam-1.0.0.jar`.
+## 2026-08-22 itertest45 Ladder Plus - climbable/interaction hook names
+
+- **Climbable hook survived as `isLadder(BlockState, Level, BlockPos, Entity)`** on Block/BlockBehaviour (verified via TrapDoorBlock override and the ForgeHooks#isSprintableClimbable call site).
+- **Right-click-without-item hook is `useWithoutItem`** (not use()) in this mapping — new name for empty-hand block interaction.
+- End-to-end RESULT: PASS; jar `ladderplus-1.0.0.jar`.
