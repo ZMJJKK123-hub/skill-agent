@@ -120,9 +120,21 @@ class Snake2048 extends BaseGame {
     }
   }
 
+  // Next cell of direction d is inside bounds and not on the snake body (tail cell excluded: it moves away)
+  safeDir(d) {
+    if (d.x === -this.dir.x && d.y === -this.dir.y) return false; // no reverse
+    var nx = this.snake[0].x + d.x, ny = this.snake[0].y + d.y;
+    if (nx < 0 || nx >= this.cols || ny < 0 || ny >= this.rows) return false;
+    var hit = this.snake.some(function(s, i) {
+      if (i === this.snake.length - 1 && this.snake.length > 2) return false; // tail follows away
+      return s.x === nx && s.y === ny;
+    }, this);
+    return !hit;
+  }
+
   autoPath() {
     var head = this.snake[0];
-    // Priority 1: find food with same value as head
+    // Priority 1: find food with same value as head (merge candidate)
     var target = null, td = 999;
     this.foods.forEach(f => {
       if (f.v === head.v) {
@@ -130,33 +142,32 @@ class Snake2048 extends BaseGame {
         if (d < td) { td = d; target = f; }
       }
     });
-    // Priority 2: find any food
-    if (!target) target = this.foods[0];
-    // Priority 3: avoid walls — move toward center
-    if (!target) return;
-    if (!target) return;
-    var dx = target.x - head.x, dy = target.y - head.y;
-    if (Math.abs(dx) > Math.abs(dy)) {
-      if (dx > 0 && this.dir.x !== -1) this.ndir = { x: 1, y: 0 };
-      else if (dx < 0 && this.dir.x !== 1) this.ndir = { x: -1, y: 0 };
-      else if (dy > 0 && this.dir.y !== -1) this.ndir = { x: 0, y: 1 };
-      else if (dy < 0 && this.dir.y !== 1) this.ndir = { x: 0, y: -1 };
-      else { // No valid direction, try to avoid wall
-        if (head.x <= 1) this.ndir = { x: 1, y: 0 };
-        else if (head.x >= this.cols - 2) this.ndir = { x: -1, y: 0 };
-        else this.ndir = { x: 0, y: this.dir.y === 0 ? (Math.random() < 0.5 ? 1 : -1) : this.dir.y };
+    // Priority 2: any food; Priority 3: drift toward center
+    if (!target && this.foods.length) target = this.foods[0];
+    var want;
+    if (target) {
+      var dx = target.x - head.x, dy = target.y - head.y;
+      // Prefer the axis with larger distance, keep second choice as fallback
+      var first, second;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        first = { x: dx > 0 ? 1 : -1, y: 0 };
+        second = { x: 0, y: dy > 0 ? 1 : (dy < 0 ? -1 : (head.y > this.rows / 2 ? -1 : 1)) };
+      } else {
+        first = { x: 0, y: dy > 0 ? 1 : (dy < 0 ? -1 : (head.y > this.rows / 2 ? -1 : 1)) };
+        second = { x: dx > 0 ? 1 : (dx < 0 ? -1 : (head.x > this.cols / 2 ? -1 : 1)), y: 0 };
       }
+      want = first;
     } else {
-      if (dy > 0 && this.dir.y !== -1) this.ndir = { x: 0, y: 1 };
-      else if (dy < 0 && this.dir.y !== 1) this.ndir = { x: 0, y: -1 };
-      else if (dx > 0 && this.dir.x !== -1) this.ndir = { x: 1, y: 0 };
-      else if (dx < 0 && this.dir.x !== 1) this.ndir = { x: -1, y: 0 };
-      else {
-        if (head.y <= 1) this.ndir = { x: 0, y: 1 };
-        else if (head.y >= this.rows - 2) this.ndir = { x: 0, y: -1 };
-        else this.ndir = { x: this.dir.x === 0 ? (Math.random() < 0.5 ? 1 : -1) : this.dir.x, y: 0 };
-      }
+      want = { x: head.x > this.cols / 2 ? -1 : 1, y: 0 };
     }
+    // Safety ladder: wanted dir, then fallback, then any survivable dir
+    var cands = [want];
+    if (target) cands.push(second);
+    cands.push({ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 });
+    for (var i = 0; i < cands.length; i++) {
+      if (this.safeDir(cands[i])) { this.ndir = cands[i]; return; }
+    }
+    // Trapped: keep current dir (auto-script will end soon)
   }
 
   render() {

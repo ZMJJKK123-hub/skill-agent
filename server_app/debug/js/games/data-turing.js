@@ -91,6 +91,7 @@ class DataTuring extends BaseGame {
     this.trailParticles = [];
     this.level = 1;
     this.puzzleSolved = 0;
+    this._timeouts = [];
   }
 
   addNode(type) {
@@ -128,11 +129,11 @@ class DataTuring extends BaseGame {
     var self = this;
     for (var i = 1; i <= 10; i++) {
       (function(val) {
-        setTimeout(function() { self.spawnBall(val); }, delay);
+        self._timeouts.push(setTimeout(function() { self.spawnBall(val); }, delay));
       })(i);
       delay += 600;
     }
-    setTimeout(function() { self.checkResult(); }, delay + 2000);
+    this._timeouts.push(setTimeout(function() { self.checkResult(); }, delay + 2000));
   }
 
   spawnBall(val) {
@@ -263,7 +264,7 @@ class DataTuring extends BaseGame {
       toast('Logic verified! Lv.' + this.level);
       // Auto-advance to next puzzle after delay
       var self = this;
-      setTimeout(function() {
+      this._timeouts.push(setTimeout(function() {
         self.success = false;
         self.fail = false;
         self.balls = [];
@@ -275,12 +276,14 @@ class DataTuring extends BaseGame {
             n.y = rnd(60, 340);
           }
         });
-      }, 2000);
+      }, 2000));
     }
   }
 
   stop() {
     super.stop();
+    (this._timeouts || []).forEach(clearTimeout);
+    this._timeouts = [];
     this.canvas.removeEventListener('mousemove', this._mm);
     this.canvas.removeEventListener('mousedown', this._md);
     this.canvas.removeEventListener('mouseup', this._mu);

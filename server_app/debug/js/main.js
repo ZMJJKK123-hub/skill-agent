@@ -46,6 +46,8 @@ function smCurrentStop() {
 
 addEventListener('keydown', function(e) {
   if (!SM.modalOpen) return;
+  var tag = (e.target && e.target.tagName) || '';
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return; // don't hijack typing (e.g. Terminal Hacker)
   if (e.key === 'Escape') { closeGame(); }
   else if (e.key === 'r' || e.key === 'R') { e.preventDefault(); restartGame(); }
 });
@@ -163,7 +165,7 @@ function startBgParticles() {
 }
 
 // ========== APP GRID ==========
-let APPS = [];
+let APPS = window.APPS || [];
 
 function buildAppGrid() {
   const grid = $('appGrid');

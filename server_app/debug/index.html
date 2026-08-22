@@ -4,7 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SYSTEM MAINTENANCE — Debug Playground</title>
-  <link rel="stylesheet" href="/debug/css/style.css">
+  <!-- 页面可能从 / 、/debug 、/debug/ 或 Nginx 502 内部重写等路径返回，统一锚定资源基准 -->
+  <base href="/debug/">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <canvas id="bgParticles"></canvas>
@@ -63,17 +65,17 @@
   </div>
 
   <!-- Scripts: utils first, then games, then main -->
-  <script src="/debug/js/utils.js"></script>
-  <script src="/debug/js/games/server-defense.js"></script>
-  <script src="/debug/js/games/terminal-hacker.js"></script>
-  <script src="/debug/js/games/snake-2048.js"></script>
-  <script src="/debug/js/games/traffic-breakout.js"></script>
-  <script src="/debug/js/games/dimension-parkour.js"></script>
-  <script src="/debug/js/games/bug-sorter.js"></script>
-  <script src="/debug/js/games/data-turing.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/games/server-defense.js"></script>
+  <script src="js/games/terminal-hacker.js"></script>
+  <script src="js/games/snake-2048.js"></script>
+  <script src="js/games/traffic-breakout.js"></script>
+  <script src="js/games/dimension-parkour.js"></script>
+  <script src="js/games/bug-sorter.js"></script>
+  <script src="js/games/data-turing.js"></script>
   <script>
-    // Register apps (must run after all game classes are defined)
-    APPS = [
+    // Register apps (must run after all game classes are defined, before main.js)
+    window.APPS = [
       { icon: '🛡️', name: 'Server Defense', desc: 'Vampire Survivors tower defense', badge: 'HOT', init: c => new ServerDefense(c) },
       { icon: '💻', name: 'Terminal Hacker', desc: 'Decrypt threat defense', init: c => new TerminalHacker(c) },
       { icon: '🐍', name: 'Snake 2048', desc: 'Snake x 2048 fusion', init: c => new Snake2048(c) },
@@ -84,6 +86,6 @@
     ];
     // init() in main.js uses DOMContentLoaded, so it will pick up APPS
   </script>
-  <script src="/debug/js/main.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>

@@ -127,11 +127,13 @@ class ServerDefense extends BaseGame {
     this.bullets.forEach(b => {
       if (b.dead) return;
       this.enemies.forEach(e => {
+        if (b.dead || b.hitIds.indexOf(e.id) >= 0) return;
         if (dist(b.x, b.y, e.x, e.y) < e.r + 4) {
           e.hp -= b.dmg;
+          b.hitIds.push(e.id);
           this.spawnParticle(e.x, e.y, 0, 0, 8, '#ff0', 4);
-          if (this.upgrades.pierce <= 0) b.dead = true;
-          else this.upgrades.pierce--;
+          if (b.pierce > 0) b.pierce--;
+          else b.dead = true;
         }
       });
     });
@@ -240,7 +242,8 @@ class ServerDefense extends BaseGame {
     for (var si = 0; si < count; si++) {
       var px = x + (si > 0 ? rnd(-30, 30) : 0);
       var py = y + (si > 0 ? rnd(-30, 30) : 0);
-      this.enemies.push({ x: px, y: py, r: c.r, hp: c.hp, spd: c.spd, type: type, pts: c.pts, maxHp: c.hp });
+      this._eid = (this._eid || 0) + 1;
+      this.enemies.push({ id: this._eid, x: px, y: py, r: c.r, hp: c.hp, spd: c.spd, type: type, pts: c.pts, maxHp: c.hp });
     }
   }
 
@@ -266,7 +269,7 @@ class ServerDefense extends BaseGame {
     var dx = nearest.x - this.player.x, dy = nearest.y - this.player.y, d = Math.hypot(dx, dy) || 1;
     for (var i = 0; i < this.upgrades.multi; i++) {
       var ang = Math.atan2(dy, dx) + (i - this.upgrades.multi / 2 + 0.5) * 0.1;
-      this.bullets.push({ x: this.player.x, y: this.player.y, dx: Math.cos(ang) * 6, dy: Math.sin(ang) * 6, dmg: this.upgrades.dmg, life: 60 });
+      this.bullets.push({ x: this.player.x, y: this.player.y, dx: Math.cos(ang) * 6, dy: Math.sin(ang) * 6, dmg: this.upgrades.dmg, life: 60, pierce: this.upgrades.pierce, hitIds: [] });
     }
     sfx('click');
   }

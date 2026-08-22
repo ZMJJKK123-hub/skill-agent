@@ -178,19 +178,37 @@ class TerminalHacker extends BaseGame {
       this.grepLog(cmd.slice(5));
     } else if (cmd.startsWith('solve ')) {
       this.solveUUID(cmd.slice(6).trim());
-    } else if (cmd === 'skip') { this.fail(); }
+    } else if (cmd === 'skip') {
+      if (!this.threat) { this.out('No active threat', 'dim'); this.newLine(); }
+      else {
+        clearInterval(this.threatTimer);
+        this.score = Math.max(0, this.score - 50);
+        this.streak = 0;
+        this.out('Skipped. Answer was: ' + this.threat.word + ' (-50 pts)', 'yellow');
+        this.out('Score: ' + this.score, 'dim');
+        this.threat = null;
+        this.newLine();
+        var selfSkip = this;
+        setTimeout(function() { if (!selfSkip.gameOver) selfSkip.spawnThreat(); }, 500);
+      }
+    }
     else if (cmd === 'freeze') {
       if (!this.threat || this.frozen) { this.out('No active threat or already frozen', 'dim'); this.newLine(); }
       else {
         this.frozen = true;
         clearInterval(this.threatTimer);
+        var frozenThreat = this.threat;
         this.out('❄️ TIMER FROZEN for 5s', 'cyan');
         var self = this;
         setTimeout(function() {
           if (self.gameOver) return;
           self.frozen = false;
-          self.threatTimer = setInterval(function() { self.timer--; if (self.timer <= 0) self.fail(); }, 1000);
-          self.out('❄️ Timer resumed', 'dim');
+          // Only resume if the same threat is still pending (it wasn't solved during freeze)
+          if (self.threat === frozenThreat) {
+            clearInterval(self.threatTimer);
+            self.threatTimer = setInterval(function() { self.timer--; if (self.timer <= 0) self.fail(); }, 1000);
+            self.out('❄️ Timer resumed', 'dim');
+          }
         }, 5000);
         this.newLine();
       }
@@ -200,6 +218,8 @@ class TerminalHacker extends BaseGame {
 
   success() {
     clearInterval(this.threatTimer);
+    this.frozen = false;
+    this.threat = null;
     this.defended++;
     this.streak++;
     this.score += 100;

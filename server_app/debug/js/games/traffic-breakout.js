@@ -14,13 +14,15 @@ class TrafficBreakout extends BaseGame {
     this._mm = e => {
       var r = this.canvas.getBoundingClientRect();
       var scale = this.w / r.width;
-      this.paddle.x = clamp((e.clientX - r.left) * scale - this.paddle.w / 2, 0, this.w - this.paddle.w);
+      var pw = this.bigPaddle > 0 ? 120 : this.paddle.w;
+      this.paddle.x = clamp((e.clientX - r.left) * scale - pw / 2, 0, this.w - pw);
     };
     this._tm = e => {
       e.preventDefault();
       var r = this.canvas.getBoundingClientRect();
       var scale = this.w / r.width;
-      this.paddle.x = clamp((e.touches[0].clientX - r.left) * scale - this.paddle.w / 2, 0, this.w - this.paddle.w);
+      var pw = this.bigPaddle > 0 ? 120 : this.paddle.w;
+      this.paddle.x = clamp((e.touches[0].clientX - r.left) * scale - pw / 2, 0, this.w - pw);
     };
     this.canvas.addEventListener('mousemove', this._mm);
     this.canvas.addEventListener('touchmove', this._tm, { passive: false });
@@ -33,12 +35,16 @@ class TrafficBreakout extends BaseGame {
     this.balls = [{ x: 320, y: this.h - 30, dx: this.ballSpeed, dy: -this.ballSpeed, r: 6 }];
     this.bricks = [];
     this.particles = [];
+    this.pwDrops = [];
     this.tunnel = { in: { x: 0, y: 100, active: false }, out: { x: this.w, y: 50, active: false } };
     this.score = 0;
     this.level = 1;
     this.bricksLeft = 0;
     this.tunnelTimer = 0;
     this.bestScore = parseInt(localStorage.getItem('bkBest') || '0');
+    this.bigPaddle = 0;
+    this.laser = 0;
+    this.laserCd = 0;
     this.makeBricks(1);
   }
 
@@ -64,6 +70,27 @@ class TrafficBreakout extends BaseGame {
     this.bricksLeft = this.bricks.length;
   }
 
+  // Shared brick destruction: score, particles, fork split, powerup drop
+  killBrick(br) {
+    br.alive = false;
+    var pts = br.type === 'fork' ? 3 : (br.type === 'cache' ? 2 : (br.type === 'strong' ? 2 : 1));
+    this.score += pts;
+    this.bricksLeft--;
+    sfx('hit');
+    for (var i = 0; i < 8; i++) {
+      var chars = '404 ERR NULL void int return null undefined'.split(' ');
+      this.particles.push({ x: br.x + br.w / 2, y: br.y + br.h / 2, vx: (Math.random() - 0.5) * 4, vy: Math.random() * 2, life: 40, char: chars[rnd(0, chars.length - 1)], color: '#f85' });
+    }
+    if (br.type === 'fork') {
+      for (var a = -1; a <= 1; a += 2) { this.balls.push({ x: br.x + br.w / 2, y: br.y + br.h / 2, dx: this.ballSpeed * a, dy: -this.ballSpeed, r: 6 }); }
+      sfx('powerup');
+    }
+    if (Math.random() < 0.16) {
+      var icons = ['🔵', '🟢', '🔴', '🟣'];
+      this.pwDrops.push({ x: br.x + br.w / 2, y: br.y, icon: icons[rnd(0, icons.length - 1)], vy: 2, collected: false });
+    }
+  }
+
   update() {
     var self = this;
     this.balls.forEach(function(b, bi) {
@@ -76,10 +103,11 @@ class TrafficBreakout extends BaseGame {
       if (b.y < b.r) b.dy = -b.dy;
       if (b.y > self.h) { self.balls.splice(bi, 1); if (self.balls.length === 0) { self.gameOver(); return; } }
       // Paddle bounce with angle based on hit position
-      if (b.y + b.dy >= self.paddle.y && b.x >= self.paddle.x && b.x <= self.paddle.x + self.paddle.w) {
+      var pwidth = self.bigPaddle > 0 ? 120 : self.paddle.w;
+      if (b.y + b.dy >= self.paddle.y && b.x >= self.paddle.x && b.x <= self.paddle.x + pwidth) {
         b.dy = -Math.abs(b.dy);
         // Angle based on where ball hits paddle (center = straight, edges = angled)
-        var hitPos = (b.x - self.paddle.x) / self.paddle.w; // 0 to 1
+        var hitPos = (b.x - self.paddle.x) / pwidth; // 0 to 1
         var angle = (hitPos - 0.5) * 1.2; // -0.6 to +0.6 radians
         var speed = Math.sqrt(b.dx * b.dx + b.dy * b.dy);
         b.dx = Math.sin(angle) * speed;
@@ -98,24 +126,32 @@ class TrafficBreakout extends BaseGame {
         if (b.x >= br.x && b.x <= br.x + br.w && b.y >= br.y && b.y <= br.y + br.h) {
           br.hp--;
           if (br.hp <= 0) {
-            br.alive = false;
-            var pts = br.type === 'fork' ? 3 : (br.type === 'cache' ? 2 : (br.type === 'strong' ? 2 : 1));
-            self.score += pts;
-            self.bricksLeft--;
-            sfx('hit');
-            for (var i = 0; i < 8; i++) {
-              var chars = '404 ERR NULL void int return null undefined'.split(' ');
-              self.particles.push({ x: br.x + br.w / 2, y: br.y + br.h / 2, vx: (Math.random() - 0.5) * 4, vy: Math.random() * 2, life: 40, char: chars[rnd(0, chars.length - 1)], color: '#f85' });
-            }
-            if (br.type === 'fork') {
-              for (var a = -1; a <= 1; a += 2) { self.balls.push({ x: b.x, y: b.y, dx: b.dx * a, dy: -Math.abs(b.dy), r: 6 }); }
-              sfx('powerup');
-            }
+            self.killBrick(br);
           } else { sfx('click'); }
           b.dy = -b.dy;
         }
       });
     });
+    // Laser powerup: periodically burns the lowest brick above the paddle center
+    if (this.laser > 0) {
+      this.laserCd--;
+      if (this.laserCd <= 0) {
+        this.laserCd = 45;
+        var pwCur = this.bigPaddle > 0 ? 120 : this.paddle.w;
+        var lx = this.paddle.x + pwCur / 2;
+        var target = null;
+        this.bricks.forEach(function(br) {
+          if (br.alive && lx >= br.x && lx <= br.x + br.w) {
+            if (!target || br.y > target.y) target = br;
+          }
+        });
+        if (target) {
+          target.hp = 0;
+          this.killBrick(target);
+          this.particles.push({ x: lx, y: target.y + target.h, vx: 0, vy: 3, life: 15, char: '█', color: '#58a6ff' });
+        }
+      }
+    }
     this.particles.forEach(function(p) { p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.life--; });
     this.particles = this.particles.filter(function(p) { return p.life > 0; });
     this.tunnelTimer++;
@@ -129,6 +165,20 @@ class TrafficBreakout extends BaseGame {
       this.tunnel.out.y = rnd(30, 100);
       setTimeout(function() { self.tunnel.in.active = false; self.tunnel.out.active = false; }, 4000);
     }
+    this.pwDrops.forEach(function(p) {
+      p.y += p.vy;
+      var pw = self.bigPaddle > 0 ? 120 : 80;
+      if (p.y >= self.paddle.y && p.x >= self.paddle.x && p.x <= self.paddle.x + pw) {
+        p.collected = true;
+        if (p.icon === '🔵') { self.balls.push({ x: self.paddle.x + 40, y: self.paddle.y - 10, dx: self.ballSpeed, dy: -self.ballSpeed, r: 6 }); toast('🔵 Multi-ball!'); }
+        else if (p.icon === '🟢') { self.bigPaddle = 300; sfx('powerup'); toast('🟢 Big paddle!'); }
+        else if (p.icon === '🔴') { self.laser = 200; sfx('powerup'); toast('🔴 Laser!'); }
+        else if (p.icon === '🟣') { self.balls.forEach(function(bb) { bb.dx *= 0.75; bb.dy *= 0.75; }); sfx('powerup'); toast('🟣 Slow balls!'); }
+      }
+    });
+    this.pwDrops = this.pwDrops.filter(function(p) { return !p.collected && p.y < self.h; });
+    if (this.bigPaddle > 0) this.bigPaddle--;
+    if (this.laser > 0) this.laser--;
     if (this.bricksLeft <= 0) {
       this.level++;
       this.ballSpeed = Math.min(7, 3 + (this.level - 1) * 0.5);
@@ -162,6 +212,11 @@ class TrafficBreakout extends BaseGame {
       c.fillText(p.char, p.x, p.y);
       c.globalAlpha = 1;
     });
+    this.pwDrops.forEach(function(p) {
+      c.font = '14px serif';
+      c.textAlign = 'center';
+      c.fillText(p.icon, p.x, p.y);
+    });
     if (this.tunnel.in.active) {
       // Pulsing tunnel portals
       var pulse = 0.7 + 0.3 * Math.sin(this.tunnelTimer * 0.2);
@@ -183,8 +238,21 @@ class TrafficBreakout extends BaseGame {
       c.fillText('PORT:8000', this.tunnel.in.x, this.tunnel.in.y - 24);
       c.fillText('ROUTE', this.tunnel.out.x, this.tunnel.out.y - 24);
     }
+    var pw = this.bigPaddle > 0 ? 120 : this.paddle.w;
     c.fillStyle = '#00ff9f';
-    c.fillRect(this.paddle.x, this.paddle.y, this.paddle.w, this.paddle.h);
+    c.fillRect(this.paddle.x, this.paddle.y, pw, this.paddle.h);
+    if (this.laser > 0) {
+      c.strokeStyle = 'rgba(88,166,255,.5)';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(this.paddle.x + pw / 2, this.paddle.y);
+      c.lineTo(this.paddle.x + pw / 2, 0);
+      c.stroke();
+      c.fillStyle = '#58a6ff';
+      c.font = '8px monospace';
+      c.textAlign = 'center';
+      c.fillText('LASER', this.paddle.x + pw / 2, 12);
+    }
     this.balls.forEach(function(b) {
       if (b.trail) b.trail.forEach(function(tp, i) {
         c.fillStyle = 'rgba(0,212,255,' + ((i + 1) / b.trail.length * 0.3) + ')';

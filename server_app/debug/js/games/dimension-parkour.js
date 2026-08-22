@@ -69,6 +69,14 @@ class DimensionParkour extends BaseGame {
     this.spd = 6;
     sfx('powerup');
     toast('SUPER FLAT WORLD!');
+    // Instantly vaporize all obstacles into particles (chunk regeneration effect)
+    for (var oi = 0; oi < this.obstacles.length; oi++) {
+      var o = this.obstacles[oi];
+      for (var pi = 0; pi < 6; pi++) {
+        this.particles.push({ x: o.x + o.w / 2, y: o.y + o.h / 2, vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6, life: 25, color: '#00ff9f' });
+      }
+    }
+    this.obstacles = [];
     for (var i = 0; i < 20; i++) {
       this.particles.push({ x: this.w / 2, y: this.h / 2, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, life: 30, color: '#00ff9f' });
     }
@@ -118,9 +126,11 @@ class DimensionParkour extends BaseGame {
 
     if (this.flatWorld > 0) {
       this.flatWorld--;
-      this.obstacles = this.obstacles.filter(o => o.x > 0);
     } else if (this.tick % Math.max(30, 90 - Math.floor(this.score / 4)) === 0) {
-      this.spawnObstacle();
+      // Reaction room: skip spawn if a fullscreen wall just appeared (needs gravity-flip time)
+      var lastOb = this.obstacles[this.obstacles.length - 1];
+      var afterFullscreen = lastOb && lastOb.fullScreen && lastOb.x > this.w - 260;
+      if (!afterFullscreen) this.spawnObstacle();
     }
     this.obstacles.forEach(o => { o.x -= this.spd; o.y += Math.sin((this.tick + (o.seed || 0)) * 0.05) * 0.5; });
     this.obstacles = this.obstacles.filter(o => o.x > -50);
