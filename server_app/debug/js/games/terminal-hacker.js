@@ -22,6 +22,7 @@ class TerminalHacker extends BaseGame {
     this.timer = 15;
     this.score = 0;
     this.defended = 0;
+    this.streak = 0;
     this.gameOver = false;
     this.threat = null;
     this.threatTimer = null;
@@ -182,10 +183,14 @@ class TerminalHacker extends BaseGame {
   success() {
     clearInterval(this.threatTimer);
     this.defended++;
+    this.streak++;
     this.score += 100;
+    var bonus = 0;
+    if (this.streak > 0 && this.streak % 3 === 0) { bonus = 100; this.score += bonus; }
     this.out('', '');
     this.out('########## DEFENDED ##########', 'green');
     this.out('Score: ' + this.score + ' Defended: ' + this.defended, 'cyan');
+    if (this.streak >= 3) this.out('🔥 STREAK x' + this.streak + (bonus ? ' (+' + bonus + ')' : ''), 'yellow');
     this.out('', '');
     this.newLine();
     var self = this;
@@ -284,6 +289,7 @@ class TerminalHacker extends BaseGame {
     clearInterval(this.threatTimer);
     if (this.gameOver) return;
     this.gameOver = true;
+    this.streak = 0;
     if (this.score > this.bestScore) { this.bestScore = this.score; localStorage.setItem('thBest', this.bestScore); }
     this.div.style.animation = 'shake 0.3s';
     setTimeout(() => { this.div.style.animation = ''; }, 300);

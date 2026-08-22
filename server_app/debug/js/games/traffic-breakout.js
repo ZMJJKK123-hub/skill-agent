@@ -116,7 +116,7 @@ class TrafficBreakout extends BaseGame {
     this.particles.forEach(function(p) { p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.life--; });
     this.particles = this.particles.filter(function(p) { return p.life > 0; });
     this.tunnelTimer++;
-    if (this.tunnelTimer > 300) {
+    if (this.tunnelTimer > 220) {
       this.tunnelTimer = 0;
       this.tunnel.in.active = true;
       this.tunnel.out.active = true;
@@ -124,7 +124,7 @@ class TrafficBreakout extends BaseGame {
       this.tunnel.in.y = rnd(80, 200);
       this.tunnel.out.x = rnd(this.w - 100, this.w - 20);
       this.tunnel.out.y = rnd(30, 100);
-      setTimeout(function() { self.tunnel.in.active = false; self.tunnel.out.active = false; }, 5000);
+      setTimeout(function() { self.tunnel.in.active = false; self.tunnel.out.active = false; }, 4000);
     }
     if (this.bricksLeft <= 0) {
       this.level++;

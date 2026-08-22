@@ -67,6 +67,7 @@ class Snake2048 extends BaseGame {
   }
 
   update() {
+    this.spd = Math.max(4, 8 - Math.floor(this.score / 200));
     this.tick++;
     if (this.autoCooldown > 0) this.autoCooldown--;
     this.mergeAnims.forEach(a => a.life--);
