@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mini Game</title>
+  <!-- 单游戏宿主页：主页浮窗 iframe 挂载用（?g=<game-id>），复用 debug/js 的游戏类 -->
+  <base href="/debug/">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    html, body { height: 100%; margin: 0; background: #050810; overflow: hidden; }
+    #gameHost {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      overflow: auto;
+    }
+    /* 画布随窗口缩放（游戏画布逻辑尺寸 640x480 / 432 等，容器可能更小） */
+    #gameHost canvas.game-canvas { max-width: 100%; height: auto; }
+    /* 终端类 DOM 游戏占满容器 */
+    #gameHost .term-hack { width: 100%; height: 100%; max-width: 720px; border: none; }
+    #gameLoad { color: #5a6a7a; font: 12px monospace; padding: 24px; }
+  </style>
+</head>
+<body>
+  <div id="gameHost"><div id="gameLoad">loading…</div></div>
+  <div id="toast"></div>
+
+  <script src="js/utils.js"></script>
+  <script>
+    // 游戏白名单：主页浮窗与这里共同维护
+    var GAMES = {
+      'server-defense':   { title: 'Server Defense',   file: 'js/games/server-defense.js',   cls: 'ServerDefense' },
+      'terminal-hacker':  { title: 'Terminal Hacker',  file: 'js/games/terminal-hacker.js',  cls: 'TerminalHacker' },
+      'snake-2048':       { title: 'Snake 2048',       file: 'js/games/snake-2048.js',       cls: 'Snake2048' },
+      'traffic-breakout': { title: 'Traffic Breakout', file: 'js/games/traffic-breakout.js', cls: 'TrafficBreakout' },
+      'dimension-parkour':{ title: 'Dimension Parkour',file: 'js/games/dimension-parkour.js',cls: 'DimensionParkour' },
+      'bug-sorter':       { title: 'Bug Sorter',       file: 'js/games/bug-sorter.js',       cls: 'BugSorter' },
+      'data-turing':      { title: 'Data Turing',      file: 'js/games/data-turing.js',      cls: 'DataTuring' }
+    };
+    var gid = new URLSearchParams(location.search).get('g') || 'snake-2048';
+    if (!GAMES.hasOwnProperty(gid)) gid = 'snake-2048';
+    document.title = GAMES[gid].title;
+
+    // 工厂按类名直接引用（class 顶层声明是全局词法绑定，不在 window 上，
+    // 不能用 window[cls] 字符串索引）；闭包延迟到游戏脚本加载后再解析。
+    var FACTORIES = {
+      'server-defense':    function (h) { return new ServerDefense(h); },
+      'terminal-hacker':   function (h) { return new TerminalHacker(h); },
+      'snake-2048':        function (h) { return new Snake2048(h); },
+      'traffic-breakout':  function (h) { return new TrafficBreakout(h); },
+      'dimension-parkour': function (h) { return new DimensionParkour(h); },
+      'bug-sorter':        function (h) { return new BugSorter(h); },
+      'data-turing':       function (h) { return new DataTuring(h); }
+    };
+
+    var s = document.createElement('script');
+    s.src = GAMES[gid].file;
+    s.onload = function () {
+      var host = document.getElementById('gameHost');
+      var boot = function () {
+        host.innerHTML = '';
+        var factory = FACTORIES[gid];
+        if (typeof factory !== 'function') { host.innerHTML = '<div id="gameLoad">unknown game</div>'; return; }
+        try {
+          window.__game = factory(host);
+        } catch (e) {
+          host.innerHTML = '<div id="gameLoad">game boot failed: ' + (e && e.message || e) + '</div>';
+          return;
+        }
+        window.__game.start();
+      };
+      window.__restart = boot;
+      boot();
+    };
+    s.onerror = function () {
+      document.getElementById('gameLoad').textContent = 'game script not found: ' + GAMES[gid].file;
+    };
+    document.head.appendChild(s);
+
+    // R 重开（输入框聚焦时不劫持，与 debug 主页一致）
+    window.addEventListener('keydown', function (e) {
+      var tag = (e.target && e.target.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        if (window.__restart) window.__restart();
+      }
+    });
+  </script>
+</body>
+</html>

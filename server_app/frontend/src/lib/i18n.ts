@@ -105,6 +105,11 @@ const zh: Record<string, string> = {
   'view.chat': '对话',
   'view.trajectory': '轨迹',
   'view.noEvents': '暂无轨迹',
+
+  'games.launch': '等待时玩个小游戏',
+  'games.title': '小游戏',
+  'games.restart': '重开（游戏内按 R 也可以）',
+  'games.close': '关闭',
 }
 
 const en: Record<string, string> = {
@@ -211,6 +216,11 @@ const en: Record<string, string> = {
   'view.chat': 'Chat',
   'view.trajectory': 'Trajectory',
   'view.noEvents': 'No trajectory yet',
+
+  'games.launch': 'Play a mini game while waiting',
+  'games.title': 'Mini Game',
+  'games.restart': 'Restart (R inside the game works too)',
+  'games.close': 'Close',
 }
 
 export type TKey = keyof typeof zh
