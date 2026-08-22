@@ -295,6 +295,7 @@ class BugSorter extends BaseGame {
     c.fillStyle = '#5a6a7a';
     c.font = '12px monospace';
     c.fillText('Best: ' + this.bestScore, this.w / 2, this.h / 2 + 30);
+    c.fillText('Press R to restart · ESC to close', this.w / 2, this.h / 2 + 48);
   }
 
   stop() { super.stop(); removeEventListener('keydown', this._kd); this.canvas.removeEventListener('click', this._click); }

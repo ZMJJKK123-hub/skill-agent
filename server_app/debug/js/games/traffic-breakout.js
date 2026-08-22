@@ -45,6 +45,7 @@ class TrafficBreakout extends BaseGame {
     this.bigPaddle = 0;
     this.laser = 0;
     this.laserCd = 0;
+    this.levelFlash = 0;
     this.makeBricks(1);
   }
 
@@ -179,8 +180,10 @@ class TrafficBreakout extends BaseGame {
     this.pwDrops = this.pwDrops.filter(function(p) { return !p.collected && p.y < self.h; });
     if (this.bigPaddle > 0) this.bigPaddle--;
     if (this.laser > 0) this.laser--;
+    if (this.levelFlash > 0) this.levelFlash--;
     if (this.bricksLeft <= 0) {
       this.level++;
+      this.levelFlash = 90;
       this.ballSpeed = Math.min(7, 3 + (this.level - 1) * 0.5);
       this.makeBricks(this.level);
       this.balls = [{ x: this.w / 2, y: this.h - 30, dx: this.ballSpeed, dy: -this.ballSpeed, r: 6 }];
@@ -266,6 +269,19 @@ class TrafficBreakout extends BaseGame {
     c.font = '14px monospace';
     c.textAlign = 'left';
     c.fillText('Score: ' + this.score + '  Lv.' + this.level + '  Balls: ' + this.balls.length, 10, 20);
+    if (this.levelFlash > 0) {
+      var alpha = Math.min(1, this.levelFlash / 30);
+      c.globalAlpha = alpha;
+      c.fillStyle = '#00ff9f';
+      c.font = '42px monospace';
+      c.textAlign = 'center';
+      c.fillText('LEVEL ' + this.level, this.w / 2, this.h / 2);
+      c.font = '12px monospace';
+      c.fillStyle = '#00d4ff';
+      c.fillText('speed ' + this.ballSpeed.toFixed(1) + ' · new request queue deployed', this.w / 2, this.h / 2 + 26);
+      c.globalAlpha = 1;
+      c.textAlign = 'left';
+    }
     c.fillStyle = '#5a6a7a';
     c.font = '9px monospace';
     c.textAlign = 'right';
@@ -289,6 +305,7 @@ class TrafficBreakout extends BaseGame {
     c.fillStyle = '#5a6a7a';
     c.font = '12px monospace';
     c.fillText('Best: ' + this.bestScore, this.w / 2, this.h / 2 + 34);
+    c.fillText('Press R to restart · ESC to close', this.w / 2, this.h / 2 + 52);
   }
 
   stop() { super.stop(); this.canvas.removeEventListener('mousemove', this._mm); this.canvas.removeEventListener('touchmove', this._tm); }

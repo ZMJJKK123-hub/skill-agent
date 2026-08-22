@@ -284,6 +284,7 @@ class Snake2048 extends BaseGame {
     c.fillStyle = '#5a6a7a';
     c.font = '12px monospace';
     c.fillText('Best: ' + this.bestScore, this.w / 2, this.h / 2 + 34);
+    c.fillText('Press R to restart · ESC to close', this.w / 2, this.h / 2 + 52);
   }
 
   win() {
@@ -302,6 +303,7 @@ class Snake2048 extends BaseGame {
     c.fillStyle = '#5a6a7a';
     c.font = '12px monospace';
     c.fillText('Best: ' + this.bestScore, this.w / 2, this.h / 2 + 34);
+    c.fillText('Press R to restart · ESC to close', this.w / 2, this.h / 2 + 52);
   }
 
   stop() { super.stop(); removeEventListener('keydown', this._kd); }

@@ -9,7 +9,18 @@ class TerminalHacker extends BaseGame {
     c.appendChild(this.div);
     this._kd = e => {
       if (e.key === 'Enter') this.exec();
-      else if (e.key === 'ArrowUp') { var h = this.history[this.history.length - 1]; if (h) this.input.value = h; }
+      else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (this.history.length) {
+          this.histIdx = Math.min(this.histIdx + 1, this.history.length);
+          this.input.value = this.history[this.history.length - this.histIdx] || '';
+        }
+      }
+      else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        this.histIdx = Math.max(this.histIdx - 1, 0);
+        this.input.value = this.histIdx === 0 ? '' : (this.history[this.history.length - this.histIdx] || '');
+      }
     };
     addEventListener('keydown', this._kd);
     this.reset();
@@ -18,6 +29,7 @@ class TerminalHacker extends BaseGame {
   reset() {
     this.div.innerHTML = '';
     this.history = [];
+    this.histIdx = 0;
     this.threats = [];
     this.timer = 15;
     this.score = 0;
@@ -26,6 +38,7 @@ class TerminalHacker extends BaseGame {
     this.gameOver = false;
     this.threat = null;
     this.threatTimer = null;
+    this.timerEl = null;
     this.frozen = false;
     this.bestScore = parseInt(localStorage.getItem('thBest') || '0');
     this.out('=== TERMINAL HACKER v1.0 ===', 'green');
@@ -126,13 +139,21 @@ class TerminalHacker extends BaseGame {
     this.outTypewriter('THREAT DETECTED [' + (this.threats.length + 1) + ']' + methodHint, 'red', function() {
       self.outTypewriter('  Encrypted: ' + encoded, 'yellow', function() {
         self.out('  Decrypt and type: block <plaintext>', 'dim');
-        self.out('  Time: ' + self.timer + 's', 'dim');
+        var tl = document.createElement('div');
+        tl.className = 'tl t-yellow';
+        tl.textContent = '  Time: ' + self.timer + 's';
+        self.div.appendChild(tl);
+        self.timerEl = tl;
         self.out('', '');
       });
     });
     this.threats.push({ word: word });
     this.threatTimer = setInterval(function() {
       self.timer--;
+      if (self.timerEl) {
+        self.timerEl.textContent = '  Time: ' + self.timer + 's' + (self.frozen ? ' (FROZEN)' : '');
+        self.timerEl.className = 'tl ' + (self.timer <= 5 ? 't-red' : 't-yellow');
+      }
       if (self.timer <= 0) self.fail();
     }, 1000);
   }
@@ -142,6 +163,7 @@ class TerminalHacker extends BaseGame {
     if (!cmd) return;
     this.input.disabled = true;
     this.history.push(cmd);
+    this.histIdx = 0;
     var w = document.createElement('div');
     w.className = 'tl';
     w.textContent = 'hack@defense:~$ ' + cmd;
@@ -199,6 +221,7 @@ class TerminalHacker extends BaseGame {
         clearInterval(this.threatTimer);
         var frozenThreat = this.threat;
         this.out('❄️ TIMER FROZEN for 5s', 'cyan');
+        if (this.timerEl) this.timerEl.textContent = '  Time: ' + this.timer + 's (FROZEN)';
         var self = this;
         setTimeout(function() {
           if (self.gameOver) return;
@@ -206,12 +229,24 @@ class TerminalHacker extends BaseGame {
           // Only resume if the same threat is still pending (it wasn't solved during freeze)
           if (self.threat === frozenThreat) {
             clearInterval(self.threatTimer);
-            self.threatTimer = setInterval(function() { self.timer--; if (self.timer <= 0) self.fail(); }, 1000);
+            self.threatTimer = setInterval(function() {
+              self.timer--;
+              if (self.timerEl) {
+                self.timerEl.textContent = '  Time: ' + self.timer + 's';
+                self.timerEl.className = 'tl ' + (self.timer <= 5 ? 't-red' : 't-yellow');
+              }
+              if (self.timer <= 0) self.fail();
+            }, 1000);
             self.out('❄️ Timer resumed', 'dim');
           }
         }, 5000);
         this.newLine();
       }
+    }
+    else if (cmd === 'clear') {
+      this.div.innerHTML = '';
+      this.timerEl = null;
+      this.newLine();
     }
     else { this.out('Unknown command. Type: help', 'dim'); this.newLine(); }
   }
@@ -336,6 +371,7 @@ class TerminalHacker extends BaseGame {
     this.out('Server compromised! Final score: ' + this.score, 'red');
     this.out('Defended: ' + this.defended, 'dim');
     this.out('Best Score: ' + this.bestScore, 'dim');
+    this.out('Press R to restart · ESC to close', 'cyan');
   }
 
   update() {}

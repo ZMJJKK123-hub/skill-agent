@@ -277,12 +277,12 @@ class ServerDefense extends BaseGame {
   levelUp() {
     this.paused = true;
     var opts = [
-      { n: '+1 Thread', d: 'Extra bullet stream', apply: () => this.upgrades.multi++ },
-      { n: 'GC Pulse', d: 'Range damage aura', apply: () => this.upgrades.range++ },
-      { n: 'Cache Shield', d: '+1 immunity charge', apply: () => this.upgrades.shield++ },
-      { n: 'Overclock', d: 'Double damage', apply: () => this.upgrades.dmg++ },
-      { n: 'Piercing', d: 'Bullets pierce 1 enemy', apply: () => this.upgrades.pierce += 1 },
-      { n: 'Auto-Repair', d: 'Regen shield over time', apply: () => this.upgrades.regen++ },
+      { n: '+1 Thread', d: 'Extra bullet stream', cur: this.upgrades.multi, apply: () => this.upgrades.multi++ },
+      { n: 'GC Pulse', d: 'Range damage aura', cur: this.upgrades.range, apply: () => this.upgrades.range++ },
+      { n: 'Cache Shield', d: '+1 immunity charge', cur: this.upgrades.shield, apply: () => this.upgrades.shield++ },
+      { n: 'Overclock', d: 'Double damage', cur: this.upgrades.dmg, apply: () => this.upgrades.dmg++ },
+      { n: 'Piercing', d: 'Bullets pierce 1 enemy', cur: this.upgrades.pierce, apply: () => this.upgrades.pierce += 1 },
+      { n: 'Auto-Repair', d: 'Regen shield over time', cur: this.upgrades.regen, apply: () => this.upgrades.regen++ },
     ];
     var cards = opts.sort(() => Math.random() - 0.5).slice(0, 3);
     var ov = document.createElement('div');
@@ -290,7 +290,9 @@ class ServerDefense extends BaseGame {
     cards.forEach(c => {
       var card = document.createElement('div');
       card.style.cssText = 'background:var(--card);border:2px solid var(--green-d);border-radius:8px;padding:20px 16px;width:140px;text-align:center;cursor:pointer;transition:all .15s';
-      card.innerHTML = '<div style="font-size:1.1em;color:var(--green);font-weight:700;margin-bottom:6px">' + c.n + '</div><div style="font-size:.7em;color:var(--dim)">' + c.d + '</div>';
+      card.innerHTML = '<div style="font-size:1.1em;color:var(--green);font-weight:700;margin-bottom:6px">' + c.n + '</div>' +
+        '<div style="font-size:.7em;color:var(--dim)">' + c.d + '</div>' +
+        (c.cur > 0 ? '<div style="font-size:.65em;color:var(--cyan);margin-top:6px">current Lv.' + c.cur + '</div>' : '');
       card.onmouseenter = () => { card.style.borderColor = '#00ff9f'; card.style.transform = 'translateY(-3px)'; };
       card.onmouseleave = () => { card.style.borderColor = 'var(--green-d)'; card.style.transform = ''; };
       card.onclick = () => { c.apply(); sfx('powerup'); ov.remove(); this.paused = false; };
@@ -473,7 +475,7 @@ class ServerDefense extends BaseGame {
     c.fillStyle = '#5a6a7a';
     c.font = '12px monospace';
     c.fillText('Best: ' + this.bestScore, this.w / 2, this.h / 2 + 30);
-    c.fillText('Close and reopen to retry', this.w / 2, this.h / 2 + 50);
+    c.fillText('Press R to restart · ESC to close', this.w / 2, this.h / 2 + 50);
   }
 
   stop() { super.stop(); removeEventListener('keydown', this._kd); removeEventListener('keyup', this._ku); }

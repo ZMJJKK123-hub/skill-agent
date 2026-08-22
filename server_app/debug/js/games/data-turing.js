@@ -17,8 +17,17 @@ class DataTuring extends BaseGame {
       this.mouseX = (e.clientX - r.left) * (this.w / r.width);
       this.mouseY = (e.clientY - r.top) * (this.h / r.height);
     };
-    this._md = () => { this.dragging = this.findNode(this.mouseX, this.mouseY); };
-    this._mu = () => { this.dragging = null; };
+    this._md = e => {
+      this._downX = this.mouseX;
+      this._downY = this.mouseY;
+      this.dragging = this.findNode(this.mouseX, this.mouseY);
+    };
+    this._mu = () => {
+      // click (no drag) = connect/disconnect flow; drag = move node
+      var moved = dist(this.mouseX, this.mouseY, this._downX, this._downY);
+      if (moved < 6 && this.dragging !== null) this.toggleConnect(this.dragging);
+      this.dragging = null;
+    };
     this._ctx = e => {
       e.preventDefault();
       var r = this.canvas.getBoundingClientRect();
@@ -92,6 +101,7 @@ class DataTuring extends BaseGame {
     this.level = 1;
     this.puzzleSolved = 0;
     this._timeouts = [];
+    this.connectFrom = null;
   }
 
   addNode(type) {
@@ -117,6 +127,30 @@ class DataTuring extends BaseGame {
       if (dist(x, y, this.nodes[i].x, this.nodes[i].y) < 25) return i;
     }
     return null;
+  }
+
+  // Click node A then node B to toggle a connection A->B.
+  // Source only sends, target only receives.
+  toggleConnect(idx) {
+    if (this.connectFrom === null) {
+      if (this.nodes[idx].type === 'target') { toast('Target only receives — pick a source node'); return; }
+      this.connectFrom = idx;
+      toast('From ' + this.nodes[idx].label + ' → now click destination');
+      return;
+    }
+    var from = this.connectFrom;
+    this.connectFrom = null;
+    if (from === idx) { toast('Connection cancelled'); return; }
+    if (this.nodes[idx].type === 'source') { toast('Source only sends — pick a destination'); return; }
+    var exists = this.connections.some(function(c) { return c.from === from && c.to === idx; });
+    if (exists) {
+      this.connections = this.connections.filter(function(c) { return !(c.from === from && c.to === idx); });
+      toast('Disconnected ' + this.nodes[from].label + ' → ' + this.nodes[idx].label);
+    } else {
+      this.connections.push({ from: from, to: idx });
+      sfx('click');
+      toast('Connected ' + this.nodes[from].label + ' → ' + this.nodes[idx].label);
+    }
   }
 
   run() {
@@ -149,6 +183,7 @@ class DataTuring extends BaseGame {
     var self = this;
     this.balls.forEach(function(b) {
       if (b.done) return;
+      if (b.path.length > 12) { b.done = true; b.color = '#5a6a7a'; return; } // cycle guard
       var conn = self.connections.find(function(c) { return c.from === b.path[b.path.length - 1]; });
       if (!conn) { b.done = true; return; }
       var from = self.nodes[conn.from];
@@ -228,6 +263,22 @@ class DataTuring extends BaseGame {
       c.textAlign = 'center';
       c.textBaseline = 'middle';
       c.fillText(n.label, n.x, n.y);
+      // Pending connection source: pulsing ring + dashed line to cursor
+      if (self.connectFrom !== null && self.nodes[self.connectFrom] === n) {
+        c.strokeStyle = '#00ff9f';
+        c.lineWidth = 2;
+        c.globalAlpha = 0.6 + 0.4 * Math.sin(self.tick * 0.15);
+        c.beginPath();
+        c.arc(n.x, n.y, 30, 0, Math.PI * 2);
+        c.stroke();
+        c.globalAlpha = 1;
+        c.setLineDash([4, 4]);
+        c.beginPath();
+        c.moveTo(n.x, n.y);
+        c.lineTo(self.mouseX, self.mouseY);
+        c.stroke();
+        c.setLineDash([]);
+      }
     });
     c.fillStyle = '#5a6a7a';
     c.font = '11px monospace';
@@ -238,7 +289,7 @@ class DataTuring extends BaseGame {
     c.textAlign = 'right';
     c.fillText('Best: ' + this.bestScore, this.w - 8, 18);
     c.textAlign = 'left';
-    c.fillText('Drag nodes, right-click to remove, RUN to test', 8, 34);
+    c.fillText('Click 2 nodes to connect/cut · drag to move · right-click removes helper · RUN to test', 8, 34);
     if (this.success) {
       c.fillStyle = '#00ff9f'; c.font = '20px monospace'; c.textAlign = 'center';
       c.fillText('CORRECT! Lv.' + this.level, this.w / 2, this.h / 2);
@@ -284,6 +335,7 @@ class DataTuring extends BaseGame {
     super.stop();
     (this._timeouts || []).forEach(clearTimeout);
     this._timeouts = [];
+    this.connectFrom = null;
     this.canvas.removeEventListener('mousemove', this._mm);
     this.canvas.removeEventListener('mousedown', this._md);
     this.canvas.removeEventListener('mouseup', this._mu);
