@@ -3,6 +3,8 @@
 // ========== STATE MANAGER ==========
 const SM = {
   currentGame: null,
+  currentInit: null,
+  currentTitle: '',
   modalOpen: false,
   cheats: { god: false, gravity: false }
 };
@@ -12,6 +14,8 @@ function openGame(title, initFn) {
   $('modalTitle').textContent = title;
   $('modalBody').innerHTML = '';
   SM.modalOpen = true;
+  SM.currentInit = initFn;
+  SM.currentTitle = title;
   $('modal').classList.add('show');
   const game = initFn($('modalBody'));
   SM.currentGame = game;
@@ -21,9 +25,30 @@ function openGame(title, initFn) {
 function closeGame() {
   if (SM.currentGame && SM.currentGame.stop) SM.currentGame.stop();
   SM.currentGame = null;
+  SM.currentInit = null;
   SM.modalOpen = false;
   $('modal').classList.remove('show');
 }
+
+function restartGame() {
+  if (!SM.currentInit) return;
+  smCurrentStop();
+  $('modalBody').innerHTML = '';
+  const game = SM.currentInit($('modalBody'));
+  SM.currentGame = game;
+  if (game && game.start) game.start();
+  toast('Restarted ' + SM.currentTitle);
+}
+
+function smCurrentStop() {
+  if (SM.currentGame && SM.currentGame.stop) SM.currentGame.stop();
+}
+
+addEventListener('keydown', function(e) {
+  if (!SM.modalOpen) return;
+  if (e.key === 'Escape') { closeGame(); }
+  else if (e.key === 'r' || e.key === 'R') { e.preventDefault(); restartGame(); }
+});
 
 // ========== CLOCK + PROGRESS ==========
 function startClock() {
