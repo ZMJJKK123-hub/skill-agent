@@ -158,9 +158,21 @@ def run_grep(pattern: str, path: str = ".", glob_filter: str = None,
     try:
         base = Path(_search_base()).resolve()
         root = (base / path).resolve() if not Path(path).is_absolute() else Path(path).resolve()
-        # 沙箱：非 full-access 禁止搜工作区之外
+        # 沙箱：非 full-access 禁止搜工作区之外；但只读参考树 mc_java_sources / docs/agent 例外
         if _sandbox_mode() != "full-access" and not str(root).startswith(str(base)):
-            return "Error: grep 路径越出工作区"
+            repo_root = Path(__file__).resolve().parent.parent
+            allowed_refs = [
+                (repo_root / "mc_java_sources_1.21.11").resolve(),
+                (repo_root / "mc_java_sources_26.2").resolve(),
+                (repo_root / "docs" / "agent").resolve(),
+            ]
+            allowed = False
+            for ref in allowed_refs:
+                if ref.exists() and str(root).startswith(str(ref)):
+                    allowed = True
+                    break
+            if not allowed:
+                return "Error: grep 路径越出工作区"
         try:
             rx = re.compile(pattern)
         except re.error as e:
