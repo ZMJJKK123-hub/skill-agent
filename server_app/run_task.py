@@ -218,7 +218,12 @@ def _run_one_round(messages: list, session_dir: Path,
                    session_root_path: Path, mode: str) -> str:
     """跑一轮 agent_loop 并完成收尾：清断点、写回复历史、收集错误信号。"""
     from core.agent import agent_loop
-    final = agent_loop(messages)
+    try:
+        final = agent_loop(messages)
+    except Exception as e:
+        # 统一失败标记行：前端据此把会话显示为"运行异常"而不是绿色"完成"
+        print(f"[run_task] 任务异常终止: {type(e).__name__}: {e}", flush=True)
+        raise
     print(f"[run_task] 完成，最终回复:\n{final}", flush=True)
 
     # 正常完成：清掉断点文件（一轮真正结束，不再需要断点恢复）
@@ -436,10 +441,14 @@ def main() -> int:
     #     conversation 模块很轻，不触发 openai，可安全提前导入。
     #     chat 和 mod 模式都写：历史会话打开时能显示用户 prompt 气泡。
     #     空 prompt（自动续跑 resume）不写——否则历史里出现空气泡。
-    if mode in ("chat", "mod") and task_prompt:
+    #     mod 模式优先写 DSH_USER_PROMPT（用户原始输入）：包装后的 task_prompt
+    #     以"你是一个 MOD 制作器…（C:\本地路径）"开头，直接进历史会污染
+    #     侧栏标题并泄漏服务器路径。
+    user_prompt = os.environ.get("DSH_USER_PROMPT", "") or task_prompt
+    if mode in ("chat", "mod") and user_prompt:
         try:
             from core.conversation import append_user as _early_append_user
-            _early_append_user(session_root_path, task_prompt)
+            _early_append_user(session_root_path, user_prompt)
         except Exception as e:
             print(f"[run_task] 提前写入历史失败: {e}", flush=True)
 
@@ -478,8 +487,10 @@ def main() -> int:
             print(f"[run_task] 加载对话历史失败（继续，仅当前 prompt）: {e}", flush=True)
             messages = []
         # 把当前 prompt 作为本轮 user 消息（历史已在步骤 2.5 提前写入）。
-        # 修复：如果历史最后一条已经是这条 prompt，就不再重复追加，
-        # 否则会出现 `hi` + `hi` 两条完全相同的 user 消息。
+        # chat 模式：历史最后一条就是这条 prompt，跳过重复追加（否则出现
+        # `hi` + `hi` 两条相同消息）。
+        # mod 模式：历史里是用户原始输入（DSH_USER_PROMPT），这里追加包装了
+        # 工作目录与产出要求的 task_prompt 给 agent——两条并存是有意的。
         # 空 prompt（自动续跑 resume）不追加——排队消息已在历史里。
         if not task_prompt:
             if not messages:

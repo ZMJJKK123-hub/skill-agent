@@ -841,6 +841,10 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
                  "DSH_MODE": mode,
                  "DSH_SESSION_ROOT": str(sess.mod_dir.parent),
                  "DSH_RESUME": "1" if req.resume else "0",
+                 # 用户原始输入：mod 模式 task_prompt 会被包装成
+                 # "你是一个 MOD 制作器…（C:\路径）…"，写进对话历史会污染
+                 # 侧栏标题并泄漏服务器路径；run_task 优先用这条写历史。
+                 "DSH_USER_PROMPT": req.prompt,
                  "DSH_VISION_ENABLED": "1" if sess.vision_enabled else "0",
                  "DSH_VISION_API_KEY": sess.vision_api_key or "",
                  "DSH_VISION_BASE_URL": sess.vision_base_url or "",
@@ -974,7 +978,10 @@ def download_mod(session_id: str, authorization: str = Header(default="")):
     sess = _get_session(session_id)
     _assert_owner(sess, username)
     zip_path = SESSIONS_DIR / session_id / "mod.zip"
-    skip = {"build", "dist", ".worktrees", ".team", ".tasks",
+    # .gradle（Gradle 缓存，构建后 50MB+）、.chat（会话调试日志）、
+    # agent.log/run.log（运行时日志）都不是源码，打进 zip 会把下载撑爆。
+    skip = {"build", "dist", ".gradle", ".chat", "agent.log", "run.log",
+            ".worktrees", ".team", ".tasks",
             ".transcripts", "__pycache__", ".git", "mc_java_sources"}
 
     with _download_lock:
@@ -982,30 +989,51 @@ def download_mod(session_id: str, authorization: str = Header(default="")):
         # 避免每次点击都重新打包 11MB → 前端长时间无反馈 + 重复点击堆积。
         # newest_src 只统计会进 zip 的文件：build/、.git/ 等被排除的目录
         # 变化不应触发重打包（否则 agent 每次构建后都要白白重压一次）。
+        # stat 逐个容错：agent/gradle 进程刚被 kill 时 Windows 句柄未释放，
+        # 瞬时 PermissionError 不应让整个下载 500。
         need_build = True
         if zip_path.exists() and sess.mod_dir.exists():
             zip_mtime = zip_path.stat().st_mtime
-            newest_src = max(
-                (p.stat().st_mtime
-                 for p in sess.mod_dir.rglob("*")
-                 if p.is_file()
-                 and not any(part in skip for part in p.relative_to(sess.mod_dir).parts)),
-                default=0,
-            )
+            newest_src = 0
+            for p in sess.mod_dir.rglob("*"):
+                try:
+                    if not p.is_file():
+                        continue
+                    if any(part in skip for part in p.relative_to(sess.mod_dir).parts):
+                        continue
+                    mtime = p.stat().st_mtime
+                except OSError:
+                    continue
+                newest_src = max(newest_src, mtime)
             if zip_mtime >= newest_src:
                 need_build = False
         if need_build:
-            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-                if sess.mod_dir.exists():
-                    for p in sorted(sess.mod_dir.rglob("*")):
-                        try:
-                            rel = p.relative_to(sess.mod_dir)
-                        except ValueError:
-                            continue
-                        if any(part in skip for part in rel.parts):
-                            continue
-                        if p.is_file():
-                            zf.write(p, rel.as_posix())
+            # 打包写临时文件，成功后原子替换：中途任何失败（文件被杀死的
+            # java/gradle 进程短暂锁住等）都不会留下半截 zip——否则半截
+            # zip 的 mtime 最新，缓存判断会跳过重建，用户永远下载到坏档。
+            tmp_path = zip_path.with_suffix(".zip.tmp")
+            try:
+                with zipfile.ZipFile(tmp_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                    if sess.mod_dir.exists():
+                        for p in sorted(sess.mod_dir.rglob("*")):
+                            try:
+                                rel = p.relative_to(sess.mod_dir)
+                            except ValueError:
+                                continue
+                            if any(part in skip for part in rel.parts):
+                                continue
+                            if p.is_file():
+                                try:
+                                    zf.write(p, rel.as_posix())
+                                except OSError:
+                                    continue  # 单个文件被锁：跳过，不毁掉整个包
+                os.replace(tmp_path, zip_path)
+            except Exception:
+                try:
+                    tmp_path.unlink(missing_ok=True)
+                except OSError:
+                    pass
+                raise
         # 一次性读入内存返回：绕开 FileResponse 流式发送在 h11 下的大文件
         # Content-Length bug（uvicorn 默认 h11 对超大响应体会抛
         # "Too little data for declared Content-Length" → 前端 Failed to fetch）
@@ -1450,10 +1478,18 @@ async def fallback_404_to_debug(request: Request, exc: StarletteHTTPException):
 app.mount("/", StaticFiles(directory=str(WEB_DIR), html=True), name="web")
 
 
-if __name__ == "__main__":
-    import uvicorn
+# 启动钩子：恢复历史会话 + 废弃会话定时清理。
+# 必须挂在 startup 事件上而不是 __main__ 分支——文件头注释明确支持
+# `uvicorn server:app` 启动，那种方式不经过 __main__，历史会话永远
+# 进不了内存表（表现为：历史会话点开报"Session not found"）。
+_startup_done = {"flag": False}
 
-    # 启动时恢复历史会话（供下载/预览/事件回放），服务重启不丢失
+
+@app.on_event("startup")
+def _startup_restore() -> None:
+    if _startup_done["flag"]:
+        return
+    _startup_done["flag"] = True
     _restore_sessions()
     _cleanup_orphan_sessions()
 
@@ -1467,8 +1503,11 @@ if __name__ == "__main__":
                 pass
 
     threading.Thread(target=_orphan_cleanup_loop, daemon=True).start()
+    print(f"[server] 启动完成：恢复 {len(sessions)} 个历史会话", flush=True)
 
-    print(f"MOD Agent 制作器已启动: http://localhost:8000（恢复 {len(sessions)} 个历史会话）")
+
+if __name__ == "__main__":
+    import uvicorn
     try:
         # httptools：C 语言 HTTP 解析器，根治 h11 在超大响应体上的 Content-Length bug
         uvicorn.run(app, host="0.0.0.0", port=8000, http="httptools")
