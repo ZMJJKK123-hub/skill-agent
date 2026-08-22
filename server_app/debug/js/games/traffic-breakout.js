@@ -67,6 +67,9 @@ class TrafficBreakout extends BaseGame {
   update() {
     var self = this;
     this.balls.forEach(function(b, bi) {
+      b.trail = b.trail || [];
+      b.trail.push({ x: b.x, y: b.y });
+      if (b.trail.length > 6) b.trail.shift();
       b.x += b.dx;
       b.y += b.dy;
       if (b.x < b.r || b.x > self.w - b.r) b.dx = -b.dx;
@@ -182,7 +185,15 @@ class TrafficBreakout extends BaseGame {
     }
     c.fillStyle = '#00ff9f';
     c.fillRect(this.paddle.x, this.paddle.y, this.paddle.w, this.paddle.h);
-    this.balls.forEach(function(b) { c.fillStyle = '#00d4ff'; c.beginPath(); c.arc(b.x, b.y, b.r, 0, Math.PI * 2); c.fill(); });
+    this.balls.forEach(function(b) {
+      if (b.trail) b.trail.forEach(function(tp, i) {
+        c.fillStyle = 'rgba(0,212,255,' + ((i + 1) / b.trail.length * 0.3) + ')';
+        c.beginPath();
+        c.arc(tp.x, tp.y, b.r * ((i + 1) / b.trail.length), 0, Math.PI * 2);
+        c.fill();
+      });
+      c.fillStyle = '#00d4ff'; c.beginPath(); c.arc(b.x, b.y, b.r, 0, Math.PI * 2); c.fill();
+    });
     c.fillStyle = '#00ff9f';
     c.font = '14px monospace';
     c.textAlign = 'left';

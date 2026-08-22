@@ -122,7 +122,7 @@ class DimensionParkour extends BaseGame {
     } else if (this.tick % Math.max(30, 90 - Math.floor(this.score / 4)) === 0) {
       this.spawnObstacle();
     }
-    this.obstacles.forEach(o => { o.x -= this.spd; });
+    this.obstacles.forEach(o => { o.x -= this.spd; o.y += Math.sin((this.tick + (o.seed || 0)) * 0.05) * 0.5; });
     this.obstacles = this.obstacles.filter(o => o.x > -50);
 
     var self = this;
@@ -145,17 +145,17 @@ class DimensionParkour extends BaseGame {
     var diffMul = 1 + this.score / 100; // difficulty multiplier
     if (type < 0.12) {
       // Full screen obstacle (requires gravity flip)
-      this.obstacles.push({ x: this.w, y: 0, h: this.h, w: 20, type: 'fullscreen', fullScreen: true });
+      this.obstacles.push({ x: this.w, y: 0, h: this.h, w: 20, type: 'fullscreen', fullScreen: true, seed: rnd(0, 1000) });
     } else if (type < 0.30) {
       // Tall obstacle
       var h = Math.min(rnd(60, 100) * diffMul, this.h - 40);
       var y = this.gravityDir > 0 ? this.h - h : 0;
-      this.obstacles.push({ x: this.w, y: y, h: h, w: 20, type: 'tall' });
+      this.obstacles.push({ x: this.w, y: y, h: h, w: 20, type: 'tall', seed: rnd(0, 1000) });
     } else {
       // Normal obstacle
       var h = rnd(20, 50);
       var y = this.gravityDir > 0 ? this.h - h : 0;
-      this.obstacles.push({ x: this.w, y: y, h: h, w: rnd(15, 30), type: 'normal' });
+      this.obstacles.push({ x: this.w, y: y, h: h, w: rnd(15, 30), type: 'normal', seed: rnd(0, 1000) });
     }
   }
 
