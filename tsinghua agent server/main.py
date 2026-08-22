@@ -875,15 +875,47 @@ def _wait_daemon_result(session_root: Path, rid: str, timeout: int = 900) -> dic
     raise RuntimeError("AI 服务响应超时")
 
 
+def _collect_daemon_reasoning(session_root: Path, rid: str) -> str:
+    """聚合 daemon 推理文件里的全部思考文本，并清理该文件（非流式响应用）。"""
+    rfile = session_root / "daemon" / "reasoning" / f"{rid}.jsonl"
+    parts: list[str] = []
+    try:
+        for line in rfile.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except Exception:  # noqa: BLE001
+                continue
+            t = obj.get("text")
+            if t:
+                parts.append(t)
+    except OSError:
+        pass
+    finally:
+        try:
+            if rfile.exists():
+                rfile.unlink()
+        except OSError:
+            pass
+    return "".join(parts)
+
+
 def _run_agent(messages: list, session_id: str, base_url: str,
-               reasoning_sink=None) -> tuple[str, list]:
-    """通过常驻 daemon 子进程运行 agent_loop，保证用户/会话隔离。"""
+               reasoning_sink=None) -> tuple[str, list, str]:
+    """通过常驻 daemon 子进程运行 agent_loop，保证用户/会话隔离。
+
+    返回 (text, attachments, reasoning)；reasoning 为思考全文（可为空），
+    供非流式响应放在 message.reasoning_content 里。
+    """
     mod_related = _is_mod_request(messages)
     start_ts = time.time()
     session_root = _session_workdir(session_id)
     _ensure_session_daemon(session_root)
     rid = _submit_daemon_request(session_root, messages)
     result = _wait_daemon_result(session_root, rid)
+    reasoning = _collect_daemon_reasoning(session_root, rid)
     if result.get("error"):
         raise RuntimeError(result["error"])
     text = result.get("text") or "(no response)"
@@ -892,7 +924,7 @@ def _run_agent(messages: list, session_id: str, base_url: str,
     text = _append_persona_guide(text, messages)
     _append_conversation(session_id, messages, text)
     attachments = _collect_attachments(start_ts, base_url, scope=session_root)
-    return text, attachments
+    return text, attachments, reasoning
 
 
 
@@ -1026,9 +1058,9 @@ async def chat_completions(
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
 
-    # 非流式：完整 Agent 跑完再返回
+    # 非流式：完整 Agent 跑完再返回（message.reasoning_content 带思考全文）
     try:
-        final, attachments = _run_agent(messages, session_id, base_url)
+        final, attachments, reasoning = _run_agent(messages, session_id, base_url)
     except Exception as e:  # noqa: BLE001
         err_msg = _friendly_agent_error(e)
         return JSONResponse({
@@ -1044,6 +1076,9 @@ async def chat_completions(
             "usage": _usage_zero(),
         })
 
+    message = {"role": "assistant", "content": final}
+    if reasoning:
+        message["reasoning_content"] = reasoning
     payload = {
         "id": _new_id(),
         "object": "chat.completion",
@@ -1051,7 +1086,7 @@ async def chat_completions(
         "model": "tsinghua-agent",
         "choices": [{
             "index": 0,
-            "message": {"role": "assistant", "content": final},
+            "message": message,
             "finish_reason": "stop",
         }],
         "usage": _usage_zero(),
@@ -1144,7 +1179,9 @@ def _stream_agent(messages: list, session_id: str, base_url: str):
         err_step = 8
         for i in range(0, len(err_msg), err_step):
             yield _sse_frame(cid, created, {"content": err_msg[i:i + err_step]})
-        yield _sse_frame(cid, created, {}, finish_reason="stop", usage=_usage_zero())
+        # 指南 §5.6：流式中途出错时，stop 帧附 error 字段（友好文案仍走 content 帧保证用户可见）
+        yield _sse_frame(cid, created, {}, finish_reason="stop", usage=_usage_zero(),
+                         error={"type": "upstream_error", "message": str(e)[:200]})
         yield "data: [DONE]\n\n"
         return
     finally:
