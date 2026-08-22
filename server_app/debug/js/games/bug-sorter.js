@@ -128,6 +128,11 @@ class BugSorter extends BaseGame {
       // Combo multiplier bonus
       var mult = 1 + Math.floor(this.combo / 10);
       if (this.combo > 0 && this.combo % 5 === 0) { this.score += 50 * mult; sfx('combo'); }
+      // Combo heal: every 10 combo restore 2 HP
+      if (this.combo % 10 === 0 && this.combo > 0) {
+        this.health = Math.min(100, this.health + 2);
+        this.judgeText.push({ text: 'HEAL +2', x: this.lanes[lane].x, y: this.judgeLineY - 40, life: 25, color: '#00ff9f' });
+      }
       sfx(best.critical ? 'powerup' : 'eat');
     } else {
       this.miss++;

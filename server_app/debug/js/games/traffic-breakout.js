@@ -29,7 +29,8 @@ class TrafficBreakout extends BaseGame {
 
   reset() {
     this.paddle = { x: 280, y: this.h - 16, w: 80, h: 8 };
-    this.balls = [{ x: 320, y: this.h - 30, dx: 3, dy: -3, r: 6 }];
+    this.ballSpeed = 3;
+    this.balls = [{ x: 320, y: this.h - 30, dx: this.ballSpeed, dy: -this.ballSpeed, r: 6 }];
     this.bricks = [];
     this.particles = [];
     this.tunnel = { in: { x: 0, y: 100, active: false }, out: { x: this.w, y: 50, active: false } };
@@ -95,7 +96,8 @@ class TrafficBreakout extends BaseGame {
           br.hp--;
           if (br.hp <= 0) {
             br.alive = false;
-            self.score++;
+            var pts = br.type === 'fork' ? 3 : (br.type === 'cache' ? 2 : (br.type === 'strong' ? 2 : 1));
+            self.score += pts;
             self.bricksLeft--;
             sfx('hit');
             for (var i = 0; i < 8; i++) {
@@ -126,10 +128,11 @@ class TrafficBreakout extends BaseGame {
     }
     if (this.bricksLeft <= 0) {
       this.level++;
+      this.ballSpeed = Math.min(7, 3 + (this.level - 1) * 0.5);
       this.makeBricks(this.level);
-      this.balls = [{ x: this.w / 2, y: this.h - 30, dx: 3, dy: -3, r: 6 }];
+      this.balls = [{ x: this.w / 2, y: this.h - 30, dx: this.ballSpeed, dy: -this.ballSpeed, r: 6 }];
       sfx('powerup');
-      toast('Level ' + this.level);
+      toast('Level ' + this.level + ' · Speed ' + this.ballSpeed.toFixed(1));
     }
   }
 

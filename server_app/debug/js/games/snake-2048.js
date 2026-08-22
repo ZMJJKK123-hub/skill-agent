@@ -47,6 +47,8 @@ class Snake2048 extends BaseGame {
 
   spawnFood() {
     var vals = [2, 2, 2, 4, 4, 8];
+    if (this.score > 500) vals.push(16, 16, 32);
+    else if (this.score > 200) vals.push(16);
     var v = vals[rnd(0, vals.length - 1)];
     var x, y;
     do {

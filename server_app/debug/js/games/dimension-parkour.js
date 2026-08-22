@@ -25,7 +25,7 @@ class DimensionParkour extends BaseGame {
   }
 
   reset() {
-    this.player = { x: 80, y: 200, vy: 0, r: 12, onGround: true, trail: [] };
+    this.player = { x: 80, y: 200, vy: 0, r: 12, onGround: true, jumpCount: 0, trail: [] };
     this.obstacles = [];
     this.particles = [];
     this.score = 0;
@@ -52,11 +52,13 @@ class DimensionParkour extends BaseGame {
 
   jump() {
     if (this.gameOver) return;
-    if (this.player.onGround) {
+    if (this.player.onGround || this.player.jumpCount < 2) {
       this.player.vy = -9 * this.gravityDir;
       this.player.onGround = false;
+      this.player.jumpCount++;
       sfx('eat');
       for (var i = 0; i < 5; i++) this.particles.push({ x: this.player.x, y: this.player.y + this.player.r * this.gravityDir, vx: (Math.random() - 0.5) * 3, vy: Math.random() * 2 * this.gravityDir, life: 15, color: '#00ff9f' });
+      if (this.player.jumpCount > 1) sfx('powerup');
     }
   }
 
@@ -77,6 +79,7 @@ class DimensionParkour extends BaseGame {
     if (this.gameOver || !this.player.onGround) return;
     this.gravityDir *= -1;
     this.player.vy = 0;
+    this.player.jumpCount = 0;
     sfx('powerup');
     this.canvas.style.filter = this.gravityDir < 0 ? 'invert(1)' : 'none';
     for (var i = 0; i < 12; i++) this.particles.push({ x: this.player.x, y: this.player.y, vx: (Math.random() - 0.5) * 5, vy: (Math.random() - 0.5) * 5, life: 25, color: '#bb44ff' });
@@ -100,9 +103,9 @@ class DimensionParkour extends BaseGame {
     this.player.y += this.player.vy;
     var groundY = this.gravityDir > 0 ? this.h - this.player.r : this.player.r;
     if (this.gravityDir > 0) {
-      if (this.player.y >= groundY) { this.player.y = groundY; this.player.vy = 0; this.player.onGround = true; }
+      if (this.player.y >= groundY) { this.player.y = groundY; this.player.vy = 0; this.player.onGround = true; this.player.jumpCount = 0; }
     } else {
-      if (this.player.y <= groundY) { this.player.y = groundY; this.player.vy = 0; this.player.onGround = true; }
+      if (this.player.y <= groundY) { this.player.y = groundY; this.player.vy = 0; this.player.onGround = true; this.player.jumpCount = 0; }
     }
 
     // Scroll bg chars
@@ -261,7 +264,7 @@ class DimensionParkour extends BaseGame {
     c.fillStyle = '#00d4ff';
     c.fillRect(8, 24, this.energy, 4);
     if (this.energy >= 100) { c.fillStyle = '#00ff9f'; c.font = '9px monospace'; c.fillText('ENTER=SUPER FLAT', 114, 28); }
-    else { c.fillStyle = '#5a6a7a'; c.font = '8px monospace'; c.fillText('Space=jump, Down=flip, Enter=flat', 114, 28); }
+    else { c.fillStyle = '#5a6a7a'; c.font = '8px monospace'; c.fillText('Space=jump(x2), Down=flip, Enter=flat', 114, 28); }
     // Flat world timer
     if (this.flatWorld > 0) {
       c.fillStyle = '#00ff9f';

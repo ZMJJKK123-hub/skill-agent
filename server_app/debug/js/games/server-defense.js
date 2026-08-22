@@ -35,6 +35,11 @@ class ServerDefense extends BaseGame {
     this.fireTimer = 0;
     this.spawnTimer = 0;
     this.spawnRate = 60;
+    this.wave = 1;
+    this.waveTimer = 0;
+    this.waveActive = false;
+    this.waveRemaining = 0;
+    this.waveCooldown = 0;
     this.upgrades = { multi: 1, range: 0, shield: 0, dmg: 1, pierce: 0, regen: 0 };
     this.time = 0;
     this.paused = false;
@@ -58,6 +63,31 @@ class ServerDefense extends BaseGame {
     // Passive regen
     if (this.upgrades.regen > 0 && this.time % 120 === 0) {
       if (this.upgrades.shield < 3) this.upgrades.shield++;
+    }
+
+    // Wave system
+    this.waveTimer++;
+    this.waveCooldown--;
+    if (this.waveTimer >= 1000 && !this.waveActive && this.waveCooldown <= 0) {
+      this.waveActive = true;
+      this.waveRemaining = 6 + this.wave * 2;
+      this.waveCooldown = 300;
+      this.shakeTime = 3;
+      sfx('powerup');
+      toast('WAVE ' + this.wave + ' INCOMING!');
+    }
+    if (this.waveActive && this.waveRemaining > 0) {
+      // Spawn extra during wave
+      if (this.spawnTimer % 20 === 0) {
+        this.spawn();
+        this.waveRemaining--;
+      }
+      if (this.waveRemaining <= 0) {
+        this.waveActive = false;
+        this.wave++;
+        sfx('win');
+        toast('Wave ' + this.wave + ' cleared!');
+      }
     }
 
     this.spawnTimer++;
@@ -347,13 +377,17 @@ class ServerDefense extends BaseGame {
     c.font = '14px monospace';
     c.textAlign = 'left';
     c.fillText('Score: ' + this.score + '  Kills: ' + this.kills + '  Lv.' + this.level, 10, 20);
+    c.fillStyle = '#ffcc00';
+    c.font = '9px monospace';
+    c.textAlign = 'left';
+    c.fillText(this.waveActive ? 'WAVE ' + this.wave + ' ▸ ' + this.waveRemaining : 'Wave: ' + this.wave, 10, 34);
     c.fillStyle = '#00d4ff';
     c.font = '10px monospace';
-    c.fillText('EXP', 10, 38);
+    c.fillText('EXP', 10, 52);
     c.fillStyle = '#1a2332';
-    c.fillRect(40, 30, 100, 8);
+    c.fillRect(40, 44, 100, 8);
     c.fillStyle = '#00d4ff';
-    c.fillRect(40, 30, 100 * (this.exp / this.expMax), 8);
+    c.fillRect(40, 44, 100 * (this.exp / this.expMax), 8);
     c.fillStyle = '#5a6a7a';
     c.font = '9px monospace';
     c.textAlign = 'right';
