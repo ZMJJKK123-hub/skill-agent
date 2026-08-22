@@ -670,13 +670,23 @@ def agent_loop(messages: list) -> str:
         # 的真实回复，下一轮继续返回空内容，形成死循环。改为注入用户警告并直接重试。
         if content is None and not tool_calls:
             logger.warning("模型返回空内容且无工具调用，不写占位符，注入空响应警告后重试")
-            messages.append({
-                "role": "user",
-                "content": (
-                    "<empty-response> 模型返回为空且没有工具调用。你必须调用一个工具继续任务，"
-                    "禁止输出空文本或“No additional output”之类的话。</empty-response>"
-                ),
-            })
+            if IS_MOD_MODE:
+                messages.append({
+                    "role": "user",
+                    "content": (
+                        "<empty-response> 模型返回为空且没有工具调用。你必须调用一个工具继续任务，"
+                        "禁止输出空文本或“No additional output”之类的话。</empty-response>"
+                    ),
+                })
+            else:
+                # chat 模式：纯文字回答是正常出口，不能逼模型必须调工具
+                messages.append({
+                    "role": "user",
+                    "content": (
+                        "<empty-response> 模型返回为空。请直接用自然语言回答用户最新的问题；"
+                        "只有确需查资料时才调用只读工具。</empty-response>"
+                    ),
+                })
             continue
         message = _NS(
             content=content,
@@ -971,7 +981,9 @@ def agent_loop(messages: list) -> str:
             pass
 
         # 写前研究预算守卫：超过 6 次读/查还没写文件，强制提醒立即写首个文件
-        if not _wrote_file and not _existing_java and not _pre_write_warned and _pre_write_reads >= 6:
+        # 仅 mod 模式：chat 只读咨询里读文件是正常工作流，注入"必须写文件"
+        # 只会让模型困惑（写调用全被沙箱拒绝），实测导致内部抱怨文本泄漏。
+        if IS_MOD_MODE and not _wrote_file and not _existing_java and not _pre_write_warned and _pre_write_reads >= 6:
             _pre_write_warned = True
             _write_strikes += 1
             # force-write 硬禁用已取消：只保留软提醒，避免模型被工具锁定。
@@ -1005,7 +1017,8 @@ def agent_loop(messages: list) -> str:
             continue
 
         # 写后研究预算：已写代码但仍反复查 API 不编译/测试
-        if _wrote_file and _post_write_research >= 8 and not _pre_write_warned:
+        # 仅 mod 模式：chat 模式没有可编译的工程，注入"立即 build"同样是无效施压。
+        if IS_MOD_MODE and _wrote_file and _post_write_research >= 8 and not _pre_write_warned:
             _post_write_strikes += 1
             logger.warning(f"写后研究超预算（{_post_write_research}），软性提醒编译/测试")
             messages.append({

@@ -41,7 +41,7 @@ def _is_mod_file(path: str) -> bool:
 
 
 def _is_mc_java_sources(fp: Path) -> bool:
-    """判断解析后的路径是否落在只读 MC/Forge 源码参考树下。"""
+    """判断解析后的路径是否落在只读 MC/Forge 源码参考树。"""
     try:
         repo_root = Path(__file__).resolve().parent.parent
         resolved = fp.resolve()
@@ -49,11 +49,13 @@ def _is_mc_java_sources(fp: Path) -> bool:
             src = (repo_root / name).resolve()
             if src.exists() and resolved.is_relative_to(src):
                 return True
-    except Exception:  # noqa: BLE001
-        pass
+        # docs/agent 是只读参考文档，同样禁止写入。
+        # （此前误放在 except 分支里成为死代码，正常流程永远执行不到）
         docs_agent = (repo_root / "docs" / "agent").resolve()
         if docs_agent.exists() and resolved.is_relative_to(docs_agent):
             return True
+    except Exception:  # noqa: BLE001
+        pass
     return False
 
 

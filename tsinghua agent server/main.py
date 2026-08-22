@@ -1072,6 +1072,15 @@ async def chat_completions_alias(
     return await chat_completions(request, authorization, x_api_key)
 
 
+def _reasoning_delta(text: str) -> dict:
+    """构造思考增量 delta：同时带 reasoning / reasoning_content 两个 key。
+
+    清小搭侧约定读 delta.reasoning；DeepSeek/OpenAI 兼容客户端习惯读
+    delta.reasoning_content。双 key 输出两边都能渲染，互不影响。
+    """
+    return {"reasoning": text, "reasoning_content": text}
+
+
 def _stream_agent(messages: list, session_id: str, base_url: str):
     """流式 Agent：常驻 daemon 处理请求，实时读推理文件转发 delta.reasoning。"""
     cid = _new_id()
@@ -1083,9 +1092,9 @@ def _stream_agent(messages: list, session_id: str, base_url: str):
         for m in messages
     )
     if is_first_request:
-        yield _sse_frame(cid, created, {"reasoning": "🔧 首次启动准备中，会稍微慢一点，请耐心等待～"})
+        yield _sse_frame(cid, created, _reasoning_delta("🔧 首次启动准备中，会稍微慢一点，请耐心等待～"))
     else:
-        yield _sse_frame(cid, created, {"reasoning": "正在调用自研 Agent 引擎…"})
+        yield _sse_frame(cid, created, _reasoning_delta("正在调用自研 Agent 引擎…"))
 
     session_root = _session_workdir(session_id)
     start_ts = time.time()
@@ -1101,11 +1110,16 @@ def _stream_agent(messages: list, session_id: str, base_url: str):
         while time.time() < deadline:
             if reasoning_file.exists():
                 try:
-                    lines = reasoning_file.read_text(encoding="utf-8").splitlines()
+                    raw = reasoning_file.read_text(encoding="utf-8")
+                    lines = raw.splitlines()
+                    # daemon 可能写到一半（末行无换行符）：半行留到下次轮询再处理，
+                    # 否则 json 解析失败 + last_idx 提前推进会丢思考文本
+                    if raw and not raw.endswith("\n"):
+                        lines = lines[:-1]
                     for line in lines[last_idx:]:
                         try:
                             obj = json.loads(line)
-                            yield _sse_frame(cid, created, {"reasoning": obj.get("text", "")})
+                            yield _sse_frame(cid, created, _reasoning_delta(obj.get("text", "")))
                         except Exception:  # noqa: BLE001
                             continue
                     last_idx = len(lines)

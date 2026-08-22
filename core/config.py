@@ -107,6 +107,20 @@ from .promptkit import PromptAssembler, PromptSection  # noqa: E402
 from .tool_guide import BASE_TOOL_GUIDE, EXTENDED_TOOL_GUIDE  # noqa: E402
 from .tool_gate import is_unlocked  # noqa: E402
 
+# chat（只读咨询）模式工具指引：不提分阶段解锁/构建/测试，只描述只读工作流，
+# 避免与 SYSTEM_CHAT 的"只读"声明互相矛盾（曾导致模型输出内部抱怨文本）。
+CHAT_TOOL_GUIDE = r"""## TOOL USAGE RULES (Read-Only Consultation)
+
+1. You are in READ-ONLY consultation mode. Creating, modifying, or building anything is
+   impossible by design — never attempt write/build/compile calls.
+2. Prefer dedicated tools: read_file / grep / glob / search_api / search_minecraft_docs
+   for local reference, web_search / web_fetch for online docs.
+3. For MOD-development questions the order is: load_skill (authoritative) ->
+   read_file/search_api on mc_java_sources (exact signatures) ->
+   docs/agent/ERROR_LIST.md (known pitfalls).
+4. Use todo for multi-step research; use task to dispatch isolated exploration subtasks.
+"""
+
 prompt_assembler = PromptAssembler()
 prompt_assembler.variable("model", lambda: MODEL)
 prompt_assembler.variable("cwd", lambda: str(Path.cwd()))
@@ -114,10 +128,13 @@ prompt_assembler.variable("mode", lambda: MODE)
 prompt_assembler.variable("sandbox_mode", lambda: os.environ.get("DSH_SANDBOX_MODE", "full-access"))
 prompt_assembler.variable("skills_dir", lambda: os.environ.get("DSH_SKILLS_DIR", "core/skills"))
 prompt_assembler.section(PromptSection("deployment:persona", 0, SYSTEM))
-prompt_assembler.section(PromptSection("deployment:tool_usage_guide", 100, BASE_TOOL_GUIDE))
+prompt_assembler.section(PromptSection(
+    "deployment:tool_usage_guide", 100,
+    lambda env: CHAT_TOOL_GUIDE if MODE == "chat" else BASE_TOOL_GUIDE,
+))
 prompt_assembler.section(PromptSection(
     "deployment:extended_tool_usage_guide", 110,
-    lambda env: EXTENDED_TOOL_GUIDE if is_unlocked() else "",
+    lambda env: EXTENDED_TOOL_GUIDE if (MODE == "mod" and is_unlocked()) else "",
 ))
 
 

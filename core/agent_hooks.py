@@ -84,11 +84,16 @@ def _repeat_tool_reminder(messages, tool_counts):
     too_many = [(name, cnt) for name, cnt in tool_counts.items() if cnt >= REPEAT_TOOL_THRESHOLD]
     if too_many:
         details = ", ".join(f"{name} x{cnt}" for name, cnt in too_many)
+        from . import config as _config
+        if getattr(_config, "MODE", "chat") == "mod":
+            advice = "请先写/改一个文件，或换个工具，不要继续重复同一操作。"
+        else:
+            # chat 只读模式：不能催模型"写文件"，读文件/搜索本来就是正常工作流
+            advice = "请换个角度或工具；信息足够时直接用文字回答用户。"
         _replace_runtime_slot(
             messages,
             "reminder",
-            f"<reminder>同一轮内重复调用工具过多：{details}。"
-            f"请先写/改一个文件，或换个工具，不要继续重复同一操作。</reminder>",
+            f"<reminder>同一轮内重复调用工具过多：{details}。{advice}</reminder>",
         )
 
 

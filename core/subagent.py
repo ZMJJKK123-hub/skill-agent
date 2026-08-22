@@ -24,9 +24,16 @@ _running: set = set()
 
 
 def _subagent_tools(tools=None) -> list:
-    """子代理工具集：tools 精确指定或缺省排除集；tools=[] 表示无工具。"""
+    """子代理工具集：tools 精确指定或缺省排除集；tools=[] 表示无工具。
+
+    chat（只读咨询）模式下缺省集合收敛为 CHAT_TOOL_NAMES——
+    主代理是只读的，子代理也不该拿到写/构建工具。
+    """
     if tools is not None:
         return tool_registry.schemas(include=set(tools))
+    from .tool_gate import _is_chat_mode, CHAT_TOOL_NAMES
+    if _is_chat_mode():
+        return tool_registry.schemas(include=set(CHAT_TOOL_NAMES))
     return tool_registry.schemas(exclude=SUBAGENT_EXCLUDED)
 
 

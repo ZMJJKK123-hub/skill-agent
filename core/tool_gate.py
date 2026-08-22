@@ -58,7 +58,24 @@ BASE_TOOL_NAMES = {
 # These are never offered to the leader even after unlocking.
 _LEADER_EXCLUDED = {"submit_plan"}
 
+# chat（只读咨询）模式白名单：只开放读/搜/问 + 任务管理。
+# 不含 write_file/edit_file/bash/构建/游戏/worktree/队友等任何写入或重型工具——
+# 广告出写工具只会诱导模型尝试写入，然后被 read-only 沙箱拒绝（用户实测
+# 因此看到"环境一直逼我写文件、每次写入又被拒绝"的内部抱怨文本）。
+CHAT_TOOL_NAMES = {
+    "read_file", "glob", "grep", "search_api", "search_minecraft_docs",
+    "load_skill", "web_search", "web_fetch",
+    "todo", "task", "task_create", "task_get", "task_list", "task_update",
+    "ask_user_question", "compact",
+}
+
 TEST_MODE_UNLOCKED = False
+
+
+def _is_chat_mode() -> bool:
+    """chat（只读咨询）模式判定；config 延迟导入避免循环依赖。"""
+    from . import config
+    return getattr(config, "MODE", "chat") == "chat"
 
 
 def is_unlocked() -> bool:
@@ -76,6 +93,10 @@ def get_gated_tool_names():
 def unlock_test_mode() -> str:
     """Unlock the full toolset for the rest of this session and rebuild prompt."""
     global TEST_MODE_UNLOCKED
+    if _is_chat_mode():
+        # chat 只读咨询没有"测试阶段"可言；解锁会引入构建类工具与只读声明冲突
+        return "当前是只读咨询会话，无需解锁测试模式；可用工具已固定为只读集。"
+
     TEST_MODE_UNLOCKED = True
 
     from . import config
@@ -100,6 +121,8 @@ def unlock_test_mode() -> str:
 def leader_tools():
     """Return the OpenAI tools schema list for the main agent based on unlock state."""
     from .tools import tool_registry
+    if _is_chat_mode():
+        return tool_registry.schemas(include=CHAT_TOOL_NAMES, exclude=_LEADER_EXCLUDED)
     if TEST_MODE_UNLOCKED:
         return tool_registry.schemas(exclude=_LEADER_EXCLUDED)
     return tool_registry.schemas(include=BASE_TOOL_NAMES, exclude=_LEADER_EXCLUDED)

@@ -72,17 +72,20 @@ from .tools_worktree import _worktree_remove
 # 顺序约定：-100 身份 / 0 persona / 100-199 工具指引 / 200+ 规则。
 
 # rules:core(150) —— 精简版核心规则；完整细节见 docs/agent/TOOL_GUIDE.md / ERROR_LIST.md / 技能
-config.prompt_assembler.section(_PS(
-    "rules:core", 150,
-    "CORE RULES (full detail in docs/agent/TOOL_GUIDE.md / ERROR_LIST.md / skills):\n"
-    "- STRUCTURE: src/main/java = production code ONLY; ALL tests under src/test/java; NEVER put @GameTest in src/main.\n"
-    "- SELF-TEST: use run_test_gametest (runTestGameTestServer, scans src/test). NEVER use run_game_test_server for self-verification.\n"
-    "- RESOURCES (1.21.11): every item/block item needs assets/<modid>/items/<name>.json; model/texture refs are namespaced WITHOUT .json/.png; recipes use string ingredients + result {id,count}; lang item.<modid>.<name>/block.<modid>.<name> in BOTH en_us and zh_cn; pack.mcmeta uses the template form min_format/max_format (NOT supported_formats).\n"
-    "- SOURCE: do NOT read/grep mc_java_sources before writing. Use search_api only after a compile/test error; source is backup only.\n"
-    "- KNOWN ISSUES: read KNOWN_ISSUES.md before starting work (read-only; never edit/delete it).\n"
-    "- COMPLETION: All required tests passed + dist/*.jar exists -> finish immediately; never loop on harmless WARNs.\n"
-    "- ACTION: Before writing MOD code, load the most relevant skill first (load_skill). Then write code directly; do NOT pre-read mc_java_sources or starter docs. Source is backup only after errors.\n"
-))
+# 仅 mod 模式注册：这些是 MOD 制作纪律（写码/GameTest/dist jar），注入到 chat 只读
+# 咨询会话会与 SYSTEM_CHAT 的只读声明冲突，导致模型输出"环境一直逼我写文件"类抱怨。
+if config.MODE == "mod":
+    config.prompt_assembler.section(_PS(
+        "rules:core", 150,
+        "CORE RULES (full detail in docs/agent/TOOL_GUIDE.md / ERROR_LIST.md / skills):\n"
+        "- STRUCTURE: src/main/java = production code ONLY; ALL tests under src/test/java; NEVER put @GameTest in src/main.\n"
+        "- SELF-TEST: use run_test_gametest (runTestGameTestServer, scans src/test). NEVER use run_game_test_server for self-verification.\n"
+        "- RESOURCES (1.21.11): every item/block item needs assets/<modid>/items/<name>.json; model/texture refs are namespaced WITHOUT .json/.png; recipes use string ingredients + result {id,count}; lang item.<modid>.<name>/block.<modid>.<name> in BOTH en_us and zh_cn; pack.mcmeta uses the template form min_format/max_format (NOT supported_formats).\n"
+        "- SOURCE: do NOT read/grep mc_java_sources before writing. Use search_api only after a compile/test error; source is backup only.\n"
+        "- KNOWN ISSUES: read KNOWN_ISSUES.md before starting work (read-only; never edit/delete it).\n"
+        "- COMPLETION: All required tests passed + dist/*.jar exists -> finish immediately; never loop on harmless WARNs.\n"
+        "- ACTION: Before writing MOD code, load the most relevant skill first (load_skill). Then write code directly; do NOT pre-read mc_java_sources or starter docs. Source is backup only after errors.\n"
+    ))
 
 # 组装最终系统提示词并覆盖 config.SYSTEM。
 # agent.py 在 tools.py 执行完之后才绑定 SYSTEM 引用——但 `from .config import SYSTEM`
