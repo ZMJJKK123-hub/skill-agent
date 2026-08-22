@@ -757,3 +757,8 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **Equippable item pattern compiled first try**: `new Item.Properties().setId(ITEMS.key("speedy_boots")).equippable(EquipmentSlot.FEET)`; speed refresh via `inventoryTick` -> `player.addEffect(new MobEffectInstance(MobEffects.SPEED (holder), 60, 0))` server-side only; `MobEffects.SPEED` holder name confirmed.
 - **AGENT DEFECT — unread background outputs**: agent launched `gradlew runTestGameTestServer` via background + ping-wait, then re-launched repeatedly WITHOUT reading `gametest_final*.txt`; the test had actually passed ("All 1 required tests passed :)", BUILD SUCCESSFUL). Fix guidance: after any background command, READ the redirected output file before retrying; a passing gametest log + existing dist jar means DONE — stop looping.
 - Session was terminated by supervisor once completion criteria were objectively met (jar archived as speedyboots-success-1.0.0.jar).
+## 2026-08-22 itertest43 Torch Toss - projectile package + cooldown owner facts
+
+- **Vanilla `Snowball` entity class moved**: `net.minecraft.world.entity.projectile.Snowball` not found — the throwable-item entities now live in a `throwableitemprojectile` subpackage; check mc_java_sources for the exact path before importing.
+- **`Item#addCooldown(ItemStack,int)` does NOT exist on Item** (compile-proven): the overload lives on `ItemCooldowns` — call `player.getCooldowns().addCooldown(stack, ticks)`.
+- End-to-end RESULT: PASS first cycle on ox-alpha-free; jar `torchtoss-1.0.0.jar`.
