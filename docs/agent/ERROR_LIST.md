@@ -751,3 +751,9 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 
 - **Second consecutive FAIL on Feather Fall**: this time NOT the BROKEN-mod trap (anti-BROKEN checklist worked) but repeated `找不到符号` compile errors inside the GameTest sources across many attempts; session ended with no dist jar.
 ## 2026-08-21 itertest41 Lucky Rabbit Foot - FAILED (max rounds), model strategy adjustment
+
+## 2026-08-22 itertest42 Speedy Boots - equippable/inventoryTick facts + agent output-churn defect
+
+- **Equippable item pattern compiled first try**: `new Item.Properties().setId(ITEMS.key("speedy_boots")).equippable(EquipmentSlot.FEET)`; speed refresh via `inventoryTick` -> `player.addEffect(new MobEffectInstance(MobEffects.SPEED (holder), 60, 0))` server-side only; `MobEffects.SPEED` holder name confirmed.
+- **AGENT DEFECT — unread background outputs**: agent launched `gradlew runTestGameTestServer` via background + ping-wait, then re-launched repeatedly WITHOUT reading `gametest_final*.txt`; the test had actually passed ("All 1 required tests passed :)", BUILD SUCCESSFUL). Fix guidance: after any background command, READ the redirected output file before retrying; a passing gametest log + existing dist jar means DONE — stop looping.
+- Session was terminated by supervisor once completion criteria were objectively met (jar archived as speedyboots-success-1.0.0.jar).
