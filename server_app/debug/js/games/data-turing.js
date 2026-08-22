@@ -19,9 +19,20 @@ class DataTuring extends BaseGame {
     };
     this._md = () => { this.dragging = this.findNode(this.mouseX, this.mouseY); };
     this._mu = () => { this.dragging = null; };
+    this._ctx = e => {
+      e.preventDefault();
+      var r = this.canvas.getBoundingClientRect();
+      var mx = (e.clientX - r.left) * (this.w / r.width);
+      var my = (e.clientY - r.top) * (this.h / r.height);
+      var idx = this.findNode(mx, my);
+      if (idx === null) return;
+      if (this.nodes[idx].type === 'source' || this.nodes[idx].type === 'target') { toast('Cannot remove source/target'); return; }
+      this.removeNode(idx);
+    };
     this.canvas.addEventListener('mousemove', this._mm);
     this.canvas.addEventListener('mousedown', this._md);
     this.canvas.addEventListener('mouseup', this._mu);
+    this.canvas.addEventListener('contextmenu', this._ctx);
     this.btn = document.createElement('button');
     this.btn.textContent = 'RUN';
     this.btn.className = 'btn btn-p';
@@ -89,6 +100,15 @@ class DataTuring extends BaseGame {
     this.connections.push({ from: 0, to: idx });
     this.connections.push({ from: idx, to: 1 });
     toast('Added ' + type);
+  }
+
+  removeNode(idx) {
+    var type = this.nodes[idx].type;
+    this.connections = this.connections
+      .filter(function(c) { return c.from !== idx && c.to !== idx; })
+      .map(function(c) { return { from: c.from > idx ? c.from - 1 : c.from, to: c.to > idx ? c.to - 1 : c.to }; });
+    this.nodes.splice(idx, 1);
+    toast('Removed ' + type);
   }
 
   findNode(x, y) {
@@ -217,7 +237,7 @@ class DataTuring extends BaseGame {
     c.textAlign = 'right';
     c.fillText('Best: ' + this.bestScore, this.w - 8, 18);
     c.textAlign = 'left';
-    c.fillText('Drag nodes to route, click RUN, add nodes below', 8, 34);
+    c.fillText('Drag nodes, right-click to remove, RUN to test', 8, 34);
     if (this.success) {
       c.fillStyle = '#00ff9f'; c.font = '20px monospace'; c.textAlign = 'center';
       c.fillText('CORRECT! Lv.' + this.level, this.w / 2, this.h / 2);
@@ -264,5 +284,6 @@ class DataTuring extends BaseGame {
     this.canvas.removeEventListener('mousemove', this._mm);
     this.canvas.removeEventListener('mousedown', this._md);
     this.canvas.removeEventListener('mouseup', this._mu);
+    this.canvas.removeEventListener('contextmenu', this._ctx);
   }
 }

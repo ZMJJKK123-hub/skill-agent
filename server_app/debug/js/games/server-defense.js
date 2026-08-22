@@ -22,7 +22,7 @@ class ServerDefense extends BaseGame {
   }
 
   reset() {
-    this.player = { x: this.w / 2, y: this.h / 2, r: 12, spd: 2.5, pulse: 0 };
+    this.player = { x: this.w / 2, y: this.h / 2, r: 12, spd: 2.5, pulse: 0, hp: 3, invuln: 0 };
     this.enemies = [];
     this.bullets = [];
     this.particles = [];
@@ -50,6 +50,7 @@ class ServerDefense extends BaseGame {
   update() {
     this.time++;
     this.player.pulse = (this.player.pulse + 0.08) % (Math.PI * 2);
+    if (this.player.invuln > 0) this.player.invuln--;
     if (this.shakeTime > 0) this.shakeTime--;
     if (this.paused) return;
     var p = this.player;
@@ -166,7 +167,15 @@ class ServerDefense extends BaseGame {
       }
       if (dist(p.x, p.y, e.x, e.y) < p.r + e.r) {
         if (this.upgrades.shield > 0) { this.upgrades.shield--; e.hp = 0; this.spawnParticle(p.x, p.y, 0, 0, 15, '#00d4ff', 25); sfx('powerup'); return false; }
-        this.gameOver();
+        if (this.player.invuln > 0) { e.hp = 0; return false; }
+        this.player.hp--;
+        this.player.invuln = 60;
+        this.spawnParticle(p.x, p.y, 0, 0, 20, '#ff3355', 30);
+        this.shakeTime = 10;
+        this.shakeMag = 6;
+        sfx('die');
+        if (this.player.hp <= 0) { this.gameOver(); return false; }
+        e.hp = 0; // killed the one that hit
         return false;
       }
       return true;
@@ -349,11 +358,14 @@ class ServerDefense extends BaseGame {
     c.beginPath();
     c.arc(this.player.x, this.player.y, glowR + 8, 0, Math.PI * 2);
     c.fill();
-    c.fillStyle = '#00ff9f';
+    // Invulnerability blink + red tint
+    if (this.player.invuln > 0 && (Math.floor(this.player.invuln / 4) % 2 === 0)) c.globalAlpha = 0.4;
+    c.fillStyle = this.player.invuln > 0 ? '#ff5566' : '#00ff9f';
     c.beginPath();
     c.arc(this.player.x, this.player.y, this.player.r, 0, Math.PI * 2);
     c.fill();
-    c.strokeStyle = '#00ff9f';
+    c.globalAlpha = 1;
+    c.strokeStyle = this.player.invuln > 0 ? '#ff5566' : '#00ff9f';
     c.lineWidth = 1;
     c.beginPath();
     c.arc(this.player.x, this.player.y, glowR, 0, Math.PI * 2);
@@ -377,17 +389,23 @@ class ServerDefense extends BaseGame {
     c.font = '14px monospace';
     c.textAlign = 'left';
     c.fillText('Score: ' + this.score + '  Kills: ' + this.kills + '  Lv.' + this.level, 10, 20);
+    c.fillStyle = '#ff3355';
+    c.font = '9px monospace';
+    c.textAlign = 'left';
+    var hpText = '';
+    for (var hi = 0; hi < 3; hi++) hpText += (hi < this.player.hp ? '♥' : '♡');
+    c.fillText(hpText + (this.player.invuln > 0 ? '  INVULN' : ''), 10, 30);
     c.fillStyle = '#ffcc00';
     c.font = '9px monospace';
     c.textAlign = 'left';
-    c.fillText(this.waveActive ? 'WAVE ' + this.wave + ' ▸ ' + this.waveRemaining : 'Wave: ' + this.wave, 10, 34);
+    c.fillText(this.waveActive ? 'WAVE ' + this.wave + ' ▸ ' + this.waveRemaining : 'Wave: ' + this.wave, 10, 44);
     c.fillStyle = '#00d4ff';
     c.font = '10px monospace';
-    c.fillText('EXP', 10, 52);
+    c.fillText('EXP', 10, 62);
     c.fillStyle = '#1a2332';
-    c.fillRect(40, 44, 100, 8);
+    c.fillRect(40, 54, 100, 8);
     c.fillStyle = '#00d4ff';
-    c.fillRect(40, 44, 100 * (this.exp / this.expMax), 8);
+    c.fillRect(40, 54, 100 * (this.exp / this.expMax), 8);
     c.fillStyle = '#5a6a7a';
     c.font = '9px monospace';
     c.textAlign = 'right';
