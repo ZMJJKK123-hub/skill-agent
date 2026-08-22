@@ -11,7 +11,13 @@ from openai import OpenAI
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
-load_dotenv(override=True)  # override=True：确保 .env 里的 key 覆盖系统环境变量中的旧值
+# override 必须为 False：8000 网页版（run_task.py）在导入 core 前已把
+# 「用户自己的 DEEPSEEK_API_KEY」和 server 注入的每会话 DSH_MODEL /
+# DSH_BASE_URL 写进环境变量，若这里用 .env 覆盖，用户的 Key 与模型选择
+# 会被仓库 .env（8001 清小搭配置）顶掉——实测曾导致正式服所有任务都走
+# 服务器 owner 的 Key 计费。8001 侧不受影响：main.py / session_daemon.py
+# 在导入 core 之前已显式 load_dotenv(..., override=True) 加载过 .env。
+load_dotenv(override=False)
 
 # ---------- 日志系统 ----------
 logging.basicConfig(
