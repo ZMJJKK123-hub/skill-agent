@@ -422,6 +422,12 @@ def main() -> int:
     print(f"[run_task] 模式={mode} | 工作目录 => {session_dir}", flush=True)
 
     # 2. 注入用户自己的 API Key（只在用户自己机器/会话里生效，不落盘）
+    #    同时声明「不加载仓库 .env」：8000 网页版用户完全自备 Key/模型/地址，
+    #    服务器 owner 的 .env（8001 清小搭配置，含 DEEPSEEK/TSINGHUA 密钥）
+    #    不得进入用户会话进程——既避免计费串号，也避免密钥经 env 泄漏给用户。
+    #    必须在任何 core 导入之前设置（首个 core 导入在本函数稍后的
+    #    core.conversation / core.agent）。
+    os.environ["DSH_NO_ENV_FILE"] = "1"
     os.environ["DEEPSEEK_API_KEY"] = api_key
 
     # 2.5 立即把用户消息写入对话历史（必须在 import agent 之前！）

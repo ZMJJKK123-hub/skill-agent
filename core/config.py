@@ -17,7 +17,12 @@ sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 # 会被仓库 .env（8001 清小搭配置）顶掉——实测曾导致正式服所有任务都走
 # 服务器 owner 的 Key 计费。8001 侧不受影响：main.py / session_daemon.py
 # 在导入 core 之前已显式 load_dotenv(..., override=True) 加载过 .env。
-load_dotenv(override=False)
+# DSH_NO_ENV_FILE=1（由 run_task.py 设置）：8000 用户会话进程完全不加载
+# 仓库 .env——owner 的任何密钥/配置都不得进入用户进程。
+if os.environ.get("DSH_NO_ENV_FILE") == "1":
+    pass  # 8000 网页版：用户自备配置，跳过 .env 加载
+else:
+    load_dotenv(override=False)
 
 # ---------- 日志系统 ----------
 logging.basicConfig(
