@@ -17,7 +17,7 @@ export function resolveModelConfig(state: Pick<UiState, 'apiKey' | 'model' | 'pr
   model: string
 } {
   const { apiKey, model, providers } = state
-  if (model === 'DeepSeek-V4-Flash-0731' || model === 'DeepSeek-V4-Flash-0731') {
+  if (model === 'DeepSeek-V4-Flash-0731') {
     return { apiKey, baseUrl: 'https://llmapi.paratera.com', model }
   }
   const p = providers.find((p) => p.model.split(',').map((s) => s.trim()).includes(model))

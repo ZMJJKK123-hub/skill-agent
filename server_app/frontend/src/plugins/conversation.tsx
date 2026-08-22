@@ -71,7 +71,6 @@ function ToolResultRow({ ev }: { ev: EventItem }) {
   // 去掉首行 "success|failed" 标记，只显示输出内容
   const lines = ev.content.split('\n')
   const body = (lines.slice(1).join('\n').trim() || (lines[0] ?? '')).trim()
-  const preview = body.split('\n').slice(0, 6).join('\n')
   return (
     <div className="flex justify-start">
       <div className={`w-full max-w-[90%] overflow-hidden rounded-lg border ${ok ? 'border-emerald-500/25' : 'border-red-500/30'}`}>
@@ -86,7 +85,7 @@ function ToolResultRow({ ev }: { ev: EventItem }) {
         </button>
         {open && (
           <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all bg-black/30 px-2 py-1.5 font-mono text-[11px] leading-relaxed text-muted">
-            {open ? body : preview}
+            {body}
           </pre>
         )}
       </div>
@@ -395,8 +394,6 @@ function Composer() {
   const running = sess.phase === 'running' || sess.phase === 'creating'
   const paused = sess.phase === 'paused' || sess.paused
 
-  const models = ['DeepSeek-V4-Flash-0731', 'DeepSeek-V4-Flash-0731', ...providers.map((p) => p.model)]
-
   const send = () => {
     const prompt = text.trim()
     if (!prompt) return
@@ -487,7 +484,6 @@ function Composer() {
               className="rounded-md border border-line bg-field px-2 py-1 text-xs text-muted outline-none"
             >
               <optgroup label="DeepSeek">
-                <option value="DeepSeek-V4-Flash-0731">DeepSeek-V4-Flash-0731</option>
                 <option value="DeepSeek-V4-Flash-0731">DeepSeek-V4-Flash-0731</option>
               </optgroup>
               {providers.map((p) => (

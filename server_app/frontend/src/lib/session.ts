@@ -217,6 +217,20 @@ export async function resumeTask() {
 export async function poll() {
   const sid = state.sessionId
   if (!sid) return
+  // 重入保护：poll 里有 3+ 个串行请求，慢网络下单次可能超过 2s 轮询间隔；
+  // 不加保护时两次 poll 用同一个旧 cursor → 事件重复追加、自动续跑重复触发。
+  if (pollInFlight) return
+  pollInFlight = true
+  try {
+    await _pollOnce(sid)
+  } finally {
+    pollInFlight = false
+  }
+}
+
+let pollInFlight = false
+
+async function _pollOnce(sid: string) {
   try {
     const ev = await api.getEvents(sid, state.cursor ?? undefined)
     if (state.sessionId !== sid) return
@@ -282,11 +296,12 @@ function extractFinalReply(logTail: string): string | null {
     const after = logTail.slice(idx + marker.length).trim()
     if (after) return after
   }
-  // 兜底：取最后一行（跳过 [run_task]/[思考] 前缀行）
+  // 兜底：取最后一行（跳过各种 [前缀] 噪音行——工具/思考/待办/队友输出等）
+  const noisePrefixes = ['[run_task]', '[思考]', '[todo]', '[reply]', '[tool]', '[tool-result]', '[teammate', '[subagent', '[supervisor']
   const lines = logTail.split(/\r?\n/).filter((l) => l.trim())
   for (let i = lines.length - 1; i >= 0; i--) {
     const line = lines[i].trim()
-    if (line && !line.startsWith('[run_task]') && !line.startsWith('[思考]') && !line.startsWith('[todo]') && !line.startsWith('[reply]')) {
+    if (line && !noisePrefixes.some((p) => line.startsWith(p))) {
       return line
     }
   }
