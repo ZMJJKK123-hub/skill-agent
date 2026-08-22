@@ -785,3 +785,8 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **Session hit the 100-round cap without a PASS** (repeated compile errors in test sources: CreativeModeTab titleKey, shouldDrop helper placement, edit_file text-not-found churn). dist jar never produced.
 - **GLM-4.5-Flash scorecard so far**: 1 success (Honey Slide, single-hook block) vs 2 failures (Feather Fall composition, Rabbit Foot event+config+tab).
 - STRATEGY: while on GLM-4.5-Flash, keep tasks to ONE hook + pure-function tests; put exact event/class names in the prompt; avoid creative-tab and tooltip requirements unless necessary.
+## 2026-08-22 infra - switched endpoint to opencode.ai zen (ox-alpha-free)
+
+- Provider switch: `DSH_BASE_URL=https://opencode.ai/zen/go/v1/`, model `ox-alpha-free`, new API key in `.env`.
+- Probe verified: normal content response, tool_calls attribute present (OpenAI-compatible).
+- GLM-4.5-Flash scorecard closed at 1 success / 2 failures; ox-alpha-free starts at itertest42.
