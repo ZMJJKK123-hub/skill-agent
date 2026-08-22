@@ -267,7 +267,12 @@ function Messages() {
           <button onClick={() => regenerate()} className="hoverable rounded-lg border border-line px-3 py-1.5 text-sm">
             🔄 {t('conv.regenerate')}
           </button>
-          {phase === 'finished' && <span className="text-xs text-emerald-400">{t('conv.done')}</span>}
+          {phase === 'finished' &&
+            (/(任务异常终止|Traceback \(most recent call last\))/.test(sess.logTail) ? (
+              <span className="text-xs text-red-400">✗ {t('conv.crashed')}</span>
+            ) : (
+              <span className="text-xs text-emerald-400">{t('conv.done')}</span>
+            ))}
         </div>
       )}
     </div>

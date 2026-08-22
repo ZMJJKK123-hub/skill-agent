@@ -104,8 +104,10 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
         await api.startTask(state.sessionId, prompt, mode, false, settings.model, settings.baseUrl,
           settings.visionEnabled, settings.visionApiKey, settings.visionBaseUrl, settings.visionModel,
           settings.autoMode, settings.searchApiKey)
-        // 本地乐观显示排队消息（chat 模式）
+        // 本地乐观显示排队消息：chat 模式走 chatMessages 气泡；
+        // mod 模式只渲染 prompts，也要 push 进去（否则插话后界面无反馈）
         setState({
+          prompts: [...state.prompts, prompt],
           chatMessages: [...state.chatMessages, { role: 'user', content: prompt }],
           pending: state.pending + 1,
         })
