@@ -25,6 +25,7 @@ class ServerDefense extends BaseGame {
     this.player = { x: this.w / 2, y: this.h / 2, r: 12, spd: 2.5, pulse: 0, hp: 3, invuln: 0 };
     this.enemies = [];
     this.bullets = [];
+    this.enemyBullets = [];
     this.particles = [];
     this.shards = [];
     this.score = 0;
@@ -109,6 +110,11 @@ class ServerDefense extends BaseGame {
       var dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy) || 1;
       e.x += dx / d * e.spd;
       e.y += dy / d * e.spd;
+      if (e.type === '500' && this.time % 80 === 0 && d < 400) {
+        var bdx = dx / d, bdy = dy / d;
+        this.enemyBullets.push({ x: e.x, y: e.y, dx: bdx * 2.5, dy: bdy * 2.5, r: 4, life: 120 });
+        sfx('click');
+      }
       if (this.upgrades.range > 0 && this.time % 30 === 0) {
         var rd = 60 + this.upgrades.range * 30;
         if (d < rd) {
@@ -130,6 +136,25 @@ class ServerDefense extends BaseGame {
       });
     });
     this.bullets = this.bullets.filter(b => !b.dead);
+
+    this.enemyBullets.forEach(eb => { eb.x += eb.dx; eb.y += eb.dy; eb.life--; });
+    this.enemyBullets = this.enemyBullets.filter(eb => eb.life > 0 && eb.x > -20 && eb.x < this.w + 20 && eb.y > -20 && eb.y < this.h + 20);
+    var self = this;
+    this.enemyBullets.forEach(eb => {
+      if (dist(eb.x, eb.y, p.x, p.y) < p.r + eb.r) {
+        eb.life = 0;
+        if (this.upgrades.shield > 0) { this.upgrades.shield--; this.spawnParticle(p.x, p.y, 0, 0, 15, '#00d4ff', 25); sfx('powerup'); }
+        else if (this.player.invuln <= 0) {
+          this.player.hp--;
+          this.player.invuln = 60;
+          this.spawnParticle(p.x, p.y, 0, 0, 20, '#ff3355', 30);
+          this.shakeTime = 10;
+          sfx('die');
+          if (this.player.hp <= 0) { this.gameOver(); }
+        }
+      }
+    });
+    this.enemyBullets = this.enemyBullets.filter(eb => eb.life > 0);
 
     // Enemy-enemy collision (soft push)
     for (var ai = 0; ai < this.enemies.length; ai++) {
@@ -349,6 +374,17 @@ class ServerDefense extends BaseGame {
       c.fillStyle = 'rgba(0,255,159,.3)';
       c.beginPath();
       c.arc(b.x, b.y, 6, 0, Math.PI * 2);
+      c.fill();
+    });
+    // Enemy bullets (orange)
+    this.enemyBullets.forEach(function(eb) {
+      c.fillStyle = '#ff8800';
+      c.beginPath();
+      c.arc(eb.x, eb.y, eb.r, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = 'rgba(255,136,0,.4)';
+      c.beginPath();
+      c.arc(eb.x, eb.y, eb.r + 4, 0, Math.PI * 2);
       c.fill();
     });
 
