@@ -419,6 +419,12 @@ function Composer() {
     setText('')
   }
 
+  // 可发送 = 已登录且有可用 Key（官方 Key 或自定义 provider）。
+  // 输入框始终可见：未就绪时置灰 + 顶部提示条，而不是整个藏掉
+  // （原来的条件渲染在首访未登录时什么都不显示，用户找不到输入框）。
+  const canChat = !!user && (!!apiKey || providers.length > 0)
+  const notReadyReason = !user ? t('auth.loginFirst') : t('auth.needApiKey')
+
   // 运行中：红方块停止按钮；暂停后：绿箭头继续按钮；空闲：发送按钮
   const actionButton = running ? (
     <button
@@ -443,7 +449,8 @@ function Composer() {
   ) : (
     <button
       onClick={send}
-      disabled={!text.trim()}
+      disabled={!text.trim() || !canChat}
+      title={canChat ? '' : notReadyReason}
       className="rounded-lg bg-forge-500 px-4 py-1.5 text-sm font-medium text-ink-950 hover:bg-forge-400 disabled:opacity-40"
     >
       {t('conv.send')}
@@ -453,30 +460,31 @@ function Composer() {
   return (
     <div className="mx-auto max-w-3xl">
       <QuestionCard />
-      {(!user || (!apiKey && providers.length === 0)) && sess.sessionId ? (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-400">
-          {!user ? t('auth.loginFirst') : t('auth.needApiKey')}
+      {!canChat && (
+        <div className="mb-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-400">
+          {notReadyReason}
         </div>
-      ) : (!user || (!apiKey && providers.length === 0)) && !sess.sessionId ? null : (
-        <div className="rounded-xl border border-line bg-panel p-3">
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                if (running || paused) {
-                  // 运行中/暂停后回车：排队发送
-                  if (text.trim()) send()
-                } else if (text.trim()) {
-                  send()
-                }
+      )}
+      <div className="rounded-xl border border-line bg-panel p-3">
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault()
+              if (running || paused) {
+                // 运行中/暂停后回车：排队发送
+                if (text.trim()) send()
+              } else if (text.trim()) {
+                send()
               }
-            }}
-            rows={3}
-            placeholder={t('conv.placeholder')}
-            className="w-full resize-none bg-transparent text-sm outline-none placeholder:text-faint"
-          />
+            }
+          }}
+          rows={3}
+          disabled={!canChat}
+          placeholder={canChat ? t('conv.placeholder') : notReadyReason}
+          className="w-full resize-none bg-transparent text-sm outline-none placeholder:text-faint disabled:opacity-60"
+        />
           <div className="mt-2 flex items-center gap-2">
             <select
               value={model}
@@ -501,7 +509,6 @@ function Composer() {
             {actionButton}
           </div>
         </div>
-      )}
     </div>
   )
 }
