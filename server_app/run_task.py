@@ -321,10 +321,14 @@ def daemon_loop(session_dir: Path, session_root_path: Path, mode: str) -> None:
             # 这里只需清空队列文件，历史里已有该消息，避免 load 时重复）
             last_activity = _time.time()
             _set_state("working")  # server 据此转 running
+            # 消费 → 组装上下文 → 跑一轮。任何一步失败都必须把状态
+            # 回退到 waiting：否则 server 会把空闲 daemon 当成"运行中"，
+            # 前端无限转圈（实测：一轮异常后状态永久卡在 working）。
             try:
                 drain_pending(session_root_path)
             except Exception as e:
                 print(f"[run_task] drain_pending 失败: {e}", flush=True)
+                _set_state("waiting")
                 continue
 
             # 组装上下文：历史已包含新消息（enqueue_pending 同步写历史）。
@@ -333,9 +337,11 @@ def daemon_loop(session_dir: Path, session_root_path: Path, mode: str) -> None:
                 messages = load_recent_history(session_root_path)
             except Exception as e:
                 print(f"[run_task] 加载对话历史失败（跳过本轮）: {e}", flush=True)
+                _set_state("waiting")
                 continue
             if not messages:
                 print("[run_task] daemon 轮无历史消息，跳过", flush=True)
+                _set_state("waiting")
                 continue
 
             try:
@@ -344,6 +350,7 @@ def daemon_loop(session_dir: Path, session_root_path: Path, mode: str) -> None:
                 import traceback
                 print(f"[run_task] daemon 轮异常（继续等待）: {e}", flush=True)
                 traceback.print_exc()
+                _set_state("waiting")
                 continue
 
             # 本轮结束，回到空闲等待（server 据此再次显示"完成"）
@@ -422,10 +429,11 @@ def main() -> int:
     #     用户发消息后立刻点开历史会话会读到空记录（实测 bug）。
     #     conversation 模块很轻，不触发 openai，可安全提前导入。
     #     chat 和 mod 模式都写：历史会话打开时能显示用户 prompt 气泡。
-    if mode in ("chat", "mod"):
+    #     空 prompt（自动续跑 resume）不写——否则历史里出现空气泡。
+    if mode in ("chat", "mod") and task_prompt:
         try:
             from core.conversation import append_user as _early_append_user
-            _early_append_user(session_root_path, task_prompt or "")
+            _early_append_user(session_root_path, task_prompt)
         except Exception as e:
             print(f"[run_task] 提前写入历史失败: {e}", flush=True)
 
@@ -466,7 +474,12 @@ def main() -> int:
         # 把当前 prompt 作为本轮 user 消息（历史已在步骤 2.5 提前写入）。
         # 修复：如果历史最后一条已经是这条 prompt，就不再重复追加，
         # 否则会出现 `hi` + `hi` 两条完全相同的 user 消息。
-        if messages and messages[-1].get("role") == "user" and messages[-1].get("content") == task_prompt:
+        # 空 prompt（自动续跑 resume）不追加——排队消息已在历史里。
+        if not task_prompt:
+            if not messages:
+                print("[run_task] 无 prompt 且无历史可续，退出", flush=True)
+                return 1
+        elif messages and messages[-1].get("role") == "user" and messages[-1].get("content") == task_prompt:
             print("[run_task] 历史已包含当前 prompt，跳过重复追加", flush=True)
         else:
             messages.append({"role": "user", "content": task_prompt})

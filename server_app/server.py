@@ -309,7 +309,6 @@ def _purge_session(sess: Session) -> None:
             pass
     sessions.pop(sess.id, None)
     shutil.rmtree(sess.mod_dir.parent, ignore_errors=True)
-    auth_store.prune_expired()
 
 
 def _is_safe_session_id(session_id: str) -> bool:
@@ -328,6 +327,33 @@ def _purge_session_dir(session_id: str) -> None:
     sess_dir = SESSIONS_DIR / session_id
     if sess_dir.exists():
         shutil.rmtree(sess_dir, ignore_errors=True)
+
+
+def _purge_session_for_user(session_id: str, username: str) -> bool:
+    """删除接口专用：目录级清理，但必须先校验归属，防止跨用户删除。
+
+    会话在内存 → 用内存 owner 判断；不在内存（服务重启后由调用方恢复、
+    或并发删除竞态）→ 读 owner.txt 判断。归属他人一律不动并返回 False；
+    无 owner.txt 的遗留孤儿目录视为无主，允许清理。
+    """
+    if not _is_safe_session_id(session_id):
+        return False
+    sess = sessions.get(session_id)
+    if sess is not None:
+        if sess.owner != username:
+            return False
+        _purge_session(sess)
+        return True
+    owner_txt = SESSIONS_DIR / session_id / "owner.txt"
+    if owner_txt.exists():
+        try:
+            owner = owner_txt.read_text(encoding="utf-8").strip()
+        except OSError:
+            return False
+        if owner != username:
+            return False
+    _purge_session_dir(session_id)
+    return True
 
 
 # 废弃会话清理：用户创建会话但从未开始生成（无 run.log / mod.zip），
@@ -528,21 +554,37 @@ def prepare_mod_session(
     session_id: str,
     authorization: str = Header(default=""),
     api_key: str = Header(default="", alias="X-API-Key"),
-    game: str = "minecraft",
-    loader: str = "forge",
-    version: str = "1.21.11",
-    model: str = "DeepSeek-V4-Flash-0731",
-    base_url: str = "https://llmapi.paratera.com",
-    sandbox: str = "full-access",
+    game: str = "",
+    loader: str = "",
+    version: str = "",
+    model: str = "",
+    base_url: str = "",
+    sandbox: str = "",
 ):
     """为会话准备 mod 工作区：把模板 + MC 源码复制到 <session>/mod/（幂等）。
 
     由前端在用户输入 /mod 并确认后调用；复制过（mod/ 有内容）则跳过。
-    api_key/game/loader/version 走 query/header，与会话已存参数一致。
+    query 参数非空时同步覆盖会话配置（game/loader/version/model/base_url/
+    sandbox），空 = 沿用会话创建时的值——之前这些参数被静默忽略，调用方
+    传了不同配置也不会生效。
     """
     username = _auth_username(authorization)
     sess = _get_session(session_id)
     _assert_owner(sess, username)
+
+    # 同步调用方显式传入的配置（空值 = 不改）
+    if game:
+        sess.game = game
+    if loader:
+        sess.loader = loader
+    if version:
+        sess.version = version
+    if model:
+        sess.model = model
+    if base_url:
+        sess.base_url = base_url
+    if sandbox:
+        sess.sandbox = sandbox
 
     # 幂等：mod/ 已存在模板内容则跳过（防止重复 /mod 重复复制）
     already = False
@@ -938,13 +980,16 @@ def download_mod(session_id: str, authorization: str = Header(default="")):
     with _download_lock:
         # 缓存逻辑：若已存在 mod.zip 且比所有源码文件都新，则直接复用，
         # 避免每次点击都重新打包 11MB → 前端长时间无反馈 + 重复点击堆积。
+        # newest_src 只统计会进 zip 的文件：build/、.git/ 等被排除的目录
+        # 变化不应触发重打包（否则 agent 每次构建后都要白白重压一次）。
         need_build = True
         if zip_path.exists() and sess.mod_dir.exists():
             zip_mtime = zip_path.stat().st_mtime
             newest_src = max(
                 (p.stat().st_mtime
                  for p in sess.mod_dir.rglob("*")
-                 if p.is_file() and "mc_java_sources" not in p.parts),
+                 if p.is_file()
+                 and not any(part in skip for part in p.relative_to(sess.mod_dir).parts)),
                 default=0,
             )
             if zip_mtime >= newest_src:
@@ -1030,9 +1075,6 @@ def get_events(session_id: str, cursor: str = "", authorization: str = Header(de
     username = _auth_username(authorization)
     sess = _get_session(session_id)
     _assert_owner(sess, username)
-    if not sess.proc or sess.proc.poll() is None:
-        # 未启动：允许读历史日志
-        pass
     import json as _json
     try:
         cur = _json.loads(cursor) if cursor else None
@@ -1314,23 +1356,25 @@ def delete_history(session_id: str = "", authorization: str = Header(default="")
         if not _is_safe_session_id(session_id):
             raise HTTPException(status_code=400, detail="非法 session_id")
         auth_store.remove_history(username, session_id)
-        sess = sessions.get(session_id)
-        if sess and sess.owner == username:
-            _purge_session(sess)
-        else:
-            _purge_session_dir(session_id)
+        _purge_session_for_user(session_id, username)
         return {"history": _history_with_jar(username)}
 
-    # 全部删除：先删除每个历史会话的磁盘目录，再清历史表
-    for h in auth_store.load_history(username):
-        sid = h.get("sessionId")
-        if not sid:
-            continue
-        sess = sessions.get(sid)
-        if sess and sess.owner == username:
-            _purge_session(sess)
-        else:
-            _purge_session_dir(sid)
+    # 全部删除：会话目录（owner.txt）是侧栏列表的事实来源——按 owner 扫描
+    # 逐个清理（不能只清 history JSON，否则未 upsert 进 history 的会话仍会
+    # 显示在侧栏），最后清空历史表。
+    if SESSIONS_DIR.exists():
+        for child in list(SESSIONS_DIR.iterdir()):
+            if not child.is_dir():
+                continue
+            owner_txt = child / "owner.txt"
+            if not owner_txt.exists():
+                continue
+            try:
+                if owner_txt.read_text(encoding="utf-8").strip() != username:
+                    continue
+            except OSError:
+                continue
+            _purge_session_for_user(child.name, username)
     auth_store.clear_history(username)
     return {"history": []}
 
@@ -1343,11 +1387,7 @@ def delete_history_batch(req: HistoryBatchDelete, authorization: str = Header(de
         if not _is_safe_session_id(sid):
             raise HTTPException(status_code=400, detail="非法 session_id")
         auth_store.remove_history(username, sid)
-        sess = sessions.get(sid)
-        if sess and sess.owner == username:
-            _purge_session(sess)
-        else:
-            _purge_session_dir(sid)
+        _purge_session_for_user(sid, username)
     return {"history": _history_with_jar(username)}
 
 

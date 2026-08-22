@@ -83,14 +83,21 @@ def register(username: str, password: str) -> dict:
 
 
 def check_credentials(username: str, password: str) -> dict | None:
-    """校验用户名密码，正确返回用户信息，否则返回 None。"""
+    """校验用户名密码，正确返回用户信息，否则返回 None。
+
+    用户记录损坏（salt 非法/字段缺失）按"密码错误"处理，不让 500 泄出。
+    """
     name = username.strip()
     users = _load_json(USERS_FILE, {})
     rec = users.get(name)
-    if not rec:
+    if not isinstance(rec, dict):
         return None
-    salt = bytes.fromhex(rec["salt"])
-    if _hash_password(password, salt) != rec["hash"]:
+    try:
+        salt = bytes.fromhex(rec["salt"])
+        expected = rec["hash"]
+    except (KeyError, TypeError, ValueError):
+        return None
+    if _hash_password(password, salt) != expected:
         return None
     return {"username": name}
 
