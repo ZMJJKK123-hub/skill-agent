@@ -762,3 +762,8 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **Vanilla `Snowball` entity class moved**: `net.minecraft.world.entity.projectile.Snowball` not found — the throwable-item entities now live in a `throwableitemprojectile` subpackage; check mc_java_sources for the exact path before importing.
 - **`Item#addCooldown(ItemStack,int)` does NOT exist on Item** (compile-proven): the overload lives on `ItemCooldowns` — call `player.getCooldowns().addCooldown(stack, ticks)`.
 - End-to-end RESULT: PASS first cycle on ox-alpha-free; jar `torchtoss-1.0.0.jar`.
+## 2026-08-22 itertest44 Glow Berry Jam - FoodProperties.effect signature
+
+- **`FoodProperties.Builder.effect(...)` takes TWO args**: `(Supplier<MobEffectInstance>, float probability)` — e.g. `.effect(() -> new MobEffectInstance(MobEffects.GLOWING, 200, 0), 1.0F)`; a bare single-supplier call does not compile.
+- Nutrition/saturation builder methods compiled as expected; food route avoids events entirely (good fit for simple items).
+- End-to-end RESULT: PASS on ox-alpha-free; jar `glowberryjam-1.0.0.jar`.
