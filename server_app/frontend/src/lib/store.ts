@@ -10,19 +10,22 @@ export interface Provider {
 }
 
 // 把「选中的模型」解析成后端实际要用的 (apiKey, baseUrl, model)：
-// 官方模型走 DeepSeek；自定义模型匹配到对应 provider 的 key/地址。
+// 官方模型走 DeepSeek 官方 API；自定义模型匹配到对应 provider 的 key/地址。
+export const OFFICIAL_MODEL = 'deepseek-v4-flash'
+export const OFFICIAL_BASE_URL = 'https://api.deepseek.com'
+
 export function resolveModelConfig(state: Pick<UiState, 'apiKey' | 'model' | 'providers'>): {
   apiKey: string
   baseUrl: string
   model: string
 } {
   const { apiKey, model, providers } = state
-  if (model === 'DeepSeek-V4-Flash-0731') {
-    return { apiKey, baseUrl: 'https://llmapi.paratera.com', model }
+  if (model === OFFICIAL_MODEL) {
+    return { apiKey, baseUrl: OFFICIAL_BASE_URL, model }
   }
   const p = providers.find((p) => p.model.split(',').map((s) => s.trim()).includes(model))
   if (p) return { apiKey: p.apiKey, baseUrl: p.baseUrl, model }
-  return { apiKey, baseUrl: 'https://llmapi.paratera.com', model: 'DeepSeek-V4-Flash-0731' }
+  return { apiKey, baseUrl: OFFICIAL_BASE_URL, model: OFFICIAL_MODEL }
 }
 
 export type Locale = 'zh' | 'en'
@@ -68,7 +71,7 @@ function loadState(): UiState {
     version: '1.21.11',
     locale: 'zh',
     theme: 'dark',
-    model: 'DeepSeek-V4-Flash-0731',
+    model: OFFICIAL_MODEL,
     sandbox: 'full-access',
     providers: [],
     disabledPlugins: [],
@@ -86,6 +89,14 @@ function loadState(): UiState {
       const loaded = { ...base, ...(JSON.parse(raw) as Partial<UiState>) }
       // 设置插件永远启用：清掉历史上可能被误关的持久化状态
       loaded.disabledPlugins = (loaded.disabledPlugins || []).filter((p) => p !== 'modforge-settings')
+      // 模型迁移：持久化的模型既不是官方 id、也不在任何自定义 provider 里
+      // （如已下线的 DeepSeek-V4-Flash-0731）→ 回退官方默认，避免下拉框空值
+      if (loaded.model && loaded.model !== OFFICIAL_MODEL) {
+        const known = (loaded.providers || []).some((p) =>
+          p.model.split(',').map((s) => s.trim()).includes(loaded.model!),
+        )
+        if (!known) loaded.model = OFFICIAL_MODEL
+      }
       return loaded
     }
   } catch {

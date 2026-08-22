@@ -21,52 +21,72 @@ function thinkingName(ev: EventItem, t: (k: string) => string): string {
   }
 }
 
-/** DSH 风格思考行：默认折叠只显示第一行，点击展开全部 */
-function ThinkingRow({ ev, t }: { ev: EventItem; t: (k: string) => string }) {
+/** 思考过程聚合组：默认完全收起成一行，点击才展开全部内容（防刷屏） */
+function ThinkingGroup({ events, t }: { events: EventItem[]; t: (k: string) => string }) {
   const [open, setOpen] = useState(false)
-  const lines = ev.content.split('\n').filter((l) => l.trim())
-  const first = lines[0] ?? ''
+  if (events.length === 0) return null
+  const totalLines = events.reduce(
+    (n, ev) => n + ev.content.split('\n').filter((l) => l.trim()).length, 0)
+  const firstName = thinkingName(events[events.length - 1], t)
   return (
     <div className="flex justify-start">
-      <div className="max-w-[85%]">
-        <div className="mb-0.5 text-[11px] text-violet-400/80">{thinkingName(ev, t)}</div>
+      <div className="max-w-[85%] w-full">
         <button
           onClick={() => setOpen((v) => !v)}
-          className="w-full rounded-2xl rounded-bl-sm border border-violet-500/20 bg-violet-500/5 px-3 py-1.5 text-left text-xs leading-relaxed text-violet-200/80 hover:bg-violet-500/10"
+          className="w-full rounded-lg border border-violet-500/20 bg-violet-500/5 px-3 py-1.5 text-left text-xs text-violet-300/80 hover:bg-violet-500/10"
         >
-          <div className="whitespace-pre-wrap break-all">{open ? ev.content : first}</div>
-          {!open && lines.length > 1 && (
-            <div className="mt-1 text-[10px] text-faint">… 思考中（点击展开 {lines.length - 1} 行）</div>
-          )}
-          {open && lines.length > 1 && (
-            <div className="mt-1 text-[10px] text-faint">▲ 收起</div>
-          )}
+          <span className="mr-1">🧠</span>
+          {firstName} · 思考过程 {events.length} 段 / {totalLines} 行
+          <span className="ml-1 text-faint">{open ? '▲ 收起' : '▾ 点击展开'}</span>
         </button>
+        {open && (
+          <div className="mt-1 max-h-72 space-y-2 overflow-auto rounded-lg border border-violet-500/15 bg-violet-500/5 px-3 py-2">
+            {events.map((ev, i) => (
+              <div key={ev.id} className="text-xs leading-relaxed">
+                <div className="mb-0.5 text-[11px] text-violet-400/70">#{i + 1} {thinkingName(ev, t)}</div>
+                <div className="whitespace-pre-wrap break-all text-violet-200/70">{ev.content}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
-/** 工具调用行：特殊颜色标注 工具名 + 参数/命令 */
+/** 工具调用行：默认单行（工具名 + 截断参数），点击展开完整参数 */
 function ToolCallRow({ ev }: { ev: EventItem }) {
+  const [open, setOpen] = useState(false)
   const tool = ev.tool ?? 'tool'
   const peerLabel = ev.peer === 'supervisor' ? '🛡 ' : ev.peer === 'teammate' ? '👥 ' : ev.peer === 'subagent' ? '🔬 ' : ''
+  const oneLine = ev.content.replace(/\s+/g, ' ').trim()
   return (
     <div className="flex justify-start">
-      <div className="max-w-[90%] rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-1.5">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="max-w-[90%] w-full rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-1.5 text-left hover:bg-amber-500/10"
+      >
         <div className="flex items-center gap-1.5 text-xs">
-          <span className="font-semibold text-amber-400">🔧 {peerLabel}{tool}</span>
-          <span className="text-faint">调用</span>
+          <span className="shrink-0 font-semibold text-amber-400">🔧 {peerLabel}{tool}</span>
+          {!open ? (
+            <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-amber-100/70">{oneLine}</span>
+          ) : (
+            <span className="flex-1 text-[10px] text-faint">▲ 收起</span>
+          )}
         </div>
-        <div className="mt-0.5 whitespace-pre-wrap break-all font-mono text-[11px] text-amber-100/70">{ev.content}</div>
-      </div>
+        {open && (
+          <div className="mt-1 max-h-56 overflow-auto whitespace-pre-wrap break-all font-mono text-[11px] text-amber-100/70">
+            {ev.content}
+          </div>
+        )}
+      </button>
     </div>
   )
 }
 
-/** 工具结果：代码块样式（成功绿边 / 失败红边），可折叠 */
+/** 工具结果：默认只显示一行状态头（成功绿/失败红），点击展开输出内容 */
 function ToolResultRow({ ev }: { ev: EventItem }) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const ok = ev.status !== 'failed'
   // 去掉首行 "success|failed" 标记，只显示输出内容
   const lines = ev.content.split('\n')
@@ -79,9 +99,9 @@ function ToolResultRow({ ev }: { ev: EventItem }) {
           className={`flex w-full items-center gap-1.5 px-2 py-1 text-[10px] font-medium ${ok ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}
         >
           <span>{ok ? '✓' : '✗'}</span>
-          <span>{ok ? '执行成功' : '执行失败'}</span>
-          <span className="flex-1" />
-          <span>{open ? '▲ 收起' : `▼ 展开（${body.length} 字符）`}</span>
+          <span className="shrink-0">{ok ? '执行成功' : '执行失败'}</span>
+          {!open && <span className="min-w-0 flex-1 truncate text-left opacity-60">{body.replace(/\s+/g, ' ').slice(0, 80)}</span>}
+          <span className="shrink-0">{open ? '▲ 收起' : `▼ ${body.length} 字符`}</span>
         </button>
         {open && (
           <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all bg-black/30 px-2 py-1.5 font-mono text-[11px] leading-relaxed text-muted">
@@ -118,11 +138,9 @@ function LogRow({ ev }: { ev: EventItem }) {
   )
 }
 
-/** DSH 风格事件渲染器：按类型分派 */
+/** DSH 风格事件渲染器：按类型分派（thinking 由 ThinkingGroup 聚合渲染） */
 function EventView({ ev, t }: { ev: EventItem; t: (k: string) => string }) {
   switch (ev.type) {
-    case 'thinking':
-      return <ThinkingRow ev={ev} t={t} />
     case 'tool_call':
       return <ToolCallRow ev={ev} />
     case 'tool_result':
@@ -221,8 +239,10 @@ function Messages() {
           </div>
         )}
 
-        {/* DSH 风格事件流：chat / mod 都实时展示 agent 的思考、工具调用、结果与日志 */}
-        {shownEvents.map((ev) => (
+        {/* DSH 风格事件流：思考聚合为一个默认收起的分组（防刷屏），*/}
+        {/* 工具调用/结果/日志按行实时展示 */}
+        <ThinkingGroup events={shownEvents.filter((e) => e.type === 'thinking')} t={t} />
+        {shownEvents.filter((e) => e.type !== 'thinking').map((ev) => (
           <EventView key={ev.id} ev={ev} t={t} />
         ))}
 
@@ -497,7 +517,7 @@ function Composer() {
               className="rounded-md border border-line bg-field px-2 py-1 text-xs text-muted outline-none"
             >
               <optgroup label="DeepSeek">
-                <option value="DeepSeek-V4-Flash-0731">DeepSeek-V4-Flash-0731</option>
+                <option value="deepseek-v4-flash">deepseek-v4-flash（官方）</option>
               </optgroup>
               {providers.map((p) => (
                 <optgroup key={p.id} label={p.name}>
