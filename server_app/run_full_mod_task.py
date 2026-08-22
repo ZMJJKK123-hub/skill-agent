@@ -80,6 +80,9 @@ def main() -> int:
         "DSH_AUTO_MODE": "1",
         "DSH_PROMPT_FILE": str(prompt_file),
         "DEEPSEEK_API_KEY": api_key,
+        "DSH_BASE_URL": env_extra.get("DSH_BASE_URL", os.environ.get("DSH_BASE_URL", "")),
+        "DSH_MODEL": env_extra.get("DSH_MODEL", os.environ.get("DSH_MODEL", "")),
+        "DSH_CONTEXT_WINDOW": env_extra.get("DSH_CONTEXT_WINDOW", ""),
     }
 
     run_task = PROJECT_ROOT / "server_app" / "run_task.py"
