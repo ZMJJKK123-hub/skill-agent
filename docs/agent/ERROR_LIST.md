@@ -780,3 +780,8 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **Second consecutive FAIL on Feather Fall**: this time NOT the BROKEN-mod trap (anti-BROKEN checklist worked) but repeated `找不到符号` compile errors inside the GameTest sources across many attempts; session ended with no dist jar.
 - Pattern: fall-damage event + per-item charge DataComponent + tooltip combination proved too hard for **GLM-4.5-Flash** to converge within a session, while it completed Honey Slide fine.
 - Takeaway: GLM-4.5-Flash handles single-hook features well but struggles with multi-fact compositions; prefer simpler tasks or add explicit event-name facts to prompts when using it.
+## 2026-08-21 itertest41 Lucky Rabbit Foot - FAILED (max rounds), model strategy adjustment
+
+- **Session hit the 100-round cap without a PASS** (repeated compile errors in test sources: CreativeModeTab titleKey, shouldDrop helper placement, edit_file text-not-found churn). dist jar never produced.
+- **GLM-4.5-Flash scorecard so far**: 1 success (Honey Slide, single-hook block) vs 2 failures (Feather Fall composition, Rabbit Foot event+config+tab).
+- STRATEGY: while on GLM-4.5-Flash, keep tasks to ONE hook + pure-function tests; put exact event/class names in the prompt; avoid creative-tab and tooltip requirements unless necessary.
