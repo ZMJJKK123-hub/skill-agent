@@ -149,13 +149,22 @@ class TerminalHacker extends BaseGame {
       if (this.threat && ans === this.threat.word) { this.success(); }
       else { this.out('WRONG! Expected: ' + (this.threat ? this.threat.word : '?'), 'red'); this.fail(); }
     } else if (cmd === 'help') {
-      this.out('Commands:', 'cyan');
-      this.out('  block <text>     - Block a threat');
-      this.out('  hint             - Get a hint');
-      this.out('  agent init       - Launch multi-agent repair');
-      this.out('  grep <pattern>   - Search encrypted log');
-      this.out('  solve <uuid>     - Submit entity ID');
-      this.out('  skip             - Skip current threat');
+      this.out('=== AVAILABLE COMMANDS ===', 'cyan');
+      this.out('  block <text>     Block a decrypted threat');
+      this.out('  hint             Show first letter of answer');
+      this.out('  agent init       Launch multi-agent UUID challenge');
+      this.out('  grep <pattern>   Search encrypted log (in agent mode)');
+      this.out('  solve <uuid>     Submit entity ID (in agent mode)');
+      this.out('  status           Show defense statistics');
+      this.out('  clear            Clear terminal');
+      this.out('  skip             Skip current threat (-50 pts)');
+      this.newLine();
+    } else if (cmd === 'status') {
+      this.out('=== DEFENSE STATUS ===', 'cyan');
+      this.out('  Score:    ' + this.score, 'green');
+      this.out('  Defended: ' + this.defended, 'green');
+      this.out('  Best:     ' + this.bestScore, 'dim');
+      this.out('  Timer:    ' + this.timer + 's', this.timer <= 5 ? 'red' : 'yellow');
       this.newLine();
     } else if (cmd === 'hint') {
       this.out('Hint: ' + (this.threat ? this.threat.word[0] + '***' : '?'), 'yellow');
