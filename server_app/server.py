@@ -1363,10 +1363,13 @@ WEB_DIR.mkdir(exist_ok=True)
 
 @app.get("/")
 def index():
-    """根路由显式返回首页，避免任何 mount 歧义导致 404。"""
+    """根路由显式返回首页；首页缺失时兜底返回 debug 维护页，避免用户看到白屏/JSON 报错。"""
     index_file = WEB_DIR / "index.html"
     if index_file.exists():
         return FileResponse(str(index_file))
+    debug_idx = DEBUG_DIR / "index.html"
+    if debug_idx.exists():
+        return FileResponse(str(debug_idx))
     return {"error": "index.html not found", "web_dir": str(WEB_DIR)}
 
 
@@ -1387,6 +1390,21 @@ async def debug_static(filepath: str):
     if f.is_file():
         return FileResponse(str(f))
     raise HTTPException(404, "Not found")
+
+
+# 未知页面路径（非 /api、非 /debug）的 404 也兜底到维护页：
+# 主页异常时用户随手输入任何地址都会落进 Debug 游乐场，而不是裸 404。
+from starlette.exceptions import HTTPException as StarletteHTTPException  # noqa: E402
+
+
+@app.exception_handler(StarletteHTTPException)
+async def fallback_404_to_debug(request: Request, exc: StarletteHTTPException):
+    if exc.status_code == 404 and not request.url.path.startswith(("/api", "/debug")):
+        debug_idx = DEBUG_DIR / "index.html"
+        if debug_idx.exists():
+            return FileResponse(str(debug_idx))
+    from fastapi.responses import JSONResponse  # noqa: E402
+    return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
 
 # 兜底：web 目录里其余静态资源（html 默认返回 index）
 app.mount("/", StaticFiles(directory=str(WEB_DIR), html=True), name="web")
