@@ -777,3 +777,8 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **`ServerPlayer.setRespawnPosition` changed to TWO args**: `setRespawnPosition(ServerPlayer.RespawnConfig, boolean)` where `RespawnConfig` is a nested @Nullable record (dimension+pos+angle bundle). The old 5-arg `(ResourceKey, BlockPos, float, boolean, boolean)` form does NOT exist.
   - Clear respawn point: `serverPlayer.setRespawnPosition(null, false)`.
 - End-to-end RESULT: PASS; jar `compassreset-1.0.0.jar`.
+## 2026-08-22 itertest47 Frost Arrow - PARTIAL (jar built, GameTest never ran) + echo-loop defect
+
+- Session degenerated into launching meaningless background `echo` tasks (bg_17..bg_23) after the jar built; GameTest was never executed. Terminated by supervisor; jar `frostarrow-1.0.0.jar` archived as partial.
+- **AGENT DEFECT — echo-loop**: under ox-alpha-free, agents sometimes fill turns with placeholder background echos instead of real work. Recovery: kill + resume; if it persists across resumes, restart the session fresh.
+- ox-alpha-free stability note: intermittent empty-response episodes persist (2 kills this session); model quality is noticeably below DeepSeek/GLM-4.5 for long agentic loops.
