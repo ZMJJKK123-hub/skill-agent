@@ -163,8 +163,8 @@ class BugSorter extends BaseGame {
         c.globalAlpha = 1;
       }
     }.bind(this));
-    c.strokeStyle = '#00ff9f';
-    c.lineWidth = 2;
+    c.strokeStyle = this.combo >= 20 ? '#ffcc00' : (this.combo >= 10 ? '#00d4ff' : '#00ff9f');
+    c.lineWidth = 2 + Math.min(4, Math.floor(this.combo / 5));
     c.beginPath();
     c.moveTo(0, this.judgeLineY);
     c.lineTo(this.w, this.judgeLineY);

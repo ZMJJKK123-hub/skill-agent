@@ -82,8 +82,8 @@ class Snake2048 extends BaseGame {
     }
 
     var head = { x: this.snake[0].x + this.dir.x, y: this.snake[0].y + this.dir.y, v: this.snake[0].v };
-    if (head.x < 0 || head.x >= this.cols || head.y < 0 || head.y >= this.rows) { this.die(); return; }
-    if (this.snake.some(s => s.x === head.x && s.y === head.y)) { this.die(); return; }
+    if (head.x < 0 || head.x >= this.cols || head.y < 0 || head.y >= this.rows) { this.die('WALL'); return; }
+    if (this.snake.some(s => s.x === head.x && s.y === head.y)) { this.die('SELF'); return; }
 
     this.snake.unshift(head);
     var fi = this.foods.findIndex(f => f.x === head.x && f.y === head.y);
@@ -257,7 +257,7 @@ class Snake2048 extends BaseGame {
     }
   }
 
-  die() {
+  die(reason) {
     this.stop(); sfx('die');
     if (this.score > this.bestScore) { this.bestScore = this.score; localStorage.setItem('snBest', this.bestScore); }
     var c = this.ctx;
@@ -269,7 +269,7 @@ class Snake2048 extends BaseGame {
     c.fillText('GAME OVER', this.w / 2, this.h / 2 - 10);
     c.fillStyle = '#c8d6e5';
     c.font = '14px monospace';
-    c.fillText('Score: ' + this.score, this.w / 2, this.h / 2 + 16);
+    c.fillText('Score: ' + this.score + '  Cause: ' + (reason || '?'), this.w / 2, this.h / 2 + 16);
     c.fillStyle = '#5a6a7a';
     c.font = '12px monospace';
     c.fillText('Best: ' + this.bestScore, this.w / 2, this.h / 2 + 34);
