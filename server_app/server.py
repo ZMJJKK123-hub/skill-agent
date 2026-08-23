@@ -187,6 +187,7 @@ class TaskRequest(BaseModel):
     prompt: str
     mode: str = "chat"   # chat（通用对话，默认）| mod（MOD 制作）
     resume: bool = False  # True=从断点恢复继续（暂停后点继续按钮）
+    api_key: Optional[str] = None   # 可选：覆盖会话 API Key（用户在设置里改 key 后生效）
     model: str = ""       # 可选：覆盖会话模型（前端切换 flash/pro 后立即生效）
     base_url: str = ""    # 可选：覆盖会话 base_url（自定义 provider）
     vision_enabled: Optional[bool] = None  # 可选：覆盖会话识图模式开关
@@ -739,7 +740,7 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
     sess = _get_session(req.session_id)
     _assert_owner(sess, username)
     if not (sess.api_key and sess.api_key.strip()):
-        raise HTTPException(400, "API Key 为空，无法启动任务（用户需填写自己的 DeepSeek API Key）")
+        raise HTTPException(400, "API Key 为空，无法启动任务（请在设置中填写 API Key）")
     if not req.prompt.strip() and not req.resume:
         raise HTTPException(400, "提示词为空，请填写内容")
 
@@ -808,6 +809,8 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
 
     # 模型/地址：请求里带了就用最新的（前端切换 flash/pro 或自定义 provider
     # 后立即生效），否则用会话创建时存储的值；同时回写会话，保持后续一致。
+    if req.api_key:
+        sess.api_key = req.api_key
     if req.model:
         sess.model = req.model
     if req.base_url:
@@ -835,7 +838,14 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
             cwd=str(BASE_DIR),
             stdout=open(sess.log_path, "w", encoding="utf-8"),
             stderr=subprocess.STDOUT,
-            env={**os.environ, "PYTHONUNBUFFERED": "1",
+            env={**os.environ,
+                 # 显式注入用户的 API Key + 阻止 .env 加载：
+                 # server 进程的 os.environ 可能残留 .env 的 DEEPSEEK_API_KEY
+                 # （通过 IDE / 脚本启动时），子进程会继承它。
+                 # run_task.py 虽然会覆盖，但这里提前注入确保万无一失。
+                 "DEEPSEEK_API_KEY": sess.api_key,
+                 "DSH_NO_ENV_FILE": "1",
+                 "PYTHONUNBUFFERED": "1",
                  "DSH_MODEL": sess.model, "DSH_BASE_URL": sess.base_url,
                  "DSH_SANDBOX_MODE": sess.sandbox,
                  "DSH_MODE": mode,

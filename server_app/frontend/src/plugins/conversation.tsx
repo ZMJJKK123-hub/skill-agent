@@ -1,10 +1,11 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { PluginManifest, SLOTS } from '../shell/registry'
 import { useUi, setUi, resolveModelConfig } from '../lib/store'
 import { useT } from '../lib/i18n'
 import { useSession, sendPrompt, startPolling, stopPolling, regenerate, answerQuestion, pauseTask, resumeTask } from '../lib/session'
 import { downloadJar, downloadSourceZip } from '../lib/api'
 import type { EventItem } from '../lib/api'
+import { Markdown } from '../lib/markdown'
 
 function errMsg(e: unknown): string {
   if (e instanceof Error) return e.message
@@ -21,107 +22,122 @@ function thinkingName(ev: EventItem, t: (k: string) => string): string {
   }
 }
 
-/** 思考过程聚合组：默认完全收起成一行，点击才展开全部内容（防刷屏） */
+/** AI 回复气泡：深海蓝半透明 + 暗金边框 + 毛玻璃，无头像 */
+function ChatBubble({ role, content }: { role: 'user' | 'assistant'; content: string }) {
+  const isUser = role === 'user'
+  if (isUser) {
+    return (
+      <div className="fade-in-up flex justify-end">
+        <div className="max-w-[80%] rounded-2xl rounded-br-md bg-forge-500 px-4 py-2.5 text-sm text-ink-950">
+          <div className="whitespace-pre-wrap break-words">{content}</div>
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div className="fade-in-up flex justify-start">
+      <div
+        className="max-w-[88%] rounded-xl px-4 py-3 text-sm leading-relaxed backdrop-blur-sm"
+        style={{
+          background: 'rgba(20, 25, 40, 0.7)',
+          border: '1px solid rgba(200, 180, 150, 0.4)',
+          borderRadius: '12px',
+        }}
+      >
+        <Markdown content={content} />
+      </div>
+    </div>
+  )
+}
+
+/** 思考过程：极简内联，不用框，点击展开 */
 function ThinkingGroup({ events, t }: { events: EventItem[]; t: (k: string) => string }) {
   const [open, setOpen] = useState(false)
   if (events.length === 0) return null
   const totalLines = events.reduce(
     (n, ev) => n + ev.content.split('\n').filter((l) => l.trim()).length, 0)
-  const firstName = thinkingName(events[events.length - 1], t)
   return (
-    <div className="flex justify-start">
-      <div className="max-w-[85%] w-full">
-        <button
-          onClick={() => setOpen((v) => !v)}
-          className="w-full rounded-lg border border-violet-500/20 bg-violet-500/5 px-3 py-1.5 text-left text-xs text-violet-300/80 hover:bg-violet-500/10"
-        >
-          <span className="mr-1">🧠</span>
-          {firstName} · 思考过程 {events.length} 段 / {totalLines} 行
-          <span className="ml-1 text-faint">{open ? '▲ 收起' : '▾ 点击展开'}</span>
-        </button>
-        {open && (
-          <div className="mt-1 max-h-72 space-y-2 overflow-auto rounded-lg border border-violet-500/15 bg-violet-500/5 px-3 py-2">
-            {events.map((ev, i) => (
-              <div key={ev.id} className="text-xs leading-relaxed">
-                <div className="mb-0.5 text-[11px] text-violet-400/70">#{i + 1} {thinkingName(ev, t)}</div>
-                <div className="whitespace-pre-wrap break-all text-violet-200/70">{ev.content}</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+    <div className="fade-in-up opacity-70">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 py-0.5 text-[13px] text-blue-100/60 transition hover:text-blue-100/90"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+          <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
+        </svg>
+        <span>Agent thinking · {events.length} 段 / {totalLines} 行</span>
+        <span className="text-[11px] text-faint">{open ? '收起' : '展开'}</span>
+      </button>
+      {open && (
+        <div className="mt-1 space-y-2 pl-5">
+          {events.map((ev, i) => (
+            <div key={ev.id} className="text-[12px] leading-relaxed text-blue-100/50">
+              <span className="text-blue-200/40">#{i + 1} {thinkingName(ev, t)}</span>
+              <div className="mt-0.5 whitespace-pre-wrap break-words">{ev.content}</div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
 
-/** 工具调用行：默认单行（工具名 + 截断参数），点击展开完整参数 */
+/** 工具调用：极简单行，✨ 图标，无边框无背景 */
 function ToolCallRow({ ev }: { ev: EventItem }) {
   const [open, setOpen] = useState(false)
   const tool = ev.tool ?? 'tool'
-  const peerLabel = ev.peer === 'supervisor' ? '🛡 ' : ev.peer === 'teammate' ? '👥 ' : ev.peer === 'subagent' ? '🔬 ' : ''
-  const oneLine = ev.content.replace(/\s+/g, ' ').trim()
+  const oneLine = ev.content.replace(/\s+/g, ' ').trim().slice(0, 120)
   return (
-    <div className="flex justify-start">
+    <div className="fade-in-up opacity-70">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="max-w-[90%] w-full rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-1.5 text-left hover:bg-amber-500/10"
+        className="flex w-full items-center gap-1.5 py-0.5 text-left text-[13px] text-blue-100/60 transition hover:text-blue-100/90"
       >
-        <div className="flex items-center gap-1.5 text-xs">
-          <span className="shrink-0 font-semibold text-amber-400">🔧 {peerLabel}{tool}</span>
-          {!open ? (
-            <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-amber-100/70">{oneLine}</span>
-          ) : (
-            <span className="flex-1 text-[10px] text-faint">▲ 收起</span>
-          )}
-        </div>
-        {open && (
-          <div className="mt-1 max-h-56 overflow-auto whitespace-pre-wrap break-all font-mono text-[11px] text-amber-100/70">
-            {ev.content}
-          </div>
-        )}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-white/50">
+          <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
+        </svg>
+        <span className="shrink-0">Tool call · <span className="text-blue-200/80">{tool}</span> · </span>
+        <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-slate-400">{oneLine}</span>
       </button>
+      {open && (
+        <div className="ml-5 mt-0.5 max-h-48 overflow-auto whitespace-pre-wrap break-all font-mono text-[11px] text-slate-400/80">
+          {ev.content}
+        </div>
+      )}
     </div>
   )
 }
 
-/** 工具结果：默认只显示一行状态头（成功绿/失败红），点击展开输出内容 */
+/** 工具结果：极简，✓/✗ + 截断内容，点击展开 */
 function ToolResultRow({ ev }: { ev: EventItem }) {
   const [open, setOpen] = useState(false)
   const ok = ev.status !== 'failed'
-  // 去掉首行 "success|failed" 标记，只显示输出内容
   const lines = ev.content.split('\n')
   const body = (lines.slice(1).join('\n').trim() || (lines[0] ?? '')).trim()
   return (
-    <div className="flex justify-start">
-      <div className={`w-full max-w-[90%] overflow-hidden rounded-lg border ${ok ? 'border-emerald-500/25' : 'border-red-500/30'}`}>
-        <button
-          onClick={() => setOpen((v) => !v)}
-          className={`flex w-full items-center gap-1.5 px-2 py-1 text-[10px] font-medium ${ok ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}
-        >
-          <span>{ok ? '✓' : '✗'}</span>
-          <span className="shrink-0">{ok ? '执行成功' : '执行失败'}</span>
-          {!open && <span className="min-w-0 flex-1 truncate text-left opacity-60">{body.replace(/\s+/g, ' ').slice(0, 80)}</span>}
-          <span className="shrink-0">{open ? '▲ 收起' : `▼ ${body.length} 字符`}</span>
-        </button>
-        {open && (
-          <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all bg-black/30 px-2 py-1.5 font-mono text-[11px] leading-relaxed text-muted">
-            {body}
-          </pre>
-        )}
-      </div>
+    <div className="fade-in-up opacity-70">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-1.5 py-0.5 text-left text-[13px] transition"
+        style={{ color: ok ? 'rgba(134, 239, 172, 0.6)' : 'rgba(248, 113, 113, 0.6)' }}
+      >
+        <span className="shrink-0">{ok ? '✓' : '✗'}</span>
+        <span className="shrink-0">{ok ? 'Result' : 'Failed'}</span>
+        <span className="min-w-0 flex-1 truncate font-mono text-[12px] opacity-60">{body.replace(/\s+/g, ' ').slice(0, 100)}</span>
+        <span className="shrink-0 text-[11px] text-faint">{open ? '收起' : `${body.length}`}</span>
+      </button>
+      {open && (
+        <pre className="ml-5 mt-0.5 max-h-48 overflow-auto whitespace-pre-wrap break-all font-mono text-[11px] leading-relaxed text-slate-400/70">
+          {body}
+        </pre>
+      )}
     </div>
   )
 }
 
 /** 每轮回复大框：与最终回复同款气泡样式，多轮循环中每轮一个 */
 function ReplyRow({ ev }: { ev: EventItem }) {
-  return (
-    <div className="flex justify-start">
-      <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm border border-line bg-panel px-4 py-2 text-sm">
-        {ev.content}
-      </div>
-    </div>
-  )
+  return <ChatBubble role="assistant" content={ev.content} />
 }
 
 /** 中间分界线（round / system 事件）：居中显示，不归属任何人 */
@@ -202,7 +218,12 @@ function Messages() {
     setDisplayElapsed(null)
   }, [phase, elapsed])
 
-  const shownEvents = useMemo(() => events.slice(-120), [events])
+  // 先筛出用户可见的事件，再保留最近 500 条。
+  // 之前直接 events.slice(-120) 会被大量 log/todo/round 等不可见事件占满名额，
+  // 导致工具调用和思考过程在长任务中被挤出 UI（用户看到"只调了两个工具"）。
+  const shownEvents = useMemo(() => {
+    return events.filter((e) => VISIBLE_EVENT_TYPES.has(e.type)).slice(-500)
+  }, [events])
 
   // chat 模式：重开会话时历史 assistant 气泡与 reply 事件是同一内容
   // （conversation.jsonl 与流式日志各存一份），按前缀匹配去重——
@@ -217,14 +238,50 @@ function Messages() {
     return s
   }, [mode, chatMessages])
 
+  // 连续 reply 事件合并为一个助手气泡：
+  // 流式过程中一次回复可能被后端按轮询切片拆成多个 reply 事件，
+  // 只要中间没有 thinking/tool 等事件，就把它们拼成同一条完整回复。
+  const visibleEvents = useMemo(() => {
+    const out: (EventItem | EventItem[])[] = []
+    let current: EventItem[] | null = null
+    for (const ev of shownEvents) {
+      if (ev.type === 'reply') {
+        if (current) {
+          current.push(ev)
+        } else {
+          current = [ev]
+          out.push(current)
+        }
+        continue
+      }
+      // 任何非 reply 事件（即使不渲染，如 round）都切断当前回复组，
+      // 避免把不同轮次的回复错误合并。
+      current = null
+      if (ev.type !== 'thinking' && VISIBLE_EVENT_TYPES.has(ev.type)) {
+        out.push(ev)
+      }
+    }
+    return out.filter((item) => {
+      if (!Array.isArray(item)) return true
+      const merged = item.map((e) => e.content).join('\n\n')
+      return !assistantPrefixes.has(merged.slice(0, 50))
+    })
+  }, [shownEvents, assistantPrefixes])
+
   // chat 模式：把“当前轮”的事件插在最后一个 assistant 回复之前，
   // 避免最终回答先于思考/工具过程出现；之前的轮次尽量保持原始顺序。
   let lastAssistantIdx = -1
   chatMessages.forEach((m, i) => {
     if (m.role === 'assistant') lastAssistantIdx = i
   })
-  const beforeLastAssistant = lastAssistantIdx >= 0 ? chatMessages.slice(0, lastAssistantIdx) : chatMessages
-  const lastAssistant = lastAssistantIdx >= 0 ? chatMessages.slice(lastAssistantIdx) : []
+  // 如果最后一条 assistant 后面还有消息（通常是新一轮的 user prompt），
+  // 说明最后一条 assistant 不是“当前轮最终回答”，不应挪到事件流后面；
+  // 此时整段历史按原顺序渲染，当前轮回复由事件流显示。
+  const hasTrailingMessages = lastAssistantIdx >= 0 && lastAssistantIdx < chatMessages.length - 1
+  const beforeLastAssistant =
+    lastAssistantIdx < 0 || hasTrailingMessages ? chatMessages : chatMessages.slice(0, lastAssistantIdx)
+  const lastAssistant =
+    lastAssistantIdx < 0 || hasTrailingMessages ? [] : chatMessages.slice(lastAssistantIdx)
   const running = phase === 'running' || phase === 'creating'
 
   // 空态判断以"是否有会话"为准：无会话 → 引导页；
@@ -235,30 +292,16 @@ function Messages() {
 
   // ── 统一微信式聊天流：chat 模式显示气泡对话；mod 模式 DSH 风格事件流 ──
   return (
-    <div className="mx-auto max-w-3xl space-y-3 p-4">
-      <div className="space-y-2">
+    <div className="mx-auto w-full max-w-4xl space-y-3 p-4 md:p-6">
+      <div className="space-y-3">
         {/* chat 模式：历史消息（保持原始顺序，最后一个 assistant 留到事件流之后） */}
         {mode === 'chat' && beforeLastAssistant.map((m, i) => (
-          <div key={i} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
-            <div
-              className={
-                m.role === 'user'
-                  ? 'max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-forge-500 px-4 py-2 text-sm text-ink-950'
-                  : 'max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm border border-line bg-panel px-4 py-2 text-sm'
-              }
-            >
-              {m.content}
-            </div>
-          </div>
+          <ChatBubble key={i} role={m.role === 'user' ? 'user' : 'assistant'} content={m.content} />
         ))}
 
         {/* mod 模式：用户 prompt 气泡 */}
         {mode === 'mod' && prompts.map((p, i) => (
-          <div key={i} className="flex justify-end">
-            <div className="max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-forge-500 px-4 py-2 text-sm text-ink-950">
-              {p}
-            </div>
-          </div>
+          <ChatBubble key={i} role="user" content={p} />
         ))}
 
         {/* 运行中提示（所有模式）：只显示状态 + 本地 1s 秒数，具体步骤看下方事件流 */}
@@ -273,21 +316,17 @@ function Messages() {
         {/* DSH 风格事件流（白名单）：思考聚合为一个默认收起的分组，*/}
         {/* 工具调用/结果单行小框，每轮回复用大框，其余运行日志不展示 */}
         <ThinkingGroup events={shownEvents.filter((e) => e.type === 'thinking')} t={t} />
-        {shownEvents
-          .filter((e) => e.type !== 'thinking'
-            && VISIBLE_EVENT_TYPES.has(e.type)
-            && !(e.type === 'reply' && assistantPrefixes.has(e.content.slice(0, 50))))
-          .map((ev) => (
-            <EventView key={ev.id} ev={ev} t={t} />
-          ))}
+        {visibleEvents.map((item) => {
+          if (Array.isArray(item)) {
+            const content = item.map((e) => e.content).join('\n\n')
+            return <ChatBubble key={item[0].id} role="assistant" content={content} />
+          }
+          return <EventView key={item.id} ev={item} t={t} />
+        })}
 
         {/* chat 模式：当前轮最终回答放在事件流之后 */}
         {mode === 'chat' && lastAssistant.map((m, i) => (
-          <div key={i} className="flex justify-start">
-            <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm border border-line bg-panel px-4 py-2 text-sm">
-              {m.content}
-            </div>
-          </div>
+          <ChatBubble key={i} role={m.role === 'user' ? 'user' : 'assistant'} content={m.content} />
         ))}
 
         {/* 已暂停：横线提示"您已终止该对话" */}
@@ -447,7 +486,7 @@ function QuestionCard() {
 }
 
 function Composer() {
-  const { user, apiKey, model, providers, version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey } = useUi()
+  const { user, apiKey, model, providers, version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey, settingsOpen } = useUi()
   const t = useT()
   const sess = useSession()
   const [text, setText] = useState('')
@@ -483,7 +522,11 @@ function Composer() {
   // 输入框始终可见：未就绪时置灰 + 顶部提示条，而不是整个藏掉
   // （原来的条件渲染在首访未登录时什么都不显示，用户找不到输入框）。
   const canChat = !!user && (!!apiKey || providers.length > 0)
-  const notReadyReason = !user ? t('auth.loginFirst') : t('auth.needApiKey')
+  const notReadyReason = !user
+    ? t('auth.loginFirst')
+    : settingsOpen
+      ? '填好 API Key 后点击右下角「应用」即可生效'
+      : t('auth.needApiKey')
 
   // 运行中：红方块停止按钮；暂停后：绿箭头继续按钮；空闲：发送按钮
   const actionButton = running ? (
@@ -518,7 +561,7 @@ function Composer() {
   )
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto w-full max-w-4xl">
       <QuestionCard />
       {!canChat && (
         <div className="mb-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-400">

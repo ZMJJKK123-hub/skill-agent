@@ -47,7 +47,12 @@ For multi-step work ALWAYS plan with the todo tool; keep only ONE in_progress at
 HARD RULES (never break):
 1. SKILLS FIRST (MOD): Before writing ANY MOD Java/resource, load the most relevant 1-2 skills with load_skill (e.g. forge-simple-min-mod or forge-items). Do NOT keep loading more skills before writing; write the first draft immediately. Skills are the PRIMARY reference. mc_java_sources is BACKUP ONLY after a compile/test error; never read it before writing.
 2. NAMING: derive modid/package/class/item/block names from the user's request. NEVER keep examplemod / example_item / example_block; rename across build.gradle(mod group)/mods.toml/java/assets/data/src-test consistently.
-3. BUILD GUARD: never change build system/plugins (don't switch to NeoGradle/NeoForge), never change forge:1.21.11-61.2.0 or dependency versions. You ARE allowed to edit modid/namespace references in build.gradle/settings.gradle when renaming the mod (e.g. `forge.enabledGameTestNamespaces`, DataGen `--mod`, `archivesName`, group/modId).
+3. BUILD GUARD (do NOT touch core build files): NEVER change build system/plugins (don't switch to NeoGradle/NeoForge), never change forge:1.21.11-61.2.0 or dependency versions. DO NOT edit these core build files/configs unless the ONLY change is a modid/namespace rename reference:
+   - build.gradle: never change plugin id/version, `minecraft.mavenizer(...)`, `repositories`, `dependencies`, `java.toolchain`, `runs`/`launcher`/`slimeLauncher` settings. You MAY change `group`, `archivesName`, `forge.enabledGameTestNamespaces`, DataGen `--mod` when renaming.
+   - settings.gradle: never add/remove `pluginManagement`/repositories/plugins structure. You MAY change `rootProject.name`.
+   - gradle/wrapper/gradle-wrapper.properties: NEVER touch. Do not change Gradle distribution URL/version.
+   - gradle.properties: NEVER change Gradle daemon/JVM/cache/parallel settings. You MAY add/change only project-specific keys if truly required by the mod.
+   If you believe a build-system change is needed, do NOT make it; report it in the summary instead.
 4. COMPLETION (anti-loop): when run_test_gametest prints "All required tests passed" AND dist/*.jar exists -> FINISH and write the summary. Ignore harmless WARNs (e.g. 'Missing language javafml version'). Don't re-read the same log or "enhance" passing code.
 5. NEW_ERROR AUTO-SINK: if you hit an error that is NOT already in docs/agent/ERROR_LIST.md, include in your final summary a line starting with `NEW_ERROR:` in the format `NEW_ERROR: <symptom> | <root cause> | <fix>`. The system will append it to the error list automatically.
 6. SOURCE BACKUP ONLY: mc_java_sources is for POST-ERROR lookup only. Do NOT read/grep it before writing. After a compile/test error you MAY use `read_file` on the exact mc_java_sources/... file (with offset/limit) to see full constructor/method/record signatures; `search_api` is only for quick locating.
@@ -186,7 +191,7 @@ Guidelines:
   "start /b ... & timeout /t 3 ... & curl ... & taskkill" pattern.
 - MOD KNOWLEDGE: if a MOD skill is available, load it first for reference; mc_java_sources is backup only after errors. No <skill-source> citation requirement.
 
-【本项目 Forge 环境硬性事实 - 禁止违背】目标版本：MC `1.21.11`、Forge 构建 `1.21.11-61.2.0`（build.gradle 已写死，禁止修改）；首次构建由 ForgeGradle 自动从 maven.minecraftforge.net 下载缺失依赖并缓存，这是正常行为，禁止用 curl 在线翻查/改写版本号；类找不到先查 recompiled.jar classpath。
+【本项目 Forge 环境硬性事实 - 禁止违背】目标版本：MC `1.21.11`、Forge 构建 `1.21.11-61.2.0`（build.gradle 已写死，禁止修改）；gradle wrapper / settings.gradle / gradle.properties 同样禁止改动；首次构建由 ForgeGradle 自动从 maven.minecraftforge.net 下载缺失依赖并缓存，这是正常行为，禁止用 curl 在线翻查/改写版本号；类找不到先查 recompiled.jar classpath。
 """
 
 # ---------- 监管 Agent（代码强制派发的最高权限观察者）----------
@@ -256,7 +261,7 @@ MOD KNOWLEDGE (optional references, NOT mandatory):
 - Write code/resources directly first. On a compile/test error, grep `docs/agent/ERROR_LIST.md` first, then `starter/` or skills, then `mc_java_sources`.
 - Do NOT require load_skill before a MOD change, and do NOT add <skill-source> citations.
 
-【本项目 Forge 环境硬性事实 - 禁止违背】目标版本：MC `1.21.11`、Forge 构建 `1.21.11-61.2.0`（build.gradle 已写死，禁止修改）；首次构建由 ForgeGradle 自动从 maven.minecraftforge.net 下载缺失依赖并缓存，这是正常行为，禁止用 curl 在线翻查/改写版本号；类找不到先查 recompiled.jar classpath。
+【本项目 Forge 环境硬性事实 - 禁止违背】目标版本：MC `1.21.11`、Forge 构建 `1.21.11-61.2.0`（build.gradle 已写死，禁止修改）；gradle wrapper / settings.gradle / gradle.properties 同样禁止改动；首次构建由 ForgeGradle 自动从 maven.minecraftforge.net 下载缺失依赖并缓存，这是正常行为，禁止用 curl 在线翻查/改写版本号；类找不到先查 recompiled.jar classpath。
 """
 
 # OpenAI 客户端：预置 http_client 避免每次子进程启动时 ssl 证书库加载
@@ -273,7 +278,7 @@ _http_client = _httpx.Client(
 )
 client = OpenAI(
     api_key=os.environ.get("DEEPSEEK_API_KEY", ""),
-    base_url=os.environ.get("DSH_BASE_URL", "https://llmapi.paratera.com"),
+    base_url=os.environ.get("DSH_BASE_URL", "https://api.deepseek.com"),
     http_client=_http_client,
 )
 

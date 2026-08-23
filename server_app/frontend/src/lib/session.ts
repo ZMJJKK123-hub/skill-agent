@@ -101,7 +101,7 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
   if (state.phase === 'creating' || state.phase === 'running') {
     if (state.sessionId) {
       try {
-        await api.startTask(state.sessionId, prompt, mode, false, settings.model, settings.baseUrl,
+        await api.startTask(state.sessionId, prompt, mode, false, settings.apiKey, settings.model, settings.baseUrl,
           settings.visionEnabled, settings.visionApiKey, settings.visionBaseUrl, settings.visionModel,
           settings.autoMode, settings.searchApiKey)
         // 本地乐观显示排队消息：chat 模式走 chatMessages 气泡；
@@ -122,8 +122,15 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
   // 再从断点恢复；恢复的 agent 第一轮 drain 到该消息作为 user 强行注入。
   if (state.paused && state.sessionId) {
     try {
-      setState({ phase: 'running', paused: false, stoppedNotice: false, chatMessages: [...state.chatMessages, { role: 'user', content: prompt }] })
-      await api.startTask(state.sessionId, prompt, state.mode ?? 'chat', true, settings.model, settings.baseUrl,
+      // 暂停后发送 = 恢复 + 强注入。mod 模式也要把新消息加入 prompts，
+      // 否则用户消息不会显示在左侧（mod 模式只渲染 prompts）。
+      const prompts = state.mode === 'mod' ? [...state.prompts, prompt] : state.prompts
+      setState({
+        phase: 'running', paused: false, stoppedNotice: false,
+        chatMessages: [...state.chatMessages, { role: 'user', content: prompt }],
+        prompts,
+      })
+      await api.startTask(state.sessionId, prompt, state.mode ?? 'chat', true, settings.apiKey, settings.model, settings.baseUrl,
         settings.visionEnabled, settings.visionApiKey, settings.visionBaseUrl, settings.visionModel,
         settings.autoMode, settings.searchApiKey)
       void poll()
@@ -179,7 +186,7 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
       ? [...state.chatMessages, { role: 'user' as const, content: prompt }]
       : state.chatMessages
     setState({ prompts, phase: 'running', title, chatMessages })
-    await api.startTask(sid, prompt, mode, false, settings.model, settings.baseUrl,
+    await api.startTask(sid, prompt, mode, false, settings.apiKey, settings.model, settings.baseUrl,
       settings.visionEnabled, settings.visionApiKey, settings.visionBaseUrl, settings.visionModel,
       settings.autoMode, settings.searchApiKey)
     void poll()

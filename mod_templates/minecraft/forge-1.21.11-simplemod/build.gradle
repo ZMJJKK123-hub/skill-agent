@@ -6,7 +6,7 @@ plugins {
     id 'java'
     id 'idea'
     id 'eclipse'
-    id 'net.minecraftforge.gradle' version '[7.0.3,8)'
+    id 'net.minecraftforge.gradle' version '7.0.34'
 }
 
 version = '1.0.0'

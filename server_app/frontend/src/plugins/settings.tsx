@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { PluginManifest, SLOTS } from '../shell/registry'
 import { setUi, useUi, type Provider, type ThemePref, type SandboxMode } from '../lib/store'
 import { useT } from '../lib/i18n'

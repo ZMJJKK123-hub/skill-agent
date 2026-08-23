@@ -16,9 +16,11 @@ BASE_TOOL_GUIDE = r"""## TOOL USAGE RULES (Development Phase)
 4. On any error or thinking loop: first read docs/agent/ERROR_LIST.md; if the fix is not there, resolve it and append it.
 5. Naming: derive modid/package/class/item/block names from the user's request. NEVER keep template defaults
    (examplemod / example_item / example_block).
-6. Build-file guard: NEVER change build system/plugins (e.g. don't switch to NeoGradle/NeoForge), Forge version, or
-   dependency versions. You ARE allowed to edit modid/namespace references in build.gradle/settings.gradle when
-   renaming the mod (e.g. `forge.enabledGameTestNamespaces`, DataGen `--mod`, group/modId).
+6. Build-file guard: NEVER change build system/plugins (e.g. don't switch to NeoGradle/NeoForge), Forge version,
+   dependency versions, Gradle wrapper (gradle-wrapper.properties), settings.gradle pluginManagement structure, or
+   gradle.properties daemon/JVM/cache settings. You ARE allowed to edit ONLY modid/namespace references in
+   build.gradle/settings.gradle when renaming the mod (e.g. `forge.enabledGameTestNamespaces`, DataGen `--mod`,
+   group/modId, `rootProject.name`, `archivesName`). If a build-system change seems needed, do not make it — report it.
 """
 
 EXTENDED_TOOL_GUIDE = r"""## EXTENDED TOOL GUIDE (Testing / Verification Phase)

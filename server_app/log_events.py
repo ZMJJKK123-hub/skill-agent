@@ -47,8 +47,9 @@ def _parse_run_block(text: str) -> list[dict]:
     """把 run.log 的一段新增文本解析为事件列表。
 
     行级识别 + [todo] 块处理（todo 块 = 一行 [todo] 后跟若干缩进行）。
-    [reply] 流式增量（每 token 一行）聚合为一个 reply 事件：连续 [reply]
-    行拼接，遇到任何其他行/空行即收尾（一轮回复结束）。
+    [reply] 流式增量（每 token 一行）聚合为一个 reply 事件：
+    - print 固定输出 "[reply] {delta}"，去掉该固定分隔空格后原样保留 token；
+    - 连续 [reply] 之间的空行视为回复内换行（不再把段落拆成多个 reply 事件）。
     """
     events: list[dict] = []
     lines = text.splitlines()
@@ -56,13 +57,16 @@ def _parse_run_block(text: str) -> list[dict]:
     seq = 0
     skip_final_reply = False
     reply_buf: list[str] = []
+    pending_blanks = 0
 
     def _flush_reply() -> None:
-        nonlocal seq
+        nonlocal seq, pending_blanks
         if not reply_buf:
+            pending_blanks = 0
             return
         joined = "".join(reply_buf).strip()
         reply_buf.clear()
+        pending_blanks = 0
         if joined:
             events.append(_ev("reply", joined, seq)); seq += 1
 
@@ -70,13 +74,17 @@ def _parse_run_block(text: str) -> list[dict]:
         line = lines[i].rstrip("\r")
         stripped = line.strip()
 
-        # 任何非 [reply] 行（含空行）都意味着流式回复本轮已结束 → 收尾
-        if not stripped.startswith("[reply]"):
-            _flush_reply()
-
+        # 空行：如果当前正在聚合回复，先缓存为“回复内换行”，
+        # 等下一行决定是继续 [reply]（插入换行）还是结束回复。
         if not stripped:
+            if reply_buf:
+                pending_blanks += 1
             i += 1
             continue
+
+        # 非 [reply] 行：先收尾当前回复，再正常处理该行
+        if not stripped.startswith("[reply]"):
+            _flush_reply()
 
         # 跳过“完成，最终回复:”及其后的完整回复正文，避免事件流里重复显示最终回复
         if skip_final_reply:
@@ -108,9 +116,21 @@ def _parse_run_block(text: str) -> list[dict]:
         # ── 新结构化工具日志（core/agent.py 主 agent 输出，DSH 风格渲染用）──
         elif stripped.startswith("[reply]"):
             # 流式回复增量（每个 token 一行）：连续行聚合，遇其他行收尾。
-            # 空 after = 换行 token（delta 只有 \n 时打出 "[reply] "）。
-            after = _after(stripped, "[reply]")
-            reply_buf.append("\n" if not after else after)
+            # print(f"[reply] {delta.content}") 固定带一个分隔空格，去掉它。
+            # 空 token = 换行 token（delta 只有 \n 时打出 "[reply] "）。
+            if pending_blanks > 0:
+                reply_buf.append("\n" * pending_blanks)
+                pending_blanks = 0
+            # 必须用原始 line（而非 stripped）取内容：stripped 会去掉行尾空格，
+            # 导致纯空格 token（如 "[reply]  "）被误判成换行 token。
+            after_raw = line[line.index("[reply]") + len("[reply]"):]
+            if after_raw.startswith(" "):
+                after_raw = after_raw[1:]
+            # 空 token（[reply] 后只有一个分隔空格）= 换行 token。
+            # 不在这里追加：print 自带的换行会在文件里形成后续空行，
+            # 由 pending_blanks 统一换算成正确数量的 \n，避免重复计数。
+            if after_raw != "":
+                reply_buf.append(after_raw)
             i += 1
             continue
         elif stripped.startswith("[tool-result]"):

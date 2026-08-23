@@ -1,4 +1,4 @@
-﻿// 后端 API 封装：token 注入 + 所有接口 + 类型定义
+// 后端 API 封装：token 注入 + 所有接口 + 类型定义
 // 后端 = server_app/server.py（FastAPI，无需改动）
 
 import JSZip from 'jszip'
@@ -161,6 +161,7 @@ export function startTask(
   prompt: string,
   mode = 'chat',
   resume = false,
+  apiKey = '',
   model = '',
   baseUrl = '',
   visionEnabled?: boolean,
@@ -171,6 +172,7 @@ export function startTask(
   searchApiKey?: string,
 ) {
   const body: Record<string, unknown> = { session_id: sessionId, prompt, mode, resume, model, base_url: baseUrl }
+  if (apiKey) body.api_key = apiKey
   if (visionEnabled !== undefined) body.vision_enabled = visionEnabled
   if (visionApiKey !== undefined) body.vision_api_key = visionApiKey
   if (visionBaseUrl !== undefined) body.vision_base_url = visionBaseUrl
