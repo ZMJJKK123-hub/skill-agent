@@ -49,3 +49,9 @@ server_app/web/js/
 # ---- 清小搭接入服务运行时 ----
 tsinghua agent server/.runtime/
 smoke_test_tools.log
+
+# ---- 自动化测试脚本（本地测试用，不入库） ----
+run_harness_final.py
+run_test_harness.py
+run_test_harness_v2.py
+prompt_*.txt
