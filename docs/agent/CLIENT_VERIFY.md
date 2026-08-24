@@ -54,6 +54,18 @@
   - 服务器只负责 build + GameTest + 产生 jar；
   - 完成后由用户在本地安装 jar 做实际客户端验证，或由有条件的机器执行本流程。
 
+## 低内存服务器模式（DSH_DISABLE_CLIENT_TOOLS=1）
+
+- 当环境变量 `DSH_DISABLE_CLIENT_TOOLS=1` 时（2G+4G 虚拟内存等低配环境），**客户端/游戏 GUI 工具已被系统硬禁用**：
+  - `run_client` / `start_mc_client` / `run_server` / `start_mc_server`
+  - `send_game_command` / `game_input` / `press_key` / `type_text`
+  - `wait_for_screen` / `verify_visual_loop` / `server_console` / `kill_game` / `wait_for_mc_ready`
+  - 这些工具**不会出现在可用工具列表中**，调用会得到"未知工具"。
+- 在这种模式下：
+  - **只能**做 `build_mod_jar_forge` / `run_test_gametest` / `validate_resources` / `run_mod_test_cycle`（纯服务端验证）。
+  - 客户端验证退化为“资源/静态检查”：`validate_resources`、PNG 文件有效性、item 模型/JSON 引用完整性、无缺失纹理路径。
+  - 最终总结中必须明确标注：“真实客户端渲染未在此环境启动，由用户本地手动验证。”
+
 ## 用户禁止自动启动客户端时的处理（重要）
 
 - 如果当前运行环境是服务器，或用户明确表示“不要在本机自动启动 Minecraft 客户端/服务端弹窗”，则：

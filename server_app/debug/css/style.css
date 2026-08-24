@@ -109,14 +109,16 @@ body::before {
 .modal-header .close:hover { border-color: var(--red); color: var(--red); }
 .modal-body { padding: 0; overflow: auto; }
 canvas.game-canvas { display: block; touch-action: none; }
-/* Toast */
+/* Toast — 顶部小字提示，不遮挡游戏操作区 */
 #toast {
-  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-  background: var(--card); border: 1px solid var(--green-d); color: var(--text);
-  padding: 10px 28px; border-radius: 8px; font-size: .82em; z-index: 9999;
-  opacity: 0; transition: all .3s; pointer-events: none; box-shadow: 0 4px 20px rgba(0,255,159,.15);
+  position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+  background: rgba(10, 15, 25, 0.75); border: 1px solid rgba(14, 165, 233, 0.3);
+  color: #cbd5e1; padding: 5px 16px; border-radius: 999px;
+  font-size: .72em; z-index: 9999; opacity: 0; transition: all .25s;
+  pointer-events: none; box-shadow: 0 2px 12px rgba(0,0,0,.3);
+  max-width: 80%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-#toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+#toast.show { opacity: 0.85; transform: translateX(-50%); }
 /* Konami cheat menu */
 #konamiCheat {
   position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 1001;

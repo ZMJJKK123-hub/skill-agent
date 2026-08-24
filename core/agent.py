@@ -149,7 +149,7 @@ def _auto_write_starter(messages: list) -> bool:
         tool_kw = ("tool", "sword", "pickaxe", "axe", "工具", "剑", "镐")
         game_kw = ("game", "minigame", "swap", "大逃杀", "游戏", "交换", "玩家")
         target_src = None
-        best_score = -1
+        best_score = 0  # 只有匹配到 modid 或任务关键词（score>0）才可能选中，避免复制无关 starter
         for path in candidates:
             try:
                 content = open(path, "r", encoding="utf-8").read()
@@ -167,7 +167,9 @@ def _auto_write_starter(messages: list) -> bool:
                 score += 5
             if any(k in task_text for k in game_kw) and ("/swapgame/" in low_path or "swapgame" in low_path):
                 score += 9
-            if score > best_score:
+            # 只有 score>=2（modid匹配 + 至少一个任务关键词，或强关键词）才可能选中，
+            # 避免仅凭 modid 匹配就复制无关 starter
+            if score > best_score and score >= 2:
                 best_score = score
                 target_src = path
                 best_content = content

@@ -29,7 +29,7 @@ class DimensionParkour extends BaseGame {
     this.obstacles = [];
     this.particles = [];
     this.score = 0;
-    this.spd = 3;
+    this.spd = 1.5; // 速度减半
     this.gravityDir = 1;
     this.tick = 0;
     this.gameOver = false;
@@ -66,7 +66,7 @@ class DimensionParkour extends BaseGame {
     if (this.gameOver || this.energy < 100) return;
     this.flatWorld = 480;
     this.energy = 0;
-    this.spd = 6;
+    this.spd = 3; // 速度减半
     sfx('powerup');
     toast('SUPER FLAT WORLD!');
     // Instantly vaporize all obstacles into particles (chunk regeneration effect)
@@ -84,7 +84,8 @@ class DimensionParkour extends BaseGame {
   }
 
   flipGravity() {
-    if (this.gameOver || !this.player.onGround) return;
+    // 允许任何时候翻转（含空中），翻转后重置垂直速度，方便重新起跳
+    if (this.gameOver) return;
     this.gravityDir *= -1;
     this.player.vy = 0;
     this.player.jumpCount = 0;
@@ -107,7 +108,7 @@ class DimensionParkour extends BaseGame {
     this.dashTrail.forEach(t => t.life--);
     this.dashTrail = this.dashTrail.filter(t => t.life > 0);
 
-    this.player.vy += 0.5 * this.gravityDir;
+    this.player.vy += 0.3 * this.gravityDir; // 重力降低，滞空更久
     this.player.y += this.player.vy;
     var groundY = this.gravityDir > 0 ? this.h - this.player.r : this.player.r;
     if (this.gravityDir > 0) {
@@ -120,13 +121,13 @@ class DimensionParkour extends BaseGame {
     this.bgChars.forEach(function(ch) { ch.x -= this.spd; if (ch.x < -50) { ch.x = this.w + rnd(0, 50); ch.y = rnd(10, this.h - 10); } }.bind(this));
     this.bgOffset += this.spd;
 
-    // Score-based speed up
-    var baseSpd = this.flatWorld > 0 ? 6 : (3 + this.score / 150);
-    this.spd = Math.min(baseSpd, 8);
+    // Score-based speed up（整体减半）
+    var baseSpd = this.flatWorld > 0 ? 3 : (1.5 + this.score / 300);
+    this.spd = Math.min(baseSpd, 4);
 
     if (this.flatWorld > 0) {
       this.flatWorld--;
-    } else if (this.tick % Math.max(30, 90 - Math.floor(this.score / 4)) === 0) {
+    } else if (this.tick % Math.max(60, 180 - Math.floor(this.score / 4)) === 0) {
       // Reaction room: skip spawn if a fullscreen wall just appeared (needs gravity-flip time)
       var lastOb = this.obstacles[this.obstacles.length - 1];
       var afterFullscreen = lastOb && lastOb.fullScreen && lastOb.x > this.w - 260;
@@ -154,8 +155,11 @@ class DimensionParkour extends BaseGame {
     var type = Math.random();
     var diffMul = 1 + this.score / 100; // difficulty multiplier
     if (type < 0.12) {
-      // Full screen obstacle (requires gravity flip)
-      this.obstacles.push({ x: this.w, y: 0, h: this.h, w: 20, type: 'fullscreen', fullScreen: true, seed: rnd(0, 1000) });
+      // 半屏障碍（需要翻转重力）：从当前地面侧伸出 65%，
+      // 玩家翻转重力后从另一侧 35% 通过。之前全屏竖条无论如何都会撞，无法过关。
+      var fh = Math.floor(this.h * 0.65);
+      var fy = this.gravityDir > 0 ? this.h - fh : 0;
+      this.obstacles.push({ x: this.w, y: fy, h: fh, w: 20, type: 'fullscreen', fullScreen: true, seed: rnd(0, 1000) });
     } else if (type < 0.30) {
       // Tall obstacle
       var h = Math.min(rnd(60, 100) * diffMul, this.h - 40);
@@ -205,12 +209,12 @@ class DimensionParkour extends BaseGame {
       if (o.type === 'fullscreen') {
         c.fillStyle = '#ff3355';
         c.globalAlpha = 0.3;
-        c.fillRect(o.x, 0, o.w, this.h);
+        c.fillRect(o.x, o.y, o.w, o.h); // 半屏，与碰撞一致
         c.globalAlpha = 1;
         c.fillStyle = '#ff3355';
         c.font = '10px monospace';
         c.textAlign = 'center';
-        c.fillText('FLIP!', o.x + o.w / 2, this.h / 2);
+        c.fillText('FLIP!', o.x + o.w / 2, o.y + o.h / 2);
       } else {
         c.fillStyle = o.type === 'tall' ? '#ff3355' : '#ff8800';
         c.fillRect(o.x, o.y, o.w, o.h);

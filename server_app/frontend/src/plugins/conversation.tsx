@@ -596,6 +596,7 @@ function Composer() {
             >
               <optgroup label="DeepSeek">
                 <option value="deepseek-v4-flash">deepseek-v4-flash（官方）</option>
+                <option value="deepseek-v4-pro">deepseek-v4-pro（官方）</option>
               </optgroup>
               {providers.map((p) => (
                 <optgroup key={p.id} label={p.name}>

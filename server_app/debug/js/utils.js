@@ -9,7 +9,9 @@ function toast(msg) {
   const t = $('toast');
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
+  // 缩短显示时间，减少打扰（1.2s）
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 1200);
 }
 
 // Audio

@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mini Game</title>
-  <!-- 单游戏宿主页：主页浮窗 iframe 挂载用（?g=<game-id>），复用 debug/js 的游戏类 -->
   <base href="/debug/">
   <link rel="stylesheet" href="css/style.css">
   <style>
@@ -14,20 +13,161 @@
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       overflow: auto;
     }
-    /* 画布随窗口缩放（游戏画布逻辑尺寸 640x480 / 432 等，容器可能更小） */
-    #gameHost canvas.game-canvas { max-width: 100%; height: auto; }
-    /* 终端类 DOM 游戏占满容器 */
-    #gameHost .term-hack { width: 100%; height: 100%; max-width: 720px; border: none; }
-    #gameLoad { color: #5a6a7a; font: 12px monospace; padding: 24px; }
+    #gameHost canvas.game-canvas { max-width: 100%; height: auto; image-rendering: crisp-edges; }
+    #gameHost .term-hack { width: 100%; height: 100%; max-width: 720px; border: none; font-size: 15px; }
+    #gameLoad { color: #5a6a7a; font: 14px monospace; padding: 24px; }
+    /* 开始覆盖层 */
+    #startOverlay {
+      position: fixed; inset: 0; z-index: 200;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: rgba(5, 8, 16, 0.88); backdrop-filter: blur(4px);
+    }
+    #startOverlay.hidden { display: none; }
+    #startOverlay .start-title { font-size: 22px; font-weight: 700; color: #7dd3fc; margin-bottom: 12px; }
+    #startOverlay .start-rules {
+      max-width: 380px; text-align: center; font-size: 14px; line-height: 1.8;
+      color: #a0aec0; margin-bottom: 8px;
+    }
+    #startOverlay .start-rules-en { font-size: 12px; color: #64748b; margin-bottom: 20px; max-width: 380px; text-align: center; }
+    #startOverlay .start-btn {
+      font-size: 18px; font-weight: 700; color: #050810;
+      background: #0ea5e9; border: none; border-radius: 10px;
+      padding: 12px 40px; cursor: pointer; transition: all 0.15s;
+    }
+    #startOverlay .start-btn:hover { background: #38bdf8; transform: scale(1.05); }
+    #startOverlay .start-diff { margin-bottom: 20px; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 420px; }
+    #startOverlay .start-diff .diff-btn {
+      background: #111827; color: #cbd5e1; border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px; padding: 8px 14px; font-size: 14px; cursor: pointer; transition: all 0.15s;
+    }
+    #startOverlay .start-diff .diff-btn:hover { border-color: #0ea5e9; color: #fff; }
+    #startOverlay .start-diff .diff-btn.active { background: #0ea5e9; color: #050810; font-weight: 700; border-color: #0ea5e9; }
+    /* 游戏结束覆盖层 */
+    #endOverlay {
+      position: fixed; inset: 0; z-index: 210;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: rgba(5, 8, 16, 0.9); backdrop-filter: blur(4px);
+    }
+    #endOverlay.hidden { display: none; }
+    #endOverlay .end-title { font-size: 28px; font-weight: 800; color: #ff3355; margin-bottom: 8px; text-shadow: 0 0 20px rgba(255,51,85,0.4); }
+    #endOverlay .end-sub { font-size: 14px; color: #a0aec0; margin-bottom: 20px; }
+    #endOverlay .end-btn {
+      font-size: 17px; font-weight: 700; color: #050810;
+      background: #0ea5e9; border: none; border-radius: 10px;
+      padding: 12px 36px; cursor: pointer; transition: all 0.15s;
+    }
+    #endOverlay .end-btn:hover { background: #38bdf8; transform: scale(1.05); }
+    /* 关卡过渡覆盖层 */
+    #levelOverlay {
+      position: fixed; inset: 0; z-index: 215;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: rgba(5, 8, 16, 0.8); backdrop-filter: blur(4px);
+    }
+    #levelOverlay.hidden { display: none; }
+    #levelOverlay .lv-title { font-size: 30px; font-weight: 800; color: #7dd3fc; margin-bottom: 6px; }
+    #levelOverlay .lv-sub { font-size: 14px; color: #a0aec0; margin-bottom: 20px; }
+    #levelOverlay .lv-btn {
+      font-size: 16px; font-weight: 700; color: #050810;
+      background: #0ea5e9; border: none; border-radius: 10px;
+      padding: 10px 32px; cursor: pointer; transition: all 0.15s;
+    }
+    #levelOverlay .lv-btn:hover { background: #38bdf8; transform: scale(1.05); }
+    /* 游戏规则面板：左下角悬浮 */
+    #rulesPanel {
+      position: fixed; bottom: 8px; left: 8px; z-index: 100;
+      max-width: 340px; max-height: 200px; overflow-y: auto;
+      background: rgba(10, 15, 25, 0.92); backdrop-filter: blur(4px);
+      border: 1px solid rgba(255,255,255,0.12); border-radius: 8px;
+      padding: 10px 14px; font-size: 13px; line-height: 1.6;
+      color: #a0aec0; cursor: pointer; transition: max-height 0.2s;
+    }
+    #rulesPanel.hidden { display: none; }
+    #rulesPanel.collapsed {
+      max-height: 36px; overflow: hidden; padding-top: 6px; padding-bottom: 6px;
+    }
+    #rulesPanel.collapsed #rulesZh,
+    #rulesPanel.collapsed #rulesEn { display: none; }
+    #rulesPanel.collapsed .rules-title {
+      margin-bottom: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding-right: 90px;
+    }
+    #rulesPanel .rules-title { font-weight: 600; color: #7dd3fc; margin-bottom: 4px; font-size: 14px; }
+    #rulesPanel .rules-en { color: #64748b; font-size: 12px; margin-top: 4px; }
+    #rulesPanel .rules-toggle { float: right; color: #475569; font-size: 12px; }
   </style>
 </head>
 <body>
   <div id="gameHost"><div id="gameLoad">loading…</div></div>
   <div id="toast"></div>
+  <!-- 开始覆盖层：点击后才开始游戏 -->
+  <div id="startOverlay">
+    <div class="start-title" id="startTitle">Mini Game</div>
+    <div class="start-rules" id="startRulesZh"></div>
+    <div class="start-rules-en" id="startRulesEn"></div>
+    <div class="start-diff" id="diffGroup">
+      <span style="width:100%;text-align:center;color:#94a3b8;font-size:13px;margin-bottom:2px;">难度 / Difficulty</span>
+      <button class="diff-btn active" data-diff="52">😊 简单 Easy</button>
+      <button class="diff-btn" data-diff="34">🙂 普通 Normal</button>
+      <button class="diff-btn" data-diff="18">😅 困难 Hard</button>
+      <button class="diff-btn" data-diff="10">🔥 极难 Extreme</button>
+    </div>
+    <button class="start-btn" id="startBtn">▶ 开始游戏</button>
+  </div>
+  <!-- 游戏结束覆盖层：失败/通关后弹出，点击重新开始 -->
+  <div id="endOverlay" class="hidden">
+    <div class="end-title" id="endTitle">GAME OVER</div>
+    <div class="end-sub" id="endSub">按 R 或点击按钮重新开始</div>
+    <button class="end-btn" id="endRestartBtn">↻ 重新开始</button>
+  </div>
+  <!-- 关卡过渡覆盖层：过关后暂停，点击继续 -->
+  <div id="levelOverlay" class="hidden">
+    <div class="lv-title" id="levelTitle">LEVEL 2</div>
+    <div class="lv-sub" id="levelSub">准备进入下一关</div>
+    <button class="lv-btn" id="levelContinueBtn">▶ 继续</button>
+  </div>
+  <div id="rulesPanel" class="collapsed">
+    <span class="rules-toggle" id="rulesToggle">▼ 展开规则</span>
+    <div class="rules-title" id="rulesTitle">How to Play</div>
+    <div id="rulesZh"></div>
+    <div class="rules-en" id="rulesEn"></div>
+  </div>
 
-  <script src="js/utils.js"></script>
+  <script src="js/utils.js?_v=16"></script>
   <script>
-    // 游戏白名单：主页浮窗与这里共同维护
+    var GAME_RULES = {
+      'snake-2048': {
+        zh: '⚠ 蛇会自动向右移动，请提前用方向键/WASD 转向，避免撞墙！吃数字方块长大，相同数字碰撞会合并翻倍（类似 2048）。蛇身越长得分越高。空格键开启自动寻路（蛇长>15时）。R 键重开，ESC 关闭。',
+        en: '⚠ The snake moves automatically right — use Arrow keys/WASD BEFORE it hits a wall! Eat number blocks to grow; same numbers merge (like 2048). Space = auto-path (len>15). R = restart, ESC = close.'
+      },
+      'server-defense': {
+        zh: 'WASD 移动角色，鼠标点击射击。消灭涌来的敌人波次，收集经验升级武器。类似吸血鬼幸存者的塔防玩法。R 键重开。',
+        en: 'WASD to move, mouse click to shoot. Survive enemy waves, collect XP to upgrade weapons. Vampire Survivors style. R = restart.'
+      },
+      'traffic-breakout': {
+        zh: '鼠标左右移动控制底部挡板。打掉所有砖块通关，有些砖块会分裂或掉道具。类似经典打砖块。R 键重开。',
+        en: 'Mouse left/right to move paddle. Break all bricks to clear the level. Some bricks split or drop power-ups. Classic Breakout. R = restart.'
+      },
+      'dimension-parkour': {
+        zh: '空格键或上方向键跳跃，空中再按一次翻转重力。躲避障碍物跑得越远越好。类似恐龙跑酷 + 重力翻转。R 键重开。',
+        en: 'Space or Up to jump, press again mid-air to flip gravity. Dodge obstacles and run far. Dino runner + gravity flip. R = restart.'
+      },
+      'bug-sorter': {
+        zh: 'A/S/D 键分别对应左/中/右三条赛道。当 Bug 到达底线时按对应键将其消灭。类似节奏大师的三键玩法。R 键重开。',
+        en: 'A/S/D keys for left/center/right lanes. Hit the key when a Bug reaches the bottom line. Rhythm-style 3-lane game. R = restart.'
+      },
+      'terminal-hacker': {
+        zh: '终端会显示加密威胁（Base64/Hex等），你需要解密后输入 block <明文> 来拦截。输入 agent init 启动多智能体模式。R 键重开。',
+        en: 'Terminal shows encrypted threats (Base64/Hex). Decrypt and type "block <plaintext>" to intercept. Type "agent init" for multi-agent mode. R = restart.'
+      },
+      'data-turing': {
+        zh: '点击拖拽连接输入节点到输出节点，使数据流通过正确的逻辑门到达目标。类似图灵机连线谜题。鼠标点击操作。R 键重开。',
+        en: 'Click and drag to wire input nodes to output nodes through logic gates. Reach the target output. Turing-style wiring puzzle. Mouse only. R = restart.'
+      }
+    };
+
     var GAMES = {
       'server-defense':   { title: 'Server Defense',   file: 'js/games/server-defense.js',   cls: 'ServerDefense' },
       'terminal-hacker':  { title: 'Terminal Hacker',  file: 'js/games/terminal-hacker.js',  cls: 'TerminalHacker' },
@@ -41,8 +181,21 @@
     if (!GAMES.hasOwnProperty(gid)) gid = 'snake-2048';
     document.title = GAMES[gid].title;
 
-    // 工厂按类名直接引用（class 顶层声明是全局词法绑定，不在 window 上，
-    // 不能用 window[cls] 字符串索引）；闭包延迟到游戏脚本加载后再解析。
+    // 显示游戏规则
+    var rules = GAME_RULES[gid] || { zh: '', en: '' };
+    document.getElementById('rulesTitle').textContent = GAMES[gid].title + ' — 玩法';
+    document.getElementById('rulesZh').textContent = rules.zh;
+    document.getElementById('rulesEn').textContent = rules.en;
+    // 开始覆盖层也显示规则和标题
+    document.getElementById('startTitle').textContent = GAMES[gid].title;
+    document.getElementById('startRulesZh').textContent = rules.zh;
+    document.getElementById('startRulesEn').textContent = rules.en;
+    // 点击展开/收起规则面板
+    document.getElementById('rulesPanel').onclick = function() {
+      var collapsed = this.classList.toggle('collapsed');
+      document.getElementById('rulesToggle').textContent = collapsed ? '▼ 展开规则' : '▲ 收起';
+    };
+
     var FACTORIES = {
       'server-defense':    function (h) { return new ServerDefense(h); },
       'terminal-hacker':   function (h) { return new TerminalHacker(h); },
@@ -54,9 +207,12 @@
     };
 
     var s = document.createElement('script');
-    s.src = GAMES[gid].file;
+    s.src = GAMES[gid].file + '?_v=16';
     s.onload = function () {
       var host = document.getElementById('gameHost');
+      var started = false;
+
+      // 创建游戏实例（不自动 start，等用户点"开始"）
       var boot = function () {
         host.innerHTML = '';
         var factory = FACTORIES[gid];
@@ -67,17 +223,104 @@
           host.innerHTML = '<div id="gameLoad">game boot failed: ' + (e && e.message || e) + '</div>';
           return;
         }
-        window.__game.start();
+        // 不自动 start，等用户点"开始游戏"按钮
+        started = false;
+        // 隐藏结束覆盖层，显示开始覆盖层
+        document.getElementById('endOverlay').classList.add('hidden');
+        document.getElementById('startOverlay').classList.remove('hidden');
+        // 回到开始界面时重新显示规则面板
+        document.getElementById('rulesPanel').classList.remove('hidden');
       };
-      window.__restart = boot;
+
+      // 难度按钮组：点击切换高亮
+      var diffBtns = document.querySelectorAll('#diffGroup .diff-btn');
+      for (var bi = 0; bi < diffBtns.length; bi++) {
+        diffBtns[bi].onclick = function() {
+          for (var bj = 0; bj < diffBtns.length; bj++) diffBtns[bj].classList.remove('active');
+          this.classList.add('active');
+        };
+      }
+      // 读取当前选中难度
+      function getSelectedDiff() {
+        var active = document.querySelector('#diffGroup .diff-btn.active');
+        return active ? parseInt(active.getAttribute('data-diff'), 10) : 26;
+      }
+
+      // 点"开始游戏"按钮 → 启动游戏（按所选难度设置基础速度）
+      document.getElementById('startBtn').onclick = function() {
+        document.getElementById('startOverlay').classList.add('hidden');
+        // 开始后隐藏规则面板，避免挡路
+        document.getElementById('rulesPanel').classList.add('hidden');
+        if (window.__game && !started) {
+          window.__game.baseSpd = getSelectedDiff();
+          window.__game.start();
+          started = true;
+        }
+        // 通知父页面已开始（可以 focus iframe）
+        try { window.parent.postMessage({ type: 'gameStarted' }, '*'); } catch(e) {}
+      };
+
+      // 点"重新开始"按钮 → 回到开始界面（可重新选难度）
+      document.getElementById('endRestartBtn').onclick = function() {
+        document.getElementById('endOverlay').classList.add('hidden');
+        if (window.__restart) window.__restart();
+      };
+
+      window.__restart = function() {
+        // 停止旧游戏，重建实例，回到开始覆盖层（重新选难度再开始）
+        if (window.__game && window.__game.stop) window.__game.stop();
+        document.getElementById('levelOverlay').classList.add('hidden');
+        boot();
+      };
       boot();
+
+      // 关卡过渡：暂停游戏并显示过渡层（由游戏内部在过关时调用）
+      window.__showLevelTransition = function(text) {
+        if (window.__game && window.__game.stop) window.__game.stop();
+        document.getElementById('levelTitle').textContent = text || 'NEXT LEVEL';
+        document.getElementById('levelSub').textContent = '准备进入下一关';
+        document.getElementById('levelOverlay').classList.remove('hidden');
+      };
+      // 继续按钮：恢复游戏
+      document.getElementById('levelContinueBtn').onclick = function() {
+        document.getElementById('levelOverlay').classList.add('hidden');
+        if (window.__game) window.__game.start();
+      };
+
+      // 检测游戏结束：running 从 true 变为 false 时，弹出"重新开始"覆盖层
+      // （BaseGame.stop() 只被 die/win 或手动关闭调用，所以 running 变 false 即游戏结束）
+      var wasRunning = false;
+      setInterval(function() {
+        var g = window.__game;
+        if (!g) return;
+        // 关卡过渡暂停时不视为游戏结束
+        if (!document.getElementById('levelOverlay').classList.contains('hidden')) {
+          wasRunning = false;
+          return;
+        }
+        if (g.running) {
+          wasRunning = true;
+        } else if (wasRunning) {
+          wasRunning = false;
+          // 如果开始覆盖层还开着（游戏未启动），不弹结束层
+          if (!document.getElementById('startOverlay').classList.contains('hidden')) return;
+          document.getElementById('endOverlay').classList.remove('hidden');
+        }
+      }, 300);
+
+      // iframe 嵌入主页时，接收父窗口通过 postMessage 转发的键盘事件
+      window.addEventListener('message', function(ev) {
+        if (ev.data && ev.data.type === 'key' && ev.data.key) {
+          window.dispatchEvent(new KeyboardEvent('keydown', { key: ev.data.key, bubbles: true }));
+        }
+      });
     };
     s.onerror = function () {
       document.getElementById('gameLoad').textContent = 'game script not found: ' + GAMES[gid].file;
     };
     document.head.appendChild(s);
 
-    // R 重开（输入框聚焦时不劫持，与 debug 主页一致）
+    // R 重开
     window.addEventListener('keydown', function (e) {
       var tag = (e.target && e.target.tagName) || '';
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;

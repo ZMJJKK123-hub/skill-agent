@@ -17,11 +17,17 @@ class Snake2048 extends BaseGame {
     this._kd = e => {
       var k = e.key.toLowerCase();
       var d = this.dir;
-      if ((k === 'arrowup' || k === 'w') && d.y !== 1) this.ndir = { x: 0, y: -1 };
-      else if ((k === 'arrowdown' || k === 's') && d.y !== -1) this.ndir = { x: 0, y: 1 };
-      else if ((k === 'arrowleft' || k === 'a') && d.x !== 1) this.ndir = { x: -1, y: 0 };
-      else if ((k === 'arrowright' || k === 'd') && d.x !== -1) this.ndir = { x: 1, y: 0 };
+      var nd = null;
+      if ((k === 'arrowup' || k === 'w') && d.y !== 1) nd = { x: 0, y: -1 };
+      else if ((k === 'arrowdown' || k === 's') && d.y !== -1) nd = { x: 0, y: 1 };
+      else if ((k === 'arrowleft' || k === 'a') && d.x !== 1) nd = { x: -1, y: 0 };
+      else if ((k === 'arrowright' || k === 'd') && d.x !== -1) nd = { x: 1, y: 0 };
       else if (k === ' ') { e.preventDefault(); if (this.snake.length > 15 && this.autoActive === 0) this.activateAuto(); }
+      if (nd) {
+        this.ndir = nd;
+        // 第一次按方向键才启动移动，方向就是按下的方向
+        this.started = true;
+      }
     };
     addEventListener('keydown', this._kd);
     this.reset();
@@ -31,12 +37,16 @@ class Snake2048 extends BaseGame {
     this.snake = [{ x: 5, y: 6, v: 2 }, { x: 4, y: 6, v: 2 }];
     this.dir = { x: 1, y: 0 };
     this.ndir = { x: 1, y: 0 };
+    this.started = false; // 等待第一次按方向键才启动移动
     this.foods = [];
     this.spawnFood();
     this.spawnFood();
     this.score = 0;
     this.tick = 0;
-    this.spd = 8;
+    // 基础速度（难度档位控制）：越小越快。60fps 下 spd=N 表示每 N 帧移动一格。
+    // 已整体减半：简单 52 ≈ 6 秒到右墙，普通 34 ≈ 4 秒，困难 18 ≈ 2 秒，极难 10 ≈ 1.2 秒
+    if (typeof this.baseSpd !== 'number') this.baseSpd = 52;
+    this.spd = this.baseSpd;
     this.autoActive = 0;
     this.autoCooldown = 0;
     this.gameOver = false;
@@ -67,7 +77,11 @@ class Snake2048 extends BaseGame {
   }
 
   update() {
-    this.spd = Math.max(4, 8 - Math.floor(this.score / 200));
+    // 未启动（还没按方向键）时只渲染，不移动
+    if (!this.started) return;
+    // 基础速度随分数提升：每 150 分加快 1，最低 10（整体减半后的下限）
+    var base = typeof this.baseSpd === 'number' ? this.baseSpd : 52;
+    this.spd = Math.max(10, base - Math.floor(this.score / 150));
     this.tick++;
     if (this.autoCooldown > 0) this.autoCooldown--;
     this.mergeAnims.forEach(a => a.life--);
@@ -307,4 +321,6 @@ class Snake2048 extends BaseGame {
   }
 
   stop() { super.stop(); removeEventListener('keydown', this._kd); }
+  // 恢复 start 时重新挂键盘监听（stop/start 可逆，用于关卡暂停/恢复）
+  start() { addEventListener('keydown', this._kd); super.start(); }
 }

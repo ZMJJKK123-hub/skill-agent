@@ -859,6 +859,8 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
                  # 用户输入 /mod 进入制造模式，而不是把用户导去外部网页版
                  # （外部平台接入层不注入此变量，保持"去网页版"引导）。
                  "DSH_WEB_CHAT": "1",
+                 # 低内存服务器模式：设置后禁用客户端/游戏 GUI 工具（避免 OOM）
+                 "DSH_DISABLE_CLIENT_TOOLS": os.environ.get("DSH_DISABLE_CLIENT_TOOLS", "0"),
                  "DSH_VISION_ENABLED": "1" if sess.vision_enabled else "0",
                  "DSH_VISION_API_KEY": sess.vision_api_key or "",
                  "DSH_VISION_BASE_URL": sess.vision_base_url or "",
@@ -1468,10 +1470,12 @@ async def debug_page():
 
 @app.get("/debug/{filepath:path}")
 async def debug_static(filepath: str):
-    f = DEBUG_DIR / filepath
-    if f.is_file():
-        return FileResponse(str(f))
-    raise HTTPException(404, "Not found")
+    root = DEBUG_DIR.resolve()
+    f = (root / filepath).resolve()
+    # 双保险：防止路径穿越读取 debug 目录之外的文件（如 .env / server.py）
+    if not f.is_relative_to(root) or not f.is_file():
+        raise HTTPException(404, "Not found")
+    return FileResponse(str(f))
 
 
 # 未知页面路径（非 /api、非 /debug）的 404 也兜底到维护页：

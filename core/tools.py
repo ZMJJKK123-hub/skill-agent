@@ -10,6 +10,7 @@
 所有函数实现已按功能拆分到 core/tools_*.py。
 """
 import json
+import os
 
 from . import config
 from .config import logger
@@ -1604,6 +1605,25 @@ for _schema in _TOOL_SCHEMAS_EXTRA:
 
 def _unknown_handler(**kw):
     return "(handler not wired yet)"
+
+
+# ── 低内存服务器模式：禁用客户端 / 游戏 GUI 工具（避免 OOM）──
+# 在 2G 物理内存 + 4G 虚拟内存的服务器上，启动 MC 客户端/服务端会卡死或 OOM。
+# 设置 DSH_DISABLE_CLIENT_TOOLS=1 时，这些工具直接从模型可见工具集中移除，
+# agent 无法调用，只能做 build + GameTest + 资源检查 + 出 jar。
+_CLIENT_TOOLS_BLOCKLIST = {
+    "run_client", "run_server", "start_mc_server", "start_mc_client",
+    "send_game_command", "game_input", "press_key", "type_text",
+    "wait_for_screen", "verify_visual_loop", "server_console",
+    "kill_game", "wait_for_mc_ready",
+}
+if os.environ.get("DSH_DISABLE_CLIENT_TOOLS") == "1":
+    _before = len(TOOLS)
+    TOOLS = [t for t in TOOLS if t["function"]["name"] not in _CLIENT_TOOLS_BLOCKLIST]
+    logger.info(
+        f"低内存服务器模式：已禁用 {_before - len(TOOLS)} 个客户端/游戏 GUI 工具 "
+        f"({len(TOOLS)} 个工具仍可用)"
+    )
 
 
 for _t in TOOLS:

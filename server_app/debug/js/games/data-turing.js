@@ -188,7 +188,7 @@ class DataTuring extends BaseGame {
       if (!conn) { b.done = true; return; }
       var from = self.nodes[conn.from];
       var to = self.nodes[conn.to];
-      b.progress += 0.02;
+      b.progress += 0.01; // 速度减半
       if (b.progress >= 1) {
         b.progress = 0;
         b.path.push(conn.to);
@@ -313,6 +313,10 @@ class DataTuring extends BaseGame {
       this.level++;
       if (this.score > this.bestScore) { this.bestScore = this.score; localStorage.setItem('dtBest', this.bestScore); }
       toast('Logic verified! Lv.' + this.level);
+      // 关卡过渡：暂停游戏，等玩家点"继续"（保留 auto-advance 重置逻辑）
+      if (window.__showLevelTransition) {
+        window.__showLevelTransition('LEVEL ' + this.level + ' · PASS');
+      }
       // Auto-advance to next puzzle after delay
       var self = this;
       this._timeouts.push(setTimeout(function() {

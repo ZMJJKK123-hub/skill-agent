@@ -22,7 +22,7 @@ class ServerDefense extends BaseGame {
   }
 
   reset() {
-    this.player = { x: this.w / 2, y: this.h / 2, r: 12, spd: 2.5, pulse: 0, hp: 3, invuln: 0 };
+    this.player = { x: this.w / 2, y: this.h / 2, r: 12, spd: 1.25, pulse: 0, hp: 3, invuln: 0 };
     this.enemies = [];
     this.bullets = [];
     this.enemyBullets = [];
@@ -232,9 +232,9 @@ class ServerDefense extends BaseGame {
     else if (roll < 0.35) type = '502';
     else type = '404';
     var cfg = {
-      '404': { r: 10, hp: 1, spd: 1.2 + this.level * 0.05, pts: 1 },
-      '502': { r: 14, hp: 3, spd: 0.6 + this.level * 0.03, pts: 3 },
-      '500': { r: 18, hp: 6, spd: 0.4 + this.level * 0.02, pts: 8 },
+      '404': { r: 10, hp: 1, spd: 0.6 + this.level * 0.025, pts: 1 },
+      '502': { r: 14, hp: 3, spd: 0.3 + this.level * 0.015, pts: 3 },
+      '500': { r: 18, hp: 6, spd: 0.2 + this.level * 0.01, pts: 8 },
     };
     var c = cfg[type];
     // Multiple spawn at high level

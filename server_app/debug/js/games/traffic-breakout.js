@@ -31,7 +31,7 @@ class TrafficBreakout extends BaseGame {
 
   reset() {
     this.paddle = { x: 280, y: this.h - 16, w: 80, h: 8 };
-    this.ballSpeed = 3;
+    this.ballSpeed = 1.5; // 速度减半
     this.balls = [{ x: 320, y: this.h - 30, dx: this.ballSpeed, dy: -this.ballSpeed, r: 6 }];
     this.bricks = [];
     this.particles = [];
@@ -184,11 +184,16 @@ class TrafficBreakout extends BaseGame {
     if (this.bricksLeft <= 0) {
       this.level++;
       this.levelFlash = 90;
-      this.ballSpeed = Math.min(7, 3 + (this.level - 1) * 0.5);
+      this.ballSpeed = Math.min(3.5, 1.5 + (this.level - 1) * 0.25); // 速度减半
       this.makeBricks(this.level);
       this.balls = [{ x: this.w / 2, y: this.h - 30, dx: this.ballSpeed, dy: -this.ballSpeed, r: 6 }];
       sfx('powerup');
-      toast('Level ' + this.level + ' · Speed ' + this.ballSpeed.toFixed(1));
+      // 关卡过渡：暂停游戏，等玩家点"继续"
+      if (window.__showLevelTransition) {
+        window.__showLevelTransition('LEVEL ' + this.level);
+      } else {
+        toast('Level ' + this.level + ' · Speed ' + this.ballSpeed.toFixed(1));
+      }
     }
   }
 

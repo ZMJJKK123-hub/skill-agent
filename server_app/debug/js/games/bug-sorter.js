@@ -107,7 +107,7 @@ class BugSorter extends BaseGame {
   spawn() {
     var lane = rnd(0, 2);
     var types = ['UI', 'API', 'SQL'];
-    var spd = 3 + Math.random() * 1.5 + this.score / 300;
+    var spd = 1.5 + Math.random() * 0.75 + this.score / 600; // 速度减半
     // Occasionally spawn fast "critical" bug (bigger, more points)
     var isCritical = this.score > 100 && Math.random() < 0.1;
     this.notes.push({ lane: lane, y: -20, spd: isCritical ? spd * 1.6 : spd, type: isCritical ? 'CRIT' : types[lane], color: isCritical ? '#ff44aa' : this.lanes[lane].color, critical: isCritical, r: isCritical ? 16 : 12 });
