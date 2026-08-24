@@ -36,13 +36,9 @@ server_app/frontend-nextjs.bak/
 server_app/frontend/tsconfig.tsbuildinfo
 
 # ---- 静态导出产物（由 scripts/export.mjs 自动生成） ----
-server_app/web/index.html
-server_app/web/404.html
-server_app/web/index.txt
+# 注意：server_app/web/ 是 server.py 直接服务的构建产物，必须纳入版本控制，
+# 否则部署到服务器后没有新 UI。只忽略旧 Next.js 遗留产物。
 server_app/web/_next/
-server_app/web/assets
-
-# ---- React 重构前遗留产物 ----
 server_app/web/css/
 server_app/web/js/
 
