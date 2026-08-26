@@ -894,3 +894,17 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **[iterauto_004] - `NEW_ERROR: GameTest/GameTestHolder 找不到 | 注解包路径变更 | import net.minecraftforge.gametest.GameTest + GameTestNamespace, 不用@PrefixGameTestTemplate`**
 
 - **[iterauto_004] - `NEW_ERROR: 配方解析失败 No key type | 1.21.11 key值需字符串 | key中用 "minecraft:emerald" 而非 {"item":...}`**
+
+- **[iterauto_001] BUILD FAILED in 29s**
+
+- **[iterauto_001] docs/agent/ERROR_LIST.md:675: - **`GameTestHolder` is GONE in BOTH packages** (`net.minecraftforge.gametest` and `net.minecraft.gametest.framework` both "cannot find symbol").**
+
+- **[iterauto_001] docs/agent/ERROR_LIST.md:892: - **[iterauto_004] - `NEW_ERROR: ResourceLocation 找不到符号 | 1.21.11重命名为Identifier | import net.minecraft.resources.Identifier, 用 fromNamespaceAndPath()`****
+
+- **[iterauto_001] docs/agent/ERROR_LIST.md:894: - **[iterauto_004] - `NEW_ERROR: GameTest/GameTestHolder 找不到 | 注解包路径变更 | import net.minecraftforge.gametest.GameTest + GameTestNamespace, 不用@PrefixGameTestTemplate`****
+
+- **[iterauto_001] [reply] NEW_ERROR: Failed**
+
+- **[iterauto_001] NEW_ERROR: 这次的错误是 JPMS 模块层冲突 - "Modules test and titaniummod export package com.titaniummod"。这是因为在 src/main 和 src/test 中都使用了相同的包名 `com.titaniummod`，导致 Forge 的 JPMS 模块系统无法解析。解决方法是将测试类放在不同的子包中（如 `com.titaniummod.test`）。**
+
+- **[iterauto_001] `NEW_ERROR: Failed to create module layer GAME - Modules test and titaniummod export package com.titaniummod | src/main 和 src/test 使用了相同的 Java 包 com.titaniummod，导致 Forge JPMS 模块层冲突（两个模块不能导出同一包） | 将测试类放在不同的子包中（如 com.titaniummod.test），使 src/main 和 src/**
