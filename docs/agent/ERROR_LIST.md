@@ -908,3 +908,57 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **[iterauto_001] NEW_ERROR: 这次的错误是 JPMS 模块层冲突 - "Modules test and titaniummod export package com.titaniummod"。这是因为在 src/main 和 src/test 中都使用了相同的包名 `com.titaniummod`，导致 Forge 的 JPMS 模块系统无法解析。解决方法是将测试类放在不同的子包中（如 `com.titaniummod.test`）。**
 
 - **[iterauto_001] `NEW_ERROR: Failed to create module layer GAME - Modules test and titaniummod export package com.titaniummod | src/main 和 src/test 使用了相同的 Java 包 com.titaniummod，导致 Forge JPMS 模块层冲突（两个模块不能导出同一包） | 将测试类放在不同的子包中（如 com.titaniummod.test），使 src/main 和 src/**
+
+- **[iterauto_002] BUILD FAILED in 19s**
+
+- **[iterauto_002] [reply]  error: `SubscribeEvent**
+
+- **[iterauto_002] docs/agent/ERROR_LIST.md:355:   - Symptom: `import net.minecraftforge.eventbus.api.SubscribeEvent;` cannot find symbol**
+
+- **[iterauto_002] docs/agent/ERROR_LIST.md:832: - **[iterauto_001] [75] tool len=675 | - **`SubscribeEvent` package moved in Forge 1.21.11**\n  - Symptom: `import net.minecraftforge.eventbus.api.SubscribeEvent;` cannot find symbol\n  - Fix: import `net.minecraftforge***
+
+- **[iterauto_002] [80] assistant tool_calls=1 len=131 | Compile error: `SubscribeEvent` not found in `net.minecraftforge.eventbus.api`. Let me check ERROR_LIST.md for the correct package:**
+
+- **[iterauto_002] [79] assistant tool_calls=1 len=131 | Compile error: `SubscribeEvent` not found in `net.minecraftforge.eventbus.api`. Let me check ERROR_LIST.md for the correct package:**
+
+- **[iterauto_002] 7. Hit a compile error: `SubscribeEvent` not found in `net.minecraftforge.eventbus.api`**
+
+- **[iterauto_002] BUILD FAILED in 25s**
+
+- **[iterauto_002] gent/ERROR_LIST.md:595: - **`import net.minecraft.gametest.framework.GameTest` cannot find symbol**:**
+
+- **[iterauto_002] - Hit a compile error: `SubscribeEvent` not found in `net.minecraftforge.eventbus.api`**
+
+- **[iterauto_002] [思考] The build succeeded (jar created), but the GameTest server failed because there's a "BROKEN" mod detected. The error says:**
+
+- **[iterauto_002] docs/agent/ERROR_LIST.md:838: - **[iterauto_001] [101] assistant tool_calls=1 len=252 | Build succeeded! But GameTest failed with "Failed to register automatic subscribers. ModID: sapphiremod, class com.sapphire.mod.SapphireMod". The issue is the `@***
+
+- **[iterauto_002] docs/agent/ERROR_LIST.md:840: - **[iterauto_001] [100] assistant tool_calls=1 len=252 | Build succeeded! But GameTest failed with "Failed to register automatic subscribers. ModID: sapphiremod, class com.sapphire.mod.SapphireMod". The issue is the `@***
+
+- **[iterauto_002] docs/agent/ERROR_LIST.md:842: - **[iterauto_001] [103] assistant tool_calls=1 len=222 | Clear error: `BuildCreativeModeTabContentsEvent` is on the default BusGroup (FORGE bus), not the MOD bus. The fix: remove the `bus = Mod.EventBusSubscriber.Bus.M***
+
+- **[iterauto_002] docs/agent/ERROR_LIST.md:844: - **[iterauto_001] 9. At step [101], GameTest failed with "Failed to register automatic subscribers."****
+
+- **[iterauto_002] docs/agent/ERROR_LIST.md:846: - **[iterauto_001] 2. At step [101], GameTest failed with "Failed to register automatic subscribers. ModID: sapphiremod, class com.sapphire.mod.SapphireMod".****
+
+- **[iterauto_002] docs/agent/ERROR_LIST.md:850: - **[iterauto_001] Actually, let me reconsider. The agent at step [101] says the GameTest failed with "Failed to register automatic subscribers. ModID: sapphiremod, class com.sapphire.mod.SapphireMod". The agent identif***
+
+- **[iterauto_002] [129] tool len=761 | docs/agent/ERROR_LIST.md:839: \ndocs/agent/ERROR_LIST.md:840: - **[iterauto_001] [100] assistant tool_calls=1 len=252 | Build succeeded! But GameTest failed with "Failed to register**
+
+- **[iterauto_002] Actually, looking more carefully at the error: "Failed to register automatic subscribers. ModID: voidstone, class com.example.voidstone.VoidstoneMod" - it says the class that failed is `VoidstoneMod` itself, not `ServerModEvents`. This is interesting**
+
+- **[iterauto_002] Hmm, wait. Let me re-read the error: "Failed to register automatic subscribers. ModID: voidstone, class com.example.voidstone.VoidstoneMod". So it's trying to auto-register `VoidstoneMod` class itself as an event subscriber? That shouldn't happen unl**
+
+- **[iterauto_002] [128] tool len=761 | docs/agent/ERROR_LIST.md:839: \ndocs/agent/ERROR_LIST.md:840: - **[iterauto_001] [100] assistant tool_calls=1 len=252 | Build succeeded! But GameTest failed with "Failed to register**
+
+- **[iterauto_002] - [143-148]: New error: "Caught exception during event RegisterEvent dispatch" with "Block id not set" NullPointerException**
+
+- **[iterauto_002] 1. First error: automatic subscriber registration failure (bus mismatch) → fixed**
+
+- **[iterauto_002] 3. New error: NullPointerException "Block id not set" during RegisterEvent dispatch**
+
+- **[iterauto_002] - First error: wrong bus for event → removed the subscriber**
+
+- **[iterauto_002] - Second error: Block id not set → added setId() calls**
+
+- **[iterauto_002] NEW_ERROR: `NullPointerException: Block id not set` during RegisterEvent | 1.21.11 中 Block/Item 的 Properties 必须调用 `.setId(registry.key("name"))` | 在 `BlockBehaviour.Properties.of()` 链中添加 `.setId(BLOCKS.key("voidstone"))`，BlockItem 的 `new Item.Propert**
