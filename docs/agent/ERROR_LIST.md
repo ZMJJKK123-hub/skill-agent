@@ -1002,3 +1002,59 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **[iterauto_003] [96] assistant tool_calls=1 len=191 | Only one error: `getDefaultMaxDamage()` doesn't exist on Item in this version. Let me simplify the test to just check registration (which compiles fine) and remove the durability m**
 
 - **[iterauto_003] 6. The `run_test_client` tool failed with an error: "cannot access local variable 'out' where it is not associated with a value"**
+
+- **[iterauto_004] BUILD FAILED in 17s**
+
+- **[iterauto_004] BUILD FAILED in 20s**
+
+- **[iterauto_004] 894:- **[iterauto_004] - `NEW_ERROR: GameTest/GameTestHolder 找不到 | 注解包路径变更 | import net.minecraftforge.gametest.GameTest + GameTestNamespace, 不用@PrefixGameTestTemplate`****
+
+- **[iterauto_004] 900:- **[iterauto_001] docs/agent/ERROR_LIST.md:675: - **`GameTestHolder` is GONE in BOTH packages** (`net.minecraftforge.gametest` and `net.minecraft.gametest.framework` both "cannot find symbol").****
+
+- **[iterauto_004] 904:- **[iterauto_001] docs/agent/ERROR_LIST.md:894: - **[iterauto_004] - `NEW_ERROR: GameTest/GameTestHolder 找不到 | 注解包路径变更 | import net.minecraftforge.gametest.GameTest + GameTestNamespace, 不用@PrefixGameTestTemplate`******
+
+- **[iterauto_004] 976:- **[iterauto_003] Actually wait, the error appears 6 times and the first is at line 5. If it's "cannot find symbol" for imports like GameTest, GameTestHelper, GameTestHolder, ForgeRegistries - but the main code uses ForgeRegistries successfully.**
+
+- **[iterauto_004] 2. Missing texture (purple/black) - checkable by viewing item in inventory**
+
+- **[iterauto_004] [reply] NEW_ERROR: Tool**
+
+- **[iterauto_004] NEW_ERROR: ToolMaterial构造器参数不匹配 | 1.21.11中ToolMaterial是record，构造器签名为 (TagKey<Block>, int, float, float, int, TagKey<Item>) 共6个参数，顺序为：incorrectBlocksForDrops, durability, speed, attackDamageBonus, enchantmentValue, repairItems | 参考ToolMaterial.NETHERI**
+
+- **[iterauto_005] BUILD FAILED in 22s**
+
+- **[iterauto_005] [reply]  GameTest failed.**
+
+- **[iterauto_005] [思考] The build succeeded, but GameTest failed. The error is interesting:**
+
+- **[iterauto_005] [115] assistant tool_calls=1 len=259 | Build succeeded but GameTest failed. The error: `constructed 2 mods: [BROKEN, astralforge]` — there's a leftover `examplemod` `@Mod` class I never deleted! Forge finds its `@Mod` a**
+
+- **[iterauto_005] - Build succeeded but GameTest failed due to incorrect imports**
+
+- **[iterauto_005] - Re-ran test cycle, build succeeded but GameTest failed again: `constructed 2 mods: [BROKEN, astralforge]` — there's a leftover `examplemod` `@Mod` class that needs to be deleted**
+
+- **[iterauto_005] - Second test cycle (line 112): build succeeded but GameTest failed (leftover examplemod BROKEN)**
+
+- **[iterauto_005] [114] assistant tool_calls=1 len=259 | Build succeeded but GameTest failed. The error: `constructed 2 mods: [BROKEN, astralforge]` — there's a leftover `examplemod` `@Mod` class I never deleted! Forge finds its `@Mod` a**
+
+- **[iterauto_006] BUILD FAILED in 23s**
+
+- **[iterauto_006] - `net.minecraft.gametest.framework.GameTest` — but this failed to find the symbol. Hmm. Maybe the package changed? Let me think. Actually the error was "找不到符号 import net.minecraft.gametest.framework.GameTest".**
+
+- **[iterauto_006] Actually, let me read the ERROR_LIST.md to see if I can verify the GameTest API facts. This could be a legitimate advice opportunity. But the rules say "be conservative" and "if evidence is ambiguous, incomplete, or only shows normal tool usage / a s**
+
+- **[iterauto_006] NEW_ERROR: `run_test_client` 报 `cannot access local variable 'out'` | 低内存服务器环境下客户端工具内部异常 | 改用 validate_resources + verify_artifact 静态验证，标注「客户端渲染由用户本地验证」。**
+
+- **[iterauto_005] BUILD FAILED in 27s**
+
+- **[iterauto_005] BUILD FAILED in 16s**
+
+- **[iterauto_005] 8. GameTest server failed at runtime (line 290) with a compile error during test run**
+
+- **[iterauto_006] [reply]  error: `InteractionResult**
+
+- **[iterauto_006] [85] assistant tool_calls=2 len=147 | Compile error: `InteractionResultHolder` not found in `net.minecraft.world`. Let me check ERROR_LIST and search the API for the correct class name.**
+
+- **[iterauto_006] [84] assistant tool_calls=2 len=147 | Compile error: `InteractionResultHolder` not found in `net.minecraft.world`. Let me check ERROR_LIST and search the API for the correct class name.**
+
+- **[iterauto_007] `NEW_ERROR: EntityType.create(Level) 单参数签名已移除 | 1.21.11 需要额外的 EntitySpawnReason 参数 | 使用 create(level, EntitySpawnReason.TRIGGERED) 等`**
