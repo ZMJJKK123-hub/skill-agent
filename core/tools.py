@@ -1616,6 +1616,7 @@ _CLIENT_TOOLS_BLOCKLIST = {
     "send_game_command", "game_input", "press_key", "type_text",
     "wait_for_screen", "verify_visual_loop", "server_console",
     "kill_game", "wait_for_mc_ready",
+    "run_test_client",  # runTestClient也会启动MC客户端窗口
 }
 if os.environ.get("DSH_DISABLE_CLIENT_TOOLS") == "1":
     _before = len(TOOLS)

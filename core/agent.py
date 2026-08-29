@@ -48,362 +48,20 @@ LEADER_TOOLS = tool_registry.schemas(exclude={"submit_plan"})
 IS_MOD_MODE = MODE == "mod"
 
 
-def _messages_hint_mod(messages: list) -> bool:
-    """判断消息里是否明显提到 MOD/模组/Forge，决定是否注入技能目录。"""
-    for m in messages:
-        if not isinstance(m, dict):
-            continue
-        if m.get("role") not in ("user", "system"):
-            continue
-        content = str(m.get("content", ""))
-        if re.search(r"(?i)(/mod|(?<![a-z])mod(?![a-z])|模组|mod制作|我的世界.*(?:mod|模组)|forge)", content):
-            return True
-    return False
-
-
-
-# 防死循环：同一 agent_loop 内允许的最大工具调用轮次（每轮可能含多个 tool_call）
-MAX_TOOL_ROUNDS = int(os.environ.get("DSH_MAX_TOOL_ROUNDS", "100"))
-
-# 超大工具结果阈值：超过则落盘 spill 文件，模型只看到前后预览
-MAX_INLINE_TOOL_CHARS = 3000
-
-# 会话根目录（.chat/ 断点与队列所在处）：由 server 通过 DSH_SESSION_ROOT 注入。
-# agent 的 cwd 可能在会话根（chat）或 mod/（mod 模式），断点永远落在会话根，
-# 因此这里显式读取环境变量而不是依赖 Path.cwd()。
-SESSION_ROOT = os.environ.get("DSH_SESSION_ROOT", "")
-
-
-def _current_session_root() -> str:
-    """动态读取当前会话根目录（支持按 sessionId 隔离对话历史）。"""
-    return os.environ.get("DSH_SESSION_ROOT", "")
-
-# 流式思考转发钩子：由外部接入层（如清小搭 8001 服务）设置。
-# 收到模型 delta.reasoning_content 时会实时调用 callback(text)；
-# 未设置时保持原有行为（仅累积到完整 reasoning 后打印/记录）。
-REASONING_SINK = None
-
-
-def set_reasoning_sink(fn):
-    """设置/清除 reasoning 实时回调。fn 可为 None 表示关闭。"""
-    global REASONING_SINK
-    REASONING_SINK = fn
-
-
-def get_reasoning_sink():
-    """返回当前 reasoning 实时回调（用于调用方临时覆盖后恢复）。"""
-    return REASONING_SINK
-
-
-def _maybe_spill(name: str, output: str) -> str:
-    """Spill oversized plain-text tool results to disk, return preview+locator."""
-    # Port of dsh spill-policy: skip read_file to avoid read -> spill -> read again loop.
-    if name == "read_file":
-        return output
-    if not isinstance(output, str) or len(output) <= MAX_INLINE_TOOL_CHARS:
-        return output
-    try:
-        spill_dir = os.path.join(os.getcwd(), ".spill")
-        os.makedirs(spill_dir, exist_ok=True)
-        fname = f"{name}-{os.urandom(4).hex()}.txt"
-        path = os.path.join(spill_dir, fname)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(output)
-        preview = output[:1200] + "\n...[truncated]...\n" + output[-1200:]
-        return (
-            f"[spilled] Full tool output ({len(output)} chars) saved to {path}.\n"
-            f"Preview:\n{preview}"
-        )
-    except Exception:
-        return output
-
-
-def _auto_write_starter(messages: list) -> bool:
-    """If the agent refuses to write, auto-copy a matching starter Java file.
-
-    Scans messages for `modid`/`MODID`, then finds a starter/*.java whose content
-    contains that modid and writes it under src/main/java/<package path>.
-    Returns True if a file was written.
-    """
-    import glob as _glob
-    import re as _re
-    try:
-        # 1) infer modid from user messages
-        modid = None
-        for m in messages:
-            c = m.get("content", "") if isinstance(m.get("content"), str) else ""
-            m2 = _re.search(r"modid[ =:]+([a-zA-Z0-9_\-]+)", c)
-            if m2:
-                modid = m2.group(1).lower()
-                break
-        if not modid:
-            return False
-        # 2) score starter java files by task keywords + modid match
-        candidates = _glob.glob(os.path.join(os.getcwd(), "starter", "**", "*.java"), recursive=True)
-        task_text = "\n".join(
-            str(m.get("content", "")) for m in messages
-            if isinstance(m.get("content"), str)
-        ).lower()
-        block_kw = ("block", "方块")
-        item_kw = ("item", "food", "apple", "ingot", "gem", "物品", "食物")
-        tool_kw = ("tool", "sword", "pickaxe", "axe", "工具", "剑", "镐")
-        game_kw = ("game", "minigame", "swap", "大逃杀", "游戏", "交换", "玩家")
-        target_src = None
-        best_score = 0  # 只有匹配到 modid 或任务关键词（score>0）才可能选中，避免复制无关 starter
-        for path in candidates:
-            try:
-                content = open(path, "r", encoding="utf-8").read()
-            except OSError:
-                continue
-            low_path = path.lower().replace("\\", "/")
-            score = 0
-            if modid in content.lower():
-                score += 1
-            if any(k in task_text for k in block_kw) and "/block/" in low_path:
-                score += 6
-            if any(k in task_text for k in tool_kw) and ("/tools/" in low_path or "tool" in low_path):
-                score += 7
-            if any(k in task_text for k in item_kw) and ("/item/" in low_path or "rubymod" in low_path):
-                score += 5
-            if any(k in task_text for k in game_kw) and ("/swapgame/" in low_path or "swapgame" in low_path):
-                score += 9
-            # 只有 score>=2（modid匹配 + 至少一个任务关键词，或强关键词）才可能选中，
-            # 避免仅凭 modid 匹配就复制无关 starter
-            if score > best_score and score >= 2:
-                best_score = score
-                target_src = path
-                best_content = content
-        if not target_src:
-            return False
-        text = best_content
-        # 3) derive package path
-        pm = _re.search(r"package\s+([\w\.]+)\s*;", text)
-        if not pm:
-            return False
-        pkg_path = pm.group(1).replace(".", "/")
-        class_name = os.path.basename(target_src)
-        dest = os.path.join(os.getcwd(), "src", "main", "java", pkg_path, class_name)
-        os.makedirs(os.path.dirname(dest), exist_ok=True)
-        if not os.path.exists(dest):
-            with open(dest, "w", encoding="utf-8") as f:
-                f.write(text)
-            logger.warning(f"auto-wrote starter Java file: {dest}")
-            return True
-    except Exception:
-        return False
-    return False
-
-
-def _is_context_overflow(exc: Exception) -> bool:
-    text = str(exc).lower()
-    markers = (
-        "context length", "maximum context", "context window exceeded",
-        "context_window_exceeded", "token limit", "too many tokens",
-        "maximum context length",
-    )
-    return any(m in text for m in markers)
-
-
-def _replace_runtime_slot(messages: list, tag_prefix: str, content: str) -> None:
-    """Replace ephemeral runtime-context messages (official dsh runtime-context style).
-
-    Removes any previous user message whose content starts with '<tag_prefix',
-    then appends the latest one. Prevents stale/duplicate runtime context from
-    accumulating and distracting the model.
-    """
-    messages[:] = [
-        m for m in messages
-        if not (
-            m.get("role") == "user"
-            and isinstance(m.get("content"), str)
-            and m["content"].lstrip().startswith(f"<{tag_prefix}")
-        )
-    ]
-    messages.append({"role": "user", "content": content})
-
-
-def _save_checkpoint(messages: list) -> None:
-    """把当前轮 messages 存为断点（每轮循环开头）。"""
-    session_root = _current_session_root()
-    if not session_root:
-        return
-    try:
-        from .conversation import save_working
-        save_working(session_root, messages)
-    except Exception as e:
-        logger.warning(f"断点保存失败: {e}")
-
-
-def _drain_interjections(messages: list) -> None:
-    """读取运行中用户插入的排队消息并注入上下文（每轮循环开头）。
-
-    去重：enqueue_pending 已把消息同步写入 conversation 历史，自动续跑时
-    load_recent_history 可能已包含它——这里按 (role, content) 去重，
-    避免同一条消息被注入两次。
-    """
-    session_root = _current_session_root()
-    if not session_root:
-        return
-    try:
-        from .conversation import drain_pending
-        pending = drain_pending(session_root)
-        if pending:
-            existing = {
-                (m.get("role"), m.get("content"))
-                for m in messages
-                if isinstance(m, dict) and m.get("role") in ("user", "assistant")
-            }
-            added = 0
-            for m in pending:
-                key = (m.get("role"), m.get("content"))
-                if key in existing:
-                    logger.info(f"跳过重复注入的排队消息: {str(m.get('content'))[:40]}")
-                    continue
-                messages.append(m)
-                existing.add(key)
-                added += 1
-            if added:
-                logger.info(f"注入 {added} 条运行中用户插入消息")
-    except Exception as e:
-        logger.warning(f"排队消息注入失败: {e}")
-
-
-def _sync_messages_to_log(log: SessionLog, messages: list, synced_count: int) -> int:
-    """Append messages[+synced_count:] into the event-sourced SessionLog.
-
-    Returns the new number of messages that have been logged.
-    """
-    try:
-        while synced_count < len(messages):
-            m = messages[synced_count]
-            role = m.get("role")
-            if role == "user":
-                log.add_user(str(m.get("content", "")), source="messages")
-            elif role == "assistant":
-                log.add_assistant(
-                    content=m.get("content"),
-                    tool_calls=m.get("tool_calls"),
-                    reasoning=m.get("reasoning_content"),
-                )
-            elif role == "tool":
-                log.add_tool_result(str(m.get("tool_call_id", "")), str(m.get("content", "")))
-            synced_count += 1
-    except Exception as e:
-        logger.warning(f"sync messages to log failed: {e}")
-    return synced_count
-
-
-def _save_session_log(log: SessionLog) -> None:
-    """Persist the event-sourced session log for replay/debug (DSH JSONL backend)."""
-    try:
-        path = os.path.join(".chat", "session_events.jsonl")
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(log.to_jsonl())
-        logger.info(f"SessionLog saved: {path} events={len(log.events)}")
-    except Exception as e:
-        logger.warning(f"save session log failed: {e}")
-
-
-def _dump_round_messages(round_idx: int, messages: list, tool_counts: dict) -> None:
-    """每轮调试快照：打印消息概览 + 工具统计，并落盘完整 JSONL。
-
-    用途：
-    - 观察消息是否被压缩/丢信息
-    - 观察工具调用是否合理
-    """
-    try:
-        from .compact import estimate_tokens as _est
-        tokens = _est(messages)
-        counts = ", ".join(f"{k}:{v}" for k, v in sorted(tool_counts.items()))
-        print(f"\n[round] #{round_idx} messages={len(messages)} tokens≈{tokens} tools=[{counts}]", flush=True)
-        for i, m in enumerate(messages):
-            role = m.get("role", "?")
-            content = m.get("content", "")
-            if isinstance(content, list):
-                content = json.dumps(content, ensure_ascii=False)
-            content = str(content)
-            preview = content[:180].replace("\n", "\\n")
-            tool_calls = m.get("tool_calls")
-            tc_note = f" tool_calls={len(tool_calls)}" if tool_calls else ""
-            print(f"  [{i}] {role}{tc_note} len={len(content)} | {preview}", flush=True)
-        # 完整快照（限制单条内容长度，避免文件爆炸；完整内容仍可从 run.log 工具结果看）
-        snap_dir = os.path.join(".chat", "debug")
-        os.makedirs(snap_dir, exist_ok=True)
-        snap_path = os.path.join(snap_dir, "round_messages.jsonl")
-        with open(snap_path, "a", encoding="utf-8") as f:
-            record = {"round": round_idx, "tokens": tokens, "tool_counts": tool_counts,
-                      "messages": [{ "role": m.get("role"), "content": str(m.get("content", ""))[:5000],
-                                     "tool_call_ids": [tc.get("id") for tc in (m.get("tool_calls") or [])] }
-                                   for m in messages]}
-            f.write(json.dumps(record, ensure_ascii=False) + "\n")
-    except Exception as e:
-        logger.warning(f"round dump failed: {e}")
-
-
-def _ensure_mc_java_sources():
-    """若工作区缺少 mc_java_sources，则链接到仓库 mc_java_sources_1.21.11。
-
-    手动复制的 mod 模板不会自动带 server 建的 junction；这里补上，
-    保证 search_api/read_file 能在工作区内读到完整 MC/Forge 源码。
-    """
-    if not IS_MOD_MODE and os.environ.get("DSH_ALLOW_MC_SOURCES") != "1":
-        return
-    target = Path.cwd() / "mc_java_sources"
-    source = Path(__file__).resolve().parent.parent / "mc_java_sources_1.21.11"
-    if target.exists() or not source.exists():
-        return
-    try:
-        if os.name == "nt":
-            subprocess.run(
-                ["cmd", "/c", "mklink", "/J", str(target), str(source)],
-                check=True, capture_output=True,
-            )
-        else:
-            target.symlink_to(source, target_is_directory=True)
-        logger.info(f"已补建 mc_java_sources junction -> {source}")
-    except Exception as e:
-        logger.warning(f"补建 mc_java_sources 失败: {e}")
-
-
-def _ensure_docs_agent():
-    """在会话工作区创建 docs/agent 软链接，指向仓库根的参考文档（只读，不复制）。"""
-    if os.environ.get("DSH_ALLOW_MC_SOURCES") != "1" and not IS_MOD_MODE:
-        return
-    repo_root = Path(__file__).resolve().parent.parent
-    docs_src = repo_root / "docs" / "agent"
-    target = Path.cwd() / "docs" / "agent"
-    if target.exists() or not docs_src.is_dir():
-        return
-    try:
-        if os.name == "nt":
-            subprocess.run(
-                ["cmd", "/c", "mklink", "/J", str(target), str(docs_src)],
-                check=True, capture_output=True,
-            )
-        else:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.symlink_to(docs_src, target_is_directory=True)
-        logger.info(f"已补建 docs/agent junction -> {docs_src}")
-    except Exception as e:
-        logger.warning(f"补建 docs/agent 失败: {e}")
-
-
 def agent_loop(messages: list) -> str:
     # 确保工作区能看到 MC/Forge 源码（手动建会话时最容易缺这一项）
-    _ensure_mc_java_sources()
+    #只验证 不复制 保证根目录存在即可
     _ensure_docs_agent()
+    _ensure_mc_java_sources()
+
+    #todo工具计数器 防止agent多次不调用todo工具导致混乱
     rounds_since_todo = 0
-    # ── 第 13 课：代码强制派发监管 Agent（不依赖主 agent 主动调 task）──
-    # 每次任务开始必然启动后台监管线程；幂等（已在跑则不重复启动）。
-    # 仅 mod 模式：监管线程的规则全部围绕 run.log / GameTest / 技能纪律。
+    #监管启动
     if IS_MOD_MODE:
         supervisor_manager.start()
-    # 绕圈修复：每个任务首轮强制注入 KNOWN_ISSUES.md 读取步骤。
-    # 之前仅靠 SYSTEM prompt 软性要求（"BEFORE starting any work, run_read
-    # KNOWN_ISSUES.md"），模型实际从未读过——而该文件第 25-28 行明确写着
-    # "GameTest 自检必须用 run_test_gametest"，本可一击解决绕圈。
-    # 现在改为硬性第一步：未读取前不允许进入正常规划/写码。
+
+
+    #控制智能体行为的注入变量
     _known_issues_injected = False
     _agents_injected = False
     _tool_rounds = 0
@@ -412,11 +70,17 @@ def agent_loop(messages: list) -> str:
     _pre_write_warned = False
     _starter_auto_written = False
     _write_strikes = 0
-    _forced_write = False
     _post_write_research = 0
     _post_write_strikes = 0
-    _forced_post_write = False
     _no_tool_strikes = 0
+    _existing_java = _has_custom_java()
+    _force_final_msg = None
+    _round_idx = 0
+    _round_tool_counts = {}
+    _session_log = SessionLog()
+
+    
+    #检测是否有自己写过的代码 还是完全没动过模版代码
     def _has_custom_java():
         # 模板包 com/example 不算“已有自己写的代码”，否则 forced-write 永远不触发。
         def is_template(p: Path) -> bool:
@@ -429,11 +93,7 @@ def agent_loop(messages: list) -> str:
             for root in (main, test) if root.exists()
             for p in root.rglob("*.java")
         )
-    _existing_java = _has_custom_java()
-    _force_final_msg = None
-    _round_idx = 0
-    _round_tool_counts = {}
-    _session_log = SessionLog()
+
     # 恢复：如果调用方没给初始消息，但存在事件日志，则从事件源重建历史（DSH replay）
     if not messages:
         try:
@@ -1087,6 +747,346 @@ def agent_loop(messages: list) -> str:
                 "<reminder>Update your todos to track progress.</reminder>",
             )
             rounds_since_todo = 0
+
+def _messages_hint_mod(messages: list) -> bool:
+    """判断消息里是否明显提到 MOD/模组/Forge，决定是否注入技能目录。"""
+    for m in messages:
+        if not isinstance(m, dict):
+            continue
+        if m.get("role") not in ("user", "system"):
+            continue
+        content = str(m.get("content", ""))
+        if re.search(r"(?i)(/mod|(?<![a-z])mod(?![a-z])|模组|mod制作|我的世界.*(?:mod|模组)|forge)", content):
+            return True
+    return False
+
+
+
+# 防死循环：同一 agent_loop 内允许的最大工具调用轮次（每轮可能含多个 tool_call）
+MAX_TOOL_ROUNDS = int(os.environ.get("DSH_MAX_TOOL_ROUNDS", "100"))
+
+# 超大工具结果阈值：超过则落盘 spill 文件，模型只看到前后预览
+MAX_INLINE_TOOL_CHARS = 3000
+
+# 会话根目录（.chat/ 断点与队列所在处）：由 server 通过 DSH_SESSION_ROOT 注入。
+# agent 的 cwd 可能在会话根（chat）或 mod/（mod 模式），断点永远落在会话根，
+# 因此这里显式读取环境变量而不是依赖 Path.cwd()。
+SESSION_ROOT = os.environ.get("DSH_SESSION_ROOT", "")
+
+
+def _current_session_root() -> str:
+    """动态读取当前会话根目录（支持按 sessionId 隔离对话历史）。"""
+    return os.environ.get("DSH_SESSION_ROOT", "")
+
+# 流式思考转发钩子：由外部接入层（如清小搭 8001 服务）设置。
+# 收到模型 delta.reasoning_content 时会实时调用 callback(text)；
+# 未设置时保持原有行为（仅累积到完整 reasoning 后打印/记录）。
+REASONING_SINK = None
+
+
+def set_reasoning_sink(fn):
+    """设置/清除 reasoning 实时回调。fn 可为 None 表示关闭。"""
+    global REASONING_SINK
+    REASONING_SINK = fn
+
+
+def get_reasoning_sink():
+    """返回当前 reasoning 实时回调（用于调用方临时覆盖后恢复）。"""
+    return REASONING_SINK
+
+
+def _maybe_spill(name: str, output: str) -> str:
+    """Spill oversized plain-text tool results to disk, return preview+locator."""
+    # Port of dsh spill-policy: skip read_file to avoid read -> spill -> read again loop.
+    if name == "read_file":
+        return output
+    if not isinstance(output, str) or len(output) <= MAX_INLINE_TOOL_CHARS:
+        return output
+    try:
+        spill_dir = os.path.join(os.getcwd(), ".spill")
+        os.makedirs(spill_dir, exist_ok=True)
+        fname = f"{name}-{os.urandom(4).hex()}.txt"
+        path = os.path.join(spill_dir, fname)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(output)
+        preview = output[:1200] + "\n...[truncated]...\n" + output[-1200:]
+        return (
+            f"[spilled] Full tool output ({len(output)} chars) saved to {path}.\n"
+            f"Preview:\n{preview}"
+        )
+    except Exception:
+        return output
+
+
+def _auto_write_starter(messages: list) -> bool:
+    """If the agent refuses to write, auto-copy a matching starter Java file.
+
+    Scans messages for `modid`/`MODID`, then finds a starter/*.java whose content
+    contains that modid and writes it under src/main/java/<package path>.
+    Returns True if a file was written.
+    """
+    import glob as _glob
+    import re as _re
+    try:
+        # 1) infer modid from user messages
+        modid = None
+        for m in messages:
+            c = m.get("content", "") if isinstance(m.get("content"), str) else ""
+            m2 = _re.search(r"modid[ =:]+([a-zA-Z0-9_\-]+)", c)
+            if m2:
+                modid = m2.group(1).lower()
+                break
+        if not modid:
+            return False
+        # 2) score starter java files by task keywords + modid match
+        candidates = _glob.glob(os.path.join(os.getcwd(), "starter", "**", "*.java"), recursive=True)
+        task_text = "\n".join(
+            str(m.get("content", "")) for m in messages
+            if isinstance(m.get("content"), str)
+        ).lower()
+        block_kw = ("block", "方块")
+        item_kw = ("item", "food", "apple", "ingot", "gem", "物品", "食物")
+        tool_kw = ("tool", "sword", "pickaxe", "axe", "工具", "剑", "镐")
+        game_kw = ("game", "minigame", "swap", "大逃杀", "游戏", "交换", "玩家")
+        target_src = None
+        best_score = 0  # 只有匹配到 modid 或任务关键词（score>0）才可能选中，避免复制无关 starter
+        for path in candidates:
+            try:
+                content = open(path, "r", encoding="utf-8").read()
+            except OSError:
+                continue
+            low_path = path.lower().replace("\\", "/")
+            score = 0
+            if modid in content.lower():
+                score += 1
+            if any(k in task_text for k in block_kw) and "/block/" in low_path:
+                score += 6
+            if any(k in task_text for k in tool_kw) and ("/tools/" in low_path or "tool" in low_path):
+                score += 7
+            if any(k in task_text for k in item_kw) and ("/item/" in low_path or "rubymod" in low_path):
+                score += 5
+            if any(k in task_text for k in game_kw) and ("/swapgame/" in low_path or "swapgame" in low_path):
+                score += 9
+            # 只有 score>=2（modid匹配 + 至少一个任务关键词，或强关键词）才可能选中，
+            # 避免仅凭 modid 匹配就复制无关 starter
+            if score > best_score and score >= 2:
+                best_score = score
+                target_src = path
+                best_content = content
+        if not target_src:
+            return False
+        text = best_content
+        # 3) derive package path
+        pm = _re.search(r"package\s+([\w\.]+)\s*;", text)
+        if not pm:
+            return False
+        pkg_path = pm.group(1).replace(".", "/")
+        class_name = os.path.basename(target_src)
+        dest = os.path.join(os.getcwd(), "src", "main", "java", pkg_path, class_name)
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        if not os.path.exists(dest):
+            with open(dest, "w", encoding="utf-8") as f:
+                f.write(text)
+            logger.warning(f"auto-wrote starter Java file: {dest}")
+            return True
+    except Exception:
+        return False
+    return False
+
+
+def _is_context_overflow(exc: Exception) -> bool:
+    text = str(exc).lower()
+    markers = (
+        "context length", "maximum context", "context window exceeded",
+        "context_window_exceeded", "token limit", "too many tokens",
+        "maximum context length",
+    )
+    return any(m in text for m in markers)
+
+
+def _replace_runtime_slot(messages: list, tag_prefix: str, content: str) -> None:
+    """Replace ephemeral runtime-context messages (official dsh runtime-context style).
+
+    Removes any previous user message whose content starts with '<tag_prefix',
+    then appends the latest one. Prevents stale/duplicate runtime context from
+    accumulating and distracting the model.
+    """
+    messages[:] = [
+        m for m in messages
+        if not (
+            m.get("role") == "user"
+            and isinstance(m.get("content"), str)
+            and m["content"].lstrip().startswith(f"<{tag_prefix}")
+        )
+    ]
+    messages.append({"role": "user", "content": content})
+
+
+def _save_checkpoint(messages: list) -> None:
+    """把当前轮 messages 存为断点（每轮循环开头）。"""
+    session_root = _current_session_root()
+    if not session_root:
+        return
+    try:
+        from .conversation import save_working
+        save_working(session_root, messages)
+    except Exception as e:
+        logger.warning(f"断点保存失败: {e}")
+
+
+def _drain_interjections(messages: list) -> None:
+    """读取运行中用户插入的排队消息并注入上下文（每轮循环开头）。
+
+    去重：enqueue_pending 已把消息同步写入 conversation 历史，自动续跑时
+    load_recent_history 可能已包含它——这里按 (role, content) 去重，
+    避免同一条消息被注入两次。
+    """
+    session_root = _current_session_root()
+    if not session_root:
+        return
+    try:
+        from .conversation import drain_pending
+        pending = drain_pending(session_root)
+        if pending:
+            existing = {
+                (m.get("role"), m.get("content"))
+                for m in messages
+                if isinstance(m, dict) and m.get("role") in ("user", "assistant")
+            }
+            added = 0
+            for m in pending:
+                key = (m.get("role"), m.get("content"))
+                if key in existing:
+                    logger.info(f"跳过重复注入的排队消息: {str(m.get('content'))[:40]}")
+                    continue
+                messages.append(m)
+                existing.add(key)
+                added += 1
+            if added:
+                logger.info(f"注入 {added} 条运行中用户插入消息")
+    except Exception as e:
+        logger.warning(f"排队消息注入失败: {e}")
+
+
+def _sync_messages_to_log(log: SessionLog, messages: list, synced_count: int) -> int:
+    """Append messages[+synced_count:] into the event-sourced SessionLog.
+
+    Returns the new number of messages that have been logged.
+    """
+    try:
+        while synced_count < len(messages):
+            m = messages[synced_count]
+            role = m.get("role")
+            if role == "user":
+                log.add_user(str(m.get("content", "")), source="messages")
+            elif role == "assistant":
+                log.add_assistant(
+                    content=m.get("content"),
+                    tool_calls=m.get("tool_calls"),
+                    reasoning=m.get("reasoning_content"),
+                )
+            elif role == "tool":
+                log.add_tool_result(str(m.get("tool_call_id", "")), str(m.get("content", "")))
+            synced_count += 1
+    except Exception as e:
+        logger.warning(f"sync messages to log failed: {e}")
+    return synced_count
+
+
+def _save_session_log(log: SessionLog) -> None:
+    """Persist the event-sourced session log for replay/debug (DSH JSONL backend)."""
+    try:
+        path = os.path.join(".chat", "session_events.jsonl")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(log.to_jsonl())
+        logger.info(f"SessionLog saved: {path} events={len(log.events)}")
+    except Exception as e:
+        logger.warning(f"save session log failed: {e}")
+
+
+def _dump_round_messages(round_idx: int, messages: list, tool_counts: dict) -> None:
+    """每轮调试快照：打印消息概览 + 工具统计，并落盘完整 JSONL。
+
+    用途：
+    - 观察消息是否被压缩/丢信息
+    - 观察工具调用是否合理
+    """
+    try:
+        from .compact import estimate_tokens as _est
+        tokens = _est(messages)
+        counts = ", ".join(f"{k}:{v}" for k, v in sorted(tool_counts.items()))
+        print(f"\n[round] #{round_idx} messages={len(messages)} tokens≈{tokens} tools=[{counts}]", flush=True)
+        for i, m in enumerate(messages):
+            role = m.get("role", "?")
+            content = m.get("content", "")
+            if isinstance(content, list):
+                content = json.dumps(content, ensure_ascii=False)
+            content = str(content)
+            preview = content[:180].replace("\n", "\\n")
+            tool_calls = m.get("tool_calls")
+            tc_note = f" tool_calls={len(tool_calls)}" if tool_calls else ""
+            print(f"  [{i}] {role}{tc_note} len={len(content)} | {preview}", flush=True)
+        # 完整快照（限制单条内容长度，避免文件爆炸；完整内容仍可从 run.log 工具结果看）
+        snap_dir = os.path.join(".chat", "debug")
+        os.makedirs(snap_dir, exist_ok=True)
+        snap_path = os.path.join(snap_dir, "round_messages.jsonl")
+        with open(snap_path, "a", encoding="utf-8") as f:
+            record = {"round": round_idx, "tokens": tokens, "tool_counts": tool_counts,
+                      "messages": [{ "role": m.get("role"), "content": str(m.get("content", ""))[:5000],
+                                     "tool_call_ids": [tc.get("id") for tc in (m.get("tool_calls") or [])] }
+                                   for m in messages]}
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except Exception as e:
+        logger.warning(f"round dump failed: {e}")
+
+
+def _ensure_mc_java_sources():
+    """若工作区缺少 mc_java_sources，则链接到仓库 mc_java_sources_1.21.11。
+
+    手动复制的 mod 模板不会自动带 server 建的 junction；这里补上，
+    保证 search_api/read_file 能在工作区内读到完整 MC/Forge 源码。
+    """
+    if not IS_MOD_MODE and os.environ.get("DSH_ALLOW_MC_SOURCES") != "1":
+        return
+    target = Path.cwd() / "mc_java_sources"
+    source = Path(__file__).resolve().parent.parent / "mc_java_sources_1.21.11"
+    if target.exists() or not source.exists():
+        return
+    try:
+        if os.name == "nt":
+            subprocess.run(
+                ["cmd", "/c", "mklink", "/J", str(target), str(source)],
+                check=True, capture_output=True,
+            )
+        else:
+            target.symlink_to(source, target_is_directory=True)
+        logger.info(f"已补建 mc_java_sources junction -> {source}")
+    except Exception as e:
+        logger.warning(f"补建 mc_java_sources 失败: {e}")
+
+
+def _ensure_docs_agent():
+    """在会话工作区创建 docs/agent 软链接，指向仓库根的参考文档（只读，不复制）。"""
+    if os.environ.get("DSH_ALLOW_MC_SOURCES") != "1" and not IS_MOD_MODE:
+        return
+    repo_root = Path(__file__).resolve().parent.parent
+    docs_src = repo_root / "docs" / "agent"
+    target = Path.cwd() / "docs" / "agent"
+    if target.exists() or not docs_src.is_dir():
+        return
+    try:
+        if os.name == "nt":
+            subprocess.run(
+                ["cmd", "/c", "mklink", "/J", str(target), str(docs_src)],
+                check=True, capture_output=True,
+            )
+        else:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.symlink_to(docs_src, target_is_directory=True)
+        logger.info(f"已补建 docs/agent junction -> {docs_src}")
+    except Exception as e:
+        logger.warning(f"补建 docs/agent 失败: {e}")
 
 
 if __name__ == "__main__":

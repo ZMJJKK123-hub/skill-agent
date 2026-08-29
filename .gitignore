@@ -19,6 +19,9 @@ deepseek-harness/
 服务器重启命令.txt
 screenshots/
 bugaudit/
+run_harness.py
+.chat/
+.supervisor/
 
 # ---- 运行时日志 ----
 server_out*.log
