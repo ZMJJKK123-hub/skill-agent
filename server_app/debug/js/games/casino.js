@@ -252,91 +252,152 @@ window.Casino = {
         }
       }
     },
-    // 人物：造型按 persona 区分（aggr 尖角红 / tight 圆润蓝 / bluff 礼帽紫 / player 绿帽玩家）
+    // 人物：正面朝向玩家的酒馆常客——暗色大衣、帽檐阴影下的脸、琥珀缘光、性格帽子
+    // persona: aggr 宽檐牛仔帽 / tight 圆顶礼帽+圆眼镜 / bluff 高顶大礼帽+香烟 / player 棒球帽（保留）
     seat(c, x, y, t, o) {
       var s = o.scale || 1;
-      var bob = Math.sin(t * 0.04 + x) * 2.5 * s;
-      var blink = (Math.sin(t * 0.02 + x * 2) > 0.96);
+      var bob = Math.sin(t * 0.035 + x * 0.013) * 2.6 * s;
+      var blink = Math.sin(t * 0.017 + x) > 0.96;
+      var rim = o.winner ? '#ffd98a' : '#c88a4a';
+      var alpha = o.folded ? 0.42 : 1;
       c.save();
       c.translate(x, y + bob);
-      if (o.folded) { c.globalAlpha = 0.35; c.rotate(0.12); }
-      // 行动光环 / 赢家金环
+      if (o.folded) { c.translate(0, 30 * s); c.rotate(0.09); } // 弃牌：垂头缩肩
+      // 行动/赢家头顶聚光（暖色光锥，从头顶洒下）
+      if (o.active || o.winner) {
+        var amp = o.winner ? 0.30 : 0.15 + 0.06 * Math.sin(t * 0.12);
+        var cone = c.createLinearGradient(0, -170 * s, 0, 64 * s);
+        cone.addColorStop(0, 'rgba(255,200,120,' + amp + ')');
+        cone.addColorStop(1, 'rgba(255,200,120,0)');
+        c.fillStyle = cone;
+        c.beginPath();
+        c.moveTo(-18 * s, -170 * s); c.lineTo(18 * s, -170 * s);
+        c.lineTo(62 * s, 64 * s); c.lineTo(-62 * s, 64 * s); c.closePath(); c.fill();
+      }
+      c.globalAlpha = alpha;
+      // 大衣躯干（宽肩）
+      var coat = c.createLinearGradient(0, -20 * s, 0, 64 * s);
+      coat.addColorStop(0, '#33200f'); coat.addColorStop(1, '#0c0603');
+      c.fillStyle = coat;
+      c.beginPath();
+      c.moveTo(-54 * s, 64 * s); c.lineTo(-33 * s, -16 * s);
+      c.lineTo(33 * s, -16 * s); c.lineTo(54 * s, 64 * s); c.closePath(); c.fill();
+      // 肩部缘光（左肩受吊灯）
+      c.strokeStyle = rim; c.lineWidth = 2 * s;
+      c.globalAlpha = alpha * (o.winner ? 0.95 : 0.5 + (o.active ? 0.3 : 0));
+      c.beginPath(); c.moveTo(-33 * s, -14 * s); c.lineTo(-53 * s, 62 * s); c.stroke();
+      c.globalAlpha = alpha;
+      // 领巾（性格色）
+      c.fillStyle = o.color;
+      c.beginPath(); c.moveTo(-10 * s, -13 * s); c.lineTo(10 * s, -13 * s); c.lineTo(0, 9 * s); c.closePath(); c.fill();
+      // 头（帽檐阴影中）
+      c.fillStyle = '#251710';
+      c.beginPath(); c.ellipse(0, -36 * s, 17 * s, 20 * s, 0, 0, Math.PI * 2); c.fill();
+      // 脸缘光（受灯一侧）
+      c.strokeStyle = rim; c.lineWidth = 1.6 * s;
+      c.globalAlpha = alpha * (o.winner ? 0.9 : 0.45 + (o.active ? 0.25 : 0));
+      c.beginPath(); c.ellipse(0, -36 * s, 17 * s, 20 * s, 0, -Math.PI * 0.8, -Math.PI * 0.2); c.stroke();
+      c.globalAlpha = alpha;
+      // 帽子（按性格）
+      if (o.persona === 'aggr') { // 宽檐牛仔帽 + 红帽带
+        c.fillStyle = '#241408';
+        c.beginPath(); c.ellipse(0, -50 * s, 34 * s, 8 * s, 0, 0, Math.PI * 2); c.fill();
+        c.beginPath();
+        c.moveTo(-15 * s, -50 * s); c.quadraticCurveTo(-17 * s, -74 * s, 0, -75 * s);
+        c.quadraticCurveTo(17 * s, -74 * s, 15 * s, -50 * s); c.closePath(); c.fill();
+        c.fillStyle = o.color; c.fillRect(-15 * s, -56 * s, 30 * s, 4 * s);
+      } else if (o.persona === 'bluff') { // 高顶大礼帽 + 紫帽带
+        c.fillStyle = '#1a1008';
+        c.beginPath(); c.ellipse(0, -50 * s, 27 * s, 6.5 * s, 0, 0, Math.PI * 2); c.fill();
+        c.fillRect(-14 * s, -86 * s, 28 * s, 37 * s);
+        c.fillStyle = o.color; c.fillRect(-14 * s, -60 * s, 28 * s, 5 * s);
+      } else if (o.persona === 'tight') { // 圆顶礼帽 + 圆眼镜
+        c.fillStyle = '#20130a';
+        c.beginPath(); c.ellipse(0, -50 * s, 25 * s, 6 * s, 0, 0, Math.PI * 2); c.fill();
+        c.beginPath(); c.arc(0, -50 * s, 14 * s, Math.PI, 0); c.fill();
+        c.fillStyle = '#3a2412'; c.fillRect(-14 * s, -56 * s, 28 * s, 3 * s);
+      } else { // player：棒球帽（第一人称下通常不画玩家，保留造型）
+        c.fillStyle = '#1c120a';
+        c.beginPath(); c.arc(0, -50 * s, 15 * s, Math.PI, 0); c.fill();
+        c.fillRect(-13 * s, -52 * s, 30 * s, 5 * s);
+        c.fillStyle = o.color; c.beginPath(); c.arc(0, -50 * s, 15 * s, Math.PI, 0); c.fill();
+      }
+      // 眼睛（暗处发光，会眨）
+      var ey = -34 * s;
+      c.fillStyle = o.color;
+      c.shadowColor = o.color; c.shadowBlur = 9;
+      if (blink) { c.fillRect(-9 * s, ey, 6.5 * s, 1.6); c.fillRect(2.5 * s, ey, 6.5 * s, 1.6); }
+      else {
+        c.beginPath(); c.arc(-6 * s, ey, 2.8 * s, 0, Math.PI * 2); c.fill();
+        c.beginPath(); c.arc(6 * s, ey, 2.8 * s, 0, Math.PI * 2); c.fill();
+      }
+      c.shadowBlur = 0;
+      // tight：圆眼镜
+      if (o.persona === 'tight') {
+        c.strokeStyle = 'rgba(200,220,255,.55)'; c.lineWidth = 1.3;
+        c.beginPath(); c.arc(-6 * s, ey, 5 * s, 0, Math.PI * 2); c.stroke();
+        c.beginPath(); c.arc(6 * s, ey, 5 * s, 0, Math.PI * 2); c.stroke();
+        c.beginPath(); c.moveTo(-1 * s, ey); c.lineTo(1 * s, ey); c.stroke();
+      }
+      // bluff：叼烟（烟头红光 + 上升烟缕）
+      if (o.persona === 'bluff' && !o.folded) {
+        c.save();
+        c.strokeStyle = '#e8dfd0'; c.lineWidth = 2.6;
+        c.beginPath(); c.moveTo(9 * s, -29 * s); c.lineTo(20 * s, -24 * s); c.stroke();
+        c.fillStyle = '#ff5030'; c.shadowColor = '#ff5030'; c.shadowBlur = 6;
+        c.beginPath(); c.arc(20 * s, -24 * s, 1.8, 0, Math.PI * 2); c.fill();
+        c.shadowBlur = 0;
+        for (var k = 0; k < 3; k++) {
+          var puffs = (t * 0.35 + k * 14) % 42;
+          c.fillStyle = 'rgba(220,210,190,' + (0.28 * (1 - puffs / 42)) + ')';
+          c.beginPath();
+          c.arc(21 * s + Math.sin(t * 0.05 + k * 2) * 3, -26 * s - puffs * s * 0.8, 2.2 + puffs * 0.09, 0, Math.PI * 2);
+          c.fill();
+        }
+        c.restore();
+      }
+      // 行动者：桌前琥珀脉冲环 / 赢家金环
       if (o.winner) {
-        c.strokeStyle = 'rgba(240,198,116,.9)'; c.lineWidth = 3;
-        c.shadowColor = '#f0c674'; c.shadowBlur = 16;
-        c.beginPath(); c.ellipse(0, 30 * s, 42 * s, 12 * s, 0, 0, Math.PI * 2); c.stroke();
+        c.strokeStyle = 'rgba(255,217,138,.9)'; c.lineWidth = 3;
+        c.shadowColor = '#ffd98a'; c.shadowBlur = 14;
+        c.beginPath(); c.ellipse(0, 64 * s, 46 * s, 12 * s, 0, 0, Math.PI * 2); c.stroke();
         c.shadowBlur = 0;
       } else if (o.active) {
         var pulse = 0.5 + 0.5 * Math.sin(t * 0.15);
-        c.strokeStyle = 'rgba(125,216,125,' + (0.35 + pulse * 0.5) + ')'; c.lineWidth = 3;
-        c.beginPath(); c.ellipse(0, 30 * s, (38 + pulse * 6) * s, (11 + pulse * 2) * s, 0, 0, Math.PI * 2); c.stroke();
+        c.strokeStyle = 'rgba(255,200,120,' + (0.35 + pulse * 0.5) + ')'; c.lineWidth = 3;
+        c.beginPath(); c.ellipse(0, 64 * s, (42 + pulse * 6) * s, (11 + pulse * 2) * s, 0, 0, Math.PI * 2); c.stroke();
       }
-      // 光锥
-      if (o.active || o.winner) {
-        var cone = c.createLinearGradient(0, -90 * s, 0, 30 * s);
-        cone.addColorStop(0, o.winner ? 'rgba(240,198,116,.22)' : 'rgba(125,216,125,.16)');
-        cone.addColorStop(1, 'rgba(0,0,0,0)');
-        c.fillStyle = cone;
-        c.beginPath(); c.moveTo(-14 * s, -80 * s); c.lineTo(14 * s, -80 * s);
-        c.lineTo(46 * s, 30 * s); c.lineTo(-46 * s, 30 * s); c.closePath(); c.fill();
-      }
-      // 身体
-      var bodyGrad = c.createLinearGradient(0, -20 * s, 0, 30 * s);
-      bodyGrad.addColorStop(0, o.color); bodyGrad.addColorStop(1, '#1a1226');
-      c.fillStyle = bodyGrad;
-      c.beginPath();
-      c.moveTo(-24 * s, 30 * s); c.lineTo(-16 * s, -14 * s);
-      c.lineTo(16 * s, -14 * s); c.lineTo(24 * s, 30 * s); c.closePath(); c.fill();
-      c.strokeStyle = 'rgba(255,255,255,.15)'; c.lineWidth = 1; c.stroke();
-      // 头
-      c.fillStyle = '#c8b8e0';
-      if (o.persona === 'aggr') { // 尖角头
-        c.beginPath(); c.moveTo(-16 * s, -14 * s); c.lineTo(0, -44 * s); c.lineTo(16 * s, -14 * s); c.closePath(); c.fill();
-      } else if (o.persona === 'bluff') { // 宽檐礼帽
-        c.beginPath(); c.arc(0, -22 * s, 13 * s, Math.PI, 0); c.fill();
-        c.fillStyle = o.color;
-        c.fillRect(-20 * s, -26 * s, 40 * s, 4 * s);
-        c.fillRect(-10 * s, -38 * s, 20 * s, 12 * s);
-      } else { // 圆头（tight / player）
-        c.beginPath(); c.arc(0, -22 * s, 13 * s, Math.PI, 0); c.fill();
-        if (o.persona === 'player') { c.fillStyle = o.color; c.fillRect(-13 * s, -27 * s, 26 * s, 6 * s); } // 棒球帽
-        if (o.persona === 'tight') { // 眼镜
-          c.strokeStyle = '#7dd3fc'; c.lineWidth = 1.5;
-          c.beginPath(); c.arc(-5 * s, -20 * s, 4 * s, 0, Math.PI * 2); c.stroke();
-          c.beginPath(); c.arc(5 * s, -20 * s, 4 * s, 0, Math.PI * 2); c.stroke();
-          c.beginPath(); c.moveTo(-1 * s, -20 * s); c.lineTo(1 * s, -20 * s); c.stroke();
-        }
-      }
-      // 眼睛（发光，会眨）
-      var ey = o.persona === 'aggr' ? -22 * s : -20 * s;
-      c.fillStyle = o.color;
-      c.shadowColor = o.color; c.shadowBlur = 8;
-      if (blink) { c.fillRect(-8 * s, ey, 6 * s, 1.5); c.fillRect(2 * s, ey, 6 * s, 1.5); }
-      else {
-        c.beginPath(); c.arc(-5 * s, ey, 2.6 * s, 0, Math.PI * 2); c.fill();
-        c.beginPath(); c.arc(5 * s, ey, 2.6 * s, 0, Math.PI * 2); c.fill();
-      }
-      c.shadowBlur = 0;
       c.restore();
-      // 名牌 + 筹码
+      // 名牌 + 筹码（暖白，带阴影）
       c.save();
-      c.textAlign = 'center'; c.font = Math.max(10, 11 * s) + 'px monospace';
-      c.fillStyle = o.folded ? 'rgba(138,123,160,.5)' : '#d8c8f0';
-      c.fillText(o.name, x, y + 44 * s);
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.shadowColor = 'rgba(0,0,0,.9)'; c.shadowBlur = 4;
+      c.font = '700 ' + Math.max(11, 12 * s) + 'px monospace';
+      c.fillStyle = o.folded ? 'rgba(150,120,95,.55)' : '#ecd9b8';
+      c.fillText(o.name, x, y + 82 * s);
       c.font = Math.max(9, 10 * s) + 'px monospace';
-      c.fillStyle = '#7dd87d';
-      c.fillText((o.chipsLabel || '') + '', x, y + 57 * s);
+      c.fillStyle = '#8fce8f';
+      c.fillText((o.chipsLabel || '') + '', x, y + 96 * s);
       c.restore();
     },
-    // 摊牌庆祝：金色筹码喷泉
+    // 摊牌庆祝：金色筹码喷泉（桌心底池区域）
     confetti(c, w, h, t) {
       for (var i = 0; i < 18; i++) {
         var ang = (i / 18) * Math.PI * 2 + t * 0.02;
-        var r = 30 + (t * 1.4 + i * 20) % 130;
-        var px = w / 2 + Math.cos(ang) * r, py = h * 0.46 + Math.sin(ang) * r * 0.5;
-        c.fillStyle = i % 2 ? '#f0c674' : '#ffd98a';
+        var r = 26 + (t * 1.4 + i * 20) % 120;
+        var px = w / 2 + Math.cos(ang) * r, py = h * 0.60 + Math.sin(ang) * r * 0.5;
+        c.fillStyle = i % 2 ? '#ffc87a' : '#ffe3ad';
         c.beginPath(); c.ellipse(px, py, 5, 2.5, ang, 0, Math.PI * 2); c.fill();
       }
+    },
+    // 暗角：暖光集中桌面，四角坠入近黑（骗子酒吧的明暗对比）
+    vignette(c, w, h) {
+      var v = c.createRadialGradient(w / 2, h * 0.55, Math.min(w, h) * 0.36, w / 2, h * 0.55, Math.max(w, h) * 0.78);
+      v.addColorStop(0, 'rgba(0,0,0,0)');
+      v.addColorStop(0.62, 'rgba(0,0,0,.28)');
+      v.addColorStop(1, 'rgba(5,2,1,.82)');
+      c.fillStyle = v;
+      c.fillRect(0, 0, w, h);
     }
   }
 };
@@ -347,15 +408,16 @@ class CasinoHub extends BaseGame {
     super(c);
     this.container = c;
     this.root = document.createElement('div');
-    this.root.style.cssText = 'position:relative;width:100%;min-height:520px;background:#08040d;color:#e6d9f2;font-family:inherit;overflow:hidden';
-    // 场景层：房间霓虹背景（canvas 铺满，DOM 面板浮在上面）
+    // 全屏铺满宿主容器（game.html 视口 / index 弹窗 / 主页浮窗都吃满）
+    this.root.style.cssText = 'position:relative;width:100%;height:100%;min-height:540px;background:#08040d;color:#e6d9f2;font-family:inherit;overflow:hidden';
+    // 场景层：canvas 铺满（第一人称酒馆），DOM 面板浮在上面
     this.scene = document.createElement('canvas');
     this.scene.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;z-index:0';
     this.root.appendChild(this.scene);
     this.sceneCtx = this.scene.getContext('2d');
     this.t = 0;
     this.panel = document.createElement('div');
-    this.panel.style.cssText = 'position:relative;z-index:1;padding:14px 16px;box-sizing:border-box;min-height:520px';
+    this.panel.style.cssText = 'position:absolute;inset:0;z-index:1;box-sizing:border-box';
     this.root.appendChild(this.panel);
     this.container.appendChild(this.root);
     this.state = 'lobby';
@@ -386,46 +448,49 @@ class CasinoHub extends BaseGame {
     this.table = null;
     this.tableId = null;
     this.panel.innerHTML = '';
+    // 大厅内容包一层（可滚动），背景是第一人称酒馆 canvas
+    var wrap = this._el('div', 'padding:16px 18px;box-sizing:border-box;max-width:980px');
+    this.panel.appendChild(wrap);
     // 顶栏：标题 + 余额 + 救济金
     var bar = this._el('div', 'display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px');
-    bar.appendChild(this._el('div', 'font-size:20px;font-weight:700;color:#f0c674', '🎰 算力赌坊'));
-    bar.appendChild(this._el('div', 'font-size:12px;color:#8a7ba0', '算力筹码'));
+    bar.appendChild(this._el('div', 'font-size:22px;font-weight:700;color:#ffc87a;text-shadow:0 2px 8px rgba(255,60,40,.35)', '🎰 算力赌坊'));
+    bar.appendChild(this._el('div', 'font-size:12px;color:#a08a6a', '算力筹码'));
     var bal = this._el('div', 'casino-balance', Casino.wallet.get().toLocaleString());
-    bal.style.cssText = 'font-size:20px;font-weight:700;color:#7dd87d';
+    bal.style.cssText = 'font-size:20px;font-weight:700;color:#8fce8f';
     bar.appendChild(bal);
-    var bailBtn = this._el('button', 'margin-left:auto;padding:6px 14px;border-radius:8px;border:1px solid #6b5a8a;background:#1b1230;color:#d8c8f0;cursor:pointer;font-family:inherit;font-size:12px', '🎁 领救济金 +1000');
+    var bailBtn = this._el('button', 'margin-left:auto;padding:6px 14px;border-radius:8px;border:1px solid #6a4a28;background:rgba(30,16,8,.8);color:#e8c890;cursor:pointer;font-family:inherit;font-size:12px', '🎁 领救济金 +1000');
     bailBtn.onclick = function () {
       Casino.wallet.bailout();
       toast('救济金 +1000 算力（仅供娱乐）');
       sfx('powerup');
     };
     bar.appendChild(bailBtn);
-    this.panel.appendChild(bar);
+    wrap.appendChild(bar);
 
     // 赌桌网格：已注册的桌自动出现
-    var grid = this._el('div', 'display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;max-width:860px');
+    var grid = this._el('div', 'display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px');
     Casino.tables().forEach(function (id) {
       var def = Casino.get(id);
-      var card = this._el('div', 'border:1px solid #4a3a6a;border-radius:12px;padding:16px;background:#120a1e;cursor:pointer;transition:border-color .15s');
-      card.onmouseenter = function () { card.style.borderColor = '#f0c674'; };
-      card.onmouseleave = function () { card.style.borderColor = '#4a3a6a'; };
+      var card = this._el('div', 'border:1px solid #5a3a1c;border-radius:12px;padding:16px;background:rgba(22,11,6,.82);cursor:pointer;transition:border-color .15s');
+      card.onmouseenter = function () { card.style.borderColor = '#ffc87a'; };
+      card.onmouseleave = function () { card.style.borderColor = '#5a3a1c'; };
       card.innerHTML = '<div style="font-size:30px">' + def.icon + '</div>' +
-        '<div style="font-size:15px;font-weight:700;margin:6px 0 4px">' + def.name + '</div>' +
-        '<div style="font-size:12px;color:#9d8cb8;line-height:1.5">' + def.desc + '</div>';
+        '<div style="font-size:15px;font-weight:700;margin:6px 0 4px;color:#ecd9b8">' + def.name + '</div>' +
+        '<div style="font-size:12px;color:#b09678;line-height:1.5">' + def.desc + '</div>';
       card.onclick = function () { sfx('click'); this.openTable(id); }.bind(this);
       grid.appendChild(card);
     }, this);
     // 铺垫位：后续会上的桌（架构已就绪，实现即插即用）
     [['⬛', '21 点', '即将开放'], ['🎲', '骰子大小', '即将开放'], ['🍒', '算力老虎机', '即将开放']].forEach(function (ph) {
       var card = this._el('div');
-      card.style.cssText = 'border:1px dashed #3a2d52;border-radius:12px;padding:16px;background:#0d0816;opacity:.55';
+      card.style.cssText = 'border:1px dashed #4a3018;border-radius:12px;padding:16px;background:rgba(14,7,4,.7);opacity:.6';
       card.innerHTML = '<div style="font-size:30px;filter:grayscale(1)">' + ph[0] + '</div>' +
-        '<div style="font-size:14px;font-weight:700;margin:6px 0 4px;color:#8a7ba0">' + ph[1] + '</div>' +
-        '<div style="font-size:11px;color:#6a5a80">' + ph[2] + '</div>';
+        '<div style="font-size:14px;font-weight:700;margin:6px 0 4px;color:#a08a6a">' + ph[1] + '</div>' +
+        '<div style="font-size:11px;color:#7a6248">' + ph[2] + '</div>';
       grid.appendChild(card);
     }, this);
-    this.panel.appendChild(grid);
-    this.panel.appendChild(this._el('div', 'margin-top:18px;font-size:11px;color:#6a5a80', '⚠️ 虚拟算力筹码，仅供娱乐 · 无任何真实货币 · 输光可随时领救济金'));
+    wrap.appendChild(grid);
+    wrap.appendChild(this._el('div', 'margin-top:18px;font-size:11px;color:#9a8266;text-shadow:0 1px 3px #000', '⚠️ 虚拟算力筹码，仅供娱乐 · 无任何真实货币 · 输光可随时领救济金'));
   }
 
   openTable(id) {
@@ -435,7 +500,7 @@ class CasinoHub extends BaseGame {
     this.tableId = id;
     this.panel.innerHTML = '';
     this.tableHost = this._el('div');
-    this.tableHost.style.cssText = 'width:100%';
+    this.tableHost.style.cssText = 'position:absolute;inset:0';
     this.panel.appendChild(this.tableHost);
     var self = this;
     this.table = def.create(this.tableHost, {
@@ -462,6 +527,8 @@ class CasinoHub extends BaseGame {
     if (this.state === 'table' && this.table && this.table.renderScene) {
       this.table.renderScene(c, w, h, t);
     }
+    // 暗角收尾：光聚桌面，四角坠入近黑（盖在场景之上、DOM 之下）
+    Casino.paint.vignette(c, w, h);
   }
 
   stop() {
