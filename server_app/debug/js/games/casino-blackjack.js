@@ -43,6 +43,13 @@ function __bjInsStake(bet) {
 function __bjInsPayout(insAmt, dealerBJ) {
   return dealerBJ ? insAmt * 3 : 0;
 }
+// 迟投降：起手两张（未分牌）可投降，退回半注
+function __bjCanSurrender(hand, splitDone) {
+  return !!hand && hand.length === 2 && !splitDone;
+}
+function __bjSurrenderReturn(bet) {
+  return Math.floor(bet / 2);
+}
 
 var BJ_BETS = [20, 50, 100, 200];
 var BJ_DEAL_GAP = 16, BJ_DEAL_FLIGHT = 12;
@@ -224,6 +231,18 @@ class CasinoBlackjack {
     }
     this._msg('第 ' + (this.curHand + 1) + ' 手 ' + v.total + (v.soft ? '（软）' : '') + ' 点 · 要牌还是停牌？');
   }
+  // 迟投降：弃掉当前手，退回半注（只在起手两张且未分牌时可用）
+  surrender() {
+    if (this.phase !== 'player') return;
+    var h = this.hands[this.curHand];
+    if (!__bjCanSurrender(h, this._splitDone)) return;
+    h.surrendered = true;
+    h.done = true;
+    Casino.audio.play('voice-fold', 0.6);
+    this._fxText('投降 退半注', '#a0c8e8');
+    if (this.curHand < this.hands.length - 1) { this._nextHand(); return; }
+    this._toDealer();
+  }
   _toDealer() {
     this.phase = 'dealer';
     Casino.audio.play('voice-stand', 0.6);
@@ -274,8 +293,9 @@ class CasinoBlackjack {
       staked += bet;
       var pv = __bjValue(h).total;
       var isBJ = !self._splitDone && __bjIsBJ(h); // 分牌后的 21 不算 Blackjack
-      var result; // win | lose | push | bj | bust
-      if (h.busted) result = 'bust';
+      var result; // win | lose | push | bj | bust | surrender
+      if (h.surrendered) result = 'surrender';
+      else if (h.busted) result = 'bust';
       else if (isBJ && !__bjIsBJ(self.dealer)) result = 'bj';
       else if (__bjIsBJ(self.dealer) && !isBJ) result = 'lose';
       else if (dv.total > 21 || pv > dv.total) result = 'win';
@@ -284,6 +304,7 @@ class CasinoBlackjack {
       if (result === 'bj') payout += Math.floor(bet * 2.5);
       else if (result === 'win') payout += bet * 2;
       else if (result === 'push') payout += bet;
+      else if (result === 'surrender') payout += __bjSurrenderReturn(bet); // 退半注
       results.push(result);
     });
     // 保险结算（庄家天牌赔 2:1，计入净额）
@@ -307,13 +328,14 @@ class CasinoBlackjack {
         bj: ['Blackjack！赔 3:2，赢 ' + (payout - staked), '#ffd98a'],
         win: ['你赢了 ' + (payout - staked) + '！', '#ffd98a'],
         push: ['平局，退回下注', '#a0c8e8'],
+        surrender: ['投降 · 退回半注 ' + payout, '#a0c8e8'],
         lose: ['庄家胜（' + (dv.total > 21 ? '庄爆 ' + dv.total : dv.total + ' 比 ' + __bjValue(this.hands[0]).total) + '）', '#e08080'],
         bust: ['你爆牌，输 ' + staked, '#e08080']
       };
       var tx = texts[r0];
       this._msg(tx[0] + insNote);
-      this.banner = { text: r0 === 'bj' ? 'BLACKJACK ×1.5' : r0 === 'win' ? '你赢了 +' + (payout - staked) : r0 === 'push' ? 'PUSH 平局' : r0 === 'bust' ? 'BUST 爆牌' : '庄家胜', color: tx[1], start: this.tick, dur: 90 };
-      this._fxText(r0 === 'bj' ? 'Blackjack!' : r0 === 'win' ? 'WIN' : r0 === 'push' ? 'PUSH' : 'LOSE', tx[1], true);
+      this.banner = { text: r0 === 'bj' ? 'BLACKJACK ×1.5' : r0 === 'win' ? '你赢了 +' + (payout - staked) : r0 === 'push' ? 'PUSH 平局' : r0 === 'surrender' ? '投降 退半注' : r0 === 'bust' ? 'BUST 爆牌' : '庄家胜', color: tx[1], start: this.tick, dur: 90 };
+      this._fxText(r0 === 'bj' ? 'Blackjack!' : r0 === 'win' ? 'WIN' : r0 === 'push' || r0 === 'surrender' ? 'HALF BACK' : 'LOSE', tx[1], true);
     } else {
       var col = net > 0 ? '#ffd98a' : net === 0 ? '#a0c8e8' : '#e08080';
       this._msg('两手 ' + results.join('/') + ' · 净 ' + (net >= 0 ? '+' : '') + net + insNote);
@@ -377,6 +399,9 @@ class CasinoBlackjack {
       }
       if (h0.length === 2 && this.wallet.get() >= (h0.bet || this.bet)) {
         this.actEl.appendChild(mk('加倍 ×2', function () { self.double(); }, '#ff9f5a'));
+      }
+      if (__bjCanSurrender(h0, this._splitDone)) {
+        this.actEl.appendChild(mk('🏳 投降退半', function () { self.surrender(); }, '#8a7ba0'));
       }
       return;
     }
@@ -568,8 +593,10 @@ class CasinoBlackjack {
     }
     if (this.phase === 'player' && this.tick % 25 === 12) {
       var hb = this.hands[this.curHand];
+      var bv = __bjValue(hb);
       if (__bjCanSplit(hb, this.wallet.get(), this.bet) && Math.random() < 0.8) this.split();
-      else if (__bjValue(hb).total < 17) this.hit();
+      else if (bv.total === 16 && !bv.soft && [9, 10, 13, 14].indexOf(this.dealer[0].r) >= 0 && __bjCanSurrender(hb, this._splitDone)) this.surrender(); // 基本策略：16 硬牌 vs 9/10/A 投降
+      else if (bv.total < 17) this.hit();
       else this.stand();
     }
   }
@@ -615,7 +642,7 @@ class CasinoBlackjack {
     }
     if (this.phase === 'dealer') {
       // 亮暗牌后按规则补牌（每张间隔 34 帧，有节奏）；玩家全爆则不补
-      var allBust = this.hands.every(function (h) { return h.busted; });
+      var allBust = this.hands.every(function (h) { return h.busted || h.surrendered; });
       var ready = this.tick - this.holeFlipT > 34;
       if (ready && !allBust && __bjDealerShouldHit(this.dealer)) {
         if (!this._nextHitT) this._nextHitT = this.tick;
