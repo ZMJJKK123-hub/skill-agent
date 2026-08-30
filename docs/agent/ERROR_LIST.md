@@ -1117,3 +1117,8 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 
 - **[webserv_stardust] `NEW_ERROR: GameTest 里 ServerLevel.getRecipeManager() 找不到符号 | 1.21.11 映射中 RecipeManager 不在 ServerLevel 上 | 改用 helper.getLevel().getServer().getRecipeManager()`**
 - **[webserv_stardust] `NEW_ERROR: RecipeManager.byKey(Identifier) 参数类型不兼容 | 该版本 byKey 需要 ResourceKey<Recipe<?>> 而非 Identifier | 用 ResourceKey.create(Registries.RECIPE, Identifier.parse("modid:recipe")) 传入`**
+
+## 2026-08-30 本地网站实测（webserv_rubysword / amber / stardust）
+- **[webserv_rubysword] `NEW_ERROR: 注册方块时 RegisterEvent 抛 "Block id not set" NullPointerException | 1.21.11 Block 注册必须显式 setId | Block.Properties.create() 后链式 .setId(ResourceLocation)（Item 同理），或 Item.Properties().setId(...)`**
+- **[webserv_rubysword] `NEW_ERROR: Identifier.of(String, String) 不存在 | 1.21.11 Mojmap 官方映射的 Identifier 构造不是 of() | 用 Identifier.fromNamespaceAndPath(modid, name) 或 Identifier.parse("modid:name")`**
+- **[工具bug已修] gradletools._run_gradle 超时分支 out 变量 UnboundLocalError（历史 ERROR_LIST 记录过的 run_test_client 工具错误，本次根治）**

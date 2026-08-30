@@ -23,9 +23,15 @@ def _run_gradle(task, timeout, base):
                              env={**os.environ, "PYTHONUTF8": "1"})
     except Exception as e:
         return {"exit_code": -1, "raw": str(e), "tail": str(e)}
+    out = ""
     try:
         out, _ = p.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
+    except subprocess.TimeoutExpired as _te:
+        # 超时后进程可能已死，二次 communicate 也可能抛异常——此前 out 未初始化
+        # 直接 UnboundLocalError（ERROR_LIST 记录的历史工具 bug，此处根治）
+        partial = _te.stdout if isinstance(getattr(_te, "stdout", None), str) else ""
+        if partial:
+            out += partial
         try:
             if os.name == "nt":
                 subprocess.run(f"taskkill /f /t /pid {p.pid}", shell=True, capture_output=True)
@@ -34,11 +40,12 @@ def _run_gradle(task, timeout, base):
         except Exception:
             pass
         try:
-            p.communicate(timeout=5)
+            more, _ = p.communicate(timeout=5)
+            out += more or ""
         except Exception:
             pass
-        return {"exit_code": -1, "raw": (out or "") + "\n[TIMEOUT]",
-                "tail": (out or "")[-4000:]}
+        return {"exit_code": -1, "raw": out + "\n[TIMEOUT]",
+                "tail": out[-4000:]}
     txt = out or ""
     return {"exit_code": p.returncode, "raw": txt, "tail": txt[-4000:]}
 
