@@ -98,6 +98,8 @@ var __shTaunts = {
 
 // ---------- 梭哈桌 ----------
 const SH_ANTE = 10, SH_ROUND_BET = 20, SH_RAISE = 50, SH_TURNS = 3, SH_AI_TICKS = 42, SH_BOT_TICKS = 26;
+// 动画节奏（帧数，60fps）：发牌总时长 / 摊牌首翻延迟 / 每家翻牌间隔 / 翻牌时长 / 收尾停顿
+const SH_DEAL_TICKS = 108, SH_FLIP_BASE = 26, SH_FLIP_STEP = 30, SH_FLIP_DUR = 10, SH_REVEAL_TAIL = 22;
 
 class CasinoShowhand {
   constructor(container, ctx) {
@@ -105,9 +107,15 @@ class CasinoShowhand {
     this.wallet = ctx.wallet;
     this.bot = !!ctx.bot;
     this.tick = 0;
-    this.phase = 'deal'; // deal → bet → showdown → settle
+    this.phase = 'deal'; // deal(发牌动画) → bet → reveal(摊牌翻牌) → settle
     this.destroyed = false;
     this.aiChips = [1000, 1000, 1000]; // AI 筹码仅本桌会话（玩家直接用共享钱包）
+    this.fx = [];          // 帧驱动特效：飞筹码 / 漂浮文字 / 弃牌飞牌
+    this.dispPot = 0;      // 底池滚动显示值（数字有上升动画）
+    this.banner = null;    // 中央横幅（ALL IN / 胜负宣告）
+    this.shake = null;     // 屏幕震动
+    this.flash = null;     // 全屏闪光
+    this._posCache = null; // 座位/底池坐标（renderScene 每帧刷新，供 act() 派生特效）
     this._buildDom(container);
     this._startHand();
   }
@@ -196,9 +204,19 @@ class CasinoShowhand {
     this.currentBet = SH_ROUND_BET;
     this.allInMode = false;
     this.turn = 0;           // 轮到 seat 0（玩家）起步
-    this.lastActTick = this.tick;
+    // 发牌动画窗口：视觉上牌逐张飞出，动画结束后才轮到行动
+    this.dealT = this.tick;
+    this._dealt = false;
+    this.lastActTick = this.tick + SH_DEAL_TICKS;
     this.phase = 'bet';
-    this._msg('第 ' + this.round + '/' + SH_TURNS + ' 轮 · 底注已收');
+    this.winnerSeat = undefined;
+    this.fx = []; this.banner = null; this.shake = null; this.flash = null;
+    this.dispPot = 0;
+    this._msg('发牌中…');
+    // 底注筹码从各家飞入底池
+    for (var a = 0; a < 4; a++) {
+      this.fx.push({ kind: 'chip', from: 'seat' + a, to: 'pot', start: this.dealT + 26 + a * 6, dur: 20, n: SH_ANTE });
+    }
     this._renderAll();
   }
 
@@ -208,6 +226,20 @@ class CasinoShowhand {
     var self = this;
     return this._active().some(function (p) { return !p.allIn && (p.human ? self.wallet.get() : p.chips) >= self.currentBet + SH_RAISE; });
   }
+
+  // ---------- 特效派生（act/结算时调用；坐标由 renderScene 的 _posCache 解析） ----------
+  _fxText(seat, text, color, big) {
+    this.fx.push({ kind: 'text', at: 'seat' + seat, text: text, color: color, start: this.tick, dur: 46, big: !!big });
+  }
+  _fxChipsToPot(seat, n) {
+    this.fx.push({ kind: 'chip', from: 'seat' + seat, to: 'pot', start: this.tick, dur: 22, n: n });
+    this._potPopT = this.tick;
+  }
+  _fxChipsToSeat(seat, n, delay) {
+    this.fx.push({ kind: 'chip', from: 'pot', to: 'seat' + seat, start: this.tick + (delay || 0), dur: 24, n: n });
+  }
+  _fxShake(amp, dur) { this.shake = { amp: amp, start: this.tick, dur: dur }; }
+  _fxFlash(color) { this.flash = { color: color, start: this.tick, dur: 16 }; }
 
   // 当前该谁行动；全部跟齐 → 推进轮次/摊牌
   _advanceTurn() {
@@ -240,6 +272,8 @@ class CasinoShowhand {
     if (action === 'fold') {
       p.folded = true;
       this._msg((p.human ? '你' : p.name) + ' 弃牌');
+      this._fxText(seat, '弃牌', '#a08a6a');
+      this.fx.push({ kind: 'foldcard', at: 'seat' + seat, start: this.tick, dur: 18 });
       sfx('click');
     } else if (action === 'call') {
       var pay = p.human ? Math.min(toCall, this.wallet.get()) : Math.min(toCall, p.chips);
@@ -252,6 +286,8 @@ class CasinoShowhand {
       if (pay < toCall) p.allIn = true;
       this.pot += pay;
       this._msg((p.human ? '你' : p.name) + ' 跟注 ' + pay);
+      this._fxChipsToPot(seat, pay);
+      this._fxText(seat, '跟注 ' + pay, '#8fce8f');
       sfx('click');
     } else if (action === 'raise') {
       var need = toCall + SH_RAISE;
@@ -262,6 +298,8 @@ class CasinoShowhand {
       this.pot += need;
       this.currentBet = p.bet;
       this._msg((p.human ? '你' : p.name) + ' 加注到 ' + this.currentBet + (p.human ? '' : '：「' + this._taunt(seat) + '」'));
+      this._fxChipsToPot(seat, need);
+      this._fxText(seat, '加注！', '#ffc87a');
       sfx('powerup');
     } else if (action === 'allin') {
       var all = p.human ? this.wallet.get() : p.chips;
@@ -272,6 +310,11 @@ class CasinoShowhand {
       p.allIn = true;
       this.allInMode = true;
       this._msg((p.human ? '你' : p.name) + ' 梭哈！全压 ' + all + (p.human ? '' : '：「' + this._taunt(seat) + '」'));
+      this._fxChipsToPot(seat, all);
+      this._fxText(seat, 'ALL IN！', '#ff6a5a', true);
+      this.banner = { text: 'ALL IN · 全压 ' + all, color: '#ff8a70', start: this.tick, dur: 70 };
+      this._fxShake(10, 16);
+      this._fxFlash('#ff3018');
       sfx('win');
     }
     // 先推进回合再渲染：行动权回到谁手上，就渲染谁的操作面板
@@ -283,6 +326,7 @@ class CasinoShowhand {
   _awardFoldWin(winner) {
     this.phase = 'settle';
     this.winnerSeat = this.players.indexOf(winner);
+    var potNow = this.pot;
     if (winner.human) {
       this.wallet.add(this.pot);
       this._msg('其他玩家全部弃牌，你直接赢得底池 ' + this.pot + '！');
@@ -290,31 +334,55 @@ class CasinoShowhand {
       this._msg('其他玩家全部弃牌，' + winner.name + ' 收走底池 ' + this.pot);
       winner.chips += this.pot; this.aiChips[this.players.indexOf(winner) - 1] = winner.chips;
     }
+    this._fxChipsToSeat(this.winnerSeat, Math.max(30, Math.round(potNow / 3)), 0);
+    this._fxChipsToSeat(this.winnerSeat, Math.max(30, Math.round(potNow / 3)), 5);
+    this.banner = {
+      text: winner.human ? '你赢得底池 +' + potNow : winner.name + ' 收走底池 ' + potNow,
+      color: winner.human ? '#ffd98a' : '#e08080', start: this.tick, dur: 90
+    };
+    this._fxShake(6, 12);
     sfx('win');
     this.pot = 0;
     this._renderAll(true);
     this._againBtn();
   }
 
+  // 摊牌分两幕：先逐张翻牌营造悬念（reveal），翻完再 _finishReveal 结算
   _showdown() {
-    this.phase = 'showdown';
+    this.phase = 'reveal';
     var alive = this._active();
     var best = alive[0];
     for (var i = 1; i < alive.length; i++) {
       if (__shCompare(alive[i].hand, best.hand) > 0) best = alive[i];
     }
+    this._revealWinner = best;
+    this.revealStart = this.tick;
+    this._revealOrder = alive.filter(function (p) { return !p.human; }).map(function (p) { return this.indexOf(p); }, this.players);
+    this._revealIdx = 0;
+    this._revealDur = SH_FLIP_BASE + this._revealOrder.length * SH_FLIP_STEP + SH_REVEAL_TAIL;
+    this._msg('摊牌！');
+    sfx('powerup');
+  }
+  _finishReveal() {
+    var best = this._revealWinner;
     this.phase = 'settle';
+    var potNow = this.pot;
     if (best.human) {
       this.wallet.add(this.pot);
       sfx('win');
       this._msg('摊牌：你的 ' + __shCatName[__shEval(best.hand).cat] + ' 最大，赢得底池 ' + this.pot + '！');
+      this.banner = { text: '你赢得底池 +' + potNow, color: '#ffd98a', start: this.tick, dur: 100 };
     } else {
       sfx('lose');
       this._msg('摊牌：' + best.name + ' 以 ' + __shCatName[__shEval(best.hand).cat] + ' 收走底池 ' + this.pot);
-      best.chips += this.pot; this.aiChips[this.players.indexOf(best) - 1] = best.chips;
+      this.banner = { text: best.name + ' 以 ' + __shCatName[__shEval(best.hand).cat] + ' 收走底池', color: '#e08080', start: this.tick, dur: 100 };
     }
     this.winnerSeat = this.players.indexOf(best);
-    this.pot = 0;
+    this._fxChipsToSeat(this.winnerSeat, Math.max(30, Math.round(potNow / 3)), 0);
+    this._fxChipsToSeat(this.winnerSeat, Math.max(30, Math.round(potNow / 3)), 5);
+    this._fxChipsToSeat(this.winnerSeat, Math.max(30, Math.round(potNow / 3)), 10);
+    this._fxShake(6, 14);
+    this.pot = 0; // dispPot 动画式下降
     this._renderAll(true);
     this._againBtn();
   }
@@ -337,83 +405,240 @@ class CasinoShowhand {
     this._renderActions();
   }
 
-  // ---------- 场景渲染（大厅 canvas 每帧调用：第一人称桌面 + 对面三人 + 底池 + 手持牌） ----------
+  // ---------- 场景渲染（大厅 canvas 每帧调用：第一人称桌面 + 对面三人 + 底池 + 手持牌 + 特效） ----------
+  // 摊牌翻牌进度：0=背面 1=翻开（reveal 阶段逐张翻）
+  _flipProg(seat, cardIdx) {
+    if (this.phase === 'settle') return 1;
+    if (this.phase !== 'reveal') return 0;
+    var oi = (this._revealOrder || []).indexOf(seat);
+    if (oi < 0) return 1; // 玩家的牌一直可见
+    var t0 = this.revealStart + SH_FLIP_BASE + oi * SH_FLIP_STEP + cardIdx * 3;
+    return Math.max(0, Math.min(1, (this.tick - t0) / SH_FLIP_DUR));
+  }
+  // 发牌进度：0 未动 → 1 落位（对手先发，玩家最后）
+  _dealProg(seat, cardIdx) {
+    if (this._dealt) return 1;
+    var base = seat === 0 ? 75 + cardIdx * 5 : 6 + ((seat - 1) * 5 + cardIdx) * 4;
+    var dur = seat === 0 ? 12 : 9;
+    return Math.max(0, Math.min(1, (this.tick - (this.dealT + base)) / dur));
+  }
+  // 坐标解析（特效引用座位/底池，画时才换算，适配任意画布尺寸）
+  _pt(ref) {
+    var pc = this._posCache || { seats: [[400, 560], [170, 250], [400, 225], [630, 250]], pot: [400, 390] };
+    if (ref === 'pot') return pc.pot;
+    if (ref && ref.indexOf('seat') === 0) return pc.seats[parseInt(ref.slice(4), 10)];
+    return pc.pot;
+  }
+
   renderScene(c, w, h, t) {
     if (this.destroyed || !this.players) return;
     var P = Casino.paint;
+    var s = Math.max(0.8, Math.min(1.7, Math.min(w / 980, h / 620)));
+    // 座位坐标缓存（act()/特效画时解析）
+    var aiPos = [[w * 0.205, h * 0.415, s * 1.15], [w * 0.5, h * 0.375, s * 1.3], [w * 0.795, h * 0.415, s * 1.15]];
+    this._posCache = {
+      seats: [[w / 2, h * 0.94], aiPos[0], aiPos[1], aiPos[2]],
+      pot: [w / 2, h * 0.665],
+      deck: [w / 2, h * 0.58]
+    };
+    // 屏幕震动（ALL IN / 胜负时刻；过期由 update 清理）
+    c.save();
+    if (this.shake) {
+      var sp = (this.tick - this.shake.start) / this.shake.dur;
+      if (sp < 1) {
+        var amp = this.shake.amp * (1 - sp);
+        c.translate(Math.sin(this.tick * 1.7) * amp, Math.cos(this.tick * 2.3) * amp);
+      }
+    }
     P.table(c, w, h);
     var reveal = this.phase === 'settle';
     var colors = { aggr: '#e06040', tight: '#5fa8e0', bluff: '#b070e0', player: '#4ac070' };
-    var s = Math.max(0.8, Math.min(1.7, Math.min(w / 980, h / 620)));
     // 三个对手坐在对面：正对镜头（中央稍远稍小、两侧稍近）
-    var aiPos = [[w * 0.205, h * 0.415, s * 1.15], [w * 0.5, h * 0.375, s * 1.3], [w * 0.795, h * 0.415, s * 1.15]];
     for (var i = 1; i <= 3; i++) {
       var p = this.players[i];
       var pos = aiPos[i - 1];
       P.seat(c, pos[0], pos[1], t, {
         name: p.name, color: colors[p.persona], persona: p.persona, scale: pos[2],
-        folded: p.folded, active: this.phase === 'bet' && this.turn === i,
+        folded: p.folded, active: this.phase === 'bet' && this.turn === i && this._dealt,
         winner: reveal && this.winnerSeat === i, chipsLabel: '◈ ' + p.chips
       });
-      // 桌面牌：躺在对手面前的桌沿上（摊牌翻开）
-      if (!p.folded) this._cardFan(c, pos[0], h * 0.545, p.hand, reveal, s);
+      // 行动倒计时环（AI 思考进度可视化）
+      if (this.phase === 'bet' && this.turn === i && this._dealt && !p.human) {
+        var frac = Math.max(0, Math.min(1, (this.tick - this.lastActTick) / SH_AI_TICKS));
+        if (frac > 0.02) {
+          c.save();
+          c.strokeStyle = 'rgba(255,200,120,.9)'; c.lineWidth = 3;
+          c.shadowColor = '#ffc87a'; c.shadowBlur = 6;
+          c.beginPath();
+          c.ellipse(pos[0], pos[1] + 64 * pos[2], 48 * pos[2], 13 * pos[2], 0, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
+          c.stroke();
+          c.restore();
+        }
+      }
+      // 桌面牌：发牌飞行落位 + 摊牌逐张翻开（弃牌飞走后不画）
+      if (!p.folded) this._cardFan(c, pos[0], h * 0.545, p.hand, i, s);
       // 本轮已下注：桌前小筹码堆
-      if (!p.folded && this.phase === 'bet' && p.bet > SH_ANTE) P.chips(c, pos[0] + 62 * s, h * 0.60, p.bet);
+      if (!p.folded && this.phase === 'bet' && this._dealt && p.bet > SH_ANTE) P.chips(c, pos[0] + 62 * s, h * 0.60, p.bet);
     }
-    // 底池（桌心）
-    if (this.pot > 0) {
-      P.chips(c, w / 2, h * 0.665, this.pot);
+    // 底池（数字滚动 + 落注弹跳放大）
+    var showPot = Math.round(this.dispPot);
+    if (showPot > 0) {
+      var pop = this._potPopT !== undefined ? Math.max(0, 1 - (this.tick - this._potPopT) / 12) : 0;
+      var scl = 1 + 0.22 * pop;
+      c.save();
+      c.translate(w / 2, h * 0.665); c.scale(scl, scl); c.translate(-w / 2, -h * 0.665);
+      P.chips(c, w / 2, h * 0.665, showPot);
+      c.restore();
       c.fillStyle = '#ffc87a';
       c.font = '700 ' + Math.round(13 * s) + 'px monospace';
       c.textAlign = 'center'; c.textBaseline = 'middle';
       c.shadowColor = '#000'; c.shadowBlur = 5;
-      c.fillText('底池 ' + this.pot, w / 2, h * 0.665 - 12 * s);
+      c.fillText('底池 ' + showPot, w / 2, h * 0.665 - 12 * s);
       c.shadowBlur = 0;
     }
-    // 你的手牌：第一人称，捧在画面底部
+    // 你的手牌：第一人称，发牌时逐张升起展开
     this._playerFan(c, w, h, reveal, s);
+    // 特效层（飞筹码 / 漂浮文字 / 弃牌飞牌）
+    this._drawFx(c, s);
     // 摊牌庆祝
     if (reveal && this.winnerSeat !== undefined) P.confetti(c, w, h, t);
+    c.restore(); // 结束震动位移
+    // 横幅与全屏闪光（不随震动位移）
+    this._drawBanner(c, w, h);
+    this._drawFlash(c, w, h);
   }
-  // 对手桌面牌（压扁的小牌，透视感；间距放宽便于辨认点数）
-  _cardFan(c, x, y, hand, faceUp, s) {
+
+  // 特效层
+  _drawFx(c, s) {
+    if (!this.fx.length) return;
+    var self = this;
+    this.fx.forEach(function (f) {
+      var p = (self.tick - f.start) / f.dur;
+      if (p < 0 || p > 1) return;
+      if (f.kind === 'chip') {
+        var from = self._pt(f.from), to = self._pt(f.to);
+        var x = from[0] + (to[0] - from[0]) * p;
+        var y = from[1] + (to[1] - from[1]) * p - Math.sin(Math.PI * p) * 46;
+        Casino.paint.chips(c, x, y, Math.max(10, Math.round((f.n || 20) / 2)));
+      } else if (f.kind === 'text') {
+        var at = self._pt(f.at);
+        c.save();
+        c.globalAlpha = p < 0.75 ? 1 : (1 - p) / 0.25;
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.font = '700 ' + (f.big ? 26 : 14) + 'px monospace';
+        c.fillStyle = f.color || '#ffd98a';
+        c.shadowColor = 'rgba(0,0,0,.9)'; c.shadowBlur = 6;
+        c.fillText(f.text, at[0], at[1] - 95 * s - p * 34);
+        c.restore();
+      } else if (f.kind === 'foldcard') {
+        var at2 = self._pt(f.at), muck = self._pt('pot');
+        var x2 = at2[0] + (muck[0] - at2[0]) * p, y2 = at2[1] + 30 + (muck[1] - at2[1]) * p;
+        c.save();
+        c.globalAlpha = 1 - p * 0.6;
+        c.translate(x2, y2); c.rotate(p * 1.2);
+        self._miniCard(c, 0, 0, false, (s || 1) * 0.9);
+        c.restore();
+      }
+    });
+  }
+  // 中央横幅（ALL IN / 胜负宣告）：弹入 + 停留 + 淡出（过期由 update 清理）
+  _drawBanner(c, w, h) {
+    if (!this.banner) return;
+    var p = Math.min(1, (this.tick - this.banner.start) / this.banner.dur);
+    var inS = Math.min(1, p * 6);
+    var out = p > 0.8 ? (1 - p) / 0.2 : 1;
+    var scale = 0.6 + 0.4 * (1 - Math.pow(1 - inS, 2));
+    c.save();
+    c.translate(w / 2, h * 0.295);
+    c.scale(scale, scale);
+    c.globalAlpha = Math.max(0, inS * out);
+    c.font = '700 ' + Math.max(20, w * 0.034) + 'px monospace';
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.shadowColor = this.banner.color; c.shadowBlur = 26;
+    c.fillStyle = this.banner.color;
+    c.fillText(this.banner.text, 0, 0);
+    c.restore();
+  }
+  // 全屏闪光（ALL IN 红闪；过期由 update 清理）
+  _drawFlash(c, w, h) {
+    if (!this.flash) return;
+    var p = (this.tick - this.flash.start) / this.flash.dur;
+    if (p > 1) return;
+    c.save();
+    c.globalAlpha = (1 - p) * 0.30;
+    c.fillStyle = this.flash.color;
+    c.fillRect(0, 0, w, h);
+    c.restore();
+  }
+
+  // 对手桌面牌（压扁小牌：发牌飞行 → 落位 → 摊牌翻面）
+  _cardFan(c, x, y, hand, seat, s) {
+    s = s || 1;
+    var deck = this._posCache ? this._posCache.deck : [x, y];
+    c.save();
+    c.translate(x, y);
+    hand.forEach(function (card, i) {
+      var prog = this._dealProg(seat, i);
+      if (prog <= 0) return;
+      var cx = (i - 2) * 30 * s * 0.78;
+      c.save();
+      if (prog < 1) {
+        // 飞行中：从牌堆插值到落位
+        c.translate((deck[0] - x) * (1 - prog) + cx * prog, (deck[1] - y) * (1 - prog));
+        c.rotate((1 - prog) * 0.6);
+        c.globalAlpha = 0.35 + 0.65 * prog;
+        this._miniCard(c, 0, 0, false, s);
+      } else {
+        c.translate(cx, 0);
+        // 翻面动画：横向压缩翻转（背面→正面）
+        var flip = this._flipProg(seat, i);
+        var sx = 1 - Math.abs(1 - 2 * flip);
+        if (sx > 0.05) {
+          c.scale(Math.max(0.05, sx), 1);
+          this._miniCard(c, 0, 0, flip >= 0.5, s, card);
+        }
+      }
+      c.restore();
+    }, this);
+    c.restore();
+  }
+  // 单张压扁小牌（牌面/牌背）
+  _miniCard(c, x, y, faceUp, s, card) {
     s = s || 1;
     var cw = 30 * s, chh = 21 * s;
     c.save();
     c.translate(x, y);
-    hand.forEach(function (card, i) {
-      var cx = (i - 2) * cw * 0.78;
-      if (faceUp) {
-        var red = __shRed.indexOf(card.s) >= 0;
-        c.fillStyle = '#f5efe2';
-        this._rr(c, cx - cw / 2, -chh / 2, cw, chh, 2.5 * s);
-        c.fill();
-        c.strokeStyle = 'rgba(60,30,10,.5)'; c.lineWidth = 0.8; c.stroke();
-        var rl = card.r === 11 ? 'J' : card.r === 12 ? 'Q' : card.r === 13 ? 'K' : card.r === 14 ? 'A' : card.r;
-        c.fillStyle = red ? '#c0392b' : '#2c3e50';
-        c.font = '700 ' + Math.round(9 * s) + 'px monospace';
-        c.textAlign = 'center'; c.textBaseline = 'middle';
-        c.fillText(rl, cx, -2 * s);
-        c.font = Math.round(7 * s) + 'px monospace';
-        c.fillText(__shSuits[card.s], cx, 6 * s);
-      } else {
-        c.fillStyle = '#3a1018';
-        this._rr(c, cx - cw / 2, -chh / 2, cw, chh, 2.5 * s);
-        c.fill();
-        c.strokeStyle = '#6a2830'; c.lineWidth = 0.8; c.stroke();
-        c.strokeStyle = 'rgba(255,190,110,.28)';
-        c.beginPath();
-        c.moveTo(cx - cw * 0.3, -chh * 0.3); c.lineTo(cx + cw * 0.3, chh * 0.3);
-        c.moveTo(cx + cw * 0.3, -chh * 0.3); c.lineTo(cx - cw * 0.3, chh * 0.3);
-        c.stroke();
-      }
-    }, this);
+    if (faceUp && card) {
+      var red = __shRed.indexOf(card.s) >= 0;
+      c.fillStyle = '#f5efe2';
+      this._rr(c, -cw / 2, -chh / 2, cw, chh, 2.5 * s);
+      c.fill();
+      c.strokeStyle = 'rgba(60,30,10,.5)'; c.lineWidth = 0.8; c.stroke();
+      var rl = card.r === 11 ? 'J' : card.r === 12 ? 'Q' : card.r === 13 ? 'K' : card.r === 14 ? 'A' : card.r;
+      c.fillStyle = red ? '#c0392b' : '#2c3e50';
+      c.font = '700 ' + Math.round(9 * s) + 'px monospace';
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText(rl, 0, -2 * s);
+      c.font = Math.round(7 * s) + 'px monospace';
+      c.fillText(__shSuits[card.s], 0, 6 * s);
+    } else {
+      c.fillStyle = '#3a1018';
+      this._rr(c, -cw / 2, -chh / 2, cw, chh, 2.5 * s);
+      c.fill();
+      c.strokeStyle = '#6a2830'; c.lineWidth = 0.8; c.stroke();
+      c.strokeStyle = 'rgba(255,190,110,.28)';
+      c.beginPath();
+      c.moveTo(-cw * 0.3, -chh * 0.3); c.lineTo(cw * 0.3, chh * 0.3);
+      c.moveTo(cw * 0.3, -chh * 0.3); c.lineTo(-cw * 0.3, chh * 0.3);
+      c.stroke();
+    }
     c.restore();
   }
-  // 你的手牌：第一人称大扇形（像捧在手里，底部微出画面）
+  // 你的手牌：第一人称大扇形——发牌逐张升起展开，呼吸浮动，行动/胜利发光
   _playerFan(c, w, h, reveal, s) {
     var p = this.players[0];
     if (!p || !p.hand) return;
+    if (this._dealProg(0, 0) <= 0) return; // 还没发到玩家
     var cw = Math.max(46, Math.min(80, w * 0.062)), chh = cw * 1.45;
     var cy = h - chh * 0.58;
     var n = p.hand.length;
@@ -427,13 +652,16 @@ class CasinoShowhand {
     c.fill();
     c.restore();
     p.hand.forEach(function (card, i) {
+      var prog = this._dealProg(0, i);
+      if (prog <= 0) return;
       var k = i - (n - 1) / 2;
-      var cx = k * cw * 0.74;
-      var rot = k * 0.10;
+      var cx = k * cw * 0.74 * prog;                 // 扇形随发牌展开
+      var rise = (1 - prog) * 70;                    // 从画面下方升起
+      var idle = this._dealt ? Math.sin(this.tick * 0.05 + i) * 3 : 0; // 呼吸浮动
       var lift = Math.abs(k) * chh * 0.07;
       c.save();
-      c.translate(w / 2 + cx, cy + lift);
-      c.rotate(rot);
+      c.translate(w / 2 + cx, cy + lift + rise + idle);
+      c.rotate(k * 0.10 * prog);
       if (p.folded) { // 弃牌：暗淡牌背摊开
         c.globalAlpha = 0.55;
         c.fillStyle = '#3a1018';
@@ -482,8 +710,10 @@ class CasinoShowhand {
       }
       c.restore();
     }, this);
-    // 牌型标签（悬于牌上方）
-    var label = '你的手牌' + (reveal ? ' · ' + __shCatName[__shEval(p.hand).cat] : '') + (p.folded ? ' · 已弃牌' : '');
+    // 牌型标签（悬于牌上方；发牌中显示进度提示）
+    var label = this._dealt
+      ? '你的手牌' + (reveal ? ' · ' + __shCatName[__shEval(p.hand).cat] : '') + (p.folded ? ' · 已弃牌' : '')
+      : '发牌中…';
     c.save();
     c.textAlign = 'center'; c.textBaseline = 'middle';
     c.font = '700 ' + Math.round(13 * s) + 'px monospace';
@@ -518,6 +748,10 @@ class CasinoShowhand {
       this.actEl.innerHTML = this.players[0].folded ? '<span style="font-size:12px;color:#a08a6a">你已弃牌，等待其他玩家…</span>' : '';
       return;
     }
+    if (!this._dealt) { // 发牌动画期间暂不开放操作
+      this.actEl.innerHTML = '<span style="font-size:12px;color:#a08a6a">发牌中…</span>';
+      return;
+    }
     this.actEl.innerHTML = '';
     var toCall = this.currentBet - this.players[0].bet;
     var mk = function (label, action, cls) {
@@ -531,10 +765,39 @@ class CasinoShowhand {
     this.actEl.appendChild(mk('弃牌', 'fold', '#a08a6a'));
   }
 
-  // ---------- 帧驱动 ----------
+  // ---------- 帧驱动（所有动画按 tick 推进，无 setTimeout，兼容 &step 自动化） ----------
   update() {
-    if (this.destroyed || this.phase !== 'bet') return;
+    if (this.destroyed) return;
+    var self = this;
     this.tick++;
+    // 过期特效清理（横幅/震动/闪光在 update 里过期，绘制保持纯函数）
+    if (this.fx.length) this.fx = this.fx.filter(function (f) { return self.tick - f.start < f.dur; });
+    if (this.banner && this.tick - this.banner.start >= this.banner.dur) this.banner = null;
+    if (this.shake && this.tick - this.shake.start >= this.shake.dur) this.shake = null;
+    if (this.flash && this.tick - this.flash.start >= this.flash.dur) this.flash = null;
+    // 底池数字滚动（升快降慢）
+    if (typeof this.dispPot !== 'number') this.dispPot = this.pot || 0;
+    if (this.dispPot < this.pot) this.dispPot = Math.min(this.pot, this.dispPot + Math.max(2, Math.round((this.pot - this.dispPot) * 0.3)));
+    else if (this.dispPot > this.pot) this.dispPot = Math.max(this.pot, this.dispPot - Math.max(1, Math.round((this.dispPot - this.pot) * 0.2)));
+    // 发牌动画结束 → 正式开赌
+    if (this.phase === 'bet' && !this._dealt && this.tick - this.dealT >= SH_DEAL_TICKS) {
+      this._dealt = true;
+      this._msg('第 ' + this.round + '/' + SH_TURNS + ' 轮下注 · 底注 ' + SH_ANTE);
+      this._renderAll();
+    }
+    // 摊牌节奏：逐张翻牌（每家翻完浮出牌型）→ 收尾结算
+    if (this.phase === 'reveal') {
+      while (this._revealIdx < this._revealOrder.length &&
+             this.tick - this.revealStart >= SH_FLIP_BASE + this._revealIdx * SH_FLIP_STEP + SH_FLIP_DUR) {
+        var st = this._revealOrder[this._revealIdx];
+        this.fx.push({ kind: 'text', at: 'seat' + st, text: __shCatName[__shEval(this.players[st].hand).cat], color: '#ffd98a', start: this.tick, dur: 50 });
+        sfx('click');
+        this._revealIdx++;
+      }
+      if (this.tick - this.revealStart >= this._revealDur) this._finishReveal();
+      return;
+    }
+    if (this.phase !== 'bet') return;
     var p = this.players[this.turn];
     if (!p || p.folded || p.allIn) { this._advanceTurn(); return; }
     if (p.human) {
