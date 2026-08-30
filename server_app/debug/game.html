@@ -285,6 +285,22 @@
       // 自动开始（自动化测试 / 嵌入场景）：&autoplay=1 跳过开始界面
       if (new URLSearchParams(location.search).get('autoplay') === '1') {
         try { document.getElementById('startBtn').click(); } catch (e) {}
+        // &step=N：同步跑 N 帧真实 update+render（确定性测试，绕开后台标签
+        // 的 rAF/setTimeout 节流；真实 canvas 执行可暴露渲染错误）
+        var stepN = parseInt(new URLSearchParams(location.search).get('step'), 10);
+        if (stepN > 0) {
+          var g = window.__game;
+          for (var i = 0; i < stepN && g && g.running; i++) {
+            try {
+              g.update();
+              g.render();
+            } catch (err) {
+              window.__lastGameErr = String(err && err.message || err);
+              g.stop();
+              break;
+            }
+          }
+        }
       }
 
       // 关卡过渡：暂停游戏并显示过渡层（由游戏内部在过关时调用）
