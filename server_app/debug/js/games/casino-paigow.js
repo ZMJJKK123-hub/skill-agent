@@ -91,6 +91,12 @@ function __pgLabel(hand) {
 }
 // 大牌九分牌：4 张拆 2+2，后手不得小于前手；先保最强后手，再保前手
 function __pgSplitBest(tiles) {
+  return __pgSplitBy(tiles, 'safe');
+}
+// 闲家分层：safe 后手优先（保大不作死）；bold（aggr）极大极小——平衡两手搏双赢，
+// 为此会拆对子（如 双斧+地+人 → 拆成 9点+3点 而非 对斧+2点）。庄家始终 safe。
+function __pgSplitBy(tiles, persona) {
+  var bold = persona === 'bold';
   var best = null;
   for (var i = 0; i < 4; i++) for (var j = i + 1; j < 4; j++) {
     var pick = [tiles[i], tiles[j]];
@@ -98,7 +104,10 @@ function __pgSplitBest(tiles) {
     [[rest, pick], [pick, rest]].forEach(function (cand) {
       var front = cand[0], back = cand[1];
       if (__pgCompare(back, front) < 0) return; // 倒牌：非法
-      var score = __pgStrength(back) * 10000 + __pgStrength(front);
+      var sb = __pgStrength(back), sf = __pgStrength(front);
+      var score = bold
+        ? Math.min(sb, sf) * 10000 + sb // 两手平衡优先（弱手决定双胜概率）
+        : sb * 10000 + sf;              // 后手优先
       if (!best || score > best.score) best = { front: front, back: back, score: score };
     });
   }
@@ -316,7 +325,7 @@ class CasinoPaigow {
   // ---------- 开牌结算 ----------
   _processSeat(i) { // i：座位（0=玩家，1..3=AI）
     var seat = this.seats[i];
-    if (!seat.split) seat.split = __pgSplitBest(seat.tiles);
+    if (!seat.split) seat.split = __pgSplitBy(seat.tiles, seat.persona === 'aggr' ? 'bold' : 'safe');
     seat.splitT = this.tick;
     var cb = __pgCompare(seat.split.back, this.dealer.split.back);
     var cf = __pgCompare(seat.split.front, this.dealer.split.front);
@@ -772,7 +781,7 @@ class CasinoPaigow {
       this.seats.forEach(function (st) {
         if (st.human || st.split) return;
         if (self.tick >= st.thinkUntil) {
-          st.split = __pgSplitBest(st.tiles);
+          st.split = __pgSplitBy(st.tiles, st.persona === 'aggr' ? 'bold' : 'safe');
           st.splitT = self.tick;
         }
       });
