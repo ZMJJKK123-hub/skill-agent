@@ -125,9 +125,23 @@ def bridge_command(op: str, index: int = None, value: str = None,
             if data.get("id") != cmd_id:
                 continue
             if op == "screenshot" and data.get("ok"):
-                shot_path = data.get("path")
-                if shot_path and not _P(shot_path).exists():
-                    continue  # grab 异步落盘，等文件出现
+                # grab 写 <dir>/screenshots/<时间戳>.png（异步 ioPool）——按 mtime 等新文件
+                shot_dir = _P(data.get("path", ""))
+                if shot_dir.is_dir():
+                    t0 = time.time()
+                    newest = None
+                    while time.time() - t0 < 4:
+                        pngs = sorted(shot_dir.glob("*.png"), key=lambda p: p.stat().st_mtime)
+                        if pngs and pngs[-1].stat().st_mtime >= t0 - 1:
+                            newest = pngs[-1]
+                            if pngs[-1].stat().st_mtime > t0:
+                                break
+                        time.sleep(0.3)
+                    if newest:
+                        data["path"] = str(newest)
+                        data["file_ready"] = True
+                    else:
+                        data["file_ready"] = False
             return _json.dumps(data, ensure_ascii=False)
         return (f"Error: bridge_command timeout ({timeout}s) — op={op}。"
                 "请确认：AgentBridge 已注册、客户端(run_test_client)仍在运行。")

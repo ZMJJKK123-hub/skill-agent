@@ -4,20 +4,17 @@ package com.agentbridge;
 // AgentBridge —— 进程内 UI 自动化桥（免窗口焦点、免模拟鼠标）
 //
 // 用法（agent 按此操作，共两步）：
-//   1. 把本文件复制到 src/test/java/com/agentbridge/AgentBridge.java
-//   2. 在主 @Mod 构造器末尾加反射一行（main 源集不依赖 test 类，生产 runClient 不受影响）：
-//        try { Class.forName("com.agentbridge.AgentBridge").getConstructor().newInstance(); } catch (Throwable ignored) {}
-//   客户端用 start_mc_test_client 工具启动（runTestClient——test 源集才在 classpath 上；
-//   非阻塞、可用 stop_mc_process 正常停止），随后用 bridge_command 工具下发命令：
-//     screen_info            → 当前界面类名 + 全部按钮/控件列表（index/文字/可用性）
-//     click {index}          → 直接调用该按钮背后的 onPress(...)（不是模拟鼠标）
-//     set_text {index,value} → 设置输入框（EditBox）内容
-//     chat {text}            → 发送聊天/命令（"/give @s ..."）
-//     screenshot {name}      → 用游戏渲染器截图（后台窗口也能截，存 run/agent_shots/）
+//   1. 把本文件复制到 src/main/java/com/agentbridge/AgentBridge.java
+//      （必须放 main 源集：test 源集在 SECURE-BOOTSTRAP 模块加载器里，
+//        Minecraft/eventbus 类是重复副本，LinkageError + 静态实例读空——
+//        webserv_moonstone 实测；main 与主 mod 同加载器，无此问题）
+//   2. 主 @Mod 构造器末尾加一行：new com.agentbridge.AgentBridge();
+//      （生产 jar 内本类自动失活：构造器检测工作区无 build.gradle 即返回）
+//   客户端用 start_mc_client 启动即可（无需 test 客户端），配合 bridge_command：
+//     screen_info / click / set_text / chat / screenshot（详见各 op 注释）
 //
-// 协议：命令文件 run/bridge_cmd.json（含唯一 id），处理后写 run/bridge_result.json
-//（同 id），并删除命令文件。轮询在客户端每 tick 执行，延迟 <50ms。
-// 本文件属测试源码集，不会打进发布 jar。
+// 协议：命令文件 run/bridge_cmd.json（含唯一 id）→ 处理后写 run/bridge_result.json
+//（同 id）并删命令文件。独立守护线程 50ms 轮询，不依赖任何 forge 事件。
 // ============================================================================
 
 import com.google.gson.GsonBuilder;
@@ -33,7 +30,6 @@ import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.MouseButtonInfo;
-import net.minecraftforge.event.TickEvent;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -49,10 +45,26 @@ public class AgentBridge {
     private Minecraft mc() { return Minecraft.getInstance(); }
 
     public AgentBridge() {
-        // 本 Forge(eventbus 7) 为"每事件一条总线"：事件类自带静态 BUS，
-        // addListener(Consumer) 订阅——没有老版的 register(Object)+@SubscribeEvent。
-        TickEvent.ClientTickEvent.Post.BUS.addListener(this::onClientTick);
-        System.out.println("[AgentBridge] armed (cmd dir: " + resolveRunDir() + ")");
+        // 生产环境守卫：真实玩家目录（含其上级）没有 build.gradle，直接失活（不启线程）。
+        // 注意 dev 客户端 CWD 是 <项目>/run，build.gradle 在上一级——两级都要探测。
+        boolean devWorkspace = java.nio.file.Paths.get("build.gradle").toFile().exists()
+                || java.nio.file.Paths.get("..", "build.gradle").toFile().exists();
+        if (!devWorkspace) return;
+        // 独立守护线程 50ms 轮询命令文件——零 forge 事件链接（test 模块加载器的
+        // eventbus 类与 app 加载器重复，事件订阅会 LinkageError，实测）
+        Thread t = new Thread(() -> {
+            System.out.println("[AgentBridge] armed (cmd dir: " + resolveRunDir() + ")");
+            while (true) {
+                try {
+                    poll();
+                } catch (Throwable e) {
+                    System.out.println("[AgentBridge] poll error: " + e);
+                }
+                try { Thread.sleep(50); } catch (InterruptedException ie) { return; }
+            }
+        }, "agentbridge-poller");
+        t.setDaemon(true);
+        t.start();
     }
 
     /** 客户端 CWD 可能是项目根，也可能就是 <项目>/run（dev run 默认）——两者都兼容。 */
@@ -60,15 +72,6 @@ public class AgentBridge {
         Path here = Paths.get("").toAbsolutePath();
         if (here.getFileName() != null && "run".equals(here.getFileName().toString())) return here;
         return here.resolve("run");
-    }
-
-    private void onClientTick(TickEvent.ClientTickEvent.Post event) {
-        try {
-            poll();
-        } catch (Throwable t) {
-            // 桥自身任何异常都不能影响游戏主循环
-            System.out.println("[AgentBridge] error: " + t);
-        }
     }
 
     private void poll() throws Exception {
@@ -95,33 +98,56 @@ public class AgentBridge {
                 StandardCharsets.UTF_8);
     }
 
+    /** 变更类操作必须跑在客户端主线程（RenderSystem 断言），经 mc().execute 投递。 */
     private void handle(JsonObject cmd, JsonObject out) throws Exception {
         String op = cmd.get("op").getAsString();
-        switch (op) {
-            case "screen_info" -> {
-                Screen screen = mc().screen;
-                out.addProperty("in_world", mc().level != null && mc().player != null);
-                if (screen == null) {
-                    out.addProperty("screen", "");
-                } else {
-                    out.addProperty("screen", screen.getClass().getSimpleName());
-                    List<AbstractWidget> widgets = new ArrayList<>();
-                    collect(screen, widgets, 0);
-                    JsonArray arr = new JsonArray();
-                    for (int i = 0; i < widgets.size(); i++) {
-                        AbstractWidget w = widgets.get(i);
-                        JsonObject o = new JsonObject();
-                        o.addProperty("index", i);
-                        o.addProperty("type", w.getClass().getSimpleName());
-                        o.addProperty("label", w.getMessage() == null ? "" : w.getMessage().getString());
-                        o.addProperty("active", w.active);
-                        o.addProperty("visible", w.visible);
-                        o.addProperty("editable", w instanceof EditBox);
-                        arr.add(o);
-                    }
-                    out.add("widgets", arr);
-                }
+        if ("screen_info".equals(op)) {
+            doScreenInfo(out);
+            return;
+        }
+        java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.atomic.AtomicReference<Throwable> err = new java.util.concurrent.atomic.AtomicReference<>();
+        mc().execute(() -> {
+            try {
+                doOp(cmd, op, out);
+            } catch (Throwable t) {
+                err.set(t);
+            } finally {
+                latch.countDown();
             }
+        });
+        if (!latch.await(6, java.util.concurrent.TimeUnit.SECONDS))
+            throw new IllegalStateException("client thread busy (op timeout)");
+        if (err.get() != null) throw new RuntimeException(err.get());
+    }
+
+    private void doScreenInfo(JsonObject out) {
+        Screen screen = mc().screen;
+        out.addProperty("in_world", mc().level != null && mc().player != null);
+        if (screen == null) {
+            out.addProperty("screen", "");
+        } else {
+            out.addProperty("screen", screen.getClass().getSimpleName());
+            java.util.List<AbstractWidget> widgets = new java.util.ArrayList<>();
+            collect(screen, widgets, 0);
+            JsonArray arr = new JsonArray();
+            for (int i = 0; i < widgets.size(); i++) {
+                AbstractWidget w = widgets.get(i);
+                JsonObject o = new JsonObject();
+                o.addProperty("index", i);
+                o.addProperty("type", w.getClass().getSimpleName());
+                o.addProperty("label", w.getMessage() == null ? "" : w.getMessage().getString());
+                o.addProperty("active", w.active);
+                o.addProperty("visible", w.visible);
+                o.addProperty("editable", w instanceof EditBox);
+                arr.add(o);
+            }
+            out.add("widgets", arr);
+        }
+    }
+
+    private void doOp(JsonObject cmd, String op, JsonObject out) throws Exception {
+        switch (op) {
             case "click" -> {
                 int index = cmd.get("index").getAsInt();
                 AbstractWidget w = widgetAt(index);
@@ -153,14 +179,14 @@ public class AgentBridge {
                 out.addProperty("sent", text);
             }
             case "screenshot" -> {
-                String name = cmd.has("name") && !cmd.get("name").getAsString().isBlank()
-                        ? cmd.get("name").getAsString()
-                        : "bridge_" + UUID.randomUUID().toString().substring(0, 8);
+                // grab 的 File 是【目录】语义：实际写入 <dir>/screenshots/<时间戳>.png，
+                // 且必须在渲染线程调用（takeScreenshot 直读帧缓冲）。异步落盘由
+                // ioPool 完成——调用方按 mtime 轮询取新文件。
                 File dir = new File(resolveRunDir().toFile(), "agent_shots");
                 dir.mkdirs();
-                File file = new File(dir, name.endsWith(".png") ? name : name + ".png");
-                Screenshot.grab(file, mc().getMainRenderTarget(), c -> {});
-                out.addProperty("path", file.getAbsolutePath());
+                Screenshot.grab(dir, null, mc().getMainRenderTarget(), 1, c -> {});
+                out.addProperty("path", new File(dir, "screenshots").getAbsolutePath());
+                out.addProperty("note", "async: newest .png under path lands within ~2s");
             }
             default -> throw new IllegalStateException("unknown op: " + op);
         }

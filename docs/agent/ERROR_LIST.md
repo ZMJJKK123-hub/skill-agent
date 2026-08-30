@@ -1130,3 +1130,10 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 
 - **[工具bug已修-webserv_lapisamulet] run_test_client 超时只杀 gradle 包装进程，游戏是 daemon 子进程幸存成僵尸客户端；第二个客户端共用 run/ 目录导致锁冲突崩溃（表现为"启动了两个客户端"）| 根治：run* 游戏型任务一律 --no-daemon（树杀可达游戏），启动前先杀本工作区残留 runClient java；新增 start_mc_test_client 非阻塞启动（process_manager 托管，stop_mc_process 可停）**
 - **[AgentBridge 使用要点] 主 mod 用反射挂载（main 源集不能硬引用 test 类）:try { Class.forName("com.agentbridge.AgentBridge").getConstructor().newInstance(); } catch (Throwable ignored) {}；就绪标志 wait_for_log "[AgentBridge] armed"；桥对 CWD 兼容（项目根或 run/ 均可）**
+
+## 2026-08-30 AgentBridge 桥接实战定稿（webserv_moonstone 手动闭环验证）
+- **[核心事实] test 源集类运行在 SECURE-BOOTSTRAP 模块加载器（module test），其 Minecraft/eventbus 类是与 app 加载器重复的副本：事件订阅 LinkageError、Minecraft.getInstance() 读到空静态 | 桥/自动化代码必须放 src/main（与主 mod 同加载器），用 build.gradle 存在性守卫（注意 dev 客户端 CWD 是 <项目>/run，要两级探测 ..uild.gradle）让生产 jar 自动失活**
+- **[核心事实] 按钮操作必须在渲染线程执行（RenderSystem 断言）：非按钮 onPress 的代码经 mc().execute() 投递 + CountDownLatch 等待；screen_info 只读可任意线程**
+- **[核心事实] Screenshot.grab(File, RenderTarget, Consumer) 的 File 是【目录】语义（实际写 <dir>/screenshots/<时间戳>.png），且必须在渲染线程调用，PNG 由 ioPool 异步落盘——调用方按 mtime 轮询取新文件**
+- **[已验证闭环] 主菜单→Singleplayer→Create New World→进世界→/give→游戏内截图 全程桥驱动成功（免焦点/免模拟输入/后台窗口可截图）；世界列表条目不是 AbstractButton（click 会正确拒绝），进世界用 Create New World 路径**
+- **[API] GLM-5.3-flash（智谱 open.bigmodel.cn/api/paas/v4）可跑通全流程：写码/构建/GameTest/ERROR_LIST 查错均正常；注意余额（429 code 1113=余额不足）**

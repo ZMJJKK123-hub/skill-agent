@@ -82,15 +82,15 @@ dedicated tool; use bash only when no tool exists.
 - restore_snapshot: hard reset to a previous snapshot (DESTRUCTIVE - only when you are sure).
 
 ### In-process UI automation (bridge_command — PREFERRED, no focus stealing)
-- Before client verification: copy `starter/bridge/AgentBridge.java` to `src/test/java/com/agentbridge/AgentBridge.java` and add ONE line at the end of your main @Mod constructor (reflection, so production runClient compiles without the test classpath): `try { Class.forName("com.agentbridge.AgentBridge").getConstructor().newInstance(); } catch (Throwable ignored) {}`. Rebuild, then start the client with `start_mc_test_client` (NOT run_client/run_test_client — the bridge is only on the runTestClient classpath, and start_mc_test_client is non-blocking + properly killable via stop_mc_process).
+- Setup (2 steps): copy `starter/bridge/AgentBridge.java` to `src/main/java/com/agentbridge/AgentBridge.java` (MAIN sources — test sources load in a duplicate classloader and break), and add `new com.agentbridge.AgentBridge();` at the end of your main @Mod constructor (direct call, same sourceset; it self-disables in production via a build.gradle check). Start the client with `start_mc_client`, wait for readiness with wait_for_log pattern '[AgentBridge] armed|Sound engine started'.
 - Then drive the UI as CODE, no screenshots needed to decide:
-  1) `bridge_command op=screen_info` → returns screen class + widgets [{index,label,active,editable}]. Read labels to decide.
-  2) `bridge_command op=click index=<n>` → invokes the button's onPress handler directly (background window OK).
-  3) `bridge_command op=set_text index=<n> value=<name>` → fill world-name boxes.
-  4) `bridge_command op=chat text="/give @s <modid>:<item>"` then `op=chat text="/give @s minecraft:stone_pickaxe"` (so it can mine if needed).
-  5) ONE `bridge_command op=screenshot name=icon_check` + analyze_image at the END for the icon verdict — game-renderer screenshots work even when the window is unfocused/minimized.
-- Typical flow: title screen → click "Singleplayer" → screen_info → click "Create New World" → set_text world name → click "Create New World" → wait_for_log "joined the game" (timeout 180) → give item → screenshot → analyze.
-- Indexes change between screens: always screen_info after a screen transition, then click.
+  1) `bridge_command op=screen_info` -> screen class + widgets [{index,label,active,editable}]. Read labels to decide.
+  2) `bridge_command op=click index=<n>` -> invokes the button's onPress handler directly (background window OK).
+  3) `bridge_command op=set_text index=<n> value=<name>` -> fill world-name boxes.
+  4) `bridge_command op=chat text="/give @s <modid>:<item>"`.
+  5) ONE `bridge_command op=screenshot name=icon_check` + analyze_image at the END for the icon verdict.
+- Typical flow: title screen -> screen_info -> click Singleplayer -> screen_info -> click Create New World -> set_text name -> click Create -> wait_for_log 'joined the game' -> chat give -> screenshot -> analyze.
+- Indexes change between screens: always screen_info after a transition, then click. Stop the client with stop_mc_process when done.
 
 ### Deterministic client menu navigation (press_keys — FALLBACK when bridge not compiled)
 - Use press_keys for vanilla menu flows instead of screenshot->decide->press loops. Verify each SCREEN transition with ONE wait_for_screen, not one screenshot per button.
