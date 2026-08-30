@@ -44,6 +44,7 @@ from .tools_lifecycle import (
     server_console,
     start_mc_client,
     start_mc_server,
+    start_mc_test_client,
     stop_mc_process,
 )
 from .tools_loop import parse_build_output, run_mod_test_cycle
@@ -135,6 +136,7 @@ TOOL_HANDLERS = {
     "start_mc_server": lambda **kw: start_mc_server(
         kw.get("base"), kw.get("handle", "mc-server"), kw.get("rcon_port"), kw.get("rcon_password")),
     "start_mc_client": lambda **kw: start_mc_client(kw.get("base"), kw.get("handle", "mc-client")),
+    "start_mc_test_client": lambda **kw: start_mc_test_client(kw.get("base"), kw.get("handle", "mc-client")),
     "mc_status": lambda **kw: mc_status(kw.get("handle")),
     "stop_mc_process": lambda **kw: stop_mc_process(kw.get("handle", "all"), kw.get("force", True)),
     "kill_game": lambda **kw: kill_game(kw.get("handle", "all")),
@@ -1082,7 +1084,7 @@ _TOOL_SCHEMAS_EXTRA = [
         "type": "function",
         "function": {
             "name": "bridge_command",
-            "description": "In-process UI automation via the AgentBridge mod (requires: copy starter/bridge/AgentBridge.java into src/test/java/com/agentbridge/, add ONE line 'new com.agentbridge.AgentBridge();' at the end of your main @Mod constructor, and start the client with run_test_client). ops: screen_info (list current screen's buttons with index/label — read the UI as CODE, no screenshot), click {index} (invoke the button's onPress handler directly, not a simulated mouse), set_text {index,value} (fill an EditBox), chat {text} (send '/give @s <modid>:<item>' etc.), screenshot {name} (game-renderer screenshot, works in background window). Preferred over press_keys/screenshots whenever the bridge is compiled in.",
+            "description": "In-process UI automation via the AgentBridge mod (requires: copy starter/bridge/AgentBridge.java into src/test/java/com/agentbridge/, add ONE reflection line 'try { Class.forName(\"com.agentbridge.AgentBridge\").getConstructor().newInstance(); } catch (Throwable ignored) {}' at the end of your main @Mod constructor, and start the client with start_mc_test_client). ops: screen_info (list current screen's buttons with index/label — read the UI as CODE, no screenshot), click {index} (invoke the button's onPress handler directly, not a simulated mouse), set_text {index,value} (fill an EditBox), chat {text} (send '/give @s <modid>:<item>' etc.), screenshot {name} (game-renderer screenshot, works in background window). Preferred over press_keys/screenshots whenever the bridge is compiled in.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -1389,6 +1391,21 @@ _TOOL_SCHEMAS_EXTRA = [
         "function": {
             "name": "start_mc_client",
             "description": "Start the Minecraft GUI client (gradlew runClient) in the background. Non-blocking; use mc_status / wait_for_screen to observe.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "base": {"type": "string", "description": "Optional MOD project dir (default current worktree)"},
+                    "handle": {"type": "string", "description": "Process handle (default mc-client)"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "start_mc_test_client",
+            "description": "Start the TEST client (gradlew runTestClient, non-blocking, tracked like mc-client). Use this instead of run_test_client/start_mc_client when driving the UI via AgentBridge/bridge_command: test sources (the bridge) are only on the runTestClient classpath. Wait for readiness with wait_for_log pattern '[AgentBridge] armed|Sound engine started' (timeout 180); stop with stop_mc_process.",
             "parameters": {
                 "type": "object",
                 "properties": {

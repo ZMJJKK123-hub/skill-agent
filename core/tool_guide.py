@@ -82,7 +82,7 @@ dedicated tool; use bash only when no tool exists.
 - restore_snapshot: hard reset to a previous snapshot (DESTRUCTIVE - only when you are sure).
 
 ### In-process UI automation (bridge_command — PREFERRED, no focus stealing)
-- Before client verification: copy `starter/bridge/AgentBridge.java` to `src/test/java/com/agentbridge/AgentBridge.java` and add ONE line at the end of your main @Mod constructor: `new com.agentbridge.AgentBridge();`. Rebuild so it compiles, then start the client with `run_test_client` (NOT run_client — test sources are only on the test classpath).
+- Before client verification: copy `starter/bridge/AgentBridge.java` to `src/test/java/com/agentbridge/AgentBridge.java` and add ONE line at the end of your main @Mod constructor (reflection, so production runClient compiles without the test classpath): `try { Class.forName("com.agentbridge.AgentBridge").getConstructor().newInstance(); } catch (Throwable ignored) {}`. Rebuild, then start the client with `start_mc_test_client` (NOT run_client/run_test_client — the bridge is only on the runTestClient classpath, and start_mc_test_client is non-blocking + properly killable via stop_mc_process).
 - Then drive the UI as CODE, no screenshots needed to decide:
   1) `bridge_command op=screen_info` → returns screen class + widgets [{index,label,active,editable}]. Read labels to decide.
   2) `bridge_command op=click index=<n>` → invokes the button's onPress handler directly (background window OK).

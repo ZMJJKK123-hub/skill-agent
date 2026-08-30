@@ -68,15 +68,43 @@ def _dev_err(res):
     return ("compile_error", m.group(1) if m else "BUILD FAILED", lm.group(1) if lm else "")
 
 
+def _is_long_running_run(task: str) -> bool:
+    """runClient/runTestClient/runServer 等"游戏进程型"任务：阻塞到游戏退出。"""
+    import re
+    return bool(re.match(r"^run(Test)?(Client|Server|GameTestServer|TestGameTestServer)$", task))
+
+
+def _kill_workspace_clients(base: str) -> None:
+    """启动新客户端前，杀掉本工作区残留的游戏 java 进程（防双客户端/目录锁）。
+
+    webserv_lapisamulet 实测：超时只杀掉 gradle 包装进程，游戏是 daemon 的
+    子进程得以幸存 → 僵尸客户端 + 第二个客户端共用 run/ 目录锁死崩溃。
+    """
+    if os.name != "nt":
+        return
+    try:
+        import subprocess as _sp
+        marker = os.path.abspath(base).replace("\\", "\\\\").lower()
+        q = (f"Get-CimInstance Win32_Process -Filter \"Name='java.exe'\" | "
+             f"Where-Object {{ $_.CommandLine -match 'run(Client|TestClient)' -and "
+             f"$_.CommandLine -match [regex]::Escape('{marker}') }} | "
+             f"ForEach-Object {{ Stop-Process -Id $_.ProcessId -Force }}")
+        _sp.run(["powershell", "-NoProfile", "-Command", q],
+                capture_output=True, timeout=20)
+    except Exception:
+        pass
+
+
 def _gradle_cmd(task, base):
     """Return the command to run a Gradle task in the given mod base dir."""
     if not os.path.exists(os.path.join(base, "build.gradle")):
         return None
+    extra = ["--no-daemon"] if _is_long_running_run(task) else []
     if os.name == "nt":
         g = "gradlew.bat" if os.path.exists(os.path.join(base, "gradlew.bat")) else "gradle"
-        return ["cmd", "/c", g, task, "--console=plain"]
+        return ["cmd", "/c", g, task, "--console=plain", *extra]
     g = "./gradlew" if os.path.exists(os.path.join(base, "gradlew")) else "gradle"
-    return [g, task, "--console=plain"]
+    return [g, task, "--console=plain", *extra]
 
 
 def start_gradle_task(task, base, handle="mc"):
@@ -84,6 +112,8 @@ def start_gradle_task(task, base, handle="mc"):
     cmd = _gradle_cmd(task, base)
     if cmd is None:
         return {"success": False, "message": f"No build.gradle in {base}"}
+    if _is_long_running_run(task):
+        _kill_workspace_clients(base)
     log_path = Path(base) / "run" / f"{handle}.log"
     try:
         log_path.parent.mkdir(parents=True, exist_ok=True)

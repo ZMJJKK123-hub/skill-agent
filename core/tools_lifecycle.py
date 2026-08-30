@@ -73,6 +73,23 @@ def start_mc_client(base=None, handle="mc-client"):
     )
 
 
+def start_mc_test_client(base=None, handle="mc-client"):
+    """runTestClient 版客户端：测试源码集（含 AgentBridge 桥）在 classpath 上。
+
+    非阻塞（process_manager 托管），配合 bridge_command 使用，停止用
+    stop_mc_process。等待就绪：wait_for_log pattern 含 "[AgentBridge] armed"。
+    """
+    base = base or _base_dir()
+    res = start_gradle_task("runTestClient", base, handle)
+    if not res["success"]:
+        return f"[start_mc_test_client] {res['message']}"
+    return (
+        f"[start_mc_test_client] handle={res['handle']} pid={res['pid']}\n"
+        f"log={res['log_path']}\n"
+        "等待就绪：wait_for_log pattern='[AgentBridge] armed|Sound engine started'（timeout 180）。"
+    )
+
+
 def mc_status(handle=None):
     base = _base_dir()
     info = pm.list_info(base)

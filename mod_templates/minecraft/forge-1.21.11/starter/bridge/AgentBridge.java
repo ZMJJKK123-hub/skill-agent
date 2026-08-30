@@ -5,10 +5,10 @@ package com.agentbridge;
 //
 // 用法（agent 按此操作，共两步）：
 //   1. 把本文件复制到 src/test/java/com/agentbridge/AgentBridge.java
-//   2. 在你的主 @Mod 类构造器末尾加一行（构造器自订阅 tick 事件总线）：
-//        new com.agentbridge.AgentBridge();
-//   然后用 run_test_client（测试源码集在 classpath 上；run_client 不行）启动
-//   客户端，之后用 bridge_command 工具下发命令：
+//   2. 在主 @Mod 构造器末尾加反射一行（main 源集不依赖 test 类，生产 runClient 不受影响）：
+//        try { Class.forName("com.agentbridge.AgentBridge").getConstructor().newInstance(); } catch (Throwable ignored) {}
+//   客户端用 start_mc_test_client 工具启动（runTestClient——test 源集才在 classpath 上；
+//   非阻塞、可用 stop_mc_process 正常停止），随后用 bridge_command 工具下发命令：
 //     screen_info            → 当前界面类名 + 全部按钮/控件列表（index/文字/可用性）
 //     click {index}          → 直接调用该按钮背后的 onPress(...)（不是模拟鼠标）
 //     set_text {index,value} → 设置输入框（EditBox）内容
@@ -46,12 +46,20 @@ import java.util.UUID;
 
 public class AgentBridge {
 
-    private final Minecraft mc = Minecraft.getInstance();
+    private Minecraft mc() { return Minecraft.getInstance(); }
 
     public AgentBridge() {
         // 本 Forge(eventbus 7) 为"每事件一条总线"：事件类自带静态 BUS，
         // addListener(Consumer) 订阅——没有老版的 register(Object)+@SubscribeEvent。
         TickEvent.ClientTickEvent.Post.BUS.addListener(this::onClientTick);
+        System.out.println("[AgentBridge] armed (cmd dir: " + resolveRunDir() + ")");
+    }
+
+    /** 客户端 CWD 可能是项目根，也可能就是 <项目>/run（dev run 默认）——两者都兼容。 */
+    private static Path resolveRunDir() {
+        Path here = Paths.get("").toAbsolutePath();
+        if (here.getFileName() != null && "run".equals(here.getFileName().toString())) return here;
+        return here.resolve("run");
     }
 
     private void onClientTick(TickEvent.ClientTickEvent.Post event) {
@@ -64,7 +72,7 @@ public class AgentBridge {
     }
 
     private void poll() throws Exception {
-        Path run = Paths.get("run");
+        Path run = resolveRunDir();
         Files.createDirectories(run);
         Path cmdPath = run.resolve("bridge_cmd.json");
         if (!Files.exists(cmdPath)) return;
@@ -91,8 +99,8 @@ public class AgentBridge {
         String op = cmd.get("op").getAsString();
         switch (op) {
             case "screen_info" -> {
-                Screen screen = mc.screen;
-                out.addProperty("in_world", mc.level != null && mc.player != null);
+                Screen screen = mc().screen;
+                out.addProperty("in_world", mc().level != null && mc().player != null);
                 if (screen == null) {
                     out.addProperty("screen", "");
                 } else {
@@ -135,12 +143,12 @@ public class AgentBridge {
             }
             case "chat" -> {
                 String text = cmd.get("text").getAsString();
-                if (mc.getConnection() == null)
+                if (mc().getConnection() == null)
                     throw new IllegalStateException("no connection (not in a world?)");
                 if (text.startsWith("/")) {
-                    mc.getConnection().sendCommand(text.substring(1));
+                    mc().getConnection().sendCommand(text.substring(1));
                 } else {
-                    mc.getConnection().sendChat(text);
+                    mc().getConnection().sendChat(text);
                 }
                 out.addProperty("sent", text);
             }
@@ -148,10 +156,10 @@ public class AgentBridge {
                 String name = cmd.has("name") && !cmd.get("name").getAsString().isBlank()
                         ? cmd.get("name").getAsString()
                         : "bridge_" + UUID.randomUUID().toString().substring(0, 8);
-                File dir = new File("run/agent_shots");
+                File dir = new File(resolveRunDir().toFile(), "agent_shots");
                 dir.mkdirs();
                 File file = new File(dir, name.endsWith(".png") ? name : name + ".png");
-                Screenshot.grab(file, mc.getMainRenderTarget(), c -> {});
+                Screenshot.grab(file, mc().getMainRenderTarget(), c -> {});
                 out.addProperty("path", file.getAbsolutePath());
             }
             default -> throw new IllegalStateException("unknown op: " + op);
@@ -169,7 +177,7 @@ public class AgentBridge {
 
     private List<AbstractWidget> widgetsNow() {
         List<AbstractWidget> list = new ArrayList<>();
-        if (mc.screen != null) collect(mc.screen, list, 0);
+        if (mc().screen != null) collect(mc().screen, list, 0);
         return list;
     }
 
