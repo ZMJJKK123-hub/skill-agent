@@ -4,16 +4,17 @@ import { useT } from '../lib/i18n'
 import { useSession } from '../lib/session'
 
 // 主页小游戏浮窗：可拖拽 + 可缩放
-// 游戏本体复用 debug 维护页的 7 个游戏，零重复实现。
+// 游戏本体复用 debug 维护页的游戏，零重复实现。
+// 当前只上线 Snake 2048；其余游戏取消注释即可复原。
 
 const GAMES = [
   { id: 'snake-2048', label: '🐍 Snake 2048' },
-  { id: 'server-defense', label: '🛡️ Server Defense' },
-  { id: 'traffic-breakout', label: '🧱 Traffic Breakout' },
-  { id: 'dimension-parkour', label: '🏃 Dimension Parkour' },
-  { id: 'bug-sorter', label: '🎵 Bug Sorter' },
-  { id: 'terminal-hacker', label: '💻 Terminal Hacker' },
-  { id: 'data-turing', label: '🔌 Data Turing' },
+  // { id: 'server-defense', label: '🛡️ Server Defense' },
+  // { id: 'traffic-breakout', label: '🧱 Traffic Breakout' },
+  // { id: 'dimension-parkour', label: '🏃 Dimension Parkour' },
+  // { id: 'bug-sorter', label: '🎵 Bug Sorter' },
+  // { id: 'terminal-hacker', label: '💻 Terminal Hacker' },
+  // { id: 'data-turing', label: '🔌 Data Turing' },
 ]
 
 // 初始窗口尺寸

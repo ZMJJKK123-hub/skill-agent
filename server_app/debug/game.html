@@ -169,14 +169,15 @@
       }
     };
 
+    // 当前只上线 Snake 2048；其余游戏代码保留，取消注释即可复原。
     var GAMES = {
-      'server-defense':   { title: 'Server Defense',   file: 'js/games/server-defense.js',   cls: 'ServerDefense' },
-      'terminal-hacker':  { title: 'Terminal Hacker',  file: 'js/games/terminal-hacker.js',  cls: 'TerminalHacker' },
+      // 'server-defense':   { title: 'Server Defense',   file: 'js/games/server-defense.js',   cls: 'ServerDefense' },
+      // 'terminal-hacker':  { title: 'Terminal Hacker',  file: 'js/games/terminal-hacker.js',  cls: 'TerminalHacker' },
       'snake-2048':       { title: 'Snake 2048',       file: 'js/games/snake-2048.js',       cls: 'Snake2048' },
-      'traffic-breakout': { title: 'Traffic Breakout', file: 'js/games/traffic-breakout.js', cls: 'TrafficBreakout' },
-      'dimension-parkour':{ title: 'Dimension Parkour',file: 'js/games/dimension-parkour.js',cls: 'DimensionParkour' },
-      'bug-sorter':       { title: 'Bug Sorter',       file: 'js/games/bug-sorter.js',       cls: 'BugSorter' },
-      'data-turing':      { title: 'Data Turing',      file: 'js/games/data-turing.js',      cls: 'DataTuring' }
+      // 'traffic-breakout': { title: 'Traffic Breakout', file: 'js/games/traffic-breakout.js', cls: 'TrafficBreakout' },
+      // 'dimension-parkour':{ title: 'Dimension Parkour',file: 'js/games/dimension-parkour.js',cls: 'DimensionParkour' },
+      // 'bug-sorter':       { title: 'Bug Sorter',       file: 'js/games/bug-sorter.js',       cls: 'BugSorter' },
+      // 'data-turing':      { title: 'Data Turing',      file: 'js/games/data-turing.js',      cls: 'DataTuring' }
     };
     var gid = new URLSearchParams(location.search).get('g') || 'snake-2048';
     if (!GAMES.hasOwnProperty(gid)) gid = 'snake-2048';
@@ -198,13 +199,13 @@
     };
 
     var FACTORIES = {
-      'server-defense':    function (h) { return new ServerDefense(h); },
-      'terminal-hacker':   function (h) { return new TerminalHacker(h); },
+      // 'server-defense':    function (h) { return new ServerDefense(h); },
+      // 'terminal-hacker':   function (h) { return new TerminalHacker(h); },
       'snake-2048':        function (h) { return new Snake2048(h); },
-      'traffic-breakout':  function (h) { return new TrafficBreakout(h); },
-      'dimension-parkour': function (h) { return new DimensionParkour(h); },
-      'bug-sorter':        function (h) { return new BugSorter(h); },
-      'data-turing':       function (h) { return new DataTuring(h); }
+      // 'traffic-breakout':  function (h) { return new TrafficBreakout(h); },
+      // 'dimension-parkour': function (h) { return new DimensionParkour(h); },
+      // 'bug-sorter':        function (h) { return new BugSorter(h); },
+      // 'data-turing':       function (h) { return new DataTuring(h); }
     };
 
     var s = document.createElement('script');

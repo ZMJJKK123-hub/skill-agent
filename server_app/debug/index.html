@@ -75,14 +75,15 @@
   <script src="js/games/data-turing.js"></script>
   <script>
     // Register apps (must run after all game classes are defined, before main.js)
+    // 当前只上线 Snake 2048；其余游戏代码保留，取消注释即可复原。
     window.APPS = [
-      { icon: '🛡️', name: 'Server Defense', desc: 'Vampire Survivors tower defense', badge: 'HOT', init: c => new ServerDefense(c) },
-      { icon: '💻', name: 'Terminal Hacker', desc: 'Decrypt threat defense', init: c => new TerminalHacker(c) },
-      { icon: '🐍', name: 'Snake 2048', desc: 'Snake x 2048 fusion', init: c => new Snake2048(c) },
-      { icon: '🧱', name: 'Traffic Breakout', desc: 'Tunnel + fork breakout', init: c => new TrafficBreakout(c) },
-      { icon: '🏃', name: 'Dimension Parkour', desc: 'Gravity flip runner', badge: 'NEW', init: c => new DimensionParkour(c) },
-      { icon: '🎵', name: 'Bug Sorter', desc: '3-lane rhythm game', init: c => new BugSorter(c) },
-      { icon: '🔌', name: 'Data Turing', desc: 'Node wiring puzzle', init: c => new DataTuring(c) }
+      // { icon: '🛡️', name: 'Server Defense', desc: 'Vampire Survivors tower defense', badge: 'HOT', init: c => new ServerDefense(c) },
+      // { icon: '💻', name: 'Terminal Hacker', desc: 'Decrypt threat defense', init: c => new TerminalHacker(c) },
+      { icon: '🐍', name: 'Snake 2048', desc: 'Snake x 2048 fusion', badge: 'NEW', init: c => new Snake2048(c) },
+      // { icon: '🧱', name: 'Traffic Breakout', desc: 'Tunnel + fork breakout', init: c => new TrafficBreakout(c) },
+      // { icon: '🏃', name: 'Dimension Parkour', desc: 'Gravity flip runner', badge: 'NEW', init: c => new DimensionParkour(c) },
+      // { icon: '🎵', name: 'Bug Sorter', desc: '3-lane rhythm game', init: c => new BugSorter(c) },
+      // { icon: '🔌', name: 'Data Turing', desc: 'Node wiring puzzle', init: c => new DataTuring(c) }
     ];
     // init() in main.js uses DOMContentLoaded, so it will pick up APPS
   </script>
