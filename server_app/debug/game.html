@@ -138,7 +138,7 @@
   <!-- 声音开关（音效+语音播报；首次点击任意处也会自动解锁音频） -->
   <button id="soundBtn" title="音效/语音开关" style="position:fixed;top:10px;right:12px;z-index:60;background:rgba(10,15,25,.75);border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:4px 12px;cursor:pointer;font-size:15px">🔊</button>
 
-  <script src="js/utils.js?_v=20"></script>
+  <script src="js/utils.js?_v=21"></script>
   <script>
     // 声音开关：sndOn 默认开（utils.js），此处提供手动关闭
     (function () {
@@ -159,8 +159,8 @@
         en: '⚠ The snake moves automatically right — use Arrow keys/WASD BEFORE it hits a wall! Eat number blocks to grow; same numbers merge (like 2048). Space = auto-path (len>15). R = restart, ESC = close.'
       },
       'casino': {
-        zh: '🎰 算力赌坊（纯虚拟筹码，仅供娱乐）。进大厅选桌：目前开放「梭哈 Show Hand」。梭哈玩法：每人 5 张牌，共 3 轮下注——跟注 / 加注 / 弃牌 / 梭哈（全压）。牌型从大到小：豹子 > 同花顺 > 金刚 > 同花 > 顺子 > 三条 > 两对 > 对子 > 散牌。桌面点「？牌型速查」随时查看。输了别慌，大厅可领救济金。',
-        en: '🎰 Compute Casino (virtual chips only, for fun). Pick a table in the lobby — Show Hand is open. Each player gets 5 cards, 3 betting rounds: call / raise / fold / all-in. Hands: full house > straight flush > four of a kind > flush > straight > trips > two pair > pair > high card. Check the in-table cheat sheet. Broke? Grab bailout chips in the lobby.'
+        zh: '🎰 算力赌坊 · 德州扑克。每人 2 张底牌（空格键翻看/盖回），桌面 5 张公共牌逐街翻开：期前（只能跟注/弃牌）→ 翻牌圈 3 张 → 转牌 1 张 → 河牌 1 张 → 摊牌。翻牌后可以 加注 / 加倍 ×2 / 全压 / 弃牌。最终 7 选 5 组最大牌型比大小：豹子(葫芦) > 同花顺 > 金刚 > 同花 > 顺子 > 三条 > 两对 > 对子 > 散牌。桌面点「？牌型速查」随时查看。',
+        en: '🎰 Compute Casino · Texas Hold\'em. 2 hole cards each (SPACE to peek/hide), 5 community cards revealed street by street: preflop (call/fold only) → flop 3 → turn 1 → river 1 → showdown. Post-flop: raise / double / all-in / fold. Best 5 of 7: full house > straight flush > quads > flush > straight > trips > two pair > pair > high card.'
       },
       'server-defense': {
         zh: 'WASD 移动角色，鼠标点击射击。消灭涌来的敌人波次，收集经验升级武器。类似吸血鬼幸存者的塔防玩法。R 键重开。',
@@ -194,7 +194,7 @@
       // 'server-defense':   { title: 'Server Defense',   file: 'js/games/server-defense.js',   cls: 'ServerDefense' },
       // 'terminal-hacker':  { title: 'Terminal Hacker',  file: 'js/games/terminal-hacker.js',  cls: 'TerminalHacker' },
       'snake-2048':       { title: 'Snake 2048',       file: 'js/games/snake-2048.js',       cls: 'Snake2048' },
-      'casino':           { title: '算力赌坊', files: ['js/games/casino.js', 'js/games/casino-showhand.js'], cls: 'CasinoHub' },
+      'casino':           { title: '算力赌坊', files: ['js/games/casino.js', 'js/games/casino-holdem.js'], cls: 'CasinoHub' },
       // 'traffic-breakout': { title: 'Traffic Breakout', file: 'js/games/traffic-breakout.js', cls: 'TrafficBreakout' },
       // 'dimension-parkour':{ title: 'Dimension Parkour',file: 'js/games/dimension-parkour.js',cls: 'DimensionParkour' },
       // 'bug-sorter':       { title: 'Bug Sorter',       file: 'js/games/bug-sorter.js',       cls: 'BugSorter' },
@@ -237,7 +237,7 @@
     function loadNext() {
       if (loadIdx >= fileList.length) { onAllLoaded(); return; }
       s = document.createElement('script');
-      s.src = fileList[loadIdx] + '?_v=20';
+      s.src = fileList[loadIdx] + '?_v=21';
       s.onload = function () { loadIdx++; loadNext(); };
       s.onerror = function () {
         document.getElementById('gameLoad').textContent = 'game script not found: ' + fileList[loadIdx];

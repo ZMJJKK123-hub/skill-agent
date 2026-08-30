@@ -6,34 +6,64 @@
 //   3. game.html GAMES['casino'].files 数组与 index.html <script> 标签加上该文件
 // 大厅会自动列出注册的新赌桌，无需改大厅代码。
 
-// ---------- 共享钱包（全赌桌通用，localStorage 持久化；纯虚拟筹码） ----------
-const CHIPS_KEY = 'casinoChips';
-const _chipListeners = new Set();
+  // ---------- 共享钱包（全赌桌通用，localStorage 持久化；纯虚拟筹码） ----------
+  const CHIPS_KEY = 'casinoChips';
+  const BAILOUT_AT_KEY = 'casinoBailoutAt';
+  const _chipListeners = new Set();
 
-window.Casino = {
-  wallet: {
-    get() {
-      var v = parseInt(localStorage.getItem(CHIPS_KEY) || '1000', 10);
-      return isFinite(v) && v >= 0 ? v : 1000;
+  window.Casino = {
+    wallet: {
+      get() {
+        var v = parseInt(localStorage.getItem(CHIPS_KEY) || '1000', 10);
+        return isFinite(v) && v >= 0 ? v : 1000;
+      },
+      add(n) { this._save(this.get() + n); },
+      sub(n) {
+        if (this.get() < n) return false;
+        this._save(this.get() - n);
+        return true;
+      },
+      // 破产救济：只有筹码见底（<100）才能领，且 60 秒冷却——不能无限薅
+      bailout() {
+        if (this.get() >= 100) return false;
+        var last = parseInt(localStorage.getItem(BAILOUT_AT_KEY) || '0', 10);
+        if (Date.now() - last < 60000) return false;
+        try { localStorage.setItem(BAILOUT_AT_KEY, String(Date.now())); } catch (e) {}
+        this._save(this.get() + 1000);
+        return true;
+      },
+      canBailout() { return this.get() < 100; },
+      onChange(cb) {
+        _chipListeners.add(cb);
+        try { cb(this.get()); } catch (e) { /* listener error 不影响钱包 */ }
+        return () => _chipListeners.delete(cb);
+      },
+      _save(v) {
+        try { localStorage.setItem(CHIPS_KEY, String(v)); } catch (e) {}
+        _chipListeners.forEach(function (cb) { try { cb(v); } catch (e) {} });
+      }
     },
-    add(n) { this._save(this.get() + n); },
-    sub(n) {
-      if (this.get() < n) return false;
-      this._save(this.get() - n);
-      return true;
+
+    // ---------- 音效/语音包（本地 assets/audio/*.wav，首次播放预加载） ----------
+    audio: {
+      _cache: {},
+      play(name, vol) {
+        try {
+          var a = this._cache[name];
+          if (a === undefined) {
+            a = new Audio('assets/audio/' + name + '.wav');
+            a.volume = vol === undefined ? 0.9 : vol;
+            this._cache[name] = a;
+          }
+          if (!a) return false;
+          a.volume = vol === undefined ? 0.9 : vol;
+          a.currentTime = 0;
+          var pr = a.play();
+          if (pr && pr.catch) pr.catch(function () {});
+          return true;
+        } catch (e) { return false; }
+      }
     },
-    // 破产救济：纯虚拟筹码，随时可领（仅供娱乐）
-    bailout() { this._save(this.get() + 1000); },
-    onChange(cb) {
-      _chipListeners.add(cb);
-      try { cb(this.get()); } catch (e) { /* listener error 不影响钱包 */ }
-      return () => _chipListeners.delete(cb);
-    },
-    _save(v) {
-      try { localStorage.setItem(CHIPS_KEY, String(v)); } catch (e) {}
-      _chipListeners.forEach(function (cb) { try { cb(v); } catch (e) {} });
-    }
-  },
 
   // ---------- 子游戏注册表 ----------
   _tables: new Map(),
@@ -286,18 +316,31 @@ window.Casino = {
         }
       }
     },
-    // 人物：正面朝向玩家的酒馆常客——暗色大衣、帽檐阴影下的脸、琥珀缘光、性格帽子
-    // persona: aggr 宽檐牛仔帽 / tight 圆顶礼帽+圆眼镜 / bluff 高顶大礼帽+香烟 / player 棒球帽（保留）
+    // 人物：正面朝向玩家的酒馆常客——写实向建模：
+    // 皮肤色/发型按名字散列、大衣驳领+衬衫+纽扣、双臂搭桌+手部、真眼(眼白+瞳孔)、
+    // 帽子按性格；lean=看牌前倾姿态；folded 垂头；active/winner 聚光。
     seat(c, x, y, t, o) {
       var s = o.scale || 1;
-      var bob = Math.sin(t * 0.035 + x * 0.013) * 2.6 * s;
-      var blink = Math.sin(t * 0.017 + x) > 0.96;
+      var seed = 0;
+      var nm = o.name || '';
+      for (var ci = 0; ci < nm.length; ci++) seed = (seed * 31 + nm.charCodeAt(ci)) % 997;
+      var _r = Casino._r;
+      var skins = ['#e8b88a', '#d9a06f', '#c98d5c', '#b97a4e', '#8a5a3a', '#f0c8a0'];
+      var skin = skins[seed % skins.length];
+      var hairs = ['#1a1410', '#2c2018', '#3a2a1a', '#55402a', '#0d0a08', '#6a5236'];
+      var hair = hairs[(seed + 3) % hairs.length];
+      var bob = Math.sin(t * 0.035 + seed) * 2.6 * s;
+      var sway = Math.sin(t * 0.02 + seed * 2) * 0.015;
+      var blink = Math.sin(t * 0.017 + seed) > 0.96;
       var rim = o.winner ? '#ffd98a' : '#c88a4a';
       var alpha = o.folded ? 0.42 : 1;
+      var lean = o.lean ? 1 : 0;
       c.save();
-      c.translate(x, y + bob);
-      if (o.folded) { c.translate(0, 30 * s); c.rotate(0.09); } // 弃牌：垂头缩肩
-      // 行动/赢家头顶聚光（暖色光锥，从头顶洒下）
+      c.translate(x, y + bob + lean * 9 * s); // 看牌：身体前倾
+      if (o.folded) { c.translate(0, 30 * s); c.rotate(0.09); }
+      c.rotate(sway);
+      if (lean) c.scale(1 + 0.04, 1 + 0.05); // 前倾时略放大（凑近镜头）
+      // 行动/赢家头顶聚光
       if (o.active || o.winner) {
         var amp = o.winner ? 0.30 : 0.15 + 0.06 * Math.sin(t * 0.12);
         var cone = c.createLinearGradient(0, -170 * s, 0, 64 * s);
@@ -309,30 +352,94 @@ window.Casino = {
         c.lineTo(62 * s, 64 * s); c.lineTo(-62 * s, 64 * s); c.closePath(); c.fill();
       }
       c.globalAlpha = alpha;
-      // 大衣躯干（宽肩）
+      // ---- 双臂（大衣袖）搭向桌面，手部贴桌 ----
+      var armY = 34 * s - lean * 10 * s;
+      c.strokeStyle = '#241509'; c.lineWidth = 13 * s; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(-30 * s, -6 * s); c.lineTo(-44 * s - lean * 8 * s, armY + 14 * s); c.stroke();
+      c.beginPath(); c.moveTo(30 * s, -6 * s); c.lineTo(44 * s + lean * 8 * s, armY + 14 * s); c.stroke();
+      c.fillStyle = skin;
+      c.beginPath(); c.ellipse(-44 * s - lean * 8 * s, armY + 16 * s, 7.5 * s, 5.5 * s, 0, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.ellipse(44 * s + lean * 8 * s, armY + 16 * s, 7.5 * s, 5.5 * s, 0, 0, Math.PI * 2); c.fill();
+      // ---- 躯干：大衣 + 驳领 + 衬衫 + 纽扣 ----
       var coat = c.createLinearGradient(0, -20 * s, 0, 64 * s);
       coat.addColorStop(0, '#33200f'); coat.addColorStop(1, '#0c0603');
       c.fillStyle = coat;
       c.beginPath();
       c.moveTo(-54 * s, 64 * s); c.lineTo(-33 * s, -16 * s);
       c.lineTo(33 * s, -16 * s); c.lineTo(54 * s, 64 * s); c.closePath(); c.fill();
-      // 肩部缘光（左肩受吊灯）
+      // 衬衫（领口三角）
+      c.fillStyle = '#cbb596';
+      c.beginPath(); c.moveTo(-9 * s, -14 * s); c.lineTo(9 * s, -14 * s); c.lineTo(0, 12 * s); c.closePath(); c.fill();
+      // 驳领
+      c.fillStyle = '#241508';
+      c.beginPath(); c.moveTo(-9 * s, -14 * s); c.lineTo(-22 * s, 14 * s); c.lineTo(-6 * s, 6 * s); c.closePath(); c.fill();
+      c.beginPath(); c.moveTo(9 * s, -14 * s); c.lineTo(22 * s, 14 * s); c.lineTo(6 * s, 6 * s); c.closePath(); c.fill();
+      // 领巾（性格色）
+      c.fillStyle = o.color;
+      c.beginPath(); c.moveTo(-6 * s, -13 * s); c.lineTo(6 * s, -13 * s); c.lineTo(0, 2 * s); c.closePath(); c.fill();
+      // 纽扣
+      c.fillStyle = 'rgba(200,170,120,.75)';
+      c.beginPath(); c.arc(0, 22 * s, 1.6 * s, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.arc(0, 34 * s, 1.6 * s, 0, Math.PI * 2); c.fill();
+      // 肩部缘光
       c.strokeStyle = rim; c.lineWidth = 2 * s;
       c.globalAlpha = alpha * (o.winner ? 0.95 : 0.5 + (o.active ? 0.3 : 0));
       c.beginPath(); c.moveTo(-33 * s, -14 * s); c.lineTo(-53 * s, 62 * s); c.stroke();
       c.globalAlpha = alpha;
-      // 领巾（性格色）
-      c.fillStyle = o.color;
-      c.beginPath(); c.moveTo(-10 * s, -13 * s); c.lineTo(10 * s, -13 * s); c.lineTo(0, 9 * s); c.closePath(); c.fill();
-      // 头（帽檐阴影中）
-      c.fillStyle = '#251710';
-      c.beginPath(); c.ellipse(0, -36 * s, 17 * s, 20 * s, 0, 0, Math.PI * 2); c.fill();
-      // 脸缘光（受灯一侧）
+      // ---- 头：皮肤 + 耳朵 + 下颌阴影 ----
+      c.fillStyle = skin;
+      c.beginPath(); c.ellipse(0, -36 * s, 16 * s, 19 * s, 0, 0, Math.PI * 2); c.fill();
+      // 耳朵
+      c.beginPath(); c.ellipse(-15.5 * s, -35 * s, 3 * s, 4.5 * s, 0, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.ellipse(15.5 * s, -35 * s, 3 * s, 4.5 * s, 0, 0, Math.PI * 2); c.fill();
+      // 下颌/颈部阴影
+      c.fillStyle = 'rgba(60,30,15,.25)';
+      c.beginPath(); c.ellipse(0, -24 * s, 10 * s, 6 * s, 0, 0, Math.PI * 2); c.fill();
+      // 头发（帽檐下）
+      c.fillStyle = hair;
+      c.beginPath();
+      c.ellipse(0, -44 * s, 15.5 * s, 9 * s, 0, Math.PI * 0.05, Math.PI * 0.95);
+      c.fill();
+      // 脸缘光
       c.strokeStyle = rim; c.lineWidth = 1.6 * s;
       c.globalAlpha = alpha * (o.winner ? 0.9 : 0.45 + (o.active ? 0.25 : 0));
-      c.beginPath(); c.ellipse(0, -36 * s, 17 * s, 20 * s, 0, -Math.PI * 0.8, -Math.PI * 0.2); c.stroke();
+      c.beginPath(); c.ellipse(0, -36 * s, 16 * s, 19 * s, 0, -Math.PI * 0.8, -Math.PI * 0.2); c.stroke();
       c.globalAlpha = alpha;
-      // 帽子（按性格）
+      // ---- 真实眼睛：眼白 + 瞳孔 + 眉毛 ----
+      var ey = -37 * s;
+      // 眼窝阴影
+      c.fillStyle = 'rgba(40,20,10,.28)';
+      c.beginPath(); c.ellipse(-6 * s, ey, 5.5 * s, 3.6 * s, 0, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.ellipse(6 * s, ey, 5.5 * s, 3.6 * s, 0, 0, Math.PI * 2); c.fill();
+      if (blink) {
+        c.strokeStyle = '#2a1c12'; c.lineWidth = 1.4 * s;
+        c.beginPath(); c.moveTo(-10 * s, ey); c.lineTo(-2 * s, ey); c.stroke();
+        c.beginPath(); c.moveTo(2 * s, ey); c.lineTo(10 * s, ey); c.stroke();
+      } else {
+        c.fillStyle = '#f2ead9';
+        c.beginPath(); c.ellipse(-6 * s, ey, 4.4 * s, 2.8 * s, 0, 0, Math.PI * 2); c.fill();
+        c.beginPath(); c.ellipse(6 * s, ey, 4.4 * s, 2.8 * s, 0, 0, Math.PI * 2); c.fill();
+        var lookX = lean ? 0 : Math.sin(t * 0.01 + seed) * 1.2 * s; // 平时视线微动，看牌时盯牌
+        c.fillStyle = '#1c130c';
+        c.beginPath(); c.arc(-6 * s + lookX, ey, 1.7 * s, 0, Math.PI * 2); c.fill();
+        c.beginPath(); c.arc(6 * s + lookX, ey, 1.7 * s, 0, Math.PI * 2); c.fill();
+      }
+      // 眉毛（aggr 更斜）
+      c.strokeStyle = hair; c.lineWidth = 1.8 * s;
+      var browTilt = o.persona === 'aggr' ? 2.5 * s : 0.8 * s;
+      c.beginPath(); c.moveTo(-10 * s, ey - 5.5 * s + browTilt); c.lineTo(-2.5 * s, ey - 6.5 * s); c.stroke();
+      c.beginPath(); c.moveTo(10 * s, ey - 5.5 * s + browTilt); c.lineTo(2.5 * s, ey - 6.5 * s); c.stroke();
+      // 鼻影
+      c.strokeStyle = 'rgba(80,40,18,.5)'; c.lineWidth = 1.2 * s;
+      c.beginPath(); c.moveTo(0, ey + 3 * s); c.lineTo(-1.5 * s, ey + 8 * s); c.stroke();
+      // tight：圆眼镜
+      if (o.persona === 'tight') {
+        c.strokeStyle = 'rgba(200,220,255,.55)'; c.lineWidth = 1.3;
+        c.beginPath(); c.arc(-6 * s, ey, 5.5 * s, 0, Math.PI * 2); c.stroke();
+        c.beginPath(); c.arc(6 * s, ey, 5.5 * s, 0, Math.PI * 2); c.stroke();
+        c.beginPath(); c.moveTo(-1 * s, ey); c.lineTo(1 * s, ey); c.stroke();
+      }
+      // ---- 帽子（按性格） ----
       if (o.persona === 'aggr') { // 宽檐牛仔帽 + 红帽带
         c.fillStyle = '#241408';
         c.beginPath(); c.ellipse(0, -50 * s, 34 * s, 8 * s, 0, 0, Math.PI * 2); c.fill();
@@ -345,35 +452,18 @@ window.Casino = {
         c.beginPath(); c.ellipse(0, -50 * s, 27 * s, 6.5 * s, 0, 0, Math.PI * 2); c.fill();
         c.fillRect(-14 * s, -86 * s, 28 * s, 37 * s);
         c.fillStyle = o.color; c.fillRect(-14 * s, -60 * s, 28 * s, 5 * s);
-      } else if (o.persona === 'tight') { // 圆顶礼帽 + 圆眼镜
+      } else if (o.persona === 'tight') { // 圆顶礼帽
         c.fillStyle = '#20130a';
         c.beginPath(); c.ellipse(0, -50 * s, 25 * s, 6 * s, 0, 0, Math.PI * 2); c.fill();
         c.beginPath(); c.arc(0, -50 * s, 14 * s, Math.PI, 0); c.fill();
         c.fillStyle = '#3a2412'; c.fillRect(-14 * s, -56 * s, 28 * s, 3 * s);
-      } else { // player：棒球帽（第一人称下通常不画玩家，保留造型）
+      } else { // player：棒球帽
         c.fillStyle = '#1c120a';
         c.beginPath(); c.arc(0, -50 * s, 15 * s, Math.PI, 0); c.fill();
         c.fillRect(-13 * s, -52 * s, 30 * s, 5 * s);
         c.fillStyle = o.color; c.beginPath(); c.arc(0, -50 * s, 15 * s, Math.PI, 0); c.fill();
       }
-      // 眼睛（暗处发光，会眨）
-      var ey = -34 * s;
-      c.fillStyle = o.color;
-      c.shadowColor = o.color; c.shadowBlur = 9;
-      if (blink) { c.fillRect(-9 * s, ey, 6.5 * s, 1.6); c.fillRect(2.5 * s, ey, 6.5 * s, 1.6); }
-      else {
-        c.beginPath(); c.arc(-6 * s, ey, 2.8 * s, 0, Math.PI * 2); c.fill();
-        c.beginPath(); c.arc(6 * s, ey, 2.8 * s, 0, Math.PI * 2); c.fill();
-      }
-      c.shadowBlur = 0;
-      // tight：圆眼镜
-      if (o.persona === 'tight') {
-        c.strokeStyle = 'rgba(200,220,255,.55)'; c.lineWidth = 1.3;
-        c.beginPath(); c.arc(-6 * s, ey, 5 * s, 0, Math.PI * 2); c.stroke();
-        c.beginPath(); c.arc(6 * s, ey, 5 * s, 0, Math.PI * 2); c.stroke();
-        c.beginPath(); c.moveTo(-1 * s, ey); c.lineTo(1 * s, ey); c.stroke();
-      }
-      // bluff：叼烟（烟头红光 + 上升烟缕）
+      // bluff：叼烟
       if (o.persona === 'bluff' && !o.folded) {
         c.save();
         c.strokeStyle = '#e8dfd0'; c.lineWidth = 2.6;
@@ -402,7 +492,7 @@ window.Casino = {
         c.beginPath(); c.ellipse(0, 64 * s, (42 + pulse * 6) * s, (11 + pulse * 2) * s, 0, 0, Math.PI * 2); c.stroke();
       }
       c.restore();
-      // 名牌 + 筹码（暖白，带阴影）
+      // 名牌 + 筹码
       c.save();
       c.textAlign = 'center'; c.textBaseline = 'middle';
       c.shadowColor = 'rgba(0,0,0,.9)'; c.shadowBlur = 4;
@@ -468,6 +558,7 @@ class CasinoHub extends BaseGame {
   _onChips(v) {
     var el = this.panel.querySelector('.casino-balance');
     if (el) el.textContent = v.toLocaleString();
+    this._syncBailBtn();
   }
 
   _el(tag, css, text) {
@@ -482,34 +573,38 @@ class CasinoHub extends BaseGame {
     this.table = null;
     this.tableId = null;
     this.panel.innerHTML = '';
-    // 大厅内容包一层（可滚动），背景是第一人称酒馆 canvas
-    var wrap = this._el('div', 'padding:16px 18px;box-sizing:border-box;max-width:980px');
+    // 大厅内容整体居中（垂直+水平）
+    var wrap = this._el('div', 'padding:16px 18px;box-sizing:border-box;max-width:980px;margin:0 auto;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px');
     this.panel.appendChild(wrap);
     // 顶栏：标题 + 余额 + 救济金
-    var bar = this._el('div', 'display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px');
+    var bar = this._el('div', 'display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center');
     bar.appendChild(this._el('div', 'font-size:22px;font-weight:700;color:#ffc87a;text-shadow:0 2px 8px rgba(255,60,40,.35)', '🎰 算力赌坊'));
     bar.appendChild(this._el('div', 'font-size:12px;color:#a08a6a', '算力筹码'));
     var bal = this._el('div', 'casino-balance', Casino.wallet.get().toLocaleString());
     bal.style.cssText = 'font-size:20px;font-weight:700;color:#8fce8f';
     bar.appendChild(bal);
-    var bailBtn = this._el('button', 'margin-left:auto;padding:6px 14px;border-radius:8px;border:1px solid #6a4a28;background:rgba(30,16,8,.8);color:#e8c890;cursor:pointer;font-family:inherit;font-size:12px', '🎁 领救济金 +1000');
-    bailBtn.onclick = function () {
-      Casino.wallet.bailout();
-      toast('救济金 +1000 算力（仅供娱乐）');
-      sfx('powerup');
+    this.bailBtn = this._el('button', 'padding:6px 14px;border-radius:8px;border:1px solid #6a4a28;background:rgba(30,16,8,.8);color:#e8c890;cursor:pointer;font-family:inherit;font-size:12px', '🎁 领救济金 +1000');
+    this._syncBailBtn();
+    this.bailBtn.onclick = function () {
+      if (Casino.wallet.bailout()) {
+        toast('救济金 +1000 算力');
+        sfx('powerup');
+      } else {
+        toast('筹码充足或冷却中（破产 <100 可领，间隔 60 秒）');
+      }
     };
-    bar.appendChild(bailBtn);
+    bar.appendChild(this.bailBtn);
     wrap.appendChild(bar);
 
-    // 赌桌网格：已注册的桌自动出现
-    var grid = this._el('div', 'display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px');
+    // 赌桌网格：已注册的桌自动出现（居中排布）
+    var grid = this._el('div', 'display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;width:100%;max-width:860px');
     Casino.tables().forEach(function (id) {
       var def = Casino.get(id);
-      var card = this._el('div', 'border:1px solid #5a3a1c;border-radius:12px;padding:16px;background:rgba(22,11,6,.82);cursor:pointer;transition:border-color .15s');
+      var card = this._el('div', 'border:1px solid #5a3a1c;border-radius:12px;padding:18px 16px;background:rgba(22,11,6,.82);cursor:pointer;transition:border-color .15s;text-align:center');
       card.onmouseenter = function () { card.style.borderColor = '#ffc87a'; };
       card.onmouseleave = function () { card.style.borderColor = '#5a3a1c'; };
-      card.innerHTML = '<div style="font-size:30px">' + def.icon + '</div>' +
-        '<div style="font-size:15px;font-weight:700;margin:6px 0 4px;color:#ecd9b8">' + def.name + '</div>' +
+      card.innerHTML = '<div style="font-size:32px">' + def.icon + '</div>' +
+        '<div style="font-size:15px;font-weight:700;margin:8px 0 4px;color:#ecd9b8">' + def.name + '</div>' +
         '<div style="font-size:12px;color:#b09678;line-height:1.5">' + def.desc + '</div>';
       card.onclick = function () { sfx('click'); this.openTable(id); }.bind(this);
       grid.appendChild(card);
@@ -517,14 +612,22 @@ class CasinoHub extends BaseGame {
     // 铺垫位：后续会上的桌（架构已就绪，实现即插即用）
     [['⬛', '21 点', '即将开放'], ['🎲', '骰子大小', '即将开放'], ['🍒', '算力老虎机', '即将开放']].forEach(function (ph) {
       var card = this._el('div');
-      card.style.cssText = 'border:1px dashed #4a3018;border-radius:12px;padding:16px;background:rgba(14,7,4,.7);opacity:.6';
-      card.innerHTML = '<div style="font-size:30px;filter:grayscale(1)">' + ph[0] + '</div>' +
-        '<div style="font-size:14px;font-weight:700;margin:6px 0 4px;color:#a08a6a">' + ph[1] + '</div>' +
+      card.style.cssText = 'border:1px dashed #4a3018;border-radius:12px;padding:18px 16px;background:rgba(14,7,4,.7);opacity:.6;text-align:center';
+      card.innerHTML = '<div style="font-size:32px;filter:grayscale(1)">' + ph[0] + '</div>' +
+        '<div style="font-size:14px;font-weight:700;margin:8px 0 4px;color:#a08a6a">' + ph[1] + '</div>' +
         '<div style="font-size:11px;color:#7a6248">' + ph[2] + '</div>';
       grid.appendChild(card);
     }, this);
     wrap.appendChild(grid);
-    wrap.appendChild(this._el('div', 'margin-top:18px;font-size:11px;color:#9a8266;text-shadow:0 1px 3px #000', '⚠️ 虚拟算力筹码，仅供娱乐 · 无任何真实货币 · 输光可随时领救济金'));
+  }
+
+  _syncBailBtn() {
+    if (!this.bailBtn) return;
+    var can = Casino.wallet.canBailout();
+    this.bailBtn.disabled = !can;
+    this.bailBtn.style.opacity = can ? '1' : '.45';
+    this.bailBtn.style.cursor = can ? 'pointer' : 'not-allowed';
+    this.bailBtn.textContent = can ? '🎁 领救济金 +1000' : '🎁 救济金（破产可领）';
   }
 
   openTable(id) {
