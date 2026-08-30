@@ -10,7 +10,7 @@ function __roColor(n) { return n === 0 ? 'green' : (RO_RED.indexOf(n) >= 0 ? 're
 function __roSpin(rng) { return Math.floor((rng || Math.random)() * 37); }
 // 单注赔付（返回倍数：总返还 = 下注 × mult；0 = 全输）
 function __roPayout(type, pick, n) {
-  if (n === 0 && type !== 'straight') return 0; // 0 通杀外围
+  if (n === 0 && type !== 'straight' && type !== 'voisins') return 0; // 0 通杀外围（Voisins 含 0）
   switch (type) {
     case 'straight': return n === pick ? 36 : 0;
     case 'red': return __roColor(n) === 'red' ? 2 : 0;
@@ -22,6 +22,9 @@ function __roPayout(type, pick, n) {
     case 'dozen1': return n >= 1 && n <= 12 ? 3 : 0;
     case 'dozen2': return n >= 13 && n <= 24 ? 3 : 0;
     case 'dozen3': return n >= 25 ? 3 : 0;
+    case 'voisins': return RO_VOISINS.indexOf(n) >= 0 ? 36 / 17 : 0;
+    case 'tiers': return RO_TIERS.indexOf(n) >= 0 ? 3 : 0;
+    case 'orphelins': return RO_ORPHELINS.indexOf(n) >= 0 ? 4.5 : 0;
     default: return 0;
   }
 }
@@ -33,6 +36,13 @@ function __roSettle(bets, n) {
     if (m > 0) { total += b.amt * m; hits.push(b); }
   });
   return { total: total, hits: hits };
+}
+// 法国邻注（赛道注）：三个扇区无重复覆盖全部 37 格；命中返还 = 36 ÷ 覆盖数（与直注同赔率结构）
+var RO_VOISINS = [22, 18, 29, 7, 28, 12, 35, 3, 26, 0, 32, 15, 19, 4, 21, 2, 25];
+var RO_TIERS = [27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33];
+var RO_ORPHELINS = [1, 20, 14, 31, 9, 17, 34, 6];
+function __roCallSet(type) {
+  return type === 'voisins' ? RO_VOISINS : type === 'tiers' ? RO_TIERS : type === 'orphelins' ? RO_ORPHELINS : null;
 }
 
 var RO_CHIPS = [20, 50, 100];
@@ -186,6 +196,7 @@ class CasinoRoulette {
     var n = this.result;
     var staked = this.bets.reduce(function (a, b) { return a + b.amt; }, 0);
     var res = __roSettle(this.bets, n);
+    res.total = Math.round(res.total); // 邻注返还含小数（36/17、4.5），钱包保持整数
     var net = res.total - staked;
     if (res.total > 0) {
       this.wallet.add(res.total);
@@ -399,6 +410,16 @@ class CasinoRoulette {
     outs.forEach(function (o, i) {
       cell(ox + gw * 0.8 + i * gw * 2, outY, gw * 2 - 4, gh * 0.8, o[1], { type: o[0], pick: 0 }, o[2]);
     });
+    // 法国邻注赛道行（Voisins 17 号含 0 / Tiers 12 号 / Orphelins 8 号）
+    var callY = outY + gh * 0.8 + 6 * s;
+    var calls = [
+      ['voisins', 'Voisins 零邻×17', 'rgba(26,90,58,.9)'],
+      ['tiers', 'Tiers 三分×12', 'rgba(60,36,90,.85)'],
+      ['orphelins', 'Orphelins 孤注×8', 'rgba(96,52,24,.9)']
+    ];
+    calls.forEach(function (o, i) {
+      cell(ox + gw * 0.8 + i * gw * 4, callY, gw * 4 - 4, gh * 0.8, o[1], { type: o[0], pick: 0 }, o[2]);
+    });
     // 下注阶段高亮悬停感：全部格子外发光脉冲（简化：已押注格子亮框）
   }
 
@@ -524,7 +545,7 @@ class CasinoRoulette {
   _botStep() {
     if (this.tick < 40) return;
     if (this.tick % 45 === 40 || this.tick % 45 === 20) {
-      var opts = ['red', 'black', 'odd', 'even', 'dozen1', 'dozen2', 'dozen3'];
+      var opts = ['red', 'black', 'odd', 'even', 'dozen1', 'dozen2', 'dozen3', 'tiers', 'orphelins', 'voisins'];
       var type = opts[Math.floor(Math.random() * opts.length)];
       if (this.wallet.sub(this.chipAmt)) {
         var same = this.bets.find(function (b) { return b.type === type; });
