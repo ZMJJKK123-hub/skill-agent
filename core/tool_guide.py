@@ -91,6 +91,7 @@ dedicated tool; use bash only when no tool exists.
   5) ONE `bridge_command op=screenshot name=icon_check` + analyze_image at the END for the icon verdict.
 - Typical flow: title screen -> screen_info -> click Singleplayer -> screen_info -> click Create New World -> set_text name -> click Create -> wait_for_log 'joined the game' -> chat give -> screenshot -> analyze.
 - Indexes change between screens: always screen_info after a transition, then click. Stop the client with stop_mc_process when done.
+- Visual verification budget: at most 2-3 analyze_image calls (full shot + hotbar crop + texture preview is plenty). If evidence conflicts (e.g. vision misreads the icon), trust the authoritative signals — the in-game chat "Gave 1 [<item name>]" log from /give, texture_preview analysis, and GameTest — then FINISH. Do NOT recreate worlds to re-verify rendering; rendering loops are the #1 cause of hitting MAX_TOOL_ROUNDS.
 
 ### Deterministic client menu navigation (press_keys — FALLBACK when bridge not compiled)
 - Use press_keys for vanilla menu flows instead of screenshot->decide->press loops. Verify each SCREEN transition with ONE wait_for_screen, not one screenshot per button.

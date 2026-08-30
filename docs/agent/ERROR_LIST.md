@@ -1146,3 +1146,8 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 ## 2026-08-30 webserv_obsidiandagger（glm-5.3 全后台验收轮）
 - **[webserv_obsidiandagger] NEW_ERROR: ItemAttributeModifiers.Entry.matches(Holder) 编译报错需要双参数 | 1.21.11 Entry.matches 需要 (Holder<Attribute>, Identifier 修改器id) | Entry 构造用 Identifier.fromNamespaceAndPath(modid, "damage_id") 显式给修改器命名**
 - **[验收] glm-5.3（智谱 Coding Plan 端点 /api/coding/paas/v4）+ AgentBridge 完全后台流程全自主跑通：armed→隐身窗口→screen_info/click 建世界→开作弊→/give→后台截图→analyze_image→stop_mc_process，全程用户桌面零打扰；出口闸失明由 3 次打回+dist jar 兜底正确收尾**
+
+## 2026-08-31 webserv_sweetberrypie（终验轮）
+- **[已验证-终验] glm-5.3 完整产出 MOD：jar 全资产齐（定义/模型/纹理/双语/配方）+ GameTest 双 PASS + 隐形客户端内 /give 成功（聊天日志"已将1个[甜甜浆果派]给予Dev"）+ 三级视觉核验（全景/快捷栏裁剪/纹理预览）；全程用户桌面零打扰**
+- **[教训] 视觉识图会误判小图标（把派认成红蘑菇）| 小图标判定以纹理预览放大图 + 游戏聊天 give 回执 + GameTest 为准，最多 2-3 次 analyze_image；重建世界复验是烧轮数的主因（本轮 100 轮上限收尾）| 已写入 TOOL_GUIDE 验证预算**
+- **[修正] AgentBridge.class 曾被打进发布 jar | 模板 build.gradle 已加 tasks.named('jar'){ exclude 'com/agentbridge/**' }（生产无害但保持产物干净）**

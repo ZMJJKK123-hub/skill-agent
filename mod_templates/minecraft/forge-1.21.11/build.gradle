@@ -68,3 +68,8 @@ tasks.named('test') {
     // when no plain JUnit tests are discovered.
     failOnNoDiscoveredTests = false
 }
+
+// AgentBridge（进程内 UI 自动化桥）仅开发验证用，不打进发布 jar
+tasks.named('jar') {
+    exclude 'com/agentbridge/**'
+}
