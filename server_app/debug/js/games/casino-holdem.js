@@ -443,6 +443,7 @@ class CasinoHoldem {
     this.history.push(winner.human ? 'W' : 'L');
     if (this.history.length > 14) this.history.shift();
     Casino.stats.record('holdem', winner.human ? 'W' : 'L');
+    Casino.say(winner.human ? '其他玩家全部弃牌，你赢得底池' : winner.name + '收走底池', { pitch: 0.75 });
     var potNow = this.pot;
     if (winner.human) {
       this.wallet.add(this.pot);
@@ -481,6 +482,7 @@ class CasinoHoldem {
     this._revealDur = 40 + this._revealOrder.length * 95 + 55;
     this._msg('摊牌！');
     Casino.audio.play('voice-showdown', 0.8);
+    Casino.say('摊牌，开底牌', { pitch: 0.7 });
   }
   _finishReveal() {
     var best = this._revealWinner;
@@ -490,6 +492,7 @@ class CasinoHoldem {
     Casino.stats.record('holdem', best.human ? 'W' : 'L');
     var potNow = this.pot;
     var cat = __thCatName[__thBestAny(best.hand.concat(this.comm)).cat];
+    Casino.say((best.human ? '你' : best.name) + '以' + cat + (best.human ? '赢得底池' : '收走底池'), { pitch: 0.75, rate: 1.05 }); // 收池总结播报
     if (best.human) {
       this.wallet.add(this.pot);
       this._msg('摊牌：你的 ' + cat + ' 最大，赢得底池 ' + this.pot + '！');
@@ -1036,7 +1039,7 @@ class CasinoHoldem {
           text: (st === 0 ? '你' : this.players[st].name) + ' · ' + cat,
           color: st === 0 ? '#8fce8f' : '#ffd98a', start: this.tick, dur: 95, big: true
         });
-        Casino.say(cat, { pitch: 0.75, rate: 1.05 });
+        Casino.say((st === 0 ? '你，' : this.players[st].name + '，') + cat, { pitch: 0.75, rate: 1.05 }); // 逐家播报：人名＋牌型
         Casino.audio.play('card-flick', 0.4);
         this._revealIdx++;
       }
