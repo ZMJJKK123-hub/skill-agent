@@ -19,19 +19,23 @@ class BugSorter extends BaseGame {
     };
     addEventListener('keydown', this._kd);
     this._click = e => {
-      if (!this.cleanupIcon) return;
       var r = this.canvas.getBoundingClientRect();
       var mx = (e.clientX - r.left) * (this.w / r.width);
       var my = (e.clientY - r.top) * (this.h / r.height);
-      if (dist(mx, my, this.cleanupIcon.x, this.cleanupIcon.y) < this.cleanupIcon.r + 10) {
+      if (this.cleanupIcon && dist(mx, my, this.cleanupIcon.x, this.cleanupIcon.y) < this.cleanupIcon.r + 10) {
         this.globalCleanup();
+        return;
       }
+      // 移动端可玩性：点击/触摸某通道区域 = 按下该通道的判定键
+      if (mx < 160) this.hit(0);
+      else if (mx < 320) this.hit(1);
+      else this.hit(2);
     };
     this.canvas.addEventListener('click', this._click);
     this.intro = {
       title: '🎵 BUG SORTER — Bug 分拣音游',
       lines: [
-        '⌨️ A / S / D 对应左中右三条修复通道',
+        '⌨️ A / S / D 对应左中右三条修复通道（触屏：直接点通道区域）',
         '🐛 UI(红) API(蓝) SQL(黄) 模块不断下落',
         '🎯 模块压到判定线的瞬间按对应键销毁：越准分越高',
         '🔥 连击越高服务器火烧得越小；每 10 连击回血 +2',
@@ -68,9 +72,10 @@ class BugSorter extends BaseGame {
 
   update() {
     this.tick++;
+    // 每帧实时计算生成间隔：难度切换即刻生效（含首个间隔）
+    this.spawnRate = Math.max(18, 50 - Math.floor(this.score / 15)) * (this.diffMul || 1);
     if (this.tick % this.spawnRate === 0) {
       this.spawn();
-      this.spawnRate = Math.max(18, 50 - Math.floor(this.score / 15));
       // Occasionally spawn double
       if (this.score > 200 && Math.random() < 0.3) this.spawn();
     }
@@ -117,7 +122,7 @@ class BugSorter extends BaseGame {
   spawn() {
     var lane = rnd(0, 2);
     var types = ['UI', 'API', 'SQL'];
-    var spd = 1.5 + Math.random() * 0.75 + this.score / 600; // 速度减半
+    var spd = (1.5 + Math.random() * 0.75 + this.score / 600) / (this.diffMul || 1); // 速度减半 × 难度
     // Occasionally spawn fast "critical" bug (bigger, more points)
     var isCritical = this.score > 100 && Math.random() < 0.1;
     this.notes.push({ lane: lane, y: -20, spd: isCritical ? spd * 1.6 : spd, type: isCritical ? 'CRIT' : types[lane], color: isCritical ? '#ff44aa' : this.lanes[lane].color, critical: isCritical, r: isCritical ? 16 : 12 });

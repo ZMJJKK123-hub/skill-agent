@@ -150,7 +150,7 @@ class TerminalHacker extends BaseGame {
     var encoded = method(word);
     this.threat = { word: word, encoded: encoded, method: method };
     // Timer decreases with difficulty
-    this.timer = Math.max(8, 15 - Math.floor(this.defended / 2));
+    this.timer = Math.round(Math.max(8, 15 - Math.floor(this.defended / 2)) * (this.diffMul || 1));
     var self = this;
     var methodHint = '';
     if (method === methods[0]) methodHint = ' [REVERSED]';

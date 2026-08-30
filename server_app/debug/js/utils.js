@@ -112,11 +112,32 @@ class BaseGame {
     if (!this.running) return;
     this.loop();
   }
+  // 难度钩子：宿主页难度选择注入。mul 语义 = 时间类量的放大系数
+  //（>1 更慢更简单：1.3 简单 / 1.0 普通 / 0.75 困难 / 0.55 极难）。
+  // 子类覆写以缩放自己的速度/生成率/倒计时。
+  applyDifficulty(mul) {
+    this.diffMul = (typeof mul === 'number' && mul > 0) ? mul : 1;
+  }
   stop() { this.running = false; if (this.rafId) cancelAnimationFrame(this.rafId); }
   loop() {
     if (!this.running) return;
-    this.update();
-    this.render();
+    try {
+      this.update();
+      this.render();
+      this._errStreak = 0;
+    } catch (err) {
+      // 帧级容错：单帧异常跳过该帧，不让整个游戏静默假死
+      //（此前一帧抛错 = rAF 链断 = 画面冻结但 running 永远 true）。
+      this._errStreak = (this._errStreak || 0) + 1;
+      this._lastErr = String(err && err.message || err);
+      if (typeof window !== 'undefined') window.__lastGameErr = this.constructor.name + ': ' + this._lastErr;
+      if (typeof console !== 'undefined' && console.error) console.error('[game] frame error #' + this._errStreak, err);
+      if (this._errStreak > 60) {
+        // 持续异常 1 秒+：终止，避免空转
+        this.stop();
+        return;
+      }
+    }
     this.rafId = requestAnimationFrame(() => this.loop());
   }
   update() {}

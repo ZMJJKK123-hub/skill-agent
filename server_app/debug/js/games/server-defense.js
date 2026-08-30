@@ -60,6 +60,8 @@ class ServerDefense extends BaseGame {
 
   update() {
     this.time++;
+    // 每帧实时计算生成间隔：难度切换即刻生效
+    this.spawnRate = Math.max(15, 60 - this.level * 3) * (this.diffMul || 1);
     this.player.pulse = (this.player.pulse + 0.08) % (Math.PI * 2);
     if (this.player.invuln > 0) this.player.invuln--;
     if (this.shakeTime > 0) this.shakeTime--;
@@ -106,7 +108,6 @@ class ServerDefense extends BaseGame {
     if (this.spawnTimer >= this.spawnRate) {
       this.spawnTimer = 0;
       this.spawn();
-      this.spawnRate = Math.max(15, 60 - this.level * 3);
     }
 
     this.fireTimer++;
@@ -253,7 +254,7 @@ class ServerDefense extends BaseGame {
       var px = x + (si > 0 ? rnd(-30, 30) : 0);
       var py = y + (si > 0 ? rnd(-30, 30) : 0);
       this._eid = (this._eid || 0) + 1;
-      this.enemies.push({ id: this._eid, x: px, y: py, r: c.r, hp: c.hp, spd: c.spd, type: type, pts: c.pts, maxHp: c.hp });
+      this.enemies.push({ id: this._eid, x: px, y: py, r: c.r, hp: c.hp, spd: c.spd / (this.diffMul || 1), type: type, pts: c.pts, maxHp: c.hp });
     }
   }
 

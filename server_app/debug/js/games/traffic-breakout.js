@@ -210,7 +210,7 @@ class TrafficBreakout extends BaseGame {
     if (this.bricksLeft <= 0) {
       this.level++;
       this.levelFlash = 90;
-      this.ballSpeed = Math.min(3.5, 1.5 + (this.level - 1) * 0.25); // 速度减半
+      this.ballSpeed = Math.min(3.5, 1.5 + (this.level - 1) * 0.25) / (this.diffMul || 1); // 速度减半 × 难度
       this.makeBricks(this.level);
       this.balls = [{ x: this.w / 2, y: this.h - 30, dx: this.ballSpeed, dy: -this.ballSpeed, r: 6 }];
       sfx('powerup');

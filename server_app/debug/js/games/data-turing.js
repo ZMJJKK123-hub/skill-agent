@@ -198,7 +198,7 @@ class DataTuring extends BaseGame {
       if (!conn) { b.done = true; return; }
       var from = self.nodes[conn.from];
       var to = self.nodes[conn.to];
-      b.progress += 0.01; // 速度减半
+      b.progress += 0.01 / (self.diffMul || 1); // 速度减半 × 难度
       if (b.progress >= 1) {
         b.progress = 0;
         b.path.push(conn.to);

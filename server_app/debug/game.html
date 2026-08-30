@@ -135,7 +135,7 @@
     <div class="rules-en" id="rulesEn"></div>
   </div>
 
-  <script src="js/utils.js?_v=16"></script>
+  <script src="js/utils.js?_v=17"></script>
   <script>
     var GAME_RULES = {
       'snake-2048': {
@@ -207,7 +207,7 @@
     };
 
     var s = document.createElement('script');
-    s.src = GAMES[gid].file + '?_v=16';
+    s.src = GAMES[gid].file + '?_v=17';
     s.onload = function () {
       var host = document.getElementById('gameHost');
       var started = false;
@@ -255,9 +255,11 @@
         document.getElementById('rulesPanel').classList.add('hidden');
         if (window.__game && !started) {
           var base = getSelectedDiff();
-          // snake 用帧步长；其余游戏读通用倍率（>1 变慢=更容易）
+          // 统一难度钩子：mul>1 更慢更简单（1.3/1.0/0.75/0.55）
           var mulMap = { 52: 1.3, 34: 1.0, 18: 0.75, 10: 0.55 };
-          window.__game.diffMul = mulMap[base] || 1.0;
+          var mul = mulMap[base] || 1.0;
+          if (window.__game.applyDifficulty) window.__game.applyDifficulty(mul);
+          else window.__game.diffMul = mul;
           if (gid === 'snake-2048') window.__game.baseSpd = base;
           window.__game.start();
           started = true;
@@ -279,6 +281,11 @@
         boot();
       };
       boot();
+
+      // 自动开始（自动化测试 / 嵌入场景）：&autoplay=1 跳过开始界面
+      if (new URLSearchParams(location.search).get('autoplay') === '1') {
+        try { document.getElementById('startBtn').click(); } catch (e) {}
+      }
 
       // 关卡过渡：暂停游戏并显示过渡层（由游戏内部在过关时调用）
       window.__showLevelTransition = function(text) {
