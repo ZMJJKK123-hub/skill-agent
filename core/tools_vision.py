@@ -145,7 +145,15 @@ def _focus_minecraft_window():
         if not found:
             return None
         hwnd, rect = found[0]
-        user32.SetForegroundWindow(hwnd)
+        # Windows 禁止后台进程直接 SetForegroundWindow 抢前台（静默失败，
+        # webserv_amber 实测截到的仍是 IDE）。标准规避：先模拟一次 ALT 键
+        # 按放，使本进程满足前台锁定检查；若窗口最小化先还原。
+        user32.keybd_event(0x12, 0, 0, 0)   # ALT down
+        user32.keybd_event(0x12, 0, 2, 0)   # ALT up
+        user32.ShowWindow(hwnd, 9)          # SW_RESTORE
+        ok = user32.SetForegroundWindow(hwnd)
+        if not ok:
+            logger.warning("SetForegroundWindow 被系统拒绝，截图可能仍是桌面")
         time.sleep(0.8)  # 等窗口切换 + 渲染一帧
         return rect
     except Exception:
