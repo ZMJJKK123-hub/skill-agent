@@ -82,9 +82,12 @@ class CasinoRoulette {
     this.root.appendChild(this.msgEl);
     this.actEl = this._el('div', 'position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;background:rgba(10,5,3,.78);border:1px solid #5a3a1c;border-radius:12px;padding:8px 12px;pointer-events:auto;max-width:94vw;box-sizing:border-box', '');
     this.root.appendChild(this.actEl);
-    // 透明点击层：点到桌面上直接下注（点击命中 canvas 绘制的格子）
-    this.clickLayer = this._el('div', 'position:absolute;left:0;right:0;top:14%;bottom:26%;pointer-events:auto;z-index:5'); // 只盖桌面区，不挡顶栏/操作栏
+    // 透明点击层：点到桌面上直接下注（点击命中 canvas 绘制的格子）；右键撤码；悬停高亮
+    this.clickLayer = this._el('div', 'position:absolute;left:0;right:0;top:14%;bottom:26%;pointer-events:auto;z-index:5;cursor:pointer'); // 只盖桌面区，不挡顶栏/操作栏
     this.clickLayer.onclick = function (e) { self._onTableClick(e); };
+    this.clickLayer.oncontextmenu = function (e) { e.preventDefault(); self._onTableRemove(e); };
+    this.clickLayer.onmousemove = function (e) { self._onHover(e); };
+    this.clickLayer.onmouseleave = function () { self._hover = null; };
     this.root.appendChild(this.clickLayer);
     container.appendChild(this.root);
   }
@@ -94,33 +97,71 @@ class CasinoRoulette {
     this.phase = 'bet';
     this.bets = [];
     this.result = null;
-    this._msg('选筹码 → 点桌面下注（可多处）→ SPIN');
+    this._hover = null; // 清上一局悬停残留
+    this._msg('选筹码 → 点桌面下注（可多处）· 右键撤码 → SPIN');
     Casino.audio.play('voice-bets', 0.7);
     this._renderActions();
   }
 
-  _onTableClick(e) {
-    if (this.phase !== 'bet') return;
-    var host = this.root.parentNode;
-    if (!host) return;
-    var rect = host.getBoundingClientRect();
-    var x = e.clientX - rect.left, y = e.clientY - rect.top;
-    var w = rect.width, h = rect.height;
-    var s = Math.max(0.8, Math.min(1.7, Math.min(w / 980, h / 620)));
+  // 命中测试：先精确包含，再 3px 近失吸附到最近格（直注格小，手感友好）
+  _zoneAt(x, y) {
+    var best = null, bestD = 1e9;
     for (var i = 0; i < this._zones.length; i++) {
       var z = this._zones[i];
-      if (x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h) {
-        if (!this.wallet.sub(this.chipAmt)) { this._msg('算力不足'); return; }
-        // 同区叠加
-        var same = this.bets.find(function (b) { return b.type === z.type && b.pick === z.pick; });
-        if (same) same.amt += this.chipAmt;
-        else this.bets.push({ type: z.type, pick: z.pick, amt: this.chipAmt });
-        Casino.audio.play('coins', 0.35);
-        this._msg(z.label + ' · 已押 ' + this.bets.reduce(function (a, b) { return a + b.amt; }, 0));
-        this._renderActions();
-        return;
-      }
+      if (x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h) return z;
+      var dx = Math.max(z.x - x, 0, x - (z.x + z.w));
+      var dy = Math.max(z.y - y, 0, y - (z.y + z.h));
+      var d = dx * dx + dy * dy;
+      if (d < bestD) { bestD = d; best = z; }
     }
+    return bestD <= 9 ? best : null; // 距边界 ≤3px
+  }
+  _ptInLayer(e, layer) {
+    var host = this.root.parentNode;
+    if (!host) return null;
+    var rect = host.getBoundingClientRect();
+    return [e.clientX - rect.left, e.clientY - rect.top];
+  }
+  _onTableClick(e) {
+    if (this.phase !== 'bet') return;
+    var pt = this._ptInLayer(e, this.root.parentNode);
+    if (!pt) return;
+    var z = this._zoneAt(pt[0], pt[1]);
+    if (!z) return;
+    if (!this.wallet.sub(this.chipAmt)) { this._msg('算力不足'); return; }
+    // 同区叠加
+    var same = this.bets.find(function (b) { return b.type === z.type && b.pick === z.pick; });
+    if (same) same.amt += this.chipAmt;
+    else this.bets.push({ type: z.type, pick: z.pick, amt: this.chipAmt });
+    Casino.audio.play('coins', 0.35);
+    // 下码筹码从玩家侧飞到格子（手感反馈）
+    this.fx.push({ kind: 'chipfly', zx: z.x + z.w / 2, zy: z.y + z.h / 2, start: this.tick, dur: 14 });
+    this._msg(z.label + ' · 已押 ' + this.bets.reduce(function (a, b) { return a + b.amt; }, 0));
+    this._renderActions();
+  }
+  // 右键：从格子上撤回一枚当前面额筹码
+  _onTableRemove(e) {
+    if (this.phase !== 'bet') return;
+    var pt = this._ptInLayer(e, this.root.parentNode);
+    if (!pt) return;
+    var z = this._zoneAt(pt[0], pt[1]);
+    if (!z) return;
+    var bet = this.bets.find(function (b) { return b.type === z.type && b.pick === z.pick; });
+    if (!bet) return;
+    var back = Math.min(this.chipAmt, bet.amt);
+    bet.amt -= back;
+    this.wallet.add(back);
+    if (bet.amt <= 0) this.bets.splice(this.bets.indexOf(bet), 1);
+    Casino.audio.play('card-flick', 0.35);
+    this._msg(z.label + ' · 撤回 ' + back + (this.bets.length ? ' · 剩押 ' + this.bets.reduce(function (a, b) { return a + b.amt; }, 0) : ''));
+    this._renderActions();
+  }
+  _onHover(e) {
+    if (this.phase !== 'bet') { this._hover = null; return; }
+    var pt = this._ptInLayer(e, this.root.parentNode);
+    if (!pt) return;
+    var z = this._zoneAt(pt[0], pt[1]);
+    this._hover = z ? { type: z.type, pick: z.pick } : null;
   }
 
   spin() {
@@ -212,6 +253,7 @@ class CasinoRoulette {
     if (this.destroyed) return;
     var P = Casino.paint;
     var s = Math.max(0.8, Math.min(1.7, Math.min(w / 980, h / 620)));
+    this._posCache = { wheel: [w * 0.26, h * 0.42], player: [w * 0.5, h * 0.9] };
     c.save();
     if (this.shake) {
       var sp = (this.tick - this.shake.start) / this.shake.dur;
@@ -224,6 +266,7 @@ class CasinoRoulette {
     // 左：转轮；右：下注毯
     this._wheel(c, w * 0.26, h * 0.42, Math.min(w * 0.17, h * 0.30), s);
     this._layout(c, w, h, s);
+    this._hoverHighlight(c);
     // 已押筹码（摆在格子上）
     this._betsOnTable(c, s);
     this._history(c, w, h, s);
@@ -359,6 +402,23 @@ class CasinoRoulette {
     // 下注阶段高亮悬停感：全部格子外发光脉冲（简化：已押注格子亮框）
   }
 
+  // 悬停格高亮（金框脉冲 + 微亮填充）
+  _hoverHighlight(c) {
+    if (this.phase !== 'bet' || !this._hover) return;
+    var z = this._zones.find(function (zn) { return zn.type === this._hover.type && zn.pick === this._hover.pick; }, this);
+    if (!z) return;
+    var pulse = 0.6 + 0.4 * Math.sin(this.tick * 0.2);
+    c.save();
+    c.fillStyle = 'rgba(255,216,138,' + (0.10 + 0.08 * pulse) + ')';
+    this._rr(c, z.x + 1, z.y + 1, z.w - 2, z.h - 2, 4);
+    c.fill();
+    c.strokeStyle = 'rgba(255,216,138,' + (0.55 + 0.4 * pulse) + ')';
+    c.lineWidth = 2;
+    c.shadowColor = '#ffc87a'; c.shadowBlur = 9 * pulse;
+    this._rr(c, z.x + 1, z.y + 1, z.w - 2, z.h - 2, 4);
+    c.stroke();
+    c.restore();
+  }
   _betsOnTable(c, s) {
     var self = this;
     this.bets.forEach(function (b) {
@@ -423,6 +483,21 @@ class CasinoRoulette {
           c.fillStyle = i % 2 ? '#ffc87a' : '#ffe3ad';
           c.beginPath(); c.ellipse(x, y, 6, 3, 0, 0, Math.PI * 2); c.fill();
         }
+      } else if (f.kind === 'chipfly') {
+        // 下码：筹码从玩家侧抛物线飞到格子，落定弹一下
+        var from = self._posCache ? self._posCache.player : [500, 620];
+        var fx = from[0] + (f.zx - from[0]) * p;
+        var fy = from[1] + (f.zy - from[1]) * p - Math.sin(Math.PI * p) * 60 * s;
+        var pop = p > 0.85 ? 1 + Math.sin((p - 0.85) / 0.15 * Math.PI) * 0.35 : 1;
+        var r = 9 * s * pop;
+        c.save();
+        c.fillStyle = 'rgba(240,198,116,.95)';
+        c.beginPath(); c.arc(fx, fy, r, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = '#7a4a14'; c.lineWidth = 1.5;
+        c.beginPath(); c.arc(fx, fy, r, 0, Math.PI * 2); c.stroke();
+        c.fillStyle = 'rgba(122,74,20,.9)';
+        c.beginPath(); c.arc(fx, fy, r * 0.55, 0, Math.PI * 2); c.stroke();
+        c.restore();
       }
     });
   }
