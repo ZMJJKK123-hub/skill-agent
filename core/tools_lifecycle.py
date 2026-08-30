@@ -61,15 +61,86 @@ def start_mc_server(base=None, handle="mc-server", rcon_port=None, rcon_password
     )
 
 
+def _hide_minecraft_windows():
+    """把所有可见的 Minecraft 窗口移到屏幕外（-32000,-32000）。
+
+    渲染循环照常、游戏内截图（读帧缓冲）照常，用户桌面上完全不可见——
+    桥接模式下无需窗口可见。返回移动的窗口数。
+    """
+    if os.name != "nt":
+        return 0
+    try:
+        import ctypes
+        from ctypes import wintypes
+        user32 = ctypes.windll.user32
+        moved = []
+
+        @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+        def _cb(hwnd, _):
+            try:
+                if not user32.IsWindowVisible(hwnd):
+                    return True
+                n = user32.GetWindowTextLengthW(hwnd)
+                if not n:
+                    return True
+                buf = ctypes.create_unicode_buffer(n + 1)
+                user32.GetWindowTextW(hwnd, buf, n + 1)
+                title = buf.value
+                if "minecraft" in title.lower():
+                    # GLFW 每帧自管窗口位置，SetWindowPos 会被拉回（实测）。
+                    # 改用样式级隐身：分层窗口 alpha=0 + 点击穿透 + 置底——
+                    # 游戏不会重置 EXSTYLE，渲染循环与帧缓冲完全不受影响。
+                    GWL_EXSTYLE = -20
+                    EX_LAYERED, EX_TRANSPARENT = 0x00080000, 0x00000020
+                    cur = user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+                    user32.SetWindowLongW(hwnd, GWL_EXSTYLE,
+                                          cur | EX_LAYERED | EX_TRANSPARENT)
+                    user32.SetLayeredWindowAttributes(hwnd, 0, 0, 2)  # LWA_ALPHA, alpha=0
+                    user32.SetWindowPos(hwnd, 1, 0, 0, 0, 0,
+                                        0x0001 | 0x0002 | 0x0010 | 0x0400)  # HWND_BOTTOM
+                    moved.append(title)
+            except Exception:
+                pass
+            return True
+
+        user32.EnumWindows(_cb, 0)
+        if moved:
+            logger.info(f"[mc-background] 已隐藏窗口: {moved}")
+        return len(moved)
+    except Exception as e:
+        logger.warning(f"_hide_minecraft_windows 失败: {e}")
+        return 0
+
+
+def _watch_and_hide_client(duration=600):
+    """守护线程：客户端启动后持续把（含迟后出现的）MC 窗口移到屏幕外。
+
+    DSH_MC_BACKGROUND=0 可关闭完全后台模式（窗口正常显示）。
+    """
+    if os.environ.get("DSH_MC_BACKGROUND", "1") == "0":
+        return
+    import threading
+
+    def _w():
+        end = time.time() + duration
+        while time.time() < end:
+            _hide_minecraft_windows()
+            time.sleep(3)
+
+    threading.Thread(target=_w, daemon=True, name="mc-hide").start()
+
+
 def start_mc_client(base=None, handle="mc-client"):
     base = base or _base_dir()
     res = start_gradle_task("runClient", base, handle)
     if not res["success"]:
         return f"[start_mc_client] {res['message']}"
+    _watch_and_hide_client()
     return (
         f"[start_mc_client] handle={res['handle']} pid={res['pid']}\n"
         f"log={res['log_path']}\n"
-        "等待就绪：用 wait_for_log 或 wait_for_screen。"
+        "完全后台模式：窗口自动移到屏幕外（DSH_MC_BACKGROUND=0 可关闭）。"
+        "等待就绪：wait_for_log 等 '[AgentBridge] armed|Sound engine started'。"
     )
 
 
@@ -83,9 +154,11 @@ def start_mc_test_client(base=None, handle="mc-client"):
     res = start_gradle_task("runTestClient", base, handle)
     if not res["success"]:
         return f"[start_mc_test_client] {res['message']}"
+    _watch_and_hide_client()
     return (
         f"[start_mc_test_client] handle={res['handle']} pid={res['pid']}\n"
         f"log={res['log_path']}\n"
+        "完全后台模式：窗口自动移到屏幕外。"
         "等待就绪：wait_for_log pattern='[AgentBridge] armed|Sound engine started'（timeout 180）。"
     )
 

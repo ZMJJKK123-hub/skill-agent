@@ -1137,3 +1137,8 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **[核心事实] Screenshot.grab(File, RenderTarget, Consumer) 的 File 是【目录】语义（实际写 <dir>/screenshots/<时间戳>.png），且必须在渲染线程调用，PNG 由 ioPool 异步落盘——调用方按 mtime 轮询取新文件**
 - **[已验证闭环] 主菜单→Singleplayer→Create New World→进世界→/give→游戏内截图 全程桥驱动成功（免焦点/免模拟输入/后台窗口可截图）；世界列表条目不是 AbstractButton（click 会正确拒绝），进世界用 Create New World 路径**
 - **[API] GLM-5.3-flash（智谱 open.bigmodel.cn/api/paas/v4）可跑通全流程：写码/构建/GameTest/ERROR_LIST 查错均正常；注意余额（429 code 1113=余额不足）**
+
+## 2026-08-30 完全后台模式定稿 + webserv_emeraldheart 发现
+- **[已验证] 完全后台客户端验证可行：MC 窗口用 LAYERED+TRANSPARENT+alpha=0 样式隐身（GLFW 每帧自管位置会拉回 SetWindowPos，但不会重置 EXSTYLE）| 点击穿透不影响用户，渲染循环正常（隐形截图 17441 独立色/5.5% 黑=真实帧），桥的函数级点击/游戏内截图全部照常 | start_mc_client 已内置自动隐身（DSH_MC_BACKGROUND=0 关闭）**
+- **[webserv_emeraldheart] NEW_ERROR: AgentBridge 在专用服务器被 RuntimeDistCleaner 拒载 | 客户端专属类进 dist 会被 GameTest 服务端拒绝 | 反射挂载 + FMLEnvironment.dist.isClient() 守卫**
+- **[webserv_emeraldheart] NEW_ERROR: src/test 与 src/main 同包名导致 ResolutionException: Modules test and <modid> export package（split-package，GameTestServer 启动即崩）| 1.21.11 把两者编译为独立 JPMS 模块 | 测试类放子包 com.<modid>.tests**
