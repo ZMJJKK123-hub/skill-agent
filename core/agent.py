@@ -74,6 +74,7 @@ def agent_loop(messages: list) -> str:
     _post_write_strikes = 0
     _no_tool_strikes = 0
     _gametest_rejects = 0  # GameTest 出口闸连续打回计数（≥3 且 dist 有产物 → 强制收尾）
+    _empty_strikes = 0     # 连续空响应计数（≥5 压缩，≥8 强制收尾）
 
     #检测是否有自己写过的代码 还是完全没动过模版代码
     def _has_custom_java():
@@ -331,7 +332,23 @@ def agent_loop(messages: list) -> str:
         # 关键修复：不要把“No additional output”占位符写回历史，否则模型会把它当成自己
         # 的真实回复，下一轮继续返回空内容，形成死循环。改为注入用户警告并直接重试。
         if content is None and not tool_calls:
-            logger.warning("模型返回空内容且无工具调用，不写占位符，注入空响应警告后重试")
+            _empty_strikes += 1
+            logger.warning(f"模型返回空内容且无工具调用（连续第 {_empty_strikes} 次）")
+            # 上限兜底（webserv_heaven 实测：glm-5.3 遇超大上下文连续 39 次空响应，
+            # 无上限时空转烧 API）。连续 5 次仍空 → 触发压缩（可能上下文异常膨胀），
+            # 连续 8 次 → 强制收尾并给出诊断信息。
+            if _empty_strikes == 5:
+                logger.warning("连续 5 次空响应，尝试 auto_compact 缩上下文")
+                messages = auto_compact(messages)
+                continue
+            if _empty_strikes >= 8:
+                _force_final_msg = (
+                    "Model returned empty responses 8 times in a row "
+                    "(likely context overload). Partial progress is in run.log. "
+                    "建议：减少一次性加载的技能数量（≤3 个），或换用更稳定的模型。"
+                )
+                logger.warning(_force_final_msg)
+                continue
             if IS_MOD_MODE:
                 messages.append({
                     "role": "user",
@@ -375,6 +392,7 @@ def agent_loop(messages: list) -> str:
 
         # 记录助手回复（只记录 content/tool_calls，不含 reasoning）
         messages.append(message.to_dict())
+        _empty_strikes = 0  # 正常响应到达，连续空响应计数清零
         # ── skill-source 引用校验（仅 mod 模式）──
         # chat 模式：普通对话无需 <skill-source> 引用块，跳过校验直接通过。
         if choice.finish_reason != "tool_calls" and IS_MOD_MODE:
