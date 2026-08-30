@@ -13,6 +13,7 @@ function __diceRoll(rng) {
 }
 // 押注判定 → 'win' | 'lose'
 function __diceJudge(bet, roll) {
+  if (bet === 'triple') return roll.triple ? 'win' : 'lose'; // 围骰：任意三同为中
   if (roll.triple) return 'lose';
   return (bet === 'big' && roll.big) || (bet === 'small' && roll.small) ? 'win' : 'lose';
 }
@@ -65,12 +66,12 @@ class CasinoDice {
   _awaitBet() {
     this.phase = 'bet';
     this.betAmt = this.betAmt || DICE_BETS[0];
-    this.pendingBet = null; // 'big' | 'small'
+    this.pendingBet = null; // 'big' | 'small' | 'triple'
     // 清上一局残留：逐骰结算标志/揭盅时刻/结果（否则第二局永不结算）
     this._d0 = this._d1 = this._d2 = false;
     this.revealT = 0;
     this.roll = null;
-    this._msg('选筹码 → 押 大 或 小');
+    this._msg('选筹码 → 押 大 / 小 / 围骰');
     Casino.audio.play('voice-bets', 0.7);
     this._renderActions();
   }
@@ -82,7 +83,7 @@ class CasinoDice {
     this.phase = 'shake';
     this.shakeT = this.tick;
     this.roll = __diceRoll();
-    this._msg(bet === 'big' ? '押大 ' + this.betAmt : '押小 ' + this.betAmt + ' · 摇盅中…');
+    this._msg((bet === 'big' ? '押大 ' : bet === 'small' ? '押小 ' : '押围骰 ') + this.betAmt + ' · 摇盅中…');
     Casino.audio.play('coins', 0.5);
     Casino.audio.play('voice-no-more', 0.7);
     this._renderActions();
@@ -94,23 +95,24 @@ class CasinoDice {
       var roll = this.roll;
       var verdict = __diceJudge(this.pendingBet, roll);
       this.phase = 'settle';
-      var winAmt = verdict === 'win' ? this.betAmt * 2 : 0;
+      var isTripleBet = this.pendingBet === 'triple';
+      var winAmt = verdict === 'win' ? (isTripleBet ? this.betAmt * 31 : this.betAmt * 2) : 0; // 围骰 30 赔 1
       if (winAmt) {
         this.wallet.add(winAmt);
         for (var k = 0; k < 3; k++) this._fxChips('player', winAmt / 3, k * 5);
       }
       var txt = roll.triple
-        ? '围骰 ' + roll.dice[0] + '！通杀'
+        ? '围骰 ' + roll.dice[0] + '！' + (isTripleBet ? '押中 ×30' : '通杀')
         : (roll.total >= 11 ? '大 ' + roll.total : '小 ' + roll.total);
-      this._msg(txt + ' · ' + (verdict === 'win' ? '你赢了 ' + this.betAmt : '输了 ' + this.betAmt));
+      this._msg(txt + ' · ' + (verdict === 'win' ? '你赢了 ' + (winAmt - this.betAmt) : '输了 ' + this.betAmt));
       this.banner = {
-        text: roll.triple ? '围骰 ' + roll.dice[0] + '！' : (roll.total >= 11 ? '大 ' + roll.total : '小 ' + roll.total) + (verdict === 'win' ? ' · 你赢 +' + this.betAmt : ''),
+        text: roll.triple ? '围骰 ' + roll.dice[0] + '！' + (isTripleBet ? ' ×30' : '') : (roll.total >= 11 ? '大 ' + roll.total : '小 ' + roll.total) + (verdict === 'win' ? ' · 你赢 +' + this.betAmt : ''),
         color: verdict === 'win' ? '#ffd98a' : '#e08080', start: this.tick, dur: 90
       };
       Casino.audio.play(roll.triple ? 'voice-triple' : roll.total >= 11 ? 'voice-big' : 'voice-small', 0.85);
       if (verdict === 'win') {
-        Casino.audio.play('voice-win', 0.85);
-        this.shakeCup = { amp: 6, start: this.tick, dur: 12 };
+        Casino.audio.play(isTripleBet ? 'voice-jackpot' : 'voice-win', 0.9);
+        this.shakeCup = { amp: isTripleBet ? 9 : 6, start: this.tick, dur: 12 };
       } else {
         Casino.audio.play('voice-lose', 0.7);
       }
@@ -120,7 +122,7 @@ class CasinoDice {
 
   _renderActions() {
     var self = this;
-    var info = '<span style="font-size:12px;color:#ffd98a;margin-right:6px;white-space:nowrap">算力 <b>' + this.wallet.get().toLocaleString() + '</b>' + (this.pendingBet ? ' · 押' + (this.pendingBet === 'big' ? '大' : '小') + ' <b>' + this.betAmt + '</b>' : '') + '</span>';
+    var info = '<span style="font-size:12px;color:#ffd98a;margin-right:6px;white-space:nowrap">算力 <b>' + this.wallet.get().toLocaleString() + '</b>' + (this.pendingBet ? ' · 押' + (this.pendingBet === 'big' ? '大' : this.pendingBet === 'small' ? '小' : '围骰') + ' <b>' + this.betAmt + '</b>' : '') + '</span>';
     this.actEl.innerHTML = '';
     this.actEl.insertAdjacentHTML('beforeend', info);
     var mk = function (label, fn, cls) {
@@ -145,6 +147,7 @@ class CasinoDice {
       });
       this.actEl.appendChild(mk('押 大 (11-17)', function () { self.place('big'); }, '#e06060'));
       this.actEl.appendChild(mk('押 小 (4-10)', function () { self.place('small'); }, '#5fa8e0'));
+      this.actEl.appendChild(mk('押 围骰 ×30', function () { self.place('triple'); }, '#b070e0'));
       return;
     }
     if (this.phase === 'settle') {

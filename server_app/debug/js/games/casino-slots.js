@@ -8,7 +8,7 @@ var SL_SYMS = ['7', 'DIA', 'CHE', 'WRENCH', 'SNAKE', 'DISK']; // 内部标识
 // 卷轴带（每轴 20 格，权重分布）
 var SL_STRIP_BASE = ['7', 'DIA', 'CHE', 'CHE', 'WRENCH', 'SNAKE', 'DISK', 'CHE', 'WRENCH', 'DIA',
   'SNAKE', 'CHE', 'DISK', 'WRENCH', 'CHE', 'SNAKE', 'DIA', 'CHE', 'WRENCH', 'DISK'];
-// 赔率表：3 同 ×赔率；两 7 ×3；任意两同 ×1（回本线）
+// 赔率表：3 同 ×赔率；双 7 ×3；双钻 ×2；双樱桃 ×1（回本线）
 var SL_PAYTABLE = { '7': 50, 'DIA': 25, 'CHE': 15, 'WRENCH': 10, 'SNAKE': 10, 'DISK': 8 };
 function __slMakeStrips() {
   // 三条独立随机带
@@ -27,8 +27,8 @@ function __slJudge(line) {
   if (a === b && b === c2) return { mult: SL_PAYTABLE[a] || 8, desc: '三连 ' + a };
   if (a === '7' && (b === '7' || c2 === '7')) return { mult: 3, desc: '双 7' };
   var pair = (a === b) ? a : (b === c2 ? b : (a === c2 ? a : null));
-  if (pair === '7' || pair === 'DIA') return { mult: 2, desc: '一对 ' + pair };
-  if (pair) return { mult: 1, desc: '一对 ' + pair + '（回本）' };
+  if (pair === 'DIA') return { mult: 2, desc: '双钻' };
+  if (pair === 'CHE') return { mult: 1, desc: '双樱桃（回本）' };
   return { mult: 0, desc: '未中' };
 }
 
@@ -82,6 +82,7 @@ class CasinoSlots {
   _awaitBet() {
     this.phase = 'bet';
     this._msg('选筹码 → 拉杆 SPIN');
+    Casino.audio.play('voice-bets', 0.5);
     this._renderActions();
   }
 
@@ -228,6 +229,12 @@ class CasinoSlots {
     c.shadowColor = '#ff5f30'; c.shadowBlur = winning ? 18 : 10 + 4 * Math.sin(this.tick * 0.08);
     c.fillText('S L O T S · 算 力 老虎 机', 0, -mh / 2 + 30 * s);
     c.shadowBlur = 0;
+    // 赔率表（招牌下、卷轴上，赌场惯例明示）
+    c.font = Math.round(mw * 0.026) + 'px monospace';
+    c.fillStyle = 'rgba(255,224,170,.82)';
+    c.fillText('三连：777×50 ◆×25 樱×15 🔧×10 🐍×10 💾×8', 0, -mh / 2 + 46 * s);
+    c.fillStyle = 'rgba(255,224,170,.62)';
+    c.fillText('两同：双7×3 · 双钻×2 · 双樱×1', 0, -mh / 2 + 60 * s);
     // 三个卷轴窗口
     var reelW = mw * 0.22, reelH = mh * 0.46;
     var gap = reelW * 1.18;
