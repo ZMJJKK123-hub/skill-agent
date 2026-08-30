@@ -10,7 +10,7 @@ function __roColor(n) { return n === 0 ? 'green' : (RO_RED.indexOf(n) >= 0 ? 're
 function __roSpin(rng) { return Math.floor((rng || Math.random)() * 37); }
 // 单注赔付（返回倍数：总返还 = 下注 × mult；0 = 全输）
 function __roPayout(type, pick, n) {
-  if (n === 0 && type !== 'straight' && type !== 'voisins') return 0; // 0 通杀外围（Voisins 含 0）
+  if (n === 0 && type !== 'straight' && type !== 'voisins' && type !== 'zerogame' && !(type === 'final' && pick === 0)) return 0; // 0 通杀外围（Voisins/零游戏含 0，尾0 含 0）
   switch (type) {
     case 'straight': return n === pick ? 36 : 0;
     case 'red': return __roColor(n) === 'red' ? 2 : 0;
@@ -25,6 +25,8 @@ function __roPayout(type, pick, n) {
     case 'voisins': return RO_VOISINS.indexOf(n) >= 0 ? 36 / 17 : 0;
     case 'tiers': return RO_TIERS.indexOf(n) >= 0 ? 3 : 0;
     case 'orphelins': return RO_ORPHELINS.indexOf(n) >= 0 ? 4.5 : 0;
+    case 'zerogame': return RO_ZEROGAME.indexOf(n) >= 0 ? 36 / 7 : 0;
+    case 'final': return n % 10 === pick ? 36 / __roFinalCount(pick) : 0; // 尾0-6:9× 尾7-9:12×
     default: return 0;
   }
 }
@@ -41,8 +43,14 @@ function __roSettle(bets, n) {
 var RO_VOISINS = [22, 18, 29, 7, 28, 12, 35, 3, 26, 0, 32, 15, 19, 4, 21, 2, 25];
 var RO_TIERS = [27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33];
 var RO_ORPHELINS = [1, 20, 14, 31, 9, 17, 34, 6];
+// 零游戏（jeu zéro）：0 周围 7 号（Voisins 的子集）；尾注（finals）：以 pick 数字结尾的所有号
+// 尾 0-6 覆盖 4 号（x,x+10,x+20,x+30）；尾 7-9 只有 3 号（无 37/38/39）
+var RO_ZEROGAME = [12, 35, 3, 26, 0, 32, 15];
+function __roFinalCount(d) {
+  return d <= 6 ? 4 : 3;
+}
 function __roCallSet(type) {
-  return type === 'voisins' ? RO_VOISINS : type === 'tiers' ? RO_TIERS : type === 'orphelins' ? RO_ORPHELINS : null;
+  return type === 'voisins' ? RO_VOISINS : type === 'tiers' ? RO_TIERS : type === 'orphelins' ? RO_ORPHELINS : type === 'zerogame' ? RO_ZEROGAME : null;
 }
 
 var RO_CHIPS = [20, 50, 100];
@@ -410,16 +418,22 @@ class CasinoRoulette {
     outs.forEach(function (o, i) {
       cell(ox + gw * 0.8 + i * gw * 2, outY, gw * 2 - 4, gh * 0.8, o[1], { type: o[0], pick: 0 }, o[2]);
     });
-    // 法国邻注赛道行（Voisins 17 号含 0 / Tiers 12 号 / Orphelins 8 号）
+    // 法国邻注赛道行（Voisins 17 号含 0 / Tiers 12 号 / Orphelins 8 号）+ 零游戏
     var callY = outY + gh * 0.8 + 6 * s;
     var calls = [
       ['voisins', 'Voisins 零邻×17', 'rgba(26,90,58,.9)'],
       ['tiers', 'Tiers 三分×12', 'rgba(60,36,90,.85)'],
-      ['orphelins', 'Orphelins 孤注×8', 'rgba(96,52,24,.9)']
+      ['orphelins', 'Orphelins 孤注×8', 'rgba(96,52,24,.9)'],
+      ['zerogame', 'Jeu 0 零游戏×7', 'rgba(24,84,96,.9)']
     ];
     calls.forEach(function (o, i) {
-      cell(ox + gw * 0.8 + i * gw * 4, callY, gw * 4 - 4, gh * 0.8, o[1], { type: o[0], pick: 0 }, o[2]);
+      cell(ox + gw * 0.8 + i * gw * 3, callY, gw * 3 - 4, gh * 0.8, o[1], { type: o[0], pick: 0 }, o[2]);
     });
+    // 尾注行：尾0..尾9（各覆盖 4 号，赔 8:1）
+    var finY = callY + gh * 0.8 + 5 * s;
+    for (var fd = 0; fd < 10; fd++) {
+      cell(ox + gw * 0.8 + fd * gw * 1.2, finY, gw * 1.2 - 3, gh * 0.7, '尾' + fd, { type: 'final', pick: fd }, fd % 2 ? 'rgba(40,40,52,.9)' : 'rgba(74,34,34,.9)');
+    }
     // 下注阶段高亮悬停感：全部格子外发光脉冲（简化：已押注格子亮框）
   }
 
