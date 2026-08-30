@@ -149,6 +149,15 @@ var __thTaunts = {
 var TH_ANTE = 10, TH_PFR = 20, TH_RAISE = 50, TH_BOT_TICKS = 40;
 // 发牌节奏（帧，60fps ≈ 每张 0.37s，一张一张绕桌背面发）
 var TH_DEAL_GAP = 22, TH_DEAL_FLIGHT = 16;
+// AI 再购入节奏：破产按性格重购（aggr 1200 / tight 600 / bluff 800）；
+// 短码（<200）40% 概率补码到风格水位——筹码流有起有落，而非清一色秒回 1000
+function __thRebuy(chips, persona, rollVal) {
+  var target = persona === 'aggr' ? 1200 : persona === 'tight' ? 600 : 800;
+  var r = rollVal === undefined ? Math.random() : rollVal;
+  if (chips < TH_ANTE) return target;
+  if (chips < 200 && r < 0.4) return target;
+  return chips;
+}
 var TH_HOLE_TICKS = 14 + 8 * TH_DEAL_GAP + TH_DEAL_FLIGHT + 16;     // 8 张底牌
 var TH_COMM_TICKS = 14 + 5 * TH_DEAL_GAP + TH_DEAL_FLIGHT + 16;     // 5 张公共牌盖上
 var TH_DEAL_TICKS = TH_HOLE_TICKS + 24 + TH_COMM_TICKS + 16;
@@ -253,11 +262,13 @@ class CasinoHoldem {
       return;
     }
     var deck = __thShuffle(__thNewDeck());
-    // AI 破产重购：筹码不够底注就重新买入 1000（朋友局规矩，游戏不中断）
+    // AI 再购入/补码（朋友局规矩，游戏不中断；按性格分层）
+    this._rebuyFx = [];
     for (var rb = 0; rb < 3; rb++) {
-      if (this.aiChips[rb] < TH_ANTE) {
-        this.aiChips[rb] = 1000;
-        this.fx.push({ kind: 'text', at: 'seat' + (rb + 1), text: '重新买入 1000', color: '#8fce8f', start: this.tick + 30, dur: 60 });
+      var before = this.aiChips[rb];
+      this.aiChips[rb] = __thRebuy(before, ['aggr', 'tight', 'bluff'][rb]);
+      if (this.aiChips[rb] !== before) {
+        this._rebuyFx.push({ kind: 'text', at: 'seat' + (rb + 1), text: (before < TH_ANTE ? '重新买入 ' : '补码到 ') + this.aiChips[rb], color: '#8fce8f', start: this.tick + 40, dur: 70 });
       }
     }
     this.players = [];
@@ -284,6 +295,10 @@ class CasinoHoldem {
     this.winnerSeat = undefined;
     this.peek = false;
     this.fx = []; this.banner = null; this.shake = null; this.flash = null;
+    // 重购/补码浮字在 fx 重置后补登（否则刚推入就被清空）
+    var self2 = this;
+    (this._rebuyFx || []).forEach(function (f2) { self2.fx.push(f2); });
+    this._rebuyFx = [];
     this.dispPot = 0;
     this.aiPeek = [null, null, null, null];
     this._nextIdlePeek = [0, 0, 0, 0];
