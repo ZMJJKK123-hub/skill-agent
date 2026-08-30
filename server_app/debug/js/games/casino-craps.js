@@ -1,5 +1,6 @@
 // casino-craps.js — 算力赌坊 · Craps 双骰桌
 // Pass Line：come-out 7/11 即赢、2/3/12 即输、其余设点；掷出点数赢、7 输。
+// Odds 赔率注：设点后在 Pass 后加码（3-4-5× 上限），真赔率 4/10:2:1 · 5/9:3:2 · 6/8:6:5，零庄家优势。
 // Don't Pass（_bar 12）：come-out 2/3 赢、12 平、7/11 输；设点后 7 赢、点数输。
 // Field（一掷性）：2/12 赔 2:1、3/4/9/10/11 赔 1:1、5/6/7/8 输。
 // 动画：两颗骰子从桌右端掷出（抛物线翻滚+弹跳落定）→ 荷官语音报点 → puck ON/OFF。
@@ -41,6 +42,20 @@ function __crapsField(total) {
   if (total === 3 || total === 4 || total === 9 || total === 10 || total === 11) return 2;
   return 0;
 }
+// Pass Line Odds（真赔率）：每 1 注赔率注的点中盈利倍数
+function __crapsOddsMult(point) {
+  if (point === 4 || point === 10) return 2;
+  if (point === 5 || point === 9) return 1.5;
+  if (point === 6 || point === 8) return 1.2;
+  return 0;
+}
+// 3-4-5× 上限：赔率注 ≤ Pass ×(4/10:3 · 5/9:4 · 6/8:5)，点中恒赚 6×Pass
+function __crapsOddsCap(point, passBet) {
+  if (point === 4 || point === 10) return passBet * 3;
+  if (point === 5 || point === 9) return passBet * 4;
+  if (point === 6 || point === 8) return passBet * 5;
+  return 0;
+}
 
 var CR_BETS = [20, 50, 100];
 var CR_ROLL_TICKS = 110;
@@ -58,7 +73,7 @@ class CasinoCraps {
     this.shake = 0;
     this.chipAmt = CR_BETS[0];
     this.point = null;        // 当前点数（null = come-out 阶段）
-    this.bets = { pass: 0, dont: 0, field: 0 };
+    this.bets = { pass: 0, dont: 0, field: 0, odds: 0 };
     this.history = [];
     this._posCache = null;
     this._buildDom(container);
@@ -95,6 +110,18 @@ class CasinoCraps {
   }
   place(zone) {
     if (this.phase !== 'bet') return;
+    if (zone === 'odds') {
+      if (!this.point || !this.bets.pass) { this._msg('先押 Pass 并设点后才能加 Odds'); return; }
+      var cap = __crapsOddsCap(this.point, this.bets.pass);
+      if (this.bets.odds >= cap) { this._msg('Odds 已到 3-4-5× 上限 ' + cap); return; }
+      var take = Math.min(this.chipAmt, cap - this.bets.odds);
+      if (take <= 0 || !this.wallet.sub(take)) { this._msg('算力不足'); return; }
+      this.bets.odds += take;
+      Casino.audio.play('coins', 0.4);
+      this._msg('Odds 赔率注 +' + take + '（' + this.bets.odds + '/' + cap + ' · 点中赔 ' + __crapsOddsMult(this.point) + ':1）');
+      this._renderActions();
+      return;
+    }
     if (!this.wallet.sub(this.chipAmt)) { this._msg('算力不足'); return; }
     this.bets[zone] += this.chipAmt;
     Casino.audio.play('coins', 0.4);
@@ -170,10 +197,17 @@ class CasinoCraps {
       var pr2 = __crapsPointRoll(this.point, n);
       var dr2 = __crapsDontPoint(this.point, n);
       if (pr2 === 'win') {
+        if (this.bets.odds > 0) { // Odds 真赔率：还本 + 盈利
+          var oddsRet = this.bets.odds + Math.round(this.bets.odds * __crapsOddsMult(this.point));
+          this.wallet.add(oddsRet);
+          lines.push('Odds 赢 ' + (oddsRet - this.bets.odds));
+          this.bets.odds = 0;
+        }
         this.wallet.add(this.bets.pass * 2);
         if (this.bets.pass) lines.push('Pass 赢 ' + this.bets.pass);
         this.bets.pass = 0;
       } else if (pr2 === 'lose') {
+        if (this.bets.odds) { lines.push('Odds 输 ' + this.bets.odds); this.bets.odds = 0; }
         if (this.bets.pass) lines.push('Pass 输（7 out）' + this.bets.pass);
         this.bets.pass = 0;
       }
@@ -233,6 +267,10 @@ class CasinoCraps {
         self.actEl.appendChild(b);
       });
       this.actEl.appendChild(mk('押 Pass ' + (this.bets.pass || ''), function () { self.place('pass'); }, '#8fce8f'));
+      if (this.point && this.bets.pass) {
+        var cap = __crapsOddsCap(this.point, this.bets.pass);
+        this.actEl.appendChild(mk('押 Odds ' + (this.bets.odds || 0) + '/' + cap, function () { self.place('odds'); }, '#f0c674'));
+      }
       this.actEl.appendChild(mk("押 Don't " + (this.bets.dont || ''), function () { self.place('dont'); }, '#e0a8a0'));
       this.actEl.appendChild(mk('押 Field ' + (this.bets.field || ''), function () { self.place('field'); }, '#a0c8e8'));
       this.actEl.appendChild(mk('🎲 掷骰 ROLL', function () { self.rollNow(); }, '#e06060'));
@@ -266,7 +304,7 @@ class CasinoCraps {
   }
   _zones(c, w, h, s) {
     var zs = [
-      { key: 'pass', label: 'PASS LINE', x: w * 0.33, cls: '#8fce8f' },
+      { key: 'pass', label: this.bets.odds > 0 ? 'PASS + ODDS ' + this.bets.odds : 'PASS LINE', x: w * 0.33, cls: '#8fce8f' },
       { key: 'dont', label: "DON'T PASS", x: w * 0.52, cls: '#e0a8a0' },
       { key: 'field', label: 'FIELD 2·12 ×2', x: w * 0.71, cls: '#a0c8e8' }
     ];
@@ -395,13 +433,15 @@ class CasinoCraps {
   }
 
   // ---------- 帧驱动 ----------
-  // bot 模式自动下注+掷骰（自动化测试/浸泡用；设点后继续追掷）
+  // bot 模式自动下注+掷骰（自动化测试/浸泡用；设点后 60% 取 Odds 再追掷）
   _botStep() {
     var staked = this.bets.pass + this.bets.dont + this.bets.field;
     if (this.tick % 50 === 30) {
       if (staked === 0 && this.wallet.get() >= this.chipAmt) {
         this.place(['pass', 'dont', 'field'][Math.floor(Math.random() * 3)]);
       } else if (this.wallet.get() < this.chipAmt) this.wallet.bailout();
+    } else if (this.tick % 50 === 20 && this.point && this.bets.pass && this.bets.odds === 0 && Math.random() < 0.6) {
+      this.place('odds');
     } else if (this.tick % 50 === 5 && staked > 0) {
       this.rollNow();
     }
