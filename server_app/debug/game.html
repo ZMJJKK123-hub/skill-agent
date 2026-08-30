@@ -317,28 +317,8 @@
       // 游戏重建/画面切换后尺寸可能变化，轻量轮询兜底
       setInterval(window.fitCanvas, 400);
 
-      // ── 玩家缩放控件（右上角悬浮，canvas 与终端都生效）──
-      var zc = document.createElement('div');
-      zc.id = 'zoomCtl';
-      zc.style.cssText = 'position:fixed;top:10px;right:10px;z-index:250;display:flex;gap:4px;align-items:center;background:rgba(5,8,16,.82);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:4px 6px;user-select:none';
-      function zBtn(label, fn, pad) {
-        var b = document.createElement('button');
-        b.textContent = label;
-        b.style.cssText = 'background:#111827;color:#cbd5e1;border:1px solid rgba(255,255,255,.15);border-radius:6px;cursor:pointer;font-size:13px;' + (pad || 'padding:2px 9px');
-        b.onclick = function (e) { fn(); this.blur(); };
-        return b;
-      }
-      zc.appendChild(zBtn('－', function () { gameZoom -= 0.25; window.applyZoom(); }));
-      var pct = document.createElement('span');
-      pct.id = 'zoomPct';
-      pct.style.cssText = 'color:#7dd3fc;font-size:12px;min-width:40px;text-align:center';
-      zc.appendChild(pct);
-      zc.appendChild(zBtn('＋', function () { gameZoom += 0.25; window.applyZoom(); }));
-      zc.appendChild(zBtn('⟲', function () { gameZoom = 1; window.applyZoom(); }, 'padding:2px 7px'));
-      document.body.appendChild(zc);
-      window.applyZoom();
-
-      // 键盘 +/－/0 缩放（终端输入框聚焦时不劫持）
+      // 缩放：浏览器/面板自带页面缩放已覆盖主要需求，悬浮控件撤掉避免重复；
+      // 保留键盘 +/－/0 隐藏快捷方式（canvas 与终端都生效，偏好记忆不变）
       window.addEventListener('keydown', function (e) {
         var tag = (e.target && e.target.tagName) || '';
         if (tag === 'INPUT' || tag === 'TEXTAREA') return;
