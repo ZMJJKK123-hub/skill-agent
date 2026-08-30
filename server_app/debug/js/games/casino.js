@@ -514,6 +514,63 @@
         c.beginPath(); c.ellipse(px, py, 5, 2.5, ang, 0, Math.PI * 2); c.fill();
       }
     },
+    // 通用扑克牌绘制（各赌桌共用）：x/y 中心点，w/h 尺寸，牌 {r,s} 或 null=背面
+    card(c, x, y, w, h, card, faceUp, alpha) {
+      c.save();
+      if (alpha !== undefined && alpha < 1) c.globalAlpha = alpha;
+      c.translate(x, y);
+      var r = Math.min(w, h) * 0.09;
+      c.beginPath();
+      c.moveTo(-w / 2 + r, -h / 2);
+      c.arcTo(w / 2, -h / 2, w / 2, h / 2, r);
+      c.arcTo(w / 2, h / 2, -w / 2, h / 2, r);
+      c.arcTo(-w / 2, h / 2, -w / 2, -h / 2, r);
+      c.arcTo(-w / 2, -h / 2, w / 2, -h / 2, r);
+      c.closePath();
+      if (faceUp && card) {
+        var red = card.s === 1 || card.s === 3;
+        c.fillStyle = 'rgba(0,0,0,.35)';
+        c.save(); c.translate(2.5, 3.5); c.fill(); c.restore();
+        var face = c.createLinearGradient(0, -h / 2, 0, h / 2);
+        face.addColorStop(0, '#fbf6ea'); face.addColorStop(1, '#e6dcc4');
+        c.fillStyle = face; c.fill();
+        c.strokeStyle = 'rgba(90,50,20,.55)'; c.lineWidth = 1; c.stroke();
+        var rl = card.r === 11 ? 'J' : card.r === 12 ? 'Q' : card.r === 13 ? 'K' : card.r === 14 ? 'A' : card.r;
+        var col = red ? '#c0392b' : '#2c3e50';
+        c.fillStyle = col;
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.font = '700 ' + Math.round(w * 0.30) + 'px Georgia,serif';
+        c.fillText(rl, -w * 0.31, -h * 0.33);
+        c.font = Math.round(w * 0.24) + 'px Georgia,serif';
+        c.fillText(['♠', '♥', '♣', '♦'][card.s], -w * 0.31, -h * 0.16);
+        c.save();
+        c.rotate(Math.PI);
+        c.font = '700 ' + Math.round(w * 0.30) + 'px Georgia,serif';
+        c.fillText(rl, -w * 0.31, -h * 0.33);
+        c.font = Math.round(w * 0.24) + 'px Georgia,serif';
+        c.fillText(['♠', '♥', '♣', '♦'][card.s], -w * 0.31, -h * 0.16);
+        c.restore();
+        c.globalAlpha *= 0.16;
+        c.font = Math.round(w * 0.55) + 'px Georgia,serif';
+        c.fillText(['♠', '♥', '♣', '♦'][card.s], 0, h * 0.04);
+      } else {
+        c.fillStyle = 'rgba(0,0,0,.35)';
+        c.save(); c.translate(2.5, 3.5); c.fill(); c.restore();
+        var back = c.createLinearGradient(0, -h / 2, 0, h / 2);
+        back.addColorStop(0, '#42141c'); back.addColorStop(1, '#2a0c12');
+        c.fillStyle = back; c.fill();
+        c.strokeStyle = '#6a2830'; c.lineWidth = 1; c.stroke();
+        c.strokeStyle = 'rgba(255,190,110,.3)';
+        c.lineWidth = 1;
+        c.beginPath();
+        c.moveTo(-w * 0.28, -h * 0.26); c.lineTo(w * 0.28, h * 0.26);
+        c.moveTo(w * 0.28, -h * 0.26); c.lineTo(-w * 0.28, h * 0.26);
+        c.stroke();
+        c.strokeStyle = 'rgba(255,190,110,.18)';
+        c.strokeRect(-w * 0.36, -h * 0.38, w * 0.72, h * 0.76);
+      }
+      c.restore();
+    },
     // 暗角：暖光集中桌面，四角坠入近黑（骗子酒吧的明暗对比）
     vignette(c, w, h) {
       var v = c.createRadialGradient(w / 2, h * 0.55, Math.min(w, h) * 0.36, w / 2, h * 0.55, Math.max(w, h) * 0.78);
@@ -607,15 +664,6 @@ class CasinoHub extends BaseGame {
         '<div style="font-size:15px;font-weight:700;margin:8px 0 4px;color:#ecd9b8">' + def.name + '</div>' +
         '<div style="font-size:12px;color:#b09678;line-height:1.5">' + def.desc + '</div>';
       card.onclick = function () { sfx('click'); this.openTable(id); }.bind(this);
-      grid.appendChild(card);
-    }, this);
-    // 铺垫位：后续会上的桌（架构已就绪，实现即插即用）
-    [['⬛', '21 点', '即将开放'], ['🎲', '骰子大小', '即将开放'], ['🍒', '算力老虎机', '即将开放']].forEach(function (ph) {
-      var card = this._el('div');
-      card.style.cssText = 'border:1px dashed #4a3018;border-radius:12px;padding:18px 16px;background:rgba(14,7,4,.7);opacity:.6;text-align:center';
-      card.innerHTML = '<div style="font-size:32px;filter:grayscale(1)">' + ph[0] + '</div>' +
-        '<div style="font-size:14px;font-weight:700;margin:8px 0 4px;color:#a08a6a">' + ph[1] + '</div>' +
-        '<div style="font-size:11px;color:#7a6248">' + ph[2] + '</div>';
       grid.appendChild(card);
     }, this);
     wrap.appendChild(grid);
