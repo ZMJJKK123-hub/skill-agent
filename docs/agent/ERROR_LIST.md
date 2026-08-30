@@ -1114,3 +1114,6 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 
 ## 2026-08-30 本地网站实测（rubymod / blueberry）
 - **[webserv_ruby] `NEW_ERROR: shaped 配方加载即失败："Couldn't parse data file 'rubymod:ruby_block'" + "No key type in MapLike[{"item"...}]" | 1.21.11 的配方 ingredient codec 只接受纯字符串（或字符串数组），{"item": "xxx"} 对象形式 build 期完全通过、仅在 GameTest/服务器 datapack 加载时报 parse error（藏在 run/logs/latest.log 数据包加载段，极易漏诊） | shaped/shapeless 配方的 ingredient 一律写纯字符串（如 "minecraft:iron_nugget"）；validate_resources 只对 shapeless 给同类警告，修一条时要同步检查 shaped 配方（rubymod 实测因此多花一轮构建+GameTest）**`
+
+- **[webserv_stardust] `NEW_ERROR: GameTest 里 ServerLevel.getRecipeManager() 找不到符号 | 1.21.11 映射中 RecipeManager 不在 ServerLevel 上 | 改用 helper.getLevel().getServer().getRecipeManager()`**
+- **[webserv_stardust] `NEW_ERROR: RecipeManager.byKey(Identifier) 参数类型不兼容 | 该版本 byKey 需要 ResourceKey<Recipe<?>> 而非 Identifier | 用 ResourceKey.create(Registries.RECIPE, Identifier.parse("modid:recipe")) 传入`**
