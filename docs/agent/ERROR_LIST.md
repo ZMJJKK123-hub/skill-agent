@@ -1142,3 +1142,7 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **[已验证] 完全后台客户端验证可行：MC 窗口用 LAYERED+TRANSPARENT+alpha=0 样式隐身（GLFW 每帧自管位置会拉回 SetWindowPos，但不会重置 EXSTYLE）| 点击穿透不影响用户，渲染循环正常（隐形截图 17441 独立色/5.5% 黑=真实帧），桥的函数级点击/游戏内截图全部照常 | start_mc_client 已内置自动隐身（DSH_MC_BACKGROUND=0 关闭）**
 - **[webserv_emeraldheart] NEW_ERROR: AgentBridge 在专用服务器被 RuntimeDistCleaner 拒载 | 客户端专属类进 dist 会被 GameTest 服务端拒绝 | 反射挂载 + FMLEnvironment.dist.isClient() 守卫**
 - **[webserv_emeraldheart] NEW_ERROR: src/test 与 src/main 同包名导致 ResolutionException: Modules test and <modid> export package（split-package，GameTestServer 启动即崩）| 1.21.11 把两者编译为独立 JPMS 模块 | 测试类放子包 com.<modid>.tests**
+
+## 2026-08-30 webserv_obsidiandagger（glm-5.3 全后台验收轮）
+- **[webserv_obsidiandagger] NEW_ERROR: ItemAttributeModifiers.Entry.matches(Holder) 编译报错需要双参数 | 1.21.11 Entry.matches 需要 (Holder<Attribute>, Identifier 修改器id) | Entry 构造用 Identifier.fromNamespaceAndPath(modid, "damage_id") 显式给修改器命名**
+- **[验收] glm-5.3（智谱 Coding Plan 端点 /api/coding/paas/v4）+ AgentBridge 完全后台流程全自主跑通：armed→隐身窗口→screen_info/click 建世界→开作弊→/give→后台截图→analyze_image→stop_mc_process，全程用户桌面零打扰；出口闸失明由 3 次打回+dist jar 兜底正确收尾**
