@@ -67,6 +67,16 @@ class DataTuring extends BaseGame {
     btnRow.appendChild(addAdder);
     btnRow.appendChild(addMult);
     c.appendChild(btnRow);
+    this.intro = {
+      title: '🔌 DATA TURING — 逻辑布线',
+      lines: [
+        '🔢 数字球 1~10 从左侧 SRC 依次流出，流向你连的线',
+        '🎯 目标：让所有球以偶数或奇数到达右侧 TGT（每关随机）',
+        '🔗 点击起点再点终点 = 连线；对同一条线重复操作 = 断开',
+        '🧩 用上方按钮添加节点：/2 分裂器 · +1 加法器 · x2 乘法器',
+        '▶ 布线完成点 RUN 运行验证；绿色=通过，红色=奇偶错了',
+      ],
+    };
     this.reset();
   }
 
@@ -303,6 +313,13 @@ class DataTuring extends BaseGame {
   }
 
   checkResult() {
+    // 等所有球跑完再结算：10 个球错峰发球 + 长链路走完可能超过固定 2 秒，
+    // 提前结算会把"其实会失败"的晚到球误判成通过。
+    if (this.balls.some(function (b) { return !b.done; })) {
+      var self = this;
+      this._timeouts.push(setTimeout(function () { self.checkResult(); }, 500));
+      return;
+    }
     this.runningSim = false;
     if (this.fail) {
       sfx('lose');

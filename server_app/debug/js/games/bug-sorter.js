@@ -28,6 +28,16 @@ class BugSorter extends BaseGame {
       }
     };
     this.canvas.addEventListener('click', this._click);
+    this.intro = {
+      title: '🎵 BUG SORTER — Bug 分拣音游',
+      lines: [
+        '⌨️ A / S / D 对应左中右三条修复通道',
+        '🐛 UI(红) API(蓝) SQL(黄) 模块不断下落',
+        '🎯 模块压到判定线的瞬间按对应键销毁：越准分越高',
+        '🔥 连击越高服务器火烧得越小；每 10 连击回血 +2',
+        '🧹 场上积压 8 个 Bug 会弹出 GC 图标 → 点击全清大加分',
+      ],
+    };
     this.reset();
   }
 

@@ -26,6 +26,16 @@ class TrafficBreakout extends BaseGame {
     };
     this.canvas.addEventListener('mousemove', this._mm);
     this.canvas.addEventListener('touchmove', this._tm, { passive: false });
+    this.intro = {
+      title: '🧱 TRAFFIC BREAKOUT — 高并发打砖块',
+      lines: [
+        '🖱️ 移动鼠标 / 手指拖动 = 控制底部负载均衡挡板',
+        '🎾 别让数据包（球）掉落：共 3 条命',
+        '🟣 FORK 砖 = 球分裂×3 · 🟡 CACHE 砖 = 要撞 3 次',
+        '🎁 接道具：🔵多球 🟢加宽 🔴激光 🟣减速',
+        '🌀 把球打进左侧 PORT:8000 传送门 = 高速穿透背刺砖阵',
+      ],
+    };
     this.reset();
   }
 
@@ -46,6 +56,7 @@ class TrafficBreakout extends BaseGame {
     this.laser = 0;
     this.laserCd = 0;
     this.levelFlash = 0;
+    this.lives = 3;
     this.makeBricks(1);
   }
 
@@ -102,7 +113,22 @@ class TrafficBreakout extends BaseGame {
       b.y += b.dy;
       if (b.x < b.r || b.x > self.w - b.r) b.dx = -b.dx;
       if (b.y < b.r) b.dy = -b.dy;
-      if (b.y > self.h) { self.balls.splice(bi, 1); if (self.balls.length === 0) { self.gameOver(); return; } }
+      if (b.y > self.h) {
+        self.balls.splice(bi, 1);
+        if (self.balls.length === 0) {
+          if (self.lives > 1) {
+            // 还有命：扣一条命并从挡板上方重新发球，游戏继续
+            self.lives--;
+            sfx('lose');
+            toast('💔 数据包丢失！剩余生命 ' + self.lives);
+            self.balls.push({ x: self.paddle.x + self.paddle.w / 2, y: self.h - 30, dx: self.ballSpeed, dy: -self.ballSpeed, r: 6 });
+          } else {
+            self.lives = 0;
+            self.gameOver();
+            return;
+          }
+        }
+      }
       // Paddle bounce with angle based on hit position
       var pwidth = self.bigPaddle > 0 ? 120 : self.paddle.w;
       if (b.y + b.dy >= self.paddle.y && b.x >= self.paddle.x && b.x <= self.paddle.x + pwidth) {
@@ -273,7 +299,7 @@ class TrafficBreakout extends BaseGame {
     c.fillStyle = '#00ff9f';
     c.font = '14px monospace';
     c.textAlign = 'left';
-    c.fillText('Score: ' + this.score + '  Lv.' + this.level + '  Balls: ' + this.balls.length, 10, 20);
+    c.fillText('Score: ' + this.score + '  Lv.' + this.level + '  ' + '♥'.repeat(this.lives), 10, 20);
     if (this.levelFlash > 0) {
       var alpha = Math.min(1, this.levelFlash / 30);
       c.globalAlpha = alpha;

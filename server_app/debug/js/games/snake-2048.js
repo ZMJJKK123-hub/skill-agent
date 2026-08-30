@@ -30,6 +30,16 @@ class Snake2048 extends BaseGame {
       }
     };
     addEventListener('keydown', this._kd);
+    this.intro = {
+      title: '🐍 SNAKE 2048',
+      lines: [
+        '🎮 按方向键 / WASD 后才开始移动，方向就是按键方向',
+        '🔢 吃数字追加到蛇身；相邻相同数字自动合并翻倍、变短',
+        '🏆 目标：在蛇身上合成出 2048',
+        '🤖 蛇长超过 15 时按 Space = 5 秒自动寻路保命',
+        '💀 撞墙或咬到自己即结束，稳住节奏别贪快',
+      ],
+    };
     this.reset();
   }
 
@@ -60,11 +70,23 @@ class Snake2048 extends BaseGame {
     if (this.score > 500) vals.push(16, 16, 32);
     else if (this.score > 200) vals.push(16);
     var v = vals[rnd(0, vals.length - 1)];
-    var x, y;
+    var x, y, tries = 0;
+    // 随机最多试 300 次；蛇身占满大半棋盘时退化为线性扫描，避免 do-while 长时间自旋
     do {
       x = rnd(0, this.cols - 1);
       y = rnd(0, this.rows - 1);
-    } while (this.snake.some(s => s.x === x && s.y === y) || this.foods.some(f => f.x === x && f.y === y));
+    } while (++tries <= 300 && (this.snake.some(s => s.x === x && s.y === y) || this.foods.some(f => f.x === x && f.y === y)));
+    if (tries > 300) {
+      var found = false;
+      outer: for (var sy = 0; sy < this.rows; sy++) {
+        for (var sx = 0; sx < this.cols; sx++) {
+          if (!this.snake.some(s => s.x === sx && s.y === sy) && !this.foods.some(f => f.x === sx && f.y === sy)) {
+            x = sx; y = sy; found = true; break outer;
+          }
+        }
+      }
+      if (!found) return; // 棋盘真的满了：不放食物
+    }
     this.foods.push({ x: x, y: y, v: v });
   }
 

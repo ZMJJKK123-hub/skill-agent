@@ -21,6 +21,16 @@ class DimensionParkour extends BaseGame {
     addEventListener('keydown', this._kd);
     this.canvas.addEventListener('click', this._tap);
     this.bestScore = parseInt(localStorage.getItem('dpBest') || '0');
+    this.intro = {
+      title: '🏃 DIMENSION PARKOUR — 异次元跑酷',
+      lines: [
+        '⌨️ 空格 / ↑ / 点击画面 = 跳跃（支持二段跳）',
+        '🔄 ↓ = 反转重力：地面 ↔ 天花板，空中也可翻转',
+        '🧱 躲避橙色 ERR 块和红色高墙',
+        '🚨 红色半屏墙只挡一侧：看到 FLIP! 立刻按 ↓ 换到空的一侧！',
+        '⚡ 能量条吃满后按 Enter = 超平坦世界狂奔刷分',
+      ],
+    };
     this.reset();
   }
 
@@ -121,9 +131,10 @@ class DimensionParkour extends BaseGame {
     this.bgChars.forEach(function(ch) { ch.x -= this.spd; if (ch.x < -50) { ch.x = this.w + rnd(0, 50); ch.y = rnd(10, this.h - 10); } }.bind(this));
     this.bgOffset += this.spd;
 
-    // Score-based speed up（整体减半）
-    var baseSpd = this.flatWorld > 0 ? 3 : (1.5 + this.score / 300);
-    this.spd = Math.min(baseSpd, 4);
+    // Score-based speed up（整体减半）；难度倍率由宿主页难度选择注入
+    var mul = typeof this.diffMul === 'number' ? this.diffMul : 1;
+    var baseSpd = this.flatWorld > 0 ? 3 * mul : ((1.5 + this.score / 300) * mul);
+    this.spd = Math.min(baseSpd, 4 * mul);
 
     if (this.flatWorld > 0) {
       this.flatWorld--;
@@ -214,7 +225,12 @@ class DimensionParkour extends BaseGame {
         c.fillStyle = '#ff3355';
         c.font = '10px monospace';
         c.textAlign = 'center';
+        c.textBaseline = 'middle';
         c.fillText('FLIP!', o.x + o.w / 2, o.y + o.h / 2);
+        // 安全通道在墙的空侧：实时画出箭头提示玩家往哪边躲
+        var gapTop = o.y > 0; // 墙从地面伸出 → 上方安全
+        c.fillStyle = '#00ff9f';
+        c.fillText(gapTop ? '▲ 安全：到天花板' : '▼ 安全：到地面', o.x + o.w / 2, gapTop ? 14 : this.h - 14);
       } else {
         c.fillStyle = o.type === 'tall' ? '#ff3355' : '#ff8800';
         c.fillRect(o.x, o.y, o.w, o.h);

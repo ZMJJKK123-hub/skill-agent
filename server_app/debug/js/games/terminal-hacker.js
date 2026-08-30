@@ -23,6 +23,19 @@ class TerminalHacker extends BaseGame {
       }
     };
     addEventListener('keydown', this._kd);
+    // 点击终端任意处都把焦点交回输入框（防止点别处后打不了字）
+    this._divClick = () => { if (this.input && !this.input.disabled) this.input.focus(); };
+    this.div.addEventListener('click', this._divClick);
+    this.intro = {
+      title: '💻 TERMINAL HACKER — 入侵防御',
+      lines: [
+        '🕵️ 系统会抛出加密威胁码：倒序 / Base64 / 凯撒+3 / ROT13…',
+        '⌨️ 心算解密，输入 block <明文> 回车防御（例：block MEMORY）',
+        '⏱ 倒计时归零 = 被入侵；防住越多，加密越难、时间越短',
+        '💡 命令：hint 提示 · freeze 冻结5秒 · skip 跳过(-50分)',
+        '🎭 输入 agent init 进入多智能体 UUID 高级挑战',
+      ],
+    };
     this.reset();
   }
 
@@ -48,7 +61,16 @@ class TerminalHacker extends BaseGame {
     this.out('Best Score: ' + this.bestScore, 'dim');
     this.out('', '');
     this.newLine();
-    this.spawnThreat();
+    // 有引导卡时延迟开局：玩家点"开始"才生成第一个威胁（否则引导期间倒计时白跑）
+    if (!this.intro) this.spawnThreat();
+  }
+
+  beginPlay() {
+    super.beginPlay();
+    if (!this.threat && !this.gameOver) {
+      this.spawnThreat();
+      if (this.input) this.input.focus();
+    }
   }
 
   out(text, cls) {

@@ -18,6 +18,16 @@ class ServerDefense extends BaseGame {
     addEventListener('keydown', this._kd);
     addEventListener('keyup', this._ku);
     this.bestScore = parseInt(localStorage.getItem('sdBest') || '0');
+    this.intro = {
+      title: '🛡️ SERVER DEFENSE — 服务器保卫战',
+      lines: [
+        '🎮 WASD / 方向键 移动发光核心',
+        '🎯 核心自动射击最近的 Bug 实体，无需手动开火',
+        '💎 捡绿色算力碎片 → 经验满格弹出「三选一」升级',
+        '👾 红色404·快 | 紫色502·血厚 | 橙色500·会朝你开火',
+        '❤️ 3 颗红心归零 = 服务器沦陷',
+      ],
+    };
     this.reset();
   }
 

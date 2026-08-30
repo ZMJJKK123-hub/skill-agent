@@ -65,8 +65,53 @@ class BaseGame {
     this.container = container;
     this.running = false;
     this.rafId = null;
+    // 子类在构造时设置 this.intro = { title, lines: [...] } 即可获得开局玩法说明卡：
+    // start() 先渲染一帧 + 弹出引导浮层，玩家点"开始"后才进入游戏循环。
   }
-  start() { this.running = true; this.loop(); }
+  start() {
+    this.running = true;
+    if (this.intro) {
+      try { this.render && this.render(); } catch (e) { /* first frame optional */ }
+      this._showIntro();
+      return;
+    }
+    this.loop();
+  }
+  _showIntro() {
+    var host = this.container || document.body;
+    try { host.style.position = 'relative'; } catch (e) {}
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:absolute;inset:0;background:rgba(3,6,12,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:30;padding:18px;text-align:center';
+    var h = document.createElement('div');
+    h.style.cssText = 'color:var(--green);font-weight:700;font-size:1em;letter-spacing:.5px;text-shadow:0 0 8px rgba(0,255,159,.4)';
+    h.textContent = this.intro.title;
+    ov.appendChild(h);
+    var list = document.createElement('div');
+    list.style.cssText = 'display:flex;flex-direction:column;gap:6px;max-width:94%';
+    this.intro.lines.forEach(function (l) {
+      var r = document.createElement('div');
+      r.style.cssText = 'font-size:.72em;color:var(--text);line-height:1.5;text-align:left;background:rgba(0,255,159,.04);border:1px solid var(--border);border-radius:6px;padding:5px 10px';
+      r.textContent = l;
+      list.appendChild(r);
+    });
+    ov.appendChild(list);
+    var btn = document.createElement('button');
+    btn.textContent = '▶ 开始游戏';
+    btn.style.cssText = 'margin-top:4px;padding:8px 36px;border-radius:8px;border:1px solid var(--green-d);background:rgba(0,255,159,.08);color:var(--green);cursor:pointer;font-family:inherit;font-size:.85em;font-weight:600';
+    btn.onclick = function () {
+      ov.remove();
+      sfx('click');
+      this.beginPlay();
+    }.bind(this);
+    ov.appendChild(btn);
+    host.appendChild(ov);
+    this._introOv = ov;
+  }
+  // 引导结束进入正式循环；子类可覆写以延迟启动计时器等
+  beginPlay() {
+    if (!this.running) return;
+    this.loop();
+  }
   stop() { this.running = false; if (this.rafId) cancelAnimationFrame(this.rafId); }
   loop() {
     if (!this.running) return;
