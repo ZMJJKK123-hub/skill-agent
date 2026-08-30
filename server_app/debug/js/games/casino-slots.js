@@ -27,7 +27,8 @@ function __slJudge(line) {
   if (a === b && b === c2) return { mult: SL_PAYTABLE[a] || 8, desc: '三连 ' + a };
   if (a === '7' && (b === '7' || c2 === '7')) return { mult: 3, desc: '双 7' };
   var pair = (a === b) ? a : (b === c2 ? b : (a === c2 ? a : null));
-  if (pair && (pair === '7' || pair === 'DIA')) return { mult: 2, desc: '一对 ' + pair };
+  if (pair === '7' || pair === 'DIA') return { mult: 2, desc: '一对 ' + pair };
+  if (pair) return { mult: 1, desc: '一对 ' + pair + '（回本）' };
   return { mult: 0, desc: '未中' };
 }
 
@@ -90,11 +91,13 @@ class CasinoSlots {
     this.phase = 'spin';
     this.leverPull = this.tick;
     this.lastWin = null;
+    this.fx = [];
     // 结果先行：每轴随机停点
     var self = this;
     this.reels.forEach(function (r, i) {
       r.target = Math.floor(Math.random() * 20);
       r.stopping = false;
+      r.stopped = false;          // 重置停轴标志（否则第二局秒结算不转）
       r.vel = 0.55 + i * 0.06;   // 起转速度（格/帧）
       r.stopAt = self.tick + 70 + i * 50; // 匀速转一阵后依次停（最后 26 帧减速）
     });
@@ -135,6 +138,15 @@ class CasinoSlots {
       return b;
     };
     if (this.phase === 'bet' || this.phase === 'settle') {
+      if (this.wallet.get() < SLOT_BETS[0]) {
+        var bb = mk(this.wallet.canBailout() ? '🎁 领救济金 +1000' : '破产中·60秒后再领', function () {
+          if (Casino.wallet.bailout()) { self._msg('救济金 +1000'); self._renderActions(); }
+          else self._msg('救济金冷却中（间隔 60 秒）');
+        }, '#8fce8f');
+        if (!this.wallet.canBailout()) { bb.disabled = true; bb.style.opacity = .5; bb.style.cursor = 'not-allowed'; }
+        self.actEl.appendChild(bb);
+        return;
+      }
       SLOT_BETS.forEach(function (v) {
         var b = mk('筹码 ' + v, function () { self.betAmt = v; self._renderActions(); }, self.betAmt === v ? '#ffd98a' : '#8a6a4a');
         if (self.betAmt === v) b.style.background = 'rgba(70,40,12,.95)';

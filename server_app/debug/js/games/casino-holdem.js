@@ -247,6 +247,13 @@ class CasinoHoldem {
       return;
     }
     var deck = __thShuffle(__thNewDeck());
+    // AI 破产重购：筹码不够底注就重新买入 1000（朋友局规矩，游戏不中断）
+    for (var rb = 0; rb < 3; rb++) {
+      if (this.aiChips[rb] < TH_ANTE) {
+        this.aiChips[rb] = 1000;
+        this.fx.push({ kind: 'text', at: 'seat' + (rb + 1), text: '重新买入 1000', color: '#8fce8f', start: this.tick + 30, dur: 60 });
+      }
+    }
     this.players = [];
     this.players.push({ human: true, name: '你', chips: -1, folded: false, allIn: false, bet: 0, hand: deck.splice(0, 2) });
     var personas = ['aggr', 'tight', 'bluff'];

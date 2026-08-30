@@ -66,6 +66,10 @@ class CasinoDice {
     this.phase = 'bet';
     this.betAmt = this.betAmt || DICE_BETS[0];
     this.pendingBet = null; // 'big' | 'small'
+    // 清上一局残留：逐骰结算标志/揭盅时刻/结果（否则第二局永不结算）
+    this._d0 = this._d1 = this._d2 = false;
+    this.revealT = 0;
+    this.roll = null;
     this._msg('选筹码 → 押 大 或 小');
     Casino.audio.play('voice-bets', 0.7);
     this._renderActions();
@@ -125,6 +129,15 @@ class CasinoDice {
       return b;
     };
     if (this.phase === 'bet') {
+      if (this.wallet.get() < DICE_BETS[0]) {
+        var bb = mk(this.wallet.canBailout() ? '🎁 领救济金 +1000' : '破产中·60秒后再领', function () {
+          if (Casino.wallet.bailout()) { self._msg('救济金 +1000'); self._renderActions(); }
+          else self._msg('救济金冷却中（间隔 60 秒）');
+        }, '#8fce8f');
+        if (!this.wallet.canBailout()) { bb.disabled = true; bb.style.opacity = .5; bb.style.cursor = 'not-allowed'; }
+        this.actEl.appendChild(bb);
+        return;
+      }
       DICE_BETS.forEach(function (v) {
         var b = mk('筹码 ' + v, function () { self.betAmt = v; self._renderActions(); }, self.betAmt === v ? '#ffd98a' : '#8a6a4a');
         if (self.betAmt === v) b.style.background = 'rgba(70,40,12,.95)';

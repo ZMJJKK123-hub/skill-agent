@@ -85,6 +85,9 @@ class CasinoBlackjack {
     this.player = [];
     this.dealer = [];
     this.bet = 0;
+    this.holeFlipT = 0;   // 清上一局残留（否则第二局暗牌开局就翻开）
+    this._nextHitT = 0;
+    this.dealSeq = 0;
     this._msg('选择下注额开始一局');
     Casino.audio.play('voice-bets', 0.7);
     this._renderActions();
@@ -214,6 +217,15 @@ class CasinoBlackjack {
       return b;
     };
     if (this.phase === 'bet') {
+      if (this.wallet.get() < (BJ_BETS[0] || 20)) {
+        var bb = mk(this.wallet.canBailout() ? '🎁 领救济金 +1000' : '破产中·60秒后再领', function () {
+          if (Casino.wallet.bailout()) { self._msg('救济金 +1000'); self._renderActions(); }
+          else self._msg('救济金冷却中（间隔 60 秒）');
+        }, '#8fce8f');
+        if (!this.wallet.canBailout()) { bb.disabled = true; bb.style.opacity = .5; bb.style.cursor = 'not-allowed'; }
+        this.actEl.appendChild(bb);
+        return;
+      }
       BJ_BETS.forEach(function (b) {
         if (self.wallet.get() >= b) self.actEl.appendChild(mk('下注 ' + b, function () { self.start(b); }, '#ffc87a'));
       });
