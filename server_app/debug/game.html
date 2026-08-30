@@ -135,9 +135,24 @@
     <div id="rulesZh"></div>
     <div class="rules-en" id="rulesEn"></div>
   </div>
+  <!-- 声音开关（音效+语音播报；首次点击任意处也会自动解锁音频） -->
+  <button id="soundBtn" title="音效/语音开关" style="position:fixed;top:10px;right:12px;z-index:60;background:rgba(10,15,25,.75);border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:4px 12px;cursor:pointer;font-size:15px">🔊</button>
 
-  <script src="js/utils.js?_v=19"></script>
+  <script src="js/utils.js?_v=20"></script>
   <script>
+    // 声音开关：sndOn 默认开（utils.js），此处提供手动关闭
+    (function () {
+      var b = document.getElementById('soundBtn');
+      if (!b) return;
+      var sync = function () { b.textContent = sndOn ? '🔊' : '🔇'; };
+      sync();
+      b.onclick = function () {
+        sndOn = !sndOn;
+        sync();
+        if (sndOn) { ensureAudio(); if (aCtx.state === 'suspended') aCtx.resume(); beep(660, 0.05, 0.05); }
+        if (!sndOn) { try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) { /* ignore */ } }
+      };
+    })();
     var GAME_RULES = {
       'snake-2048': {
         zh: '⚠ 蛇会自动向右移动，请提前用方向键/WASD 转向，避免撞墙！吃数字方块长大，相同数字碰撞会合并翻倍（类似 2048）。蛇身越长得分越高。空格键开启自动寻路（蛇长>15时）。R 键重开，ESC 关闭。',
@@ -222,7 +237,7 @@
     function loadNext() {
       if (loadIdx >= fileList.length) { onAllLoaded(); return; }
       s = document.createElement('script');
-      s.src = fileList[loadIdx] + '?_v=19';
+      s.src = fileList[loadIdx] + '?_v=20';
       s.onload = function () { loadIdx++; loadNext(); };
       s.onerror = function () {
         document.getElementById('gameLoad').textContent = 'game script not found: ' + fileList[loadIdx];

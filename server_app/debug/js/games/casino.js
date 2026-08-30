@@ -41,18 +41,36 @@ window.Casino = {
   tables() { return Array.from(this._tables.keys()); },
   get(id) { return this._tables.get(id); },
 
-  // 语音播报：浏览器内置 speechSynthesis（零外部依赖；无语音环境静默降级返回 false）
+  // 语音播报：浏览器内置 speechSynthesis（零外部依赖；无语音环境静默降级返回 false）。
+  // 加固：正在朗读时先 cancel 再延时播（Chrome 会吞掉紧随 cancel 的 speak）；
+  // 首次调用预热音色列表；onstart/onerror 写入诊断日志。
   say(text, opts) {
     try {
       var synth = window.speechSynthesis;
       if (!synth || !window.SpeechSynthesisUtterance) return false;
-      var u = new window.SpeechSynthesisUtterance(text);
-      u.lang = (opts && opts.lang) || 'zh-CN';
-      u.rate = (opts && opts.rate) || 1;
-      u.pitch = (opts && opts.pitch) || 0.7;
-      u.volume = 0.9;
-      synth.cancel();
-      synth.speak(u);
+      if (!this._voicesPrimed) {
+        this._voicesPrimed = true;
+        synth.getVoices(); // 触发音色加载
+        synth.onvoiceschanged = function () { synth.getVoices(); };
+      }
+      var speakNow = function () {
+        try {
+          var u = new window.SpeechSynthesisUtterance(text);
+          u.lang = (opts && opts.lang) || 'zh-CN';
+          u.rate = (opts && opts.rate) || 1;
+          u.pitch = (opts && opts.pitch) || 0.7;
+          u.volume = 0.9;
+          u.onstart = function () { window.__sayLog = { text: text, started: true }; };
+          u.onerror = function (e) { window.__sayLog = { text: text, err: e && e.error }; };
+          synth.speak(u);
+        } catch (e) { /* ignore */ }
+      };
+      if (synth.speaking || synth.pending) {
+        synth.cancel();
+        setTimeout(speakNow, 60); // 立刻 speak 会被 cancel 吞掉
+      } else {
+        speakNow();
+      }
       return true;
     } catch (e) { return false; }
   },

@@ -15,16 +15,38 @@ function toast(msg) {
 }
 
 // Audio
-let sndOn = false;
+let sndOn = true; // 默认开（游戏页/主页均有开关可关）
 let aCtx = null;
 
 function ensureAudio() {
-  if (!aCtx) aCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (!aCtx) {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) aCtx = new AC(); // 无音频环境（无头测试）保持 null，beep 静默跳过
+  }
 }
+
+// 首次用户手势解锁音频：自动播放策略下 AudioContext 处于 suspended、
+// speechSynthesis 无激活时会被静默吞掉——真实点击/按键后一次性解锁两者。
+(function () {
+  var unlock = function () {
+    try { ensureAudio(); if (aCtx && aCtx.state === 'suspended') aCtx.resume(); } catch (e) { /* ignore */ }
+    try {
+      if (window.speechSynthesis && window.SpeechSynthesisUtterance) {
+        window.speechSynthesis.speak(new window.SpeechSynthesisUtterance('')); // 空句建立语音激活
+      }
+    } catch (e) { /* ignore */ }
+    document.removeEventListener('pointerdown', unlock);
+    document.removeEventListener('keydown', unlock);
+  };
+  document.addEventListener('pointerdown', unlock, true);
+  document.addEventListener('keydown', unlock, true);
+})();
 
 function beep(freq, dur, vol, type) {
   if (!sndOn) return;
   ensureAudio();
+  if (!aCtx) return;
+  if (aCtx.state === 'suspended') { try { aCtx.resume(); } catch (e) { /* ignore */ } }
   const o = aCtx.createOscillator();
   const g = aCtx.createGain();
   o.connect(g);

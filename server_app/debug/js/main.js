@@ -315,11 +315,13 @@ function startHealth() {
 
 // ========== INIT ==========
 function init() {
-  // sound toggle
+  // sound toggle（sndOn 默认开，按钮初始态同步；关闭时同时停掉语音播报）
+  $('soundBtn').textContent = sndOn ? '🔊' : '🔇';
   $('soundBtn').onclick = function() {
     sndOn = !sndOn;
     this.textContent = sndOn ? '🔊' : '🔇';
     if (sndOn) { ensureAudio(); aCtx.resume(); beep(660, 0.05, 0.05); }
+    if (!sndOn) { try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) { /* ignore */ } }
   };
 
   // modal close
