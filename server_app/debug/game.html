@@ -136,7 +136,7 @@
     <div class="rules-en" id="rulesEn"></div>
   </div>
 
-  <script src="js/utils.js?_v=18"></script>
+  <script src="js/utils.js?_v=19"></script>
   <script>
     var GAME_RULES = {
       'snake-2048': {
@@ -222,7 +222,7 @@
     function loadNext() {
       if (loadIdx >= fileList.length) { onAllLoaded(); return; }
       s = document.createElement('script');
-      s.src = fileList[loadIdx] + '?_v=18';
+      s.src = fileList[loadIdx] + '?_v=19';
       s.onload = function () { loadIdx++; loadNext(); };
       s.onerror = function () {
         document.getElementById('gameLoad').textContent = 'game script not found: ' + fileList[loadIdx];

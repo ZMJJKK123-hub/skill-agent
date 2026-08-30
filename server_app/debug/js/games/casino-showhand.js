@@ -97,9 +97,11 @@ var __shTaunts = {
 };
 
 // ---------- 梭哈桌 ----------
-const SH_ANTE = 10, SH_ROUND_BET = 20, SH_RAISE = 50, SH_TURNS = 3, SH_AI_TICKS = 42, SH_BOT_TICKS = 26;
-// 动画节奏（帧数，60fps）：发牌总时长 / 摊牌首翻延迟 / 每家翻牌间隔 / 翻牌时长 / 收尾停顿
-const SH_DEAL_TICKS = 108, SH_FLIP_BASE = 26, SH_FLIP_STEP = 30, SH_FLIP_DUR = 10, SH_REVEAL_TAIL = 22;
+const SH_ANTE = 10, SH_ROUND_BET = 20, SH_RAISE = 50, SH_TURNS = 3, SH_AI_TICKS = 55, SH_BOT_TICKS = 32;
+// 动画节奏（帧数，60fps）——刻意放慢，贴近真实牌桌手感：
+// 发牌 = 绕桌一张一张发（间隔/飞行/总时长）；摊牌 = 首顿 / 每家区块 / 每张牌间隔 / 翻牌时长 / 报牌型时机 / 比大小停顿
+const SH_DEAL_GAP = 9, SH_DEAL_FLIGHT = 13, SH_DEAL_TICKS = 200, SH_LOOK_TICKS = 70;
+const SH_FLIP_BASE = 30, SH_FLIP_STEP = 95, SH_FLIP_CARD_STEP = 9, SH_FLIP_DUR = 10, SH_LABEL_AT = 52, SH_REVEAL_TAIL = 48;
 
 class CasinoShowhand {
   constructor(container, ctx) {
@@ -204,18 +206,22 @@ class CasinoShowhand {
     this.currentBet = SH_ROUND_BET;
     this.allInMode = false;
     this.turn = 0;           // 轮到 seat 0（玩家）起步
-    // 发牌动画窗口：视觉上牌逐张飞出，动画结束后才轮到行动
+    // 发牌动画窗口：绕桌一张一张发 → 你把牌一张张翻开看 → 才轮到行动
     this.dealT = this.tick;
     this._dealt = false;
-    this.lastActTick = this.tick + SH_DEAL_TICKS;
+    this._lookT = 0;
+    this._dealSnd = 0;
+    this._lookSnd = 0;
+    this.lastActTick = this.tick + SH_DEAL_TICKS + SH_LOOK_TICKS;
     this.phase = 'bet';
     this.winnerSeat = undefined;
     this.fx = []; this.banner = null; this.shake = null; this.flash = null;
     this.dispPot = 0;
     this._msg('发牌中…');
-    // 底注筹码从各家飞入底池
+    Casino.say('发牌', { pitch: 0.6, rate: 0.95 });
+    // 底注筹码从各家飞入底池（随发牌节奏铺开）
     for (var a = 0; a < 4; a++) {
-      this.fx.push({ kind: 'chip', from: 'seat' + a, to: 'pot', start: this.dealT + 26 + a * 6, dur: 20, n: SH_ANTE });
+      this.fx.push({ kind: 'chip', from: 'seat' + a, to: 'pot', start: this.dealT + 20 + a * 14, dur: 20, n: SH_ANTE });
     }
     this._renderAll();
   }
@@ -315,6 +321,7 @@ class CasinoShowhand {
       this.banner = { text: 'ALL IN · 全压 ' + all, color: '#ff8a70', start: this.tick, dur: 70 };
       this._fxShake(10, 16);
       this._fxFlash('#ff3018');
+      if (!Casino.say('ALL IN', { lang: 'en-US', pitch: 0.45, rate: 0.85 })) Casino.say('梭哈！全压！', { pitch: 0.5, rate: 0.9 });
       sfx('win');
     }
     // 先推进回合再渲染：行动权回到谁手上，就渲染谁的操作面板
@@ -341,13 +348,14 @@ class CasinoShowhand {
       color: winner.human ? '#ffd98a' : '#e08080', start: this.tick, dur: 90
     };
     this._fxShake(6, 12);
+    Casino.say(winner.human ? '其他人都弃牌了，底池归你' : '其他人都弃牌了', { pitch: winner.human ? 0.8 : 0.6 });
     sfx('win');
     this.pot = 0;
     this._renderAll(true);
     this._againBtn();
   }
 
-  // 摊牌分两幕：先逐张翻牌营造悬念（reveal），翻完再 _finishReveal 结算
+  // 摊牌分幕：先宣布"摊牌"，再一家一家翻牌亮牌型（你先亮），全亮完"比大小"才结算
   _showdown() {
     this.phase = 'reveal';
     var alive = this._active();
@@ -357,10 +365,13 @@ class CasinoShowhand {
     }
     this._revealWinner = best;
     this.revealStart = this.tick;
-    this._revealOrder = alive.filter(function (p) { return !p.human; }).map(function (p) { return this.indexOf(p); }, this.players);
+    // 亮牌顺序：你先亮（牌已在手），然后逐个亮还活着的对手
+    this._revealOrder = [0].concat(alive.filter(function (p) { return !p.human; }).map(function (p) { return this.indexOf(p); }, this.players));
     this._revealIdx = 0;
+    this._saidCompare = false;
     this._revealDur = SH_FLIP_BASE + this._revealOrder.length * SH_FLIP_STEP + SH_REVEAL_TAIL;
     this._msg('摊牌！');
+    Casino.say('摊牌', { pitch: 0.65, rate: 0.95 });
     sfx('powerup');
   }
   _finishReveal() {
@@ -372,10 +383,12 @@ class CasinoShowhand {
       sfx('win');
       this._msg('摊牌：你的 ' + __shCatName[__shEval(best.hand).cat] + ' 最大，赢得底池 ' + this.pot + '！');
       this.banner = { text: '你赢得底池 +' + potNow, color: '#ffd98a', start: this.tick, dur: 100 };
+      Casino.say('恭喜！你赢得了底池', { pitch: 0.8 });
     } else {
       sfx('lose');
       this._msg('摊牌：' + best.name + ' 以 ' + __shCatName[__shEval(best.hand).cat] + ' 收走底池 ' + this.pot);
       this.banner = { text: best.name + ' 以 ' + __shCatName[__shEval(best.hand).cat] + ' 收走底池', color: '#e08080', start: this.tick, dur: 100 };
+      Casino.say('很遗憾，底池被收走了', { pitch: 0.6, rate: 0.95 });
     }
     this.winnerSeat = this.players.indexOf(best);
     this._fxChipsToSeat(this.winnerSeat, Math.max(30, Math.round(potNow / 3)), 0);
@@ -406,21 +419,28 @@ class CasinoShowhand {
   }
 
   // ---------- 场景渲染（大厅 canvas 每帧调用：第一人称桌面 + 对面三人 + 底池 + 手持牌 + 特效） ----------
-  // 摊牌翻牌进度：0=背面 1=翻开（reveal 阶段逐张翻）
+  // 摊牌翻牌进度：0=背面 1=翻开（一家一家来，每家内逐张翻；你的牌已在手不用翻）
   _flipProg(seat, cardIdx) {
-    if (this.phase === 'settle') return 1;
+    if (seat === 0 || this.phase === 'settle') return 1;
     if (this.phase !== 'reveal') return 0;
     var oi = (this._revealOrder || []).indexOf(seat);
-    if (oi < 0) return 1; // 玩家的牌一直可见
-    var t0 = this.revealStart + SH_FLIP_BASE + oi * SH_FLIP_STEP + cardIdx * 3;
+    if (oi < 0) return 1;
+    var t0 = this.revealStart + SH_FLIP_BASE + oi * SH_FLIP_STEP + cardIdx * SH_FLIP_CARD_STEP;
     return Math.max(0, Math.min(1, (this.tick - t0) / SH_FLIP_DUR));
   }
-  // 发牌进度：0 未动 → 1 落位（对手先发，玩家最后）
+  // 发牌进度：0 未动 → 1 落位。绕桌一张一张发：每轮按 对手1→2→3→你 顺时针
   _dealProg(seat, cardIdx) {
     if (this._dealt) return 1;
-    var base = seat === 0 ? 75 + cardIdx * 5 : 6 + ((seat - 1) * 5 + cardIdx) * 4;
-    var dur = seat === 0 ? 12 : 9;
-    return Math.max(0, Math.min(1, (this.tick - (this.dealT + base)) / dur));
+    var order = seat === 0 ? 3 : seat - 1;      // 每轮里你是最后一家
+    var nth = cardIdx * 4 + order;              // 这是全桌第几张牌（0..19）
+    var t0 = this.dealT + 14 + nth * SH_DEAL_GAP;
+    return Math.max(0, Math.min(1, (this.tick - t0) / SH_DEAL_FLIGHT));
+  }
+  // 看牌进度：发完后你把自己的牌一张张翻开（0 背面 → 1 正面）
+  _lookProg(i) {
+    if (this._dealt) return 1;
+    if (!this._lookT) return 0;
+    return Math.max(0, Math.min(1, (this.tick - this._lookT - 10 - i * 11) / 8));
   }
   // 坐标解析（特效引用座位/底池，画时才换算，适配任意画布尺寸）
   _pt(ref) {
@@ -664,56 +684,27 @@ class CasinoShowhand {
       c.rotate(k * 0.10 * prog);
       if (p.folded) { // 弃牌：暗淡牌背摊开
         c.globalAlpha = 0.55;
-        c.fillStyle = '#3a1018';
-        this._rr(c, -cw / 2, -chh / 2, cw, chh, cw * 0.12);
-        c.fill();
-        c.strokeStyle = '#6a2830'; c.lineWidth = 1.2; c.stroke();
+        this._bigBack(c, cw, chh);
       } else {
-        var red = __shRed.indexOf(card.s) >= 0;
-        // 牌影
-        c.fillStyle = 'rgba(0,0,0,.48)';
-        this._rr(c, -cw / 2 + 3, -chh / 2 + 6, cw, chh, cw * 0.12);
-        c.fill();
-        // 到你行动：牌缘暖光 / 赢家：金光
-        if (active) { c.shadowColor = '#ffc87a'; c.shadowBlur = 14; }
-        if (win) { c.shadowColor = '#ffd98a'; c.shadowBlur = 20; }
-        // 牌面
-        var face = c.createLinearGradient(0, -chh / 2, 0, chh / 2);
-        face.addColorStop(0, '#fbf6ea'); face.addColorStop(1, '#e8dfc8');
-        c.fillStyle = face;
-        this._rr(c, -cw / 2, -chh / 2, cw, chh, cw * 0.12);
-        c.fill();
-        c.shadowBlur = 0;
-        c.strokeStyle = win ? '#ffc87a' : 'rgba(90,50,20,.6)'; c.lineWidth = win ? 2.4 : 1;
-        c.stroke();
-        // 角标（左上正、右下倒）
-        var rl = card.r === 11 ? 'J' : card.r === 12 ? 'Q' : card.r === 13 ? 'K' : card.r === 14 ? 'A' : card.r;
-        var col = red ? '#c0392b' : '#2c3e50';
-        c.fillStyle = col;
-        c.textAlign = 'center'; c.textBaseline = 'middle';
-        c.font = '700 ' + Math.round(cw * 0.30) + 'px Georgia,serif';
-        c.fillText(rl, -cw * 0.32, -chh * 0.36);
-        c.font = Math.round(cw * 0.26) + 'px Georgia,serif';
-        c.fillText(__shSuits[card.s], -cw * 0.32, -chh * 0.19);
-        c.save();
-        c.rotate(Math.PI);
-        c.font = '700 ' + Math.round(cw * 0.30) + 'px Georgia,serif';
-        c.fillText(rl, -cw * 0.32, -chh * 0.36);
-        c.font = Math.round(cw * 0.26) + 'px Georgia,serif';
-        c.fillText(__shSuits[card.s], -cw * 0.32, -chh * 0.19);
-        c.restore();
-        // 中央大花色淡印
-        c.globalAlpha = 0.16;
-        c.font = Math.round(cw * 0.62) + 'px Georgia,serif';
-        c.fillText(__shSuits[card.s], 0, chh * 0.02);
-        c.globalAlpha = 1;
+        // 看牌：牌先背面拿到手，再一张张横向翻开
+        var look = this._lookProg(i);
+        if (look < 1) {
+          var sx = 1 - Math.abs(1 - 2 * look);
+          c.save();
+          if (sx > 0.05) c.scale(Math.max(0.05, sx), 1);
+          if (look >= 0.5) this._bigFace(c, card, cw, chh, active, win);
+          else this._bigBack(c, cw, chh);
+          c.restore();
+        } else {
+          this._bigFace(c, card, cw, chh, active, win);
+        }
       }
       c.restore();
     }, this);
-    // 牌型标签（悬于牌上方；发牌中显示进度提示）
+    // 牌型标签（悬于牌上方；发牌/看牌环节显示阶段提示）
     var label = this._dealt
       ? '你的手牌' + (reveal ? ' · ' + __shCatName[__shEval(p.hand).cat] : '') + (p.folded ? ' · 已弃牌' : '')
-      : '发牌中…';
+      : (this._lookT ? '看牌…' : '发牌中…');
     c.save();
     c.textAlign = 'center'; c.textBaseline = 'middle';
     c.font = '700 ' + Math.round(13 * s) + 'px monospace';
@@ -721,6 +712,59 @@ class CasinoShowhand {
     c.shadowColor = 'rgba(0,0,0,.9)'; c.shadowBlur = 5;
     c.fillText(label, w / 2, cy - chh * 0.74);
     c.restore();
+  }
+  // 手持大牌：牌背（发牌/看牌翻面前）
+  _bigBack(c, cw, chh) {
+    c.fillStyle = '#3a1018';
+    this._rr(c, -cw / 2, -chh / 2, cw, chh, cw * 0.12);
+    c.fill();
+    c.strokeStyle = '#6a2830'; c.lineWidth = 1.2; c.stroke();
+    c.strokeStyle = 'rgba(255,190,110,.25)'; c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(-cw * 0.3, -chh * 0.3); c.lineTo(cw * 0.3, chh * 0.3);
+    c.moveTo(cw * 0.3, -chh * 0.3); c.lineTo(-cw * 0.3, chh * 0.3);
+    c.stroke();
+  }
+  // 手持大牌：牌面（角标 + 中央花色淡印 + 行动/胜利辉光）
+  _bigFace(c, card, cw, chh, active, win) {
+    var red = __shRed.indexOf(card.s) >= 0;
+    // 牌影
+    c.fillStyle = 'rgba(0,0,0,.48)';
+    this._rr(c, -cw / 2 + 3, -chh / 2 + 6, cw, chh, cw * 0.12);
+    c.fill();
+    // 到你行动：牌缘暖光 / 赢家：金光
+    if (active) { c.shadowColor = '#ffc87a'; c.shadowBlur = 14; }
+    if (win) { c.shadowColor = '#ffd98a'; c.shadowBlur = 20; }
+    // 牌面
+    var face = c.createLinearGradient(0, -chh / 2, 0, chh / 2);
+    face.addColorStop(0, '#fbf6ea'); face.addColorStop(1, '#e8dfc8');
+    c.fillStyle = face;
+    this._rr(c, -cw / 2, -chh / 2, cw, chh, cw * 0.12);
+    c.fill();
+    c.shadowBlur = 0;
+    c.strokeStyle = win ? '#ffc87a' : 'rgba(90,50,20,.6)'; c.lineWidth = win ? 2.4 : 1;
+    c.stroke();
+    // 角标（左上正、右下倒）
+    var rl = card.r === 11 ? 'J' : card.r === 12 ? 'Q' : card.r === 13 ? 'K' : card.r === 14 ? 'A' : card.r;
+    var col = red ? '#c0392b' : '#2c3e50';
+    c.fillStyle = col;
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.font = '700 ' + Math.round(cw * 0.30) + 'px Georgia,serif';
+    c.fillText(rl, -cw * 0.32, -chh * 0.36);
+    c.font = Math.round(cw * 0.26) + 'px Georgia,serif';
+    c.fillText(__shSuits[card.s], -cw * 0.32, -chh * 0.19);
+    c.save();
+    c.rotate(Math.PI);
+    c.font = '700 ' + Math.round(cw * 0.30) + 'px Georgia,serif';
+    c.fillText(rl, -cw * 0.32, -chh * 0.36);
+    c.font = Math.round(cw * 0.26) + 'px Georgia,serif';
+    c.fillText(__shSuits[card.s], -cw * 0.32, -chh * 0.19);
+    c.restore();
+    // 中央大花色淡印
+    c.globalAlpha = 0.16;
+    c.font = Math.round(cw * 0.62) + 'px Georgia,serif';
+    c.fillText(__shSuits[card.s], 0, chh * 0.02);
+    c.globalAlpha = 1;
   }
   // 圆角矩形路径
   _rr(c, x, y, w2, h2, r) {
@@ -748,8 +792,8 @@ class CasinoShowhand {
       this.actEl.innerHTML = this.players[0].folded ? '<span style="font-size:12px;color:#a08a6a">你已弃牌，等待其他玩家…</span>' : '';
       return;
     }
-    if (!this._dealt) { // 发牌动画期间暂不开放操作
-      this.actEl.innerHTML = '<span style="font-size:12px;color:#a08a6a">发牌中…</span>';
+    if (!this._dealt) { // 发牌/看牌动画期间暂不开放操作
+      this.actEl.innerHTML = '<span style="font-size:12px;color:#a08a6a">' + (this._lookT ? '看牌…' : '发牌中…') + '</span>';
       return;
     }
     this.actEl.innerHTML = '';
@@ -779,20 +823,43 @@ class CasinoShowhand {
     if (typeof this.dispPot !== 'number') this.dispPot = this.pot || 0;
     if (this.dispPot < this.pot) this.dispPot = Math.min(this.pot, this.dispPot + Math.max(2, Math.round((this.pot - this.dispPot) * 0.3)));
     else if (this.dispPot > this.pot) this.dispPot = Math.max(this.pot, this.dispPot - Math.max(1, Math.round((this.dispPot - this.pot) * 0.2)));
-    // 发牌动画结束 → 正式开赌
-    if (this.phase === 'bet' && !this._dealt && this.tick - this.dealT >= SH_DEAL_TICKS) {
-      this._dealt = true;
-      this._msg('第 ' + this.round + '/' + SH_TURNS + ' 轮下注 · 底注 ' + SH_ANTE);
-      this._renderAll();
+    // 发牌 → 看牌 → 正式开赌（完整过程：绕桌一张张发、你一张张翻开看）
+    if (this.phase === 'bet' && !this._dealt) {
+      // 发牌音效：每张牌落位一声轻响（20 张，随绕桌节奏）
+      var landN = Math.floor((this.tick - this.dealT - 14 - SH_DEAL_FLIGHT) / SH_DEAL_GAP) + 1;
+      while (this._dealSnd < Math.min(20, landN)) { sfx('click'); this._dealSnd++; }
+      if (this.tick - this.dealT >= SH_DEAL_TICKS) {
+        // 发完 → 看牌：你的牌一张张翻开
+        if (!this._lookT) { this._lookT = this.tick; this._msg('看牌…'); }
+        var lkN = Math.floor((this.tick - this._lookT - 10) / 11) + 1;
+        while (this._lookSnd < Math.min(5, lkN)) { sfx('click'); this._lookSnd++; }
+        if (this.tick - this._lookT >= SH_LOOK_TICKS) {
+          this._dealt = true;
+          this._msg('第 ' + this.round + '/' + SH_TURNS + ' 轮下注 · 底注 ' + SH_ANTE);
+          this._renderAll();
+        }
+      }
     }
-    // 摊牌节奏：逐张翻牌（每家翻完浮出牌型）→ 收尾结算
+    // 摊牌节奏：一家一家来——每家逐张翻牌 → 报牌型（文字+语音）→ 下一家 → 比大小 → 结算
     if (this.phase === 'reveal') {
       while (this._revealIdx < this._revealOrder.length &&
-             this.tick - this.revealStart >= SH_FLIP_BASE + this._revealIdx * SH_FLIP_STEP + SH_FLIP_DUR) {
+             this.tick - this.revealStart >= SH_FLIP_BASE + this._revealIdx * SH_FLIP_STEP + SH_LABEL_AT) {
         var st = this._revealOrder[this._revealIdx];
-        this.fx.push({ kind: 'text', at: 'seat' + st, text: __shCatName[__shEval(this.players[st].hand).cat], color: '#ffd98a', start: this.tick, dur: 50 });
+        var cat = __shCatName[__shEval(this.players[st].hand).cat];
+        this.fx.push({
+          kind: 'text', at: 'seat' + st,
+          text: (st === 0 ? '你' : this.players[st].name) + ' · ' + cat,
+          color: st === 0 ? '#8fce8f' : '#ffd98a', start: this.tick,
+          dur: Math.max(60, SH_FLIP_STEP), big: true
+        });
+        Casino.say(cat, { pitch: 0.75, rate: 1.05 });
         sfx('click');
         this._revealIdx++;
+      }
+      if (!this._saidCompare && this.tick - this.revealStart >= SH_FLIP_BASE + this._revealOrder.length * SH_FLIP_STEP) {
+        this._saidCompare = true;
+        this._msg('比大小…');
+        Casino.say('比大小', { pitch: 0.55, rate: 0.9 });
       }
       if (this.tick - this.revealStart >= this._revealDur) this._finishReveal();
       return;

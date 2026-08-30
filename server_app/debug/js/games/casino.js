@@ -41,6 +41,22 @@ window.Casino = {
   tables() { return Array.from(this._tables.keys()); },
   get(id) { return this._tables.get(id); },
 
+  // 语音播报：浏览器内置 speechSynthesis（零外部依赖；无语音环境静默降级返回 false）
+  say(text, opts) {
+    try {
+      var synth = window.speechSynthesis;
+      if (!synth || !window.SpeechSynthesisUtterance) return false;
+      var u = new window.SpeechSynthesisUtterance(text);
+      u.lang = (opts && opts.lang) || 'zh-CN';
+      u.rate = (opts && opts.rate) || 1;
+      u.pitch = (opts && opts.pitch) || 0.7;
+      u.volume = 0.9;
+      synth.cancel();
+      synth.speak(u);
+      return true;
+    } catch (e) { return false; }
+  },
+
   // ---------- 场景画师（骗子酒吧风：第一人称昏暗酒馆） ----------
   // 确定性伪随机：道具/粒子位置帧间稳定
   _r(i) { var x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); },
