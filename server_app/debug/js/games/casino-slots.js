@@ -367,10 +367,17 @@ class CasinoSlots {
   }
 
   // ---------- 帧驱动：卷轴物理 ----------
+  // bot 模式自动拉杆（自动化测试/浸泡用）
+  _botStep() {
+    if (this.tick < 30 || this.tick % 50 !== 30) return;
+    if (this.wallet.get() >= this.betAmt) this.spin();
+    else this.wallet.bailout();
+  }
   update() {
     if (this.destroyed) return;
     var self = this;
     this.tick++;
+    if (this.phase === 'bet' && this.bot) this._botStep();
     if (this.fx.length) this.fx = this.fx.filter(function (f) { return self.tick - f.start < f.dur + 20; });
     if (this.banner && this.tick - this.banner.start >= this.banner.dur) this.banner = null;
     if (this.phase !== 'spin') return;

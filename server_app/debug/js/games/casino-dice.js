@@ -324,10 +324,20 @@ class CasinoDice {
   }
 
   // ---------- 帧驱动 ----------
+  // bot 模式自动下注（大小/围骰随机；自动化测试/浸泡用）
+  _botStep() {
+    if (this.tick < 30 || this.tick % 50 !== 30) return;
+    var w = this.wallet.get();
+    if (w >= 20) {
+      this.betAmt = 20;
+      this.place(['big', 'small', 'triple'][Math.floor(Math.random() * 3)]);
+    } else this.wallet.bailout();
+  }
   update() {
     if (this.destroyed) return;
     var self = this;
     this.tick++;
+    if (this.phase === 'bet' && this.bot) this._botStep();
     if (this.fx.length) this.fx = this.fx.filter(function (f) { return self.tick - f.start < f.dur + 20; });
     if (this.banner && this.tick - this.banner.start >= this.banner.dur) this.banner = null;
     if (this.phase === 'shake') {

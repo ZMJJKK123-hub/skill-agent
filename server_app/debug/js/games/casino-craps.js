@@ -50,6 +50,7 @@ class CasinoCraps {
   constructor(container, ctx) {
     this.ctx = ctx;
     this.wallet = ctx.wallet;
+    this.bot = !!ctx.bot;
     this.tick = 0;
     this.destroyed = false;
     this.fx = [];
@@ -394,10 +395,22 @@ class CasinoCraps {
   }
 
   // ---------- 帧驱动 ----------
+  // bot 模式自动下注+掷骰（自动化测试/浸泡用；设点后继续追掷）
+  _botStep() {
+    var staked = this.bets.pass + this.bets.dont + this.bets.field;
+    if (this.tick % 50 === 30) {
+      if (staked === 0 && this.wallet.get() >= this.chipAmt) {
+        this.place(['pass', 'dont', 'field'][Math.floor(Math.random() * 3)]);
+      } else if (this.wallet.get() < this.chipAmt) this.wallet.bailout();
+    } else if (this.tick % 50 === 5 && staked > 0) {
+      this.rollNow();
+    }
+  }
   update() {
     if (this.destroyed) return;
     var self = this;
     this.tick++;
+    if (this.phase === 'bet' && this.bot) this._botStep();
     if (this.banner && this.tick - this.banner.start >= this.banner.dur) this.banner = null;
     if (this.shake && this.tick - this.shake.start >= (this.shake.dur || 10)) this.shake = 0;
     if (this.phase !== 'roll') return;

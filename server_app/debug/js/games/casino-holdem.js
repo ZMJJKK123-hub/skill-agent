@@ -98,7 +98,12 @@ function __thStrength(hole, comm) {
     return Math.min(0.85, s);
   }
   var b = __thBestAny(hole.concat(comm));
-  return Math.min(1, (b.cat * 1000 + (b.keys[0] || 0) * 10) / 8500);
+  // 成牌强度曲线：散牌 0.10+、对子 0.34+、两对 0.60+、三条 0.72+、顺子 0.80+、同花 0.86+…
+  // （旧公式一对仅 ~0.12，阈值全落弃牌区 → 翻牌后 AI 六成弃牌、桌面毫无对抗）
+  var base = [0.10, 0.34, 0.60, 0.72, 0.80, 0.86, 0.93, 0.97, 1.0][b.cat];
+  var span = [0.14, 0.16, 0.08, 0.06, 0.04, 0.04, 0.03, 0.02, 0.0][b.cat];
+  var kick = (((b.keys && b.keys[0]) || 7) - 2) / 12; // 0..1（主关键张相对高度）
+  return Math.min(1, base + kick * span);
 }
 
 // ---------- AI 决策（纯函数，供测试） ----------

@@ -396,10 +396,25 @@ class CasinoBlackjack {
   }
 
   // ---------- 帧驱动 ----------
+  // bot 模式自动下注+基本策略（自动化测试/浸泡用；真人不受影响）
+  _botStep() {
+    if (this.phase === 'bet') {
+      if (this.tick < 30 || this.tick % 50 !== 30) return;
+      var w = this.wallet.get();
+      if (w >= 20) this.start(Math.min(100, Math.max(20, w)));
+      else this.wallet.bailout();
+      return;
+    }
+    if (this.phase === 'player' && this.tick % 25 === 12) {
+      if (__bjValue(this.player).total < 17) this.hit();
+      else this.stand();
+    }
+  }
   update() {
     if (this.destroyed) return;
     var self = this;
     this.tick++;
+    if (this.bot && (this.phase === 'bet' || this.phase === 'player')) this._botStep();
     if (this.fx.length) this.fx = this.fx.filter(function (f) { return self.tick - f.start < f.dur + 20; });
     if (this.banner && this.tick - this.banner.start >= this.banner.dur) this.banner = null;
     if (this.shake && this.tick - this.shake.start >= this.shake.dur) this.shake = null;

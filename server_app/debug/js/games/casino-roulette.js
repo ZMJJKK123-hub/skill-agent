@@ -42,6 +42,7 @@ class CasinoRoulette {
   constructor(container, ctx) {
     this.ctx = ctx;
     this.wallet = ctx.wallet;
+    this.bot = !!ctx.bot;
     this.tick = 0;
     this.destroyed = false;
     this.fx = [];
@@ -443,10 +444,28 @@ class CasinoRoulette {
   }
 
   // ---------- 帧驱动：轮盘物理 ----------
+  // bot 模式自动下注+转轮（自动化测试/浸泡用）
+  _botStep() {
+    if (this.tick < 40) return;
+    if (this.tick % 45 === 40 || this.tick % 45 === 20) {
+      var opts = ['red', 'black', 'odd', 'even', 'dozen1', 'dozen2', 'dozen3'];
+      var type = opts[Math.floor(Math.random() * opts.length)];
+      if (this.wallet.sub(this.chipAmt)) {
+        var same = this.bets.find(function (b) { return b.type === type; });
+        if (same) same.amt += this.chipAmt;
+        else this.bets.push({ type: type, pick: null, amt: this.chipAmt });
+      }
+    } else if (this.tick % 45 === 5 && this.bets.length) {
+      this.spin();
+    } else if (this.wallet.get() < 20) {
+      this.wallet.bailout();
+    }
+  }
   update() {
     if (this.destroyed) return;
     var self = this;
     this.tick++;
+    if (this.phase === 'bet' && this.bot) this._botStep();
     if (this.fx.length) this.fx = this.fx.filter(function (f) { return self.tick - f.start < f.dur + 20; });
     if (this.banner && this.tick - this.banner.start >= this.banner.dur) this.banner = null;
     if (this.shake && this.tick - this.shake.start >= (this.shake.dur || 12)) this.shake = 0;

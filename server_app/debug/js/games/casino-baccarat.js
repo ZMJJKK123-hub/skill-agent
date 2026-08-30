@@ -60,6 +60,7 @@ class CasinoBaccarat {
   constructor(container, ctx) {
     this.ctx = ctx;
     this.wallet = ctx.wallet;
+    this.bot = !!ctx.bot;
     this.tick = 0;
     this.destroyed = false;
     this.fx = [];
@@ -118,8 +119,8 @@ class CasinoBaccarat {
 
   place(key) {
     if (this.phase !== 'bet') return;
-    if (!this.wallet.sub(this.chipAmt)) { this._msg('算力不足'); return; }
     this.chipAmt = this.chipAmt || BC_CHIPS[0];
+    if (!this.wallet.sub(this.chipAmt)) { this._msg('算力不足'); return; }
     this.bet = { key: key, amt: this.chipAmt };
     this.phase = 'deal';
     this.dealT = this.tick;
@@ -363,10 +364,20 @@ class CasinoBaccarat {
   }
 
   // ---------- 帧驱动 ----------
+  // bot 模式自动下注（闲/庄/和随机；自动化测试/浸泡用）
+  _botStep() {
+    if (this.tick < 30 || this.tick % 50 !== 30) return;
+    var w = this.wallet.get();
+    if (w >= 20) {
+      this.chipAmt = 20;
+      this.place(['player', 'banker', 'tie'][Math.floor(Math.random() * 3)]);
+    } else this.wallet.bailout();
+  }
   update() {
     if (this.destroyed) return;
     var self = this;
     this.tick++;
+    if (this.phase === 'bet' && this.bot) this._botStep();
     if (this.fx.length) this.fx = this.fx.filter(function (f) { return self.tick - f.start < f.dur + 20; });
     if (this.banner && this.tick - this.banner.start >= this.banner.dur) this.banner = null;
     if (this.shake && this.tick - this.shake.start >= this.shake.dur) this.shake = 0;
