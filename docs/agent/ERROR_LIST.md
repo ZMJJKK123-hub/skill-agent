@@ -1157,3 +1157,8 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **[webserv_celestialheaven] NEW_ERROR: AgentBridge 在 @Mod 构造器直接 new 使专用服务端崩（GuiEventListener DEDICATED_SERVER 拒载）| 客户端专属类必须 FMLLoader.getDist().isClient() 守卫 | agent 已自行修复**
 - **[工具gap已修] press_key/game_input 无右键键名（"right"=方向键）| 无法程序化使用物品（传送羽毛等）| _VK_MAP 新增 right_click/use/mouse_right→VK_RBUTTON(0x02)、left_click/attack→VK_LBUTTON(0x01)**
 - **[模型教训] glm-5.3 批量加载 10 技能→上下文过载→连续 39 次空响应死循环 | 复杂任务也要守住"最多 3 个技能"纪律；引擎侧已加空响应连续上限（5 次压缩/8 次收尾）**
+
+## 2026-08-31 webserv_storm（风暴要塞 + Boss 实体）
+- **[终验通过] Boss 实体全链路：EntityType+属性(100血/20攻)+近战AI+ServerBossEvent血条+客户端模型渲染器+刷怪蛋；隐形客户端内 summon 后识图确认紫色血条"Storm Lord"、贴图无缺失、近战 AI 击杀测试玩家（死亡界面=AI+伤害铁证）；GameTest 全绿；64 文件 jar**
+- **[实体 API 坑] ResourceKey.create(Registries.LEVEL_STEM...) 符号定位与 moveTo(double,int,double,int,int) 签名是实体类高频编译错误（8 次迭代修复）| 写实体前先 search_api 确认 EntityType.Builder / registerAttributes 精确签名**
+- **[引擎] MAX_TOTAL_ROUNDS=150 硬顶首次实战正确收尾（无无限循环）**
