@@ -73,6 +73,7 @@ def agent_loop(messages: list) -> str:
     _post_write_research = 0
     _post_write_strikes = 0
     _no_tool_strikes = 0
+    _gametest_rejects = 0  # GameTest 出口闸连续打回计数（≥3 且 dist 有产物 → 强制收尾）
 
     #检测是否有自己写过的代码 还是完全没动过模版代码
     def _has_custom_java():
@@ -479,6 +480,24 @@ def agent_loop(messages: list) -> str:
             except Exception as _e:
                 logger.info(f"gametest-check 跳过: {_e}")
             if not _gametest_ok:
+                _gametest_rejects += 1
+                # 防死循环兜底（webserv_amber 实测连续打回、每圈一轮构建+GameTest）：
+                # 打回 ≥3 次且 dist 已有非模板产物 → 视为完成强制收尾。
+                # 闸的标记检查可能因 spill/压缩失明，不能任由它无限循环烧额度。
+                if _gametest_rejects >= 3:
+                    _jars = []
+                    if os.path.isdir("dist"):
+                        _jars = [f for f in os.listdir("dist")
+                                 if f.endswith(".jar") and "examplemod" not in f]
+                    if _jars:
+                        logger.warning("GameTest 打回 ≥3 次但 dist 已有产物，强制收尾防无限循环")
+                        _step_machine.complete_turn()
+                        _save_session_log(_session_log)
+                        if IS_MOD_MODE:
+                            supervisor_manager.stop()
+                        return (message.content or "") + (
+                            f"\n\n[system] GameTest 校验连续 {_gametest_rejects} 次未通过判定，"
+                            f"但 dist/{_jars[0]} 已生成（此前曾报告 GameTest 通过），已强制收尾，请人工复核。")
                 continue
             # ★ 长对话语义（M-opt4）：不自动清空 .tasks / todo / team /
             #    协议状态。daemon 常驻期间任务、队友名册、协议请求跨轮保留，
@@ -715,6 +734,15 @@ def agent_loop(messages: list) -> str:
                 logger.warning(_force_final_msg)
                 continue
 
+        # 总轮数硬上限（含纯文本重试轮）：出口闸失明时纯文本轮不计 _tool_rounds，
+        # 实测曾连续多轮打回不终止（webserv_amber），给整个循环一个硬边界
+        if _round_idx >= MAX_TOTAL_ROUNDS:
+            _force_final_msg = (
+                f"Max total rounds reached ({MAX_TOTAL_ROUNDS}). Partial progress is in run.log; stopping."
+            )
+            logger.warning(_force_final_msg)
+            continue
+
         # compact 最后执行：替换整个 messages 列表
         if compact_pending:
             messages, _ = handle_compact(messages)
@@ -763,6 +791,8 @@ def _messages_hint_mod(messages: list) -> bool:
 
 # 防死循环：同一 agent_loop 内允许的最大工具调用轮次（每轮可能含多个 tool_call）
 MAX_TOOL_ROUNDS = int(os.environ.get("DSH_MAX_TOOL_ROUNDS", "100"))
+# 总轮数硬上限（含纯文本重试轮）：出口闸失明时的最后防线
+MAX_TOTAL_ROUNDS = int(os.environ.get("DSH_MAX_TOTAL_ROUNDS", "150"))
 
 # 超大工具结果阈值：超过则落盘 spill 文件，模型只看到前后预览
 MAX_INLINE_TOOL_CHARS = 3000
@@ -797,7 +827,11 @@ def get_reasoning_sink():
 def _maybe_spill(name: str, output: str) -> str:
     """Spill oversized plain-text tool results to disk, return preview+locator."""
     # Port of dsh spill-policy: skip read_file to avoid read -> spill -> read again loop.
-    if name == "read_file":
+    # 完成判定关键工具同样豁免：出口闸依赖其输出中的 GameTest 通过标记，
+    # spill 预览可能截掉标记导致闸失明、无限打回（webserv_amber 实测）。
+    if name in ("read_file", "run_test_gametest", "run_mod_test_cycle",
+                "run_game_test_server", "parse_gametest_results",
+                "read_game_test_log", "build_mod_jar_forge"):
         return output
     if not isinstance(output, str) or len(output) <= MAX_INLINE_TOOL_CHARS:
         return output
