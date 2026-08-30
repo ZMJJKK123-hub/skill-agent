@@ -72,8 +72,9 @@ class BugSorter extends BaseGame {
 
   update() {
     this.tick++;
-    // 每帧实时计算生成间隔：难度切换即刻生效（含首个间隔）
-    this.spawnRate = Math.max(18, 50 - Math.floor(this.score / 15)) * (this.diffMul || 1);
+    // 每帧实时计算生成间隔：难度切换即刻生效（含首个间隔）。
+    // 取整：整数 tick 对非整数间隔取模会几乎永不命中（0.55 倍率时 27.5）
+    this.spawnRate = Math.round(Math.max(18, 50 - Math.floor(this.score / 15)) * (this.diffMul || 1));
     if (this.tick % this.spawnRate === 0) {
       this.spawn();
       // Occasionally spawn double

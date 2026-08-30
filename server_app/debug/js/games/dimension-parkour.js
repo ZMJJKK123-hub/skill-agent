@@ -131,10 +131,11 @@ class DimensionParkour extends BaseGame {
     this.bgChars.forEach(function(ch) { ch.x -= this.spd; if (ch.x < -50) { ch.x = this.w + rnd(0, 50); ch.y = rnd(10, this.h - 10); } }.bind(this));
     this.bgOffset += this.spd;
 
-    // Score-based speed up（整体减半）；难度倍率由宿主页难度选择注入
+    // Score-based speed up（整体减半）；难度倍率：速度类量要"除以"mul
+    //（mul>1 更简单=更慢；此前写成乘，极难反而变成最慢速，方向反了）
     var mul = typeof this.diffMul === 'number' ? this.diffMul : 1;
-    var baseSpd = this.flatWorld > 0 ? 3 * mul : ((1.5 + this.score / 300) * mul);
-    this.spd = Math.min(baseSpd, 4 * mul);
+    var baseSpd = this.flatWorld > 0 ? 3 / mul : ((1.5 + this.score / 300) / mul);
+    this.spd = Math.min(baseSpd, 4 / mul);
 
     if (this.flatWorld > 0) {
       this.flatWorld--;

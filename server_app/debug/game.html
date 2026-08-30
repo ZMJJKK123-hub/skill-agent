@@ -135,7 +135,7 @@
     <div class="rules-en" id="rulesEn"></div>
   </div>
 
-  <script src="js/utils.js?_v=17"></script>
+  <script src="js/utils.js?_v=18"></script>
   <script>
     var GAME_RULES = {
       'snake-2048': {
@@ -207,7 +207,7 @@
     };
 
     var s = document.createElement('script');
-    s.src = GAMES[gid].file + '?_v=17';
+    s.src = GAMES[gid].file + '?_v=18';
     s.onload = function () {
       var host = document.getElementById('gameHost');
       var started = false;
@@ -284,14 +284,34 @@
 
       // 自动开始（自动化测试 / 嵌入场景）：&autoplay=1 跳过开始界面
       if (new URLSearchParams(location.search).get('autoplay') === '1') {
+        // &diff=N：按 data-diff 选中难度按钮（52 简单 / 34 普通 / 18 困难 / 10 极难）
+        var diffParam = parseInt(new URLSearchParams(location.search).get('diff'), 10);
+        if (diffParam > 0) {
+          var diffBtns2 = document.querySelectorAll('#diffGroup .diff-btn');
+          for (var di = 0; di < diffBtns2.length; di++) {
+            diffBtns2[di].classList.toggle('active', parseInt(diffBtns2[di].getAttribute('data-diff'), 10) === diffParam);
+          }
+        }
         try { document.getElementById('startBtn').click(); } catch (e) {}
+        // &run=1：自动触发游戏自带的运行入口（如 Data Turing 的 RUN）
+        var gAuto = window.__game;
+        if (new URLSearchParams(location.search).get('run') === '1' && gAuto && typeof gAuto.run === 'function') {
+          try { gAuto.run(); } catch (e) { window.__lastGameErr = 'run: ' + (e && e.message || e); }
+        }
         // &step=N：同步跑 N 帧真实 update+render（确定性测试，绕开后台标签
         // 的 rAF/setTimeout 节流；真实 canvas 执行可暴露渲染错误）
         var stepN = parseInt(new URLSearchParams(location.search).get('step'), 10);
         if (stepN > 0) {
           var g = window.__game;
+          var bot = new URLSearchParams(location.search).get('bot') === '1';
           for (var i = 0; i < stepN && g && g.running; i++) {
             try {
+              // &bot=1：简单自动挡板（对准最低的球），让接球/道具/过关路径可被自动验证
+              if (bot && g.paddle && g.balls && g.balls.length) {
+                var low = g.balls[0];
+                for (var bi2 = 1; bi2 < g.balls.length; bi2++) if (g.balls[bi2].y > low.y) low = g.balls[bi2];
+                if (low.dy > 0) g.paddle.x = clamp(low.x - g.paddle.w / 2, 0, g.w - g.paddle.w);
+              }
               g.update();
               g.render();
             } catch (err) {

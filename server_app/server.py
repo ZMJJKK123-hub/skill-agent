@@ -59,7 +59,7 @@ class Session:
                  game: str = "minecraft", loader: str = "", version: str = "",
                  model: str = "deepseek-v4-flash", base_url: str = "https://api.deepseek.com",
                  sandbox: str = "full-access",
-                 vision_enabled: bool = False, vision_api_key: str = "",
+                 vision_enabled: bool = True, vision_api_key: str = "",
                  vision_base_url: str = "", vision_model: str = "",
                  auto_mode: bool = False, search_api_key: str = ""):
         self.id = session_id
@@ -174,7 +174,7 @@ class SessionRequest(BaseModel):
     model: str = "deepseek-v4-flash"          # 生成模型
     base_url: str = "https://api.deepseek.com"  # OpenAI 兼容 API 地址
     sandbox: str = "full-access"              # 沙箱模式：full-access | workspace-write | read-only
-    vision_enabled: bool = False              # 识图模式开关
+    vision_enabled: bool = True               # 识图模式开关（默认开启）
     vision_api_key: str = ""                  # 视觉 API Key（独立于主模型）
     vision_base_url: str = ""                 # 视觉 API Base URL
     vision_model: str = ""                    # 视觉模型名

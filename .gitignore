@@ -24,6 +24,7 @@ run_harness.py
 .supervisor/
 .zcode/
 src/
+tools/
 
 # ---- 运行时日志 ----
 server_out*.log
