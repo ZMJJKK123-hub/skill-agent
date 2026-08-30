@@ -41,86 +41,202 @@ window.Casino = {
   tables() { return Array.from(this._tables.keys()); },
   get(id) { return this._tables.get(id); },
 
-  // ---------- 场景画师（大厅/赌桌共用：房间 + 扑克桌 + 人物 + 氛围） ----------
+  // ---------- 场景画师（骗子酒吧风：第一人称昏暗酒馆） ----------
+  // 确定性伪随机：道具/粒子位置帧间稳定
+  _r(i) { var x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); },
   paint: {
-    // 房间：墙面渐变、透视地板、霓虹招牌、吊灯光锥、金尘粒子
+    // 房间：暗木 板墙、红色霓虹招牌、琥珀吊灯、烟雾、酒瓶架（人物与桌面画在其上）
     room(c, w, h, t) {
-      var wall = c.createLinearGradient(0, 0, 0, h * 0.66);
-      wall.addColorStop(0, '#221038'); wall.addColorStop(1, '#0d0718');
-      c.fillStyle = wall; c.fillRect(0, 0, w, h * 0.66);
-      var floor = c.createLinearGradient(0, h * 0.66, 0, h);
-      floor.addColorStop(0, '#241436'); floor.addColorStop(1, '#0a0510');
-      c.fillStyle = floor; c.fillRect(0, h * 0.66, w, h * 0.34);
-      // 地板透视格
-      c.strokeStyle = 'rgba(240,198,116,.07)'; c.lineWidth = 1;
-      var vpx = w / 2;
-      for (var gx = -4; gx <= 4; gx++) {
-        c.beginPath(); c.moveTo(vpx + gx * w * 0.09, h * 0.66); c.lineTo(vpx + gx * w * 0.4, h); c.stroke();
+      var _r = Casino._r;
+      // 暖黑底色
+      var base = c.createLinearGradient(0, 0, 0, h);
+      base.addColorStop(0, '#0d0705'); base.addColorStop(0.55, '#170d08'); base.addColorStop(1, '#070302');
+      c.fillStyle = base; c.fillRect(0, 0, w, h);
+      // 背墙暗木板（垂直板缝，板色微差）
+      var wallY = h * 0.56, planks = 15;
+      for (var i = 0; i < planks; i++) {
+        var px = (i / planks) * w, pw = w / planks + 1, sh = 0.8 + _r(i) * 0.4;
+        c.fillStyle = 'rgb(' + Math.round(56 * sh) + ',' + Math.round(33 * sh) + ',' + Math.round(17 * sh) + ')';
+        c.fillRect(px, 0, pw, wallY);
+        c.fillStyle = 'rgba(0,0,0,.4)'; c.fillRect(px + pw - 2, 0, 2, wallY);
       }
-      for (var gy = 1; gy <= 5; gy++) {
-        var yy = h * 0.66 + Math.pow(gy / 5, 1.6) * h * 0.34;
-        c.beginPath(); c.moveTo(0, yy); c.lineTo(w, yy); c.stroke();
-      }
-      // 霓虹招牌
-      var flick = 0.82 + 0.18 * Math.sin(t * 0.09) * Math.sin(t * 0.023);
+      // 横梁
+      c.fillStyle = 'rgba(16,8,4,.92)';
+      c.fillRect(0, h * 0.045, w, h * 0.022);
+      c.fillRect(0, h * 0.345, w, h * 0.016);
+      // 后方吧台酒瓶架（左右两段剪影 + 瓶身高光）
+      [[w * 0.045, w * 0.235], [w * 0.765, w * 0.955]].forEach(function (seg, si) {
+        var by = h * 0.30, bw = seg[1] - seg[0];
+        c.fillStyle = 'rgba(10,5,3,.9)';
+        c.fillRect(seg[0], h * 0.175, bw, by - h * 0.175);
+        for (var b = 0; b < 7; b++) {
+          var bx = seg[0] + 8 + (b / 7) * (bw - 20) + _r(b * 7 + si) * 6;
+          var bh = h * (0.055 + _r(b + si * 3) * 0.035);
+          c.fillStyle = 'rgba(26,13,7,.95)';
+          c.fillRect(bx, by - bh, 9, bh);
+          c.fillRect(bx + 2.5, by - bh - 7, 4, 7);
+          c.fillStyle = 'rgba(255,190,110,.16)';
+          c.fillRect(bx + 2, by - bh + 4, 1.6, bh * 0.55);
+        }
+        c.fillStyle = 'rgba(255,190,110,.05)';
+        c.fillRect(seg[0], by, bw, 3);
+      });
+      // 红色霓虹招牌（闪烁）
+      var flick = 0.8 + 0.2 * Math.sin(t * 0.11) * Math.sin(t * 0.023 + 1.7);
+      if (flick < 0.55) flick = 0.55; // 濒坏灯管的最低亮度
       c.save();
       c.globalAlpha = flick;
-      c.font = '700 ' + Math.max(18, w * 0.045) + 'px monospace';
-      c.textAlign = 'center';
-      c.shadowColor = '#ff5fd0'; c.shadowBlur = 22;
-      c.fillStyle = '#ffd0f0';
-      c.fillText('算 力 赌 坊', w / 2, h * 0.12);
-      c.font = Math.max(9, w * 0.016) + 'px monospace';
-      c.shadowColor = '#5fd0ff'; c.shadowBlur = 12;
-      c.fillStyle = '#a8e8ff';
-      c.fillText('~ C O M P U T E   C A S I N O ~', w / 2, h * 0.12 + 18);
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.font = '700 ' + Math.max(16, w * 0.036) + 'px monospace';
+      c.shadowColor = '#ff3b30'; c.shadowBlur = 26;
+      c.fillStyle = '#ffb0a8';
+      c.fillText('算 力 赌 坊', w / 2, h * 0.062);
+      c.font = Math.max(8, w * 0.012) + 'px monospace';
+      c.shadowBlur = 12;
+      c.fillStyle = '#ff8a80';
+      c.fillText('~  L I A R \' S   B A R  ~', w / 2, h * 0.062 + Math.max(16, w * 0.036) * 0.8);
       c.restore();
-      // 两侧壁灯 + 光锥
-      [[w * 0.09, h * 0.2], [w * 0.91, h * 0.2]].forEach(function (lp) {
-        var glow = 0.5 + 0.5 * Math.sin(t * 0.05 + lp[0]);
-        c.save();
-        c.fillStyle = 'rgba(240,198,116,' + (0.5 + glow * 0.3) + ')';
-        c.shadowColor = '#f0c674'; c.shadowBlur = 14;
-        c.beginPath(); c.arc(lp[0], lp[1], 5, 0, Math.PI * 2); c.fill();
-        var cone = c.createLinearGradient(lp[0], lp[1], lp[0], h * 0.6);
-        cone.addColorStop(0, 'rgba(240,198,116,' + (0.10 + glow * 0.05) + ')');
-        cone.addColorStop(1, 'rgba(240,198,116,0)');
-        c.fillStyle = cone;
-        c.beginPath(); c.moveTo(lp[0] - 8, lp[1]); c.lineTo(lp[0] + 8, lp[1]);
-        c.lineTo(lp[0] + w * 0.13, h * 0.6); c.lineTo(lp[0] - w * 0.13, h * 0.6); c.closePath(); c.fill();
-        c.restore();
-      });
-      // 金尘粒子（确定性漂浮）
-      for (var i = 0; i < 26; i++) {
-        var px = (Math.sin(i * 12.9898) * 43758.5453) % 1;
-        var py = (Math.sin(i * 78.233) * 12345.6789) % 1;
-        var fx = ((Math.abs(px) + t * 0.00004 * (1 + (i % 3))) % 1) * w;
-        var fy = (Math.abs(py) * 0.9 + 0.03) * h - (t * 0.012 * (1 + (i % 4))) % (h * 0.5);
+      // 中央暖光域（主吊灯的氛围光晕）
+      var amb = c.createRadialGradient(w / 2, h * 0.38, 10, w / 2, h * 0.38, w * 0.72);
+      amb.addColorStop(0, 'rgba(255,190,110,.30)');
+      amb.addColorStop(0.4, 'rgba(190,110,50,.12)');
+      amb.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = amb; c.fillRect(0, 0, w, h);
+      // 吊灯 ×3：中央大 + 两侧小（电线 + 灯罩 + 灯泡辉光 + 下照光锥）
+      Casino.paint._lamp(c, w / 2, h * 0.155, w * 0.055, t, 0);
+      Casino.paint._lamp(c, w * 0.215, h * 0.20, w * 0.038, t, 2.1);
+      Casino.paint._lamp(c, w * 0.785, h * 0.20, w * 0.038, t, 4.2);
+      // 烟雾（大而淡的椭圆，缓慢横移上升）
+      for (var sI = 0; sI < 7; sI++) {
+        var drift = (t * (0.08 + _r(sI) * 0.10) + sI * 300) % (w + 400) - 200;
+        var sy = h * 0.42 - ((t * (0.10 + _r(sI + 9) * 0.15) + sI * 130) % (h * 0.5));
+        c.fillStyle = 'rgba(200,170,140,' + (0.018 + 0.014 * Math.sin(t * 0.02 + sI)) + ')';
+        c.beginPath();
+        c.ellipse(w * 0.5 + (drift - w / 2) * (0.5 + _r(sI + 4) * 0.8), sy, w * 0.16, h * 0.05, 0, 0, Math.PI * 2);
+        c.fill();
+      }
+      // 琥珀浮尘
+      for (var d = 0; d < 22; d++) {
+        var fx = (( _r(d) + t * 0.00006 * (1 + d % 3)) % 1) * w;
+        var fy = h * (0.08 + _r(d + 50) * 0.5) - (t * 0.012 * (1 + d % 4)) % (h * 0.5);
         if (fy < 0) fy += h * 0.6;
-        c.fillStyle = 'rgba(240,198,116,' + (0.06 + 0.10 * Math.abs(Math.sin(t * 0.03 + i))) + ')';
-        c.beginPath(); c.arc(fx, fy, 1.6, 0, Math.PI * 2); c.fill();
+        c.fillStyle = 'rgba(255,200,120,' + (0.05 + 0.09 * Math.abs(Math.sin(t * 0.03 + d))) + ')';
+        c.beginPath(); c.arc(fx, fy, 1.4, 0, Math.PI * 2); c.fill();
       }
     },
-    // 扑克桌：木沿 + 绿呢 + 金线 + 桌标
+    // 吊灯：电线 + 锥形灯罩 + 灯泡 + 下照光锥（亮度轻微波动）
+    _lamp(c, x, y, r, t, seed) {
+      var sway = Math.sin(t * 0.012 + seed) * 3;
+      var bright = 0.82 + 0.18 * Math.sin(t * 0.07 + seed * 3);
+      c.save();
+      c.translate(sway, 0);
+      // 电线
+      c.strokeStyle = 'rgba(8,4,2,.9)'; c.lineWidth = 2;
+      c.beginPath(); c.moveTo(x, 0); c.lineTo(x, y - r * 0.7); c.stroke();
+      // 下照光锥
+      var cone = c.createLinearGradient(x, y, x, y + r * 9);
+      cone.addColorStop(0, 'rgba(255,200,120,' + (0.13 * bright) + ')');
+      cone.addColorStop(1, 'rgba(255,200,120,0)');
+      c.fillStyle = cone;
+      c.beginPath();
+      c.moveTo(x - r * 0.6, y); c.lineTo(x + r * 0.6, y);
+      c.lineTo(x + r * 4.6, y + r * 9); c.lineTo(x - r * 4.6, y + r * 9); c.closePath(); c.fill();
+      // 锥形灯罩
+      var shade = c.createLinearGradient(x, y - r * 0.7, x, y + r * 0.5);
+      shade.addColorStop(0, '#3a2412'); shade.addColorStop(1, '#140a05');
+      c.fillStyle = shade;
+      c.beginPath();
+      c.moveTo(x - r * 0.28, y - r * 0.7); c.lineTo(x + r * 0.28, y - r * 0.7);
+      c.lineTo(x + r, y + r * 0.45); c.lineTo(x - r, y + r * 0.45); c.closePath(); c.fill();
+      c.strokeStyle = 'rgba(255,200,120,' + (0.5 * bright) + ')'; c.lineWidth = 1.2;
+      c.beginPath();
+      c.moveTo(x - r, y + r * 0.45); c.lineTo(x + r, y + r * 0.45); c.stroke();
+      // 灯泡
+      c.fillStyle = 'rgba(255,225,160,' + (0.85 * bright + 0.15) + ')';
+      c.shadowColor = '#ffc87a'; c.shadowBlur = 18 * bright;
+      c.beginPath(); c.arc(x, y + r * 0.55, r * 0.24, 0, Math.PI * 2); c.fill();
+      c.restore();
+    },
+    // 扑克桌：第一人称透视——远端桌沿在画面中部，近端出血铺满底部（红棕木 + 暗红呢 + 受光亮边 + 道具）
     table(c, w, h) {
-      var cx = w / 2, cy = h * 0.46, rx = w * 0.42, ry = h * 0.3;
-      // 木沿
-      var rim = c.createRadialGradient(cx, cy - ry * 0.4, ry * 0.2, cx, cy, rx);
-      rim.addColorStop(0, '#7a4a1e'); rim.addColorStop(1, '#3a2210');
-      c.fillStyle = rim;
-      c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); c.fill();
-      // 绿呢
-      var felt = c.createRadialGradient(cx, cy - ry * 0.3, ry * 0.1, cx, cy, rx * 0.94);
-      felt.addColorStop(0, '#15904a'); felt.addColorStop(1, '#073d20');
+      var _r = Casino._r;
+      var ty = h * 0.52;                 // 远端桌沿
+      var x0 = w * 0.13, x1 = w * 0.87;  // 远端左右
+      var bx0 = -w * 0.08, bx1 = w * 1.08; // 近端（出血）
+      // 桌面透视梯形
+      var wood = c.createLinearGradient(0, ty, 0, h);
+      wood.addColorStop(0, '#8a4a1d'); wood.addColorStop(0.3, '#6e3512'); wood.addColorStop(1, '#241006');
+      c.fillStyle = wood;
+      c.beginPath();
+      c.moveTo(x0, ty); c.lineTo(x1, ty); c.lineTo(bx1, h); c.lineTo(bx0, h); c.closePath();
+      c.fill();
+      // 木纹（沿透视的弧线）
+      c.save();
+      c.beginPath();
+      c.moveTo(x0, ty); c.lineTo(x1, ty); c.lineTo(bx1, h); c.lineTo(bx0, h); c.closePath();
+      c.clip();
+      for (var i = 0; i < 10; i++) {
+        var yy = ty + Math.pow((i + 0.5) / 10, 1.3) * (h - ty);
+        c.strokeStyle = 'rgba(28,11,4,' + (0.10 + 0.12 * _r(i + 3)) + ')';
+        c.lineWidth = 1 + _r(i + 41) * 2.2;
+        c.beginPath(); c.moveTo(bx0, yy + 20); c.quadraticCurveTo(w / 2, yy - 16, bx1, yy + 20); c.stroke();
+      }
+      // 暗红呢放牌区（中央椭圆 + 金线）
+      var cx = w / 2, cy = h * 0.70, rx = w * 0.315, ry = h * 0.155;
+      var felt = c.createRadialGradient(cx, cy - ry * 0.3, ry * 0.15, cx, cy, rx);
+      felt.addColorStop(0, '#5c1620'); felt.addColorStop(1, '#26060d');
       c.fillStyle = felt;
-      c.beginPath(); c.ellipse(cx, cy, rx * 0.92, ry * 0.88, 0, 0, Math.PI * 2); c.fill();
-      // 金线 + 桌标
-      c.strokeStyle = 'rgba(240,198,116,.4)'; c.lineWidth = 2;
-      c.beginPath(); c.ellipse(cx, cy, rx * 0.8, ry * 0.74, 0, 0, Math.PI * 2); c.stroke();
-      c.fillStyle = 'rgba(240,198,116,.14)';
-      c.font = '700 ' + Math.max(12, w * 0.02) + 'px monospace';
+      c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = 'rgba(240,198,116,.30)'; c.lineWidth = 1.6;
+      c.beginPath(); c.ellipse(cx, cy, rx * 0.93, ry * 0.88, 0, 0, Math.PI * 2); c.stroke();
+      c.fillStyle = 'rgba(240,198,116,.10)';
+      c.font = '700 ' + Math.max(11, w * 0.017) + 'px monospace';
       c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.fillText('S H O W   H A N D', cx, cy + ry * 0.05);
+      c.fillText('S H O W   H A N D', cx, cy + ry * 0.02);
+      c.restore();
+      // 受光桌沿（远端亮边：被吊灯照亮）
+      var edge = c.createLinearGradient(0, ty - 5, 0, ty + 30);
+      edge.addColorStop(0, 'rgba(255,205,130,.5)'); edge.addColorStop(1, 'rgba(255,205,130,0)');
+      c.fillStyle = edge;
+      c.beginPath();
+      c.moveTo(x0 - w * 0.012, ty - 5); c.lineTo(x1 + w * 0.012, ty - 5);
+      c.lineTo(x1 + w * 0.05, ty + 30); c.lineTo(x0 - w * 0.05, ty + 30); c.closePath(); c.fill();
+      c.strokeStyle = 'rgba(255,215,150,.55)'; c.lineWidth = 2;
+      c.shadowColor = '#ffc87a'; c.shadowBlur = 8;
+      c.beginPath(); c.moveTo(x0, ty); c.lineTo(x1, ty); c.stroke();
+      c.shadowBlur = 0;
+      // 道具：左轮弹壳 ×2、威士忌杯、皱纸条（确定性摆位）
+      for (var g = 0; g < 2; g++) {
+        var gx = w * (0.30 + g * 0.045), gy = h * (0.585 + g * 0.012);
+        c.save(); c.translate(gx, gy); c.rotate(0.5 + g * 0.4);
+        var casing = c.createLinearGradient(0, -2, 0, 2);
+        casing.addColorStop(0, '#d9a44a'); casing.addColorStop(1, '#8a5a1d');
+        c.fillStyle = casing;
+        c.fillRect(-9, -2.2, 18, 4.4);
+        c.fillStyle = '#6a4314'; c.fillRect(7, -2.2, 2.4, 4.4);
+        c.restore();
+      }
+      // 威士忌杯（近右侧，琥珀酒体）
+      var glx = w * 0.735, gly = h * 0.66;
+      c.save();
+      c.fillStyle = 'rgba(210,140,60,.55)';
+      c.beginPath(); c.ellipse(glx, gly, 11, 9, 0, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = 'rgba(255,225,170,.5)'; c.lineWidth = 1.4;
+      c.beginPath(); c.ellipse(glx, gly, 11, 9, 0, 0, Math.PI * 2); c.stroke();
+      c.fillStyle = 'rgba(255,200,120,.14)';
+      c.beginPath(); c.ellipse(glx, gly - 9, 9, 3, 0, 0, Math.PI * 2); c.fill();
+      c.restore();
+      // 皱纸条（左下）
+      c.save();
+      c.translate(w * 0.135, h * 0.86); c.rotate(-0.35);
+      c.fillStyle = 'rgba(214,196,160,.6)';
+      c.beginPath();
+      c.moveTo(-22, -8); c.quadraticCurveTo(-4, -14, 20, -6);
+      c.quadraticCurveTo(26, 2, 12, 8); c.quadraticCurveTo(-8, 13, -22, 6);
+      c.closePath(); c.fill();
+      c.strokeStyle = 'rgba(60,40,20,.5)'; c.lineWidth = 0.8;
+      c.beginPath(); c.moveTo(-14, -2); c.lineTo(12, -1); c.moveTo(-12, 3); c.lineTo(8, 4); c.stroke();
+      c.restore();
     },
     // 筹码堆
     chips(c, x, y, n) {
