@@ -32,3 +32,12 @@
 
 - 空响应连续上限（`ac31fc68`）、鼠标左右键键名（`05b93161`）、MAX_TOTAL_ROUNDS=150 硬顶实战生效
 - AgentBridge 服务端 dist 守卫、jar 排除 bridge 类（`4672e3f0`）
+
+## stardustenergy-1.0.0.jar — 星尘能源（多系统联动：BlockEntity + 能量传输 + 物品充能）
+
+| 验证项 | 结果 |
+|---|---|
+| 构建 | 55 文件 jar：`StardustGeneratorBlockEntity`（燃料→能量）/`EnergyCollectorBlockEntity`（跨方块接收）双方块实体 + 能量水晶 |
+| GameTest | 通过：塞燃料 tick 推进 → 聚能器能量 >0（跨方块传输断言）→ 水晶充能 NBT 断言 |
+| 可玩性 | 隐形客户端内放置方块组、发放充能水晶（含 custom_data Charge 组件验证 1.21.11 物品 NBT 写法）、背包截图识图；**客户端日志零 missing texture/model 警告**（权威渲染证据） |
+| 已知限制 | 方块远景截图未能入镜（相机角度），以 GameTest 能量断言 + 客户端零警告为准确认 |

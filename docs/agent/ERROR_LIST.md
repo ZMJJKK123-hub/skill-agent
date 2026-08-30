@@ -1162,3 +1162,8 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **[终验通过] Boss 实体全链路：EntityType+属性(100血/20攻)+近战AI+ServerBossEvent血条+客户端模型渲染器+刷怪蛋；隐形客户端内 summon 后识图确认紫色血条"Storm Lord"、贴图无缺失、近战 AI 击杀测试玩家（死亡界面=AI+伤害铁证）；GameTest 全绿；64 文件 jar**
 - **[实体 API 坑] ResourceKey.create(Registries.LEVEL_STEM...) 符号定位与 moveTo(double,int,double,int,int) 签名是实体类高频编译错误（8 次迭代修复）| 写实体前先 search_api 确认 EntityType.Builder / registerAttributes 精确签名**
 - **[引擎] MAX_TOTAL_ROUNDS=150 硬顶首次实战正确收尾（无无限循环）**
+
+## 2026-08-31 webserv_stardustenergy（多系统联动）
+- **[终验通过] BlockEntity 双系统联动：发电机(燃料→能量 NBT) tick 产出 → 相邻聚能器自动接收（服务端跨方块传输）→ 能量水晶右键充能（custom_data Charge）；GameTest 断言能量流转与 NBT；客户端零 missing 警告；55 文件 jar**
+- **[1.21.11 物品 NBT] 给玩家带 NBT 物品用组件语法：/give @s mod:item[minecraft:custom_data={Charge:1000}]（旧 nbt:{} 语法已废）**
+- **[验证方法论] 方块实体类 MOD 的可玩性验证以 /data get block 能量值 + GameTest 断言 + 客户端日志零警告为准（远景截图常拍不到目标，勿反复重拍）**
