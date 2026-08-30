@@ -85,6 +85,38 @@ def _vk_code(key: str) -> int:
     raise ValueError(f"Unknown key: {key}")
 
 
+def press_keys(sequence: list) -> str:
+    """按脚本顺序在焦点窗口模拟按键（代码级 UI 导航，无需截图决策）。
+
+    sequence 每项：
+      - 单键名（同 press_key 规则）：tab / enter / esc / e / t ...
+      - "wait:500"   等待 500ms（切屏/加载时用）
+      - "type:文本"  输入文本（走 type_text，支持中文）
+    返回逐步执行日志；任一步失败即中止并返回已执行步骤。
+    """
+    steps = []
+    try:
+        for i, item in enumerate(sequence):
+            s = str(item).strip()
+            low = s.lower()
+            if low.startswith("wait:"):
+                ms = int(s.split(":", 1)[1])
+                time.sleep(ms / 1000.0)
+                steps.append(f"{i + 1}. wait {ms}ms")
+            elif low.startswith("type:"):
+                text = s.split(":", 1)[1]
+                r = type_text(text)
+                steps.append(f"{i + 1}. type '{text}' -> {r}")
+                time.sleep(0.15)
+            else:
+                steps.append(f"{i + 1}. press {s} -> {press_key(s)}")
+                time.sleep(0.15)
+        return "Executed:\n" + "\n".join(steps)
+    except Exception as e:
+        return (f"Error: press_keys failed at step {len(steps) + 1}: {e}\n"
+                "Executed:\n" + "\n".join(steps))
+
+
 def press_key(key: str) -> str:
     """Press and release a single key (Windows SendInput via keybd_event)."""
     try:

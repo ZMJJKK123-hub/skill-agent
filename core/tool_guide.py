@@ -81,6 +81,17 @@ dedicated tool; use bash only when no tool exists.
 - snapshot: create a git checkpoint commit, returns HEAD.
 - restore_snapshot: hard reset to a previous snapshot (DESTRUCTIVE - only when you are sure).
 
+### Deterministic client menu navigation (press_keys — no per-step screenshots)
+- Use press_keys for vanilla menu flows instead of screenshot->decide->press loops. Verify each SCREEN transition with ONE wait_for_screen, not one screenshot per button.
+- Recipe (Tab order is layout-based and locale-independent; if focus lands elsewhere, adjust the number of 'tab' steps ONCE from the verification screenshot and re-run the sequence):
+  - Main menu -> world list: press_keys ["tab", "enter"] (first Tab focuses Singleplayer), then wait:800.
+  - World list -> Create New World screen: 'tab' steps until "Create New World" is focused, then "enter".
+  - Create screen: the world-name field starts focused -> ["type:verify"]; then 'tab' steps to "Create New World" and "enter".
+  - World loaded: wait_for_log pattern "joined the game" (timeout 180), then interact.
+- In-world item check: press_keys ["t"] opens chat; ["type:/give @s <modid>:<item>", "enter"]; ["e"] opens inventory; then ONE screenshot and ask analyze_image whether your item icon renders correctly in the inventory grid.
+- First client boot compiles shaders/caches (1-3 min): run wait_for_mc_ready(handle="mc-client", pattern="Sound engine started") first, then wait:10000, then interact. NEVER screenshot repeatedly during the loading splash — the menu buttons do not exist yet.
+- The screenshot auto-focuses and maximizes the Minecraft window; game_input/press_keys go to the focused window, so do not switch windows during a verify loop.
+
 ### Couplings / pitfalls
 - run_mod_test_cycle already includes validate/build/gametest/parse. Do not repeat them.
 - If start_mc_server got RCON params, send_game_command works directly; do not hand-edit server.properties.

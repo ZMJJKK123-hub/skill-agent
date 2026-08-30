@@ -29,6 +29,7 @@ from .tools_fs import run_edit, run_glob, run_grep, run_read, run_search_api, ru
 from .tools_game import (
     game_input,
     press_key,
+    press_keys,
     send_game_command,
     type_text,
     verify_visual_loop,
@@ -120,6 +121,7 @@ TOOL_HANDLERS = {
         kw["command"], kw.get("host", "127.0.0.1"), kw.get("port", 25575), kw.get("password")),
     "game_input": lambda **kw: game_input(kw.get("action", "type"), kw.get("key"), kw.get("text")),
     "press_key": lambda **kw: press_key(kw["key"]),
+    "press_keys": lambda **kw: press_keys(kw.get("sequence") or []),
     "type_text": lambda **kw: type_text(kw["text"]),
     "wait_for_log": lambda **kw: wait_for_log(kw["pattern"], kw.get("timeout", 60), kw.get("log_path")),
     "wait_for_screen": lambda **kw: wait_for_screen(kw.get("duration", 5), kw.get("prompt")),
@@ -1072,6 +1074,24 @@ _TOOL_META["analyze_image"] = {"readonly": True}
 
 # ── 新增自动流程工具：搜索 / 校验 / 解析 / 环境 / 产物 / 下载 / 清理 / 全自动 ──
 _TOOL_SCHEMAS_EXTRA = [
+    {   # 代码级 UI 导航：确定性按键脚本，替代"截图→识图→决定→按键"慢循环
+        "type": "function",
+        "function": {
+            "name": "press_keys",
+            "description": "Execute a deterministic keyboard sequence on the focused window (code-level UI navigation — no screenshot needed to decide each step). Each item is: a key name (tab/enter/esc/e/t/up/down...), 'wait:ms' to pause, or 'type:text' to type text. Use for fixed vanilla menu flows, e.g. main menu -> Singleplayer -> Create New World. Verify the RESULT with ONE wait_for_screen after the sequence instead of screenshotting per step.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sequence": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Ordered steps, e.g. ['tab', 'enter', 'wait:1500', 'type:My World']",
+                    }
+                },
+                "required": ["sequence"],
+            },
+        },
+    },
     {
         "type": "function",
         "function": {
@@ -1615,7 +1635,7 @@ _CLIENT_TOOLS_BLOCKLIST = {
     "run_client", "run_server", "start_mc_server", "start_mc_client",
     "send_game_command", "game_input", "press_key", "type_text",
     "wait_for_screen", "verify_visual_loop", "server_console",
-    "kill_game", "wait_for_mc_ready",
+    "kill_game", "wait_for_mc_ready", "press_keys",
     "run_test_client",  # runTestClient也会启动MC客户端窗口
 }
 if os.environ.get("DSH_DISABLE_CLIENT_TOOLS") == "1":
