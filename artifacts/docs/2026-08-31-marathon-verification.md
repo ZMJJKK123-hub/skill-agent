@@ -41,3 +41,17 @@
 | GameTest | 通过：塞燃料 tick 推进 → 聚能器能量 >0（跨方块传输断言）→ 水晶充能 NBT 断言 |
 | 可玩性 | 隐形客户端内放置方块组、发放充能水晶（含 custom_data Charge 组件验证 1.21.11 物品 NBT 写法）、背包截图识图；**客户端日志零 missing texture/model 警告**（权威渲染证据） |
 | 已知限制 | 方块远景截图未能入镜（相机角度），以 GameTest 能量断言 + 客户端零警告为准确认 |
+
+## starduststation-1.0.0.jar — 星尘充能台（GUI 机器 + 网络包同步）
+
+| 验证项 | 结果 |
+|---|---|
+| 构建 | 57 文件 jar：`ChargingStationMenu`（服务端容器+槽位）/`ChargingStationScreen`（客户端 GUI+能量条）/`EnergySyncPayload`+`StardustNetwork`（自定义网络包同步 BE 能量） |
+| GameTest | 通过（能量逻辑+MenuType 注册断言）；agent 另完成 1.21.11 新版 GameTest TEST_FUNCTION 纯代码注册的攻坚 |
+| 可玩性 | 隐形客户端内：开作弊建世界 → setblock 放置充能台 → **桥 interact（进程内 useItemOn）右键成功（InteractionResult.Success）** → **`ChargingStationScreen` 实际打开（screen_info 确认）** → 截图中央 67k 浅灰 GUI 面板像素（视觉确认渲染） |
+| 三重验证 | 构建 ✓ GameTest ✓ 可玩性 ✓（本轮全绿） |
+
+### 本轮工程沉淀（GUI 交互自动化攻坚）
+- 桥新增 `interact` op（显式坐标构造 BlockHitResult → gameMode.useItemOn，PASS 时兜底直调 useWithoutItem+手动发包）——零焦点依赖的"程序化右键"
+- 桥新增 `close_screen` op（onClose，替代 ESC 键）
+- 坑位记录：player.pick 视线在眼睛高度会 MISS 脚部方块；世界未开作弊时所有命令报 "Unknown or incomplete command"（与命令拼写无关）

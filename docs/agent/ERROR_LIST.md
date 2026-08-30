@@ -1167,3 +1167,10 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **[终验通过] BlockEntity 双系统联动：发电机(燃料→能量 NBT) tick 产出 → 相邻聚能器自动接收（服务端跨方块传输）→ 能量水晶右键充能（custom_data Charge）；GameTest 断言能量流转与 NBT；客户端零 missing 警告；55 文件 jar**
 - **[1.21.11 物品 NBT] 给玩家带 NBT 物品用组件语法：/give @s mod:item[minecraft:custom_data={Charge:1000}]（旧 nbt:{} 语法已废）**
 - **[验证方法论] 方块实体类 MOD 的可玩性验证以 /data get block 能量值 + GameTest 断言 + 客户端日志零警告为准（远景截图常拍不到目标，勿反复重拍）**
+
+## 2026-08-31 webserv_starduststation（GUI 机器 + 网络同步 + 交互自动化攻坚）
+- **[终验通过] ContainerMenu+Screen+EnergySyncPayload 全链路：桥 interact 进程内右键充能台 → InteractionResult.Success → ChargingStationScreen 实际打开（screen_info 确认+截图 GUI 面板渲染）；GameTest 过；57 文件 jar**
+- **[新op] AgentBridge.interact：显式 x/y/z（或 where=below）构造 BlockHitResult → gameMode.useItemOn；PASS 时兜底 bs.useWithoutItem + 手动 ServerboundUseItemOnPacket | SendInput use 键在失焦/鼠标被抓时不可靠，世界交互一律用 interact（零焦点）**
+- **[坑] player.pick 射线在眼睛高度——瞄脚部高度方块必 MISS（返回走物品分支得 Pass）| interact 用显式坐标，不依赖 pick**
+- **[坑] 世界未开作弊（Allow Commands OFF）时一切命令报 "Unknown or incomplete command"（不是命令拼错！）| 桥建世界必须先点 Allow Commands 再 Create**
+- **[1.21.11 GameTest 新注册] TEST_FUNCTION/TEST_INSTANCE 纯代码路线（Holder.direct 内联环境）可替代注解扫描； datapack JSON 需 "type":"minecraft:function" dispatch key**

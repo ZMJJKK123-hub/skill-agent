@@ -188,6 +188,50 @@ public class AgentBridge {
                 out.addProperty("path", new File(dir, "screenshots").getAbsolutePath());
                 out.addProperty("note", "async: newest .png under path lands within ~2s");
             }
+            case "interact" -> {
+                // 右键世界交互。优先显式坐标 x/y/z（或 below=脚下方块），构造确定命中；
+                // 缺省才用 player.pick（视线在眼睛高度，常 MISS 脚部方块，实测）。
+                var player = mc().player;
+                if (player == null) throw new IllegalStateException("not in world");
+                net.minecraft.world.phys.BlockHitResult hit;
+                if (cmd.has("x")) {
+                    var pos = new net.minecraft.core.BlockPos(cmd.get("x").getAsInt(),
+                            cmd.get("y").getAsInt(), cmd.get("z").getAsInt());
+                    var dir = cmd.has("dir") ? net.minecraft.core.Direction.byName(cmd.get("dir").getAsString())
+                            : net.minecraft.core.Direction.UP;
+                    hit = new net.minecraft.world.phys.BlockHitResult(
+                            net.minecraft.world.phys.Vec3.atCenterOf(pos), dir, pos, false);
+                } else if ("below".equals(cmd.has("where") ? cmd.get("where").getAsString() : "")) {
+                    var pos = net.minecraft.core.BlockPos.containing(player.getX(), player.getY(), player.getZ()).below();
+                    hit = new net.minecraft.world.phys.BlockHitResult(
+                            net.minecraft.world.phys.Vec3.atCenterOf(pos), net.minecraft.core.Direction.UP, pos, false);
+                } else {
+                    var picked = player.pick(4.5, 1.0F, false);
+                    if (!(picked instanceof net.minecraft.world.phys.BlockHitResult bhr))
+                        throw new IllegalStateException("pick missed (use explicit x/y/z)");
+                    hit = bhr;
+                }
+                var r = mc().gameMode.useItemOn(player, net.minecraft.world.InteractionHand.MAIN_HAND, hit);
+                if (!r.consumesAction()) {
+                    // gameMode 层被拦时兜底：直接跑客户端 useWithoutItem + 手动发交互包
+                    //（服务端才是 openMenu 的执行方，包必须送达）
+                    var bs = mc().level.getBlockState(hit.getBlockPos());
+                    r = bs.useWithoutItem(mc().level, player, hit);
+                    try {
+                        mc().getConnection().send(new net.minecraft.network.protocol.game.ServerboundUseItemOnPacket(
+                                net.minecraft.world.InteractionHand.MAIN_HAND, hit, 0));
+                    } catch (Throwable ignore) {}
+                }
+                out.addProperty("result", String.valueOf(r));
+                out.addProperty("target", hit.getBlockPos().toString());
+            }
+            case "close_screen" -> {
+                // 关闭当前界面（等价 ESC 确认动作），零键盘依赖
+                var s = mc().screen;
+                if (s == null) throw new IllegalStateException("no screen open");
+                s.onClose();
+                out.addProperty("closed", s.getClass().getSimpleName());
+            }
             default -> throw new IllegalStateException("unknown op: " + op);
         }
     }
