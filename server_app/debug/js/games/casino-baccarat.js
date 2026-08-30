@@ -46,6 +46,27 @@ function __bcPayout(betType, outcome) {
   if (outcome === 'player') return betType === 'player' ? 2 : 0;
   return betType === 'banker' ? 1.95 : 0;
 }
+// 大路 Big Road：连续同结果成一列（最多 6 颗，超出起新列）；和局挂到上一颗（绿斜线计数），
+// 开局前的和局记到首个结果上。输入为时间正序的 outcome 数组，输出列结构。
+function __bcBigRoad(outcomes) {
+  var cols = [], pend = 0;
+  outcomes.forEach(function (o) {
+    if (o === 'tie') {
+      if (cols.length) {
+        var lc = cols[cols.length - 1];
+        var last = lc.cells[lc.cells.length - 1];
+        last.ties = (last.ties || 0) + 1;
+      } else pend++;
+      return;
+    }
+    var cell = { outcome: o, ties: pend };
+    pend = 0;
+    var cur = cols.length ? cols[cols.length - 1] : null;
+    if (cur && cur.outcome === o && cur.cells.length < 6) cur.cells.push(cell);
+    else cols.push({ outcome: o, cells: [cell] });
+  });
+  return cols;
+}
 
 var BC_BETS = [
   { key: 'player', label: '闲 PLAYER', cls: '#5fa8e0', mult: '1:1' },
@@ -220,8 +241,9 @@ class CasinoBaccarat {
     P.table(c, w, h);
     // 荷官
     P.seat(c, w / 2, h * 0.33, t, { name: '荷官', color: '#c8a050', persona: 'tight', scale: s * 1.2, active: false, chipsLabel: '' });
-    // 珠盘路（右上）
+    // 珠盘路（右上）+ 大路（其下）
     this._beadRoad(c, w, h, s);
+    this._bigRoad(c, w, h, s);
     // 庄家手牌（上）/ 闲家手牌（下）
     var revealCut = this._revealCut();
     this._row(c, this.bHand, w / 2, h * 0.545, 'banker', w, s);
@@ -320,6 +342,37 @@ class CasinoBaccarat {
       c.font = '700 ' + Math.max(7, cell * 0.34) + 'px monospace';
       c.textAlign = 'center'; c.textBaseline = 'middle';
       c.fillText(his.outcome === 'player' ? '闲' : his.outcome === 'banker' ? '庄' : '和', x0 + gx * cell + cell / 2, y0 + gy * cell + cell / 2);
+    }
+    c.restore();
+  }
+  // 大路 Big Road：红圈=庄 蓝圈=闲 绿斜线=和（挂在上一次结果上）
+  _bigRoad(c, w, h, s) {
+    var x0 = w * 0.72, y0 = h * 0.14 + 46 * s;
+    var cell = 15 * s;
+    c.save();
+    c.fillStyle = 'rgba(240,198,116,.7)';
+    c.font = Math.max(9, 11 * s) + 'px monospace';
+    c.fillText('大路', x0, y0 - 8 * s);
+    var cols = __bcBigRoad(this.history.map(function (x) { return x.outcome; }).reverse()).slice(-8);
+    for (var ci = 0; ci < cols.length; ci++) {
+      var col = cols[ci];
+      for (var ri = 0; ri < col.cells.length; ri++) {
+        var cellD = col.cells[ri];
+        var cx = x0 + ci * cell + cell / 2, cy = y0 + ri * cell + cell / 2;
+        c.strokeStyle = cellD.outcome === 'banker' ? '#e06060' : '#5fa8e0';
+        c.lineWidth = 1.8;
+        c.beginPath(); c.arc(cx, cy, cell * 0.4, 0, Math.PI * 2); c.stroke();
+        if (cellD.ties) {
+          c.strokeStyle = '#3aa860'; c.lineWidth = 1.6;
+          c.beginPath(); c.moveTo(cx - cell * 0.4, cy + cell * 0.4); c.lineTo(cx + cell * 0.4, cy - cell * 0.4); c.stroke();
+          if (cellD.ties > 1) {
+            c.fillStyle = '#7ee8a0';
+            c.font = '700 ' + Math.max(7, cell * 0.45) + 'px monospace';
+            c.textAlign = 'left'; c.textBaseline = 'top';
+            c.fillText(String(cellD.ties), cx + cell * 0.34, cy - cell * 0.55);
+          }
+        }
+      }
     }
     c.restore();
   }
