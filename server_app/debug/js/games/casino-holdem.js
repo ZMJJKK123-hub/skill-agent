@@ -106,7 +106,14 @@ function __thStrength(hole, comm) {
   return Math.min(1, base + kick * span);
 }
 
-// ---------- AI 决策（纯函数，供测试） ----------
+// 底池赔率：跟注 call 争底池 pot → 打平所需最低胜率与底池倍数
+function __thPotOdds(pot, call) {
+  if (call <= 0) return { pct: 0, ratio: '—' };
+  var pct = call / (pot + call) * 100;
+  var potN = Math.round(pot / call * 10) / 10;
+  return { pct: Math.round(pct * 10) / 10, ratio: potN + ' : 1' };
+}
+// AI 决策（纯函数，供测试）
 // persona: aggr | tight | bluff；期前（canRaise/canAllin 均为 false）只能跟/弃且弃牌更克制
 function __thAI(strength, persona, toCall, canRaise, canAllin, roll) {
   roll = roll === undefined ? Math.random() : roll;
@@ -699,6 +706,7 @@ class CasinoHoldem {
     }
     // 你的底牌（空格翻看）
     this._playerHand(c, w, h, s);
+    this._potOddsPill(c, w, h, s);
     this._drawFx(c, s);
     if (reveal && this.winnerSeat !== undefined) P.confetti(c, w, h, t);
     c.restore();
@@ -735,6 +743,39 @@ class CasinoHoldem {
     }
   }
 
+  // 底池赔率提示：轮到你跟注时，显示跟注成本 vs 底池的打平胜率
+  _potOddsPill(c, w, h, s) {
+    this._potOddsTxt = null;
+    if (this.phase !== 'bet' || !this._dealt || this.turn !== 0) return;
+    var toCall = this.currentBet - this.players[0].bet;
+    if (toCall <= 0) return;
+    var po = __thPotOdds(this.pot, toCall);
+    var txt = '底池 ' + this.pot + ' · 跟 ' + toCall + ' → 需 ≥' + po.pct + '% 胜率 · 赔 ' + po.ratio;
+    this._potOddsTxt = txt;
+    var px = w / 2, py = h * 0.855;
+    c.save();
+    c.font = Math.round(12 * s) + 'px monospace';
+    var tw = c.measureText(txt).width + 20 * s;
+    c.fillStyle = 'rgba(12,7,4,.85)';
+    this._rrPill(c, px - tw / 2, py - 11 * s, tw, 22 * s, 11 * s);
+    c.fill();
+    c.strokeStyle = 'rgba(240,198,116,.5)'; c.lineWidth = 1;
+    this._rrPill(c, px - tw / 2, py - 11 * s, tw, 22 * s, 11 * s);
+    c.stroke();
+    c.fillStyle = '#e8d5b0';
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(txt, px, py);
+    c.restore();
+  }
+  _rrPill(c, x, y, w2, h2, r) {
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.arcTo(x + w2, y, x + w2, y + h2, r);
+    c.arcTo(x + w2, y + h2, x, y + h2, r);
+    c.arcTo(x, y + h2, x, y, r);
+    c.arcTo(x, y, x + w2, y, r);
+    c.closePath();
+  }
   _holeFan(c, x, y, hand, seat, s, leaning) {
     s = s || 1;
     var deck = this._pt('deck');
