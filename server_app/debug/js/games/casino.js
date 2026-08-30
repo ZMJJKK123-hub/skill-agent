@@ -705,6 +705,7 @@ class CasinoHub extends BaseGame {
 
     // 赌桌网格：已注册的桌自动出现（居中排布）
     var grid = this._el('div', 'display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;width:100%;max-width:860px');
+    this._crowd = {}; // 桌卡在线人数氛围：id → {n, textEl, dotEl}
     Casino.tables().forEach(function (id) {
       var def = Casino.get(id);
       var card = this._el('div', 'border:1px solid #5a3a1c;border-radius:12px;padding:18px 16px;background:rgba(22,11,6,.82);cursor:pointer;transition:border-color .15s;text-align:center');
@@ -713,6 +714,17 @@ class CasinoHub extends BaseGame {
       card.innerHTML = '<div style="font-size:32px">' + def.icon + '</div>' +
         '<div style="font-size:15px;font-weight:700;margin:8px 0 4px;color:#ecd9b8">' + def.name + '</div>' +
         '<div style="font-size:12px;color:#b09678;line-height:1.5">' + def.desc + '</div>';
+      // 在线氛围：脉冲绿点 + 人数（按桌 id 种子，缓慢漂移）
+      var crowd = this._el('div', 'margin-top:10px;font-size:11px;color:#8fce8f;display:flex;align-items:center;justify-content:center;gap:6px');
+      var dot = this._el('span', 'width:7px;height:7px;border-radius:50%;background:#5fd87a;display:inline-block;box-shadow:0 0 6px #5fd87a');
+      var txt = this._el('span', '', '');
+      crowd.appendChild(dot);
+      crowd.appendChild(txt);
+      card.appendChild(crowd);
+      var seed = 0;
+      for (var ci = 0; ci < id.length; ci++) seed = (seed * 31 + id.charCodeAt(ci)) % 997;
+      this._crowd[id] = { n: 2 + seed % 4, textEl: txt, dotEl: dot, drift: (seed % 240) + 120 };
+      this._crowd[id].textEl.textContent = '👥 ' + this._crowd[id].n + ' 人在桌';
       card.onclick = function () { sfx('click'); this.openTable(id); }.bind(this);
       grid.appendChild(card);
     }, this);
@@ -760,7 +772,26 @@ class CasinoHub extends BaseGame {
 
   update() {
     this.t++;
+    if (this.state === 'lobby') this._updateCrowd();
     if (this.state === 'table' && this.table && this.table.update) this.table.update();
+  }
+  // 大厅在线氛围：绿点呼吸 + 人数缓慢漂移（2-5 之间，按桌错峰）
+  _updateCrowd() {
+    var self = this;
+    Object.keys(this._crowd || {}).forEach(function (id) {
+      var c = self._crowd[id];
+      if (!c || !c.dotEl) return;
+      c.dotEl.style.opacity = 0.45 + 0.55 * Math.abs(Math.sin(self.t * 0.06 + c.drift));
+      if (self.t % c.drift === 0) {
+        var delta = ((Math.sin(self.t * 0.013 + c.drift * 7) > 0) ? 1 : -1);
+        var next = c.n + delta;
+        if (next < 2 || next > 5) next = c.n; // 边界反弹：维持
+        if (next !== c.n) {
+          c.n = next;
+          c.textEl.textContent = '👥 ' + c.n + ' 人在桌';
+        }
+      }
+    });
   }
   // 每帧绘制场景背景（房间由大厅画；活动赌桌自绘桌面/人物）
   render() {
