@@ -13,7 +13,8 @@
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       overflow: auto;
     }
-    #gameHost canvas.game-canvas { max-width: 100%; height: auto; image-rendering: crisp-edges; }
+    #gameHost { overflow: hidden; }
+    #gameHost canvas.game-canvas { image-rendering: pixelated; }
     #gameHost .term-hack { width: 100%; height: 100%; max-width: 720px; border: none; font-size: 15px; }
     #gameLoad { color: #5a6a7a; font: 14px monospace; padding: 24px; }
     /* 开始覆盖层 */
@@ -281,6 +282,24 @@
         boot();
       };
       boot();
+
+      // 画布等比放大铺满窗口（玩家反馈"画面小看不清"）：
+      // 用 JS 精确算出适配尺寸并设为元素尺寸——元素框==可见内容，
+      // 各游戏用 getBoundingClientRect 做的鼠标坐标映射保持正确。
+      // （不能用 object-fit:contain，信箱黑边会让坐标映射错位。）
+      window.fitCanvas = function () {
+        var cv = document.querySelector('#gameHost canvas.game-canvas');
+        var host = document.getElementById('gameHost');
+        if (!cv || !host || !cv.width) return;
+        var scale = Math.min(host.clientWidth / cv.width, host.clientHeight / cv.height);
+        if (!isFinite(scale) || scale <= 0) return;
+        cv.style.width = Math.floor(cv.width * scale) + 'px';
+        cv.style.height = Math.floor(cv.height * scale) + 'px';
+      };
+      window.fitCanvas();
+      window.addEventListener('resize', window.fitCanvas);
+      // 游戏重建/画面切换后尺寸可能变化，轻量轮询兜底
+      setInterval(window.fitCanvas, 400);
 
       // 自动开始（自动化测试 / 嵌入场景）：&autoplay=1 跳过开始界面
       if (new URLSearchParams(location.search).get('autoplay') === '1') {

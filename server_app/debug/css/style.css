@@ -98,7 +98,7 @@ body::before {
 #modal.show { display: flex; }
 .modal-box {
   background: var(--bg2); border: 1px solid var(--border-hi); border-radius: 12px;
-  max-width: 90vw; max-height: 90vh; overflow: hidden; position: relative; box-shadow: 0 0 40px rgba(0,255,159,.1);
+  width: min(92vw, 960px); max-height: 90vh; overflow: hidden; position: relative; box-shadow: 0 0 40px rgba(0,255,159,.1);
 }
 .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--card); }
 .modal-header .title { font-size: .9em; font-weight: 600; color: var(--green); }
@@ -108,7 +108,8 @@ body::before {
 }
 .modal-header .close:hover { border-color: var(--red); color: var(--red); }
 .modal-body { padding: 0; overflow: auto; }
-canvas.game-canvas { display: block; touch-action: none; }
+/* 画布放大铺满弹窗宽度；pixelated 保持放大后像素锐利 */
+canvas.game-canvas { display: block; touch-action: none; width: 100%; height: auto; image-rendering: pixelated; }
 /* Toast — 顶部小字提示，不遮挡游戏操作区 */
 #toast {
   position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
@@ -148,8 +149,8 @@ canvas.game-canvas { display: block; touch-action: none; }
 .float-elem:active { cursor: grabbing; }
 /* Terminal hacker styles */
 .term-hack {
-  width: 640px; height: 480px; background: #010409; border: 1px solid var(--border);
-  border-radius: 8px; font-family: monospace; font-size: 13px; overflow-y: auto; padding: 16px; line-height: 1.6; cursor: text;
+  width: 100%; height: 72vh; background: #010409; border: none;
+  font-family: monospace; font-size: 15px; overflow-y: auto; padding: 16px; line-height: 1.6; cursor: text;
 }
 .term-hack .tl { white-space: pre-wrap; word-break: break-word; }
 .term-hack .t-green { color: var(--green); }
