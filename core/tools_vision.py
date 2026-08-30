@@ -105,8 +105,55 @@ def _get_vision_client():
     return _vision_client
 
 
+def _focus_minecraft_window():
+    """把标题含 "Minecraft" 的窗口带到前台，返回其屏幕矩形 (l, t, r, b)。
+
+    全屏截图（PIL ImageGrab）抓的是整个桌面——MC 窗口若不在前台，
+    agent 拿到的是 IDE/桌面的图（webserv_stardust 实测）。截图前把
+    MC 窗口置前并按其矩形裁剪，才能真正"看到"游戏画面。
+    找不到窗口或非 Windows 时返回 None（回退原全屏行为）。
+    """
+    if os.name != "nt":
+        return None
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        user32 = ctypes.windll.user32
+        found = []
+
+        @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+        def _cb(hwnd, _lparam):
+            try:
+                if not user32.IsWindowVisible(hwnd):
+                    return True
+                length = user32.GetWindowTextLengthW(hwnd)
+                if not length:
+                    return True
+                buf = ctypes.create_unicode_buffer(length + 1)
+                user32.GetWindowTextW(hwnd, buf, length + 1)
+                if "minecraft" in buf.value.lower():
+                    rect = wintypes.RECT()
+                    if user32.GetWindowRect(hwnd, ctypes.byref(rect)):
+                        if (rect.right - rect.left) > 200 and (rect.bottom - rect.top) > 150:
+                            found.append((hwnd, (rect.left, rect.top, rect.right, rect.bottom)))
+            except Exception:
+                pass
+            return True
+
+        user32.EnumWindows(_cb, 0)
+        if not found:
+            return None
+        hwnd, rect = found[0]
+        user32.SetForegroundWindow(hwnd)
+        time.sleep(0.8)  # 等窗口切换 + 渲染一帧
+        return rect
+    except Exception:
+        return None
+
+
 def run_screenshot(region: dict = None) -> str:
-    """截取当前屏幕（全屏或指定区域），保存到工作区 .screenshots/ 并返回图片路径。"""
+    """截取当前屏幕；无 region 时自动聚焦 Minecraft 窗口并按其矩形裁剪。"""
     try:
         if not _vision_enabled():
             return "Error: 识图模式未开启（DSH_VISION_ENABLED=0）"
@@ -124,7 +171,8 @@ def run_screenshot(region: dict = None) -> str:
             bbox = (left, top, left + width, top + height)
             img = ImageGrab.grab(bbox=bbox)
         else:
-            img = ImageGrab.grab()
+            box = _focus_minecraft_window()
+            img = ImageGrab.grab(bbox=box)  # box=None 时回退全屏（原行为）
         base = worktree_manager.resolve_dir() if worktree_manager else Path.cwd()
         shot_dir = Path(base) / ".screenshots"
         shot_dir.mkdir(parents=True, exist_ok=True)
