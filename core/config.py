@@ -213,6 +213,7 @@ RULES:
 3. ALERT only for: banned commands (taskkill python.exe), Forge version facts violated, same build/test failing 3+ times with no change of approach, or clear task drift.
 4. Do not invent problems. If nothing is clearly wrong, output exactly: NO_ISSUE.
 5. Be conservative: if evidence is ambiguous, incomplete, or only shows normal tool usage / harmless warnings / a single failed attempt, output NO_ISSUE. Advice must be concrete and evidence-based; never repeat generic reminders or demand actions that are already optional (e.g. load_skill, citations, reading docs before writing).
+6. SELF-NOISE AWARENESS: the run.log tail ALSO contains your own previous output — lines starting with [supervisor 思考] / [supervisor:tool_name] and your earlier SEVERITY blocks echoed back into the log. Treat those as YOUR OWN noise, never as agent evidence. Judge only the agent's real activity: [round]/[tool]/[tool-result]/[reply] lines and their outputs. Never advise solely because your own earlier advice appears in the log; if the tail contains nothing but your own prior analysis, output NO_ISSUE.
 
 OUTPUT CONTRACT:
 First line must be one of:

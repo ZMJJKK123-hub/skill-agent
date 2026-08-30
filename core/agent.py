@@ -827,9 +827,13 @@ def _auto_write_starter(messages: list) -> bool:
     import glob as _glob
     import re as _re
     try:
-        # 1) infer modid from user messages
+        # 1) infer modid from USER messages only（修复：此前未过滤 role，工具输出/
+        #    starter 文档里出现的 "modid = xxx"（如 coppertools 等其他 mod 示例）
+        #    会污染推断，导致把无关 starter 复制进当前任务——实测 bug）
         modid = None
         for m in messages:
+            if m.get("role") != "user":
+                continue
             c = m.get("content", "") if isinstance(m.get("content"), str) else ""
             m2 = _re.search(r"modid[ =:]+([a-zA-Z0-9_\-]+)", c)
             if m2:
@@ -841,7 +845,7 @@ def _auto_write_starter(messages: list) -> bool:
         candidates = _glob.glob(os.path.join(os.getcwd(), "starter", "**", "*.java"), recursive=True)
         task_text = "\n".join(
             str(m.get("content", "")) for m in messages
-            if isinstance(m.get("content"), str)
+            if m.get("role") == "user" and isinstance(m.get("content"), str)
         ).lower()
         block_kw = ("block", "方块")
         item_kw = ("item", "food", "apple", "ingot", "gem", "物品", "食物")
@@ -855,9 +859,12 @@ def _auto_write_starter(messages: list) -> bool:
             except OSError:
                 continue
             low_path = path.lower().replace("\\", "/")
-            score = 0
-            if modid in content.lower():
-                score += 1
+            # modid 必须出现在候选文件的包名或路径里，否则视为与任务无关的 starter，
+            # 直接跳过（原"modid 在正文任意位置即 +1"太宽松，导致 coppertools 误配）
+            pkg_m = _re.search(r"package\s+([\w\.]+)\s*;", content)
+            if not ((pkg_m and modid in pkg_m.group(1).lower()) or modid in low_path):
+                continue
+            score = 1
             if any(k in task_text for k in block_kw) and "/block/" in low_path:
                 score += 6
             if any(k in task_text for k in tool_kw) and ("/tools/" in low_path or "tool" in low_path):

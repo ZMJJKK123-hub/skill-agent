@@ -22,7 +22,10 @@ _GLM4V_DEFAULT_MODEL = "glm-4.6v-flash"
 
 
 def _vision_enabled() -> bool:
-    return os.environ.get("DSH_VISION_ENABLED", "0") == "1"
+    # 默认开启（用户要求）。screenshot 只依赖 PIL，开启即可用；
+    # analyze_image 在未配置视觉 API 时会返回明确的"未配置"提示。
+    # 显式设置 DSH_VISION_ENABLED=0 仍可关闭。
+    return os.environ.get("DSH_VISION_ENABLED", "1") != "0"
 
 
 def _glm4v_env_path():
