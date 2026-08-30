@@ -33,6 +33,16 @@ function __bjDealerShouldHit(hand) { return __bjValue(hand).total < 17; }
 function __bjCanSplit(hand, walletChips, bet) {
   return !!hand && hand.length === 2 && hand[0].r === hand[1].r && walletChips >= bet;
 }
+// 保险：庄家明牌为 A 时可买（半注为限）；庄家天牌赔 2:1（返还 3×保费）
+function __bjInsOffer(dealer) {
+  return !!dealer && !!dealer[0] && dealer[0].r === 14;
+}
+function __bjInsStake(bet) {
+  return Math.floor(bet / 2);
+}
+function __bjInsPayout(insAmt, dealerBJ) {
+  return dealerBJ ? insAmt * 3 : 0;
+}
 
 var BJ_BETS = [20, 50, 100, 200];
 var BJ_DEAL_GAP = 16, BJ_DEAL_FLIGHT = 12;
@@ -96,6 +106,8 @@ class CasinoBlackjack {
     this.holeFlipT = 0;   // 清上一局残留（否则第二局暗牌开局就翻开）
     this._nextHitT = 0;
     this.dealSeq = 0;
+    this.insAmt = 0;      // 保险侧注
+    this._insDone = false;
     this._msg('选择下注额开始一局');
     Casino.audio.play('voice-bets', 0.7);
     this._renderActions();
@@ -112,6 +124,32 @@ class CasinoBlackjack {
     this._renderActions();
   }
 
+  // ---------- 保险（庄家明牌 A） ----------
+  takeInsurance() {
+    if (this.phase !== 'insurance') return;
+    var amt = __bjInsStake(this.bet);
+    if (amt > 0 && this.wallet.sub(amt)) {
+      this.insAmt = amt;
+      Casino.audio.play('coins', 0.5);
+      this._fxText('保险 ' + amt, '#a0c8e8');
+    }
+    this._afterInsurance(false);
+  }
+  declineInsurance() {
+    if (this.phase !== 'insurance') return;
+    this._afterInsurance(false);
+  }
+  _afterInsurance(fromDeal) {
+    this._insDone = true;
+    var pv0 = __bjValue(this.hands[0]);
+    this.phase = 'player'; // 先进入玩家阶段，_stand 的守卫才放行
+    if (__bjIsBJ(this.hands[0]) || __bjIsBJ(this.dealer)) {
+      this._stand(true); // 天牌直接进亮牌
+    } else if (!fromDeal) {
+      this._msg('你的牌 ' + pv0.total + (pv0.soft ? '（软）' : '') + ' 点 · 要牌还是停牌？');
+    }
+    this._renderActions();
+  }
   _dealOne(target) {
     var card = this.deck.pop();
     (target === 'd' ? this.dealer : target).push(card);
@@ -248,6 +286,13 @@ class CasinoBlackjack {
       else if (result === 'push') payout += bet;
       results.push(result);
     });
+    // 保险结算（庄家天牌赔 2:1，计入净额）
+    var ins0 = this.insAmt;
+    var insRet = ins0 > 0 ? __bjInsPayout(ins0, __bjIsBJ(this.dealer)) : 0;
+    this.insAmt = 0;
+    if (insRet > 0) payout += insRet;
+    if (ins0 > 0) staked += ins0;
+    var insNote = ins0 > 0 ? (insRet > 0 ? ' · 保险中 +' + (insRet - ins0) : ' · 保险失效') : '';
     if (payout > 0) {
       this.wallet.add(payout);
       for (var k = 0; k < 3; k++) this._fxChips('player', payout / 3, k * 5);
@@ -266,12 +311,12 @@ class CasinoBlackjack {
         bust: ['你爆牌，输 ' + staked, '#e08080']
       };
       var tx = texts[r0];
-      this._msg(tx[0]);
+      this._msg(tx[0] + insNote);
       this.banner = { text: r0 === 'bj' ? 'BLACKJACK ×1.5' : r0 === 'win' ? '你赢了 +' + (payout - staked) : r0 === 'push' ? 'PUSH 平局' : r0 === 'bust' ? 'BUST 爆牌' : '庄家胜', color: tx[1], start: this.tick, dur: 90 };
       this._fxText(r0 === 'bj' ? 'Blackjack!' : r0 === 'win' ? 'WIN' : r0 === 'push' ? 'PUSH' : 'LOSE', tx[1], true);
     } else {
       var col = net > 0 ? '#ffd98a' : net === 0 ? '#a0c8e8' : '#e08080';
-      this._msg('两手 ' + results.join('/') + ' · 净 ' + (net >= 0 ? '+' : '') + net);
+      this._msg('两手 ' + results.join('/') + ' · 净 ' + (net >= 0 ? '+' : '') + net + insNote);
       this.banner = { text: net > 0 ? '分牌净赢 +' + net : net === 0 ? '分牌打平' : '分牌净输 ' + net, color: col, start: this.tick, dur: 90 };
       this._fxText(net > 0 ? 'WIN' : net === 0 ? 'PUSH' : 'LOSE', col, true);
     }
@@ -315,6 +360,12 @@ class CasinoBlackjack {
       BJ_BETS.forEach(function (b) {
         if (self.wallet.get() >= b) self.actEl.appendChild(mk('下注 ' + b, function () { self.start(b); }, '#ffc87a'));
       });
+      return;
+    }
+    if (this.phase === 'insurance') {
+      var ins2 = __bjInsStake(this.bet);
+      this.actEl.appendChild(mk('🛡 买保险 ' + ins2 + '（天牌赔 2:1）', function () { self.takeInsurance(); }, '#a0c8e8'));
+      this.actEl.appendChild(mk('不买保险', function () { self.declineInsurance(); }, '#8a7ba0'));
       return;
     }
     if (this.phase === 'player') {
@@ -510,6 +561,11 @@ class CasinoBlackjack {
       else this.wallet.bailout();
       return;
     }
+    if (this.phase === 'insurance' && this.tick % 25 === 12) {
+      if (Math.random() < 0.35) this.takeInsurance();
+      else this.declineInsurance();
+      return;
+    }
     if (this.phase === 'player' && this.tick % 25 === 12) {
       var hb = this.hands[this.curHand];
       if (__bjCanSplit(hb, this.wallet.get(), this.bet) && Math.random() < 0.8) this.split();
@@ -544,13 +600,16 @@ class CasinoBlackjack {
       if (this.dealSeq >= 4 && this.tick - this.dealT > 20 + 4 * BJ_DEAL_GAP + BJ_DEAL_FLIGHT) {
         this.hands[0].bet = this.bet;
         var pv0 = __bjValue(this.hands[0]);
-        this.phase = 'player'; // 先进入玩家阶段，_stand 的守卫才放行
-        if (__bjIsBJ(this.hands[0]) || __bjIsBJ(this.dealer)) {
-          this._stand(true); // 天牌直接进亮牌
-        } else {
-          this._msg('你的牌 ' + pv0.total + (pv0.soft ? '（软）' : '') + ' 点 · 要牌还是停牌？');
+        // 保险：庄家明牌 A → 先问保险，再进玩家阶段/天牌亮牌
+        if (__bjInsOffer(this.dealer) && !this._insDone) {
+          this.phase = 'insurance';
+          this._msg('庄家亮出 A · 买保险吗？（最多 ' + __bjInsStake(this.bet) + '，庄家天牌赔 2:1）');
+          Casino.say('庄家王牌，买保险吗', { pitch: 0.7 });
+          this._renderActions();
+          return;
         }
-        this._renderActions();
+        this._afterInsurance(true);
+        return;
       }
       return;
     }
