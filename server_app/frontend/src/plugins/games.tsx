@@ -9,6 +9,7 @@ import { useSession } from '../lib/session'
 
 const GAMES = [
   { id: 'snake-2048', label: '🐍 Snake 2048' },
+  { id: 'casino', label: '🎰 算力赌坊（梭哈）' },
   // { id: 'server-defense', label: '🛡️ Server Defense' },
   // { id: 'traffic-breakout', label: '🧱 Traffic Breakout' },
   // { id: 'dimension-parkour', label: '🏃 Dimension Parkour' },

@@ -143,6 +143,10 @@
         zh: '⚠ 蛇会自动向右移动，请提前用方向键/WASD 转向，避免撞墙！吃数字方块长大，相同数字碰撞会合并翻倍（类似 2048）。蛇身越长得分越高。空格键开启自动寻路（蛇长>15时）。R 键重开，ESC 关闭。',
         en: '⚠ The snake moves automatically right — use Arrow keys/WASD BEFORE it hits a wall! Eat number blocks to grow; same numbers merge (like 2048). Space = auto-path (len>15). R = restart, ESC = close.'
       },
+      'casino': {
+        zh: '🎰 算力赌坊（纯虚拟筹码，仅供娱乐）。进大厅选桌：目前开放「梭哈 Show Hand」。梭哈玩法：每人 5 张牌，共 3 轮下注——跟注 / 加注 / 弃牌 / 梭哈（全压）。牌型从大到小：豹子 > 同花顺 > 金刚 > 同花 > 顺子 > 三条 > 两对 > 对子 > 散牌。桌面点「？牌型速查」随时查看。输了别慌，大厅可领救济金。',
+        en: '🎰 Compute Casino (virtual chips only, for fun). Pick a table in the lobby — Show Hand is open. Each player gets 5 cards, 3 betting rounds: call / raise / fold / all-in. Hands: full house > straight flush > four of a kind > flush > straight > trips > two pair > pair > high card. Check the in-table cheat sheet. Broke? Grab bailout chips in the lobby.'
+      },
       'server-defense': {
         zh: 'WASD 移动角色，鼠标点击射击。消灭涌来的敌人波次，收集经验升级武器。类似吸血鬼幸存者的塔防玩法。R 键重开。',
         en: 'WASD to move, mouse click to shoot. Survive enemy waves, collect XP to upgrade weapons. Vampire Survivors style. R = restart.'
@@ -169,11 +173,13 @@
       }
     };
 
-    // 当前只上线 Snake 2048；其余游戏代码保留，取消注释即可复原。
+    // 当前只上线 Snake 2048 与 算力赌坊；其余游戏代码保留，取消注释即可复原。
+    // 赌坊为多文件（大厅 + 各赌桌），用 files 数组顺序加载。
     var GAMES = {
       // 'server-defense':   { title: 'Server Defense',   file: 'js/games/server-defense.js',   cls: 'ServerDefense' },
       // 'terminal-hacker':  { title: 'Terminal Hacker',  file: 'js/games/terminal-hacker.js',  cls: 'TerminalHacker' },
       'snake-2048':       { title: 'Snake 2048',       file: 'js/games/snake-2048.js',       cls: 'Snake2048' },
+      'casino':           { title: '算力赌坊', files: ['js/games/casino.js', 'js/games/casino-showhand.js'], cls: 'CasinoHub' },
       // 'traffic-breakout': { title: 'Traffic Breakout', file: 'js/games/traffic-breakout.js', cls: 'TrafficBreakout' },
       // 'dimension-parkour':{ title: 'Dimension Parkour',file: 'js/games/dimension-parkour.js',cls: 'DimensionParkour' },
       // 'bug-sorter':       { title: 'Bug Sorter',       file: 'js/games/bug-sorter.js',       cls: 'BugSorter' },
@@ -202,15 +208,28 @@
       // 'server-defense':    function (h) { return new ServerDefense(h); },
       // 'terminal-hacker':   function (h) { return new TerminalHacker(h); },
       'snake-2048':        function (h) { return new Snake2048(h); },
+      'casino':            function (h) { return new CasinoHub(h); },
       // 'traffic-breakout':  function (h) { return new TrafficBreakout(h); },
       // 'dimension-parkour': function (h) { return new DimensionParkour(h); },
       // 'bug-sorter':        function (h) { return new BugSorter(h); },
       // 'data-turing':       function (h) { return new DataTuring(h); }
     };
 
+    // 顺序加载游戏脚本：单文件用 file，多文件（如赌坊的大厅+赌桌）用 files 数组
+    var fileList = GAMES[gid].files || [GAMES[gid].file];
+    var loadIdx = 0;
     var s = document.createElement('script');
-    s.src = GAMES[gid].file + '?_v=18';
-    s.onload = function () {
+    function loadNext() {
+      if (loadIdx >= fileList.length) { onAllLoaded(); return; }
+      s = document.createElement('script');
+      s.src = fileList[loadIdx] + '?_v=18';
+      s.onload = function () { loadIdx++; loadNext(); };
+      s.onerror = function () {
+        document.getElementById('gameLoad').textContent = 'game script not found: ' + fileList[loadIdx];
+      };
+      document.head.appendChild(s);
+    }
+    function onAllLoaded() {
       var host = document.getElementById('gameHost');
       var started = false;
 
@@ -410,10 +429,8 @@
         }
       });
     };
-    s.onerror = function () {
-      document.getElementById('gameLoad').textContent = 'game script not found: ' + GAMES[gid].file;
-    };
     document.head.appendChild(s);
+    loadNext();
 
     // R 重开
     window.addEventListener('keydown', function (e) {
