@@ -1465,7 +1465,7 @@ DEBUG_DIR = Path(__file__).resolve().parent / "debug"
 async def debug_page():
     idx = DEBUG_DIR / "index.html"
     if idx.exists():
-        return FileResponse(str(idx))
+        return FileResponse(str(idx), headers={"Cache-Control": "no-cache"})
     return {"error": "debug page not found"}
 
 @app.get("/debug/{filepath:path}")
@@ -1475,7 +1475,8 @@ async def debug_static(filepath: str):
     # 双保险：防止路径穿越读取 debug 目录之外的文件（如 .env / server.py）
     if not f.is_relative_to(root) or not f.is_file():
         raise HTTPException(404, "Not found")
-    return FileResponse(str(f))
+    # no-cache = 每次使用前必须重验（ETag 变了才下载），玩家永远拿到最新游戏代码
+    return FileResponse(str(f), headers={"Cache-Control": "no-cache"})
 
 
 # 未知页面路径（非 /api、非 /debug）的 404 也兜底到维护页：
