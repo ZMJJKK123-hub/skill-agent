@@ -85,6 +85,56 @@ def _vk_code(key: str) -> int:
     raise ValueError(f"Unknown key: {key}")
 
 
+def bridge_command(op: str, index: int = None, value: str = None,
+                   text: str = None, name: str = None, timeout: int = 10) -> str:
+    """进程内 UI 自动化桥：直接调用按钮背后的 Java 函数（AgentBridge mod）。
+
+    前置：starter/bridge/AgentBridge.java 已复制进 src/test 并在主 @Mod 构造器
+    注册，客户端经 run_test_client 启动。协议：写 run/bridge_cmd.json（含唯一
+    id），轮询 run/bridge_result.json 直到 id 匹配；screenshot 额外等图片落盘。
+    """
+    import json as _json
+    from pathlib import Path as _P
+    try:
+        base = worktree_manager.resolve_dir() if worktree_manager else os.getcwd()
+        run_dir = _P(base) / "run"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        cmd_id = f"{int(time.time() * 1000)}-{os.urandom(3).hex()}"
+        payload = {"id": cmd_id, "op": op}
+        if index is not None:
+            payload["index"] = int(index)
+        if value is not None:
+            payload["value"] = str(value)
+        if text is not None:
+            payload["text"] = str(text)
+        if name is not None:
+            payload["name"] = str(name)
+        result_path = run_dir / "bridge_result.json"
+        result_path.unlink(missing_ok=True)  # 清掉旧结果，避免读到上条
+        (run_dir / "bridge_cmd.json").write_text(
+            _json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+        deadline = time.time() + timeout
+        shot_path = None
+        while time.time() < deadline:
+            time.sleep(0.2)
+            try:
+                data = _json.loads(result_path.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            if data.get("id") != cmd_id:
+                continue
+            if op == "screenshot" and data.get("ok"):
+                shot_path = data.get("path")
+                if shot_path and not _P(shot_path).exists():
+                    continue  # grab 异步落盘，等文件出现
+            return _json.dumps(data, ensure_ascii=False)
+        return (f"Error: bridge_command timeout ({timeout}s) — op={op}。"
+                "请确认：AgentBridge 已注册、客户端(run_test_client)仍在运行。")
+    except Exception as e:
+        return f"Error: bridge_command failed: {e}"
+
+
 def press_keys(sequence: list) -> str:
     """按脚本顺序在焦点窗口模拟按键（代码级 UI 导航，无需截图决策）。
 

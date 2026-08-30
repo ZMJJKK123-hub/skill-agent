@@ -81,7 +81,18 @@ dedicated tool; use bash only when no tool exists.
 - snapshot: create a git checkpoint commit, returns HEAD.
 - restore_snapshot: hard reset to a previous snapshot (DESTRUCTIVE - only when you are sure).
 
-### Deterministic client menu navigation (press_keys — no per-step screenshots)
+### In-process UI automation (bridge_command — PREFERRED, no focus stealing)
+- Before client verification: copy `starter/bridge/AgentBridge.java` to `src/test/java/com/agentbridge/AgentBridge.java` and add ONE line at the end of your main @Mod constructor: `new com.agentbridge.AgentBridge();`. Rebuild so it compiles, then start the client with `run_test_client` (NOT run_client — test sources are only on the test classpath).
+- Then drive the UI as CODE, no screenshots needed to decide:
+  1) `bridge_command op=screen_info` → returns screen class + widgets [{index,label,active,editable}]. Read labels to decide.
+  2) `bridge_command op=click index=<n>` → invokes the button's onPress handler directly (background window OK).
+  3) `bridge_command op=set_text index=<n> value=<name>` → fill world-name boxes.
+  4) `bridge_command op=chat text="/give @s <modid>:<item>"` then `op=chat text="/give @s minecraft:stone_pickaxe"` (so it can mine if needed).
+  5) ONE `bridge_command op=screenshot name=icon_check` + analyze_image at the END for the icon verdict — game-renderer screenshots work even when the window is unfocused/minimized.
+- Typical flow: title screen → click "Singleplayer" → screen_info → click "Create New World" → set_text world name → click "Create New World" → wait_for_log "joined the game" (timeout 180) → give item → screenshot → analyze.
+- Indexes change between screens: always screen_info after a screen transition, then click.
+
+### Deterministic client menu navigation (press_keys — FALLBACK when bridge not compiled)
 - Use press_keys for vanilla menu flows instead of screenshot->decide->press loops. Verify each SCREEN transition with ONE wait_for_screen, not one screenshot per button.
 - Recipe (Tab order is layout-based and locale-independent; if focus lands elsewhere, adjust the number of 'tab' steps ONCE from the verification screenshot and re-run the sequence):
   - Main menu -> world list: press_keys ["tab", "enter"] (first Tab focuses Singleplayer), then wait:800.

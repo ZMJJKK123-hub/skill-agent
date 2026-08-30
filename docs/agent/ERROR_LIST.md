@@ -1122,3 +1122,8 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **[webserv_rubysword] `NEW_ERROR: 注册方块时 RegisterEvent 抛 "Block id not set" NullPointerException | 1.21.11 Block 注册必须显式 setId | Block.Properties.create() 后链式 .setId(ResourceLocation)（Item 同理），或 Item.Properties().setId(...)`**
 - **[webserv_rubysword] `NEW_ERROR: Identifier.of(String, String) 不存在 | 1.21.11 Mojmap 官方映射的 Identifier 构造不是 of() | 用 Identifier.fromNamespaceAndPath(modid, name) 或 Identifier.parse("modid:name")`**
 - **[工具bug已修] gradletools._run_gradle 超时分支 out 变量 UnboundLocalError（历史 ERROR_LIST 记录过的 run_test_client 工具错误，本次根治）**
+
+## 2026-08-30 本地网站实测（webserv_topaz + AgentBridge 移植记录）
+- **[环境事实] 本工程锁定的 Forge 1.21.11-61.2.0 用 eventbus 7.0.5（每事件一条总线）| 无 net.minecraftforge.eventbus.api.SubscribeEvent（在 api.listener 包）也无 MinecraftForge.EVENT_BUS.register(Object) | 订阅：事件类自带静态 BUS 字段，如 TickEvent.ClientTickEvent.Post.BUS.addListener(this::onTick)——注意 TickEvent 嵌套名是 ClientTickEvent 不是 mc_java_sources 里的 Client**
+- **[环境事实] mc_java_sources_1.21.11 参考树与运行时 61.2.0 存在 API 差异（TickEvent 结构 / AbstractWidget.visible 是公有字段而非 isVisible()）| 查不到符号时先 javap 运行时 jar：~/.gradle/caches/minecraftforge/forgegradle/mavenizer/caches/maven/forge/net/minecraftforge/forge/1.21.11-61.2.0/official/1.21.11/recompiled.jar**
+- **[工具] 新增 AgentBridge 进程内 UI 桥（starter/bridge/AgentBridge.java + bridge_command 工具）：直接调按钮 onPress(InputWithModifiers)、EditBox.setValue、sendCommand、Screenshot.grab(File,RenderTarget,Consumer) 全部实测签名可用；进 src/test 需 run_test_client 启动**

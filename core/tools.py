@@ -27,6 +27,7 @@ from .tools_download import download_file, extract_archive
 from .tools_env import detect_environment
 from .tools_fs import run_edit, run_glob, run_grep, run_read, run_search_api, run_write
 from .tools_game import (
+    bridge_command,
     game_input,
     press_key,
     press_keys,
@@ -122,6 +123,9 @@ TOOL_HANDLERS = {
     "game_input": lambda **kw: game_input(kw.get("action", "type"), kw.get("key"), kw.get("text")),
     "press_key": lambda **kw: press_key(kw["key"]),
     "press_keys": lambda **kw: press_keys(kw.get("sequence") or []),
+    "bridge_command": lambda **kw: bridge_command(
+        kw.get("op", "screen_info"), kw.get("index"), kw.get("value"),
+        kw.get("text"), kw.get("name"), kw.get("timeout", 10)),
     "type_text": lambda **kw: type_text(kw["text"]),
     "wait_for_log": lambda **kw: wait_for_log(kw["pattern"], kw.get("timeout", 60), kw.get("log_path")),
     "wait_for_screen": lambda **kw: wait_for_screen(kw.get("duration", 5), kw.get("prompt")),
@@ -1074,6 +1078,25 @@ _TOOL_META["analyze_image"] = {"readonly": True}
 
 # ── 新增自动流程工具：搜索 / 校验 / 解析 / 环境 / 产物 / 下载 / 清理 / 全自动 ──
 _TOOL_SCHEMAS_EXTRA = [
+    {   # 进程内 UI 自动化桥：直接调用按钮 Java 回调，免焦点免模拟鼠标
+        "type": "function",
+        "function": {
+            "name": "bridge_command",
+            "description": "In-process UI automation via the AgentBridge mod (requires: copy starter/bridge/AgentBridge.java into src/test/java/com/agentbridge/, add ONE line 'new com.agentbridge.AgentBridge();' at the end of your main @Mod constructor, and start the client with run_test_client). ops: screen_info (list current screen's buttons with index/label — read the UI as CODE, no screenshot), click {index} (invoke the button's onPress handler directly, not a simulated mouse), set_text {index,value} (fill an EditBox), chat {text} (send '/give @s <modid>:<item>' etc.), screenshot {name} (game-renderer screenshot, works in background window). Preferred over press_keys/screenshots whenever the bridge is compiled in.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "op": {"type": "string", "enum": ["screen_info", "click", "set_text", "chat", "screenshot"]},
+                    "index": {"type": "integer", "description": "widget index from screen_info (click/set_text)"},
+                    "value": {"type": "string", "description": "text value (set_text)"},
+                    "text": {"type": "string", "description": "chat/command text (chat)"},
+                    "name": {"type": "string", "description": "screenshot file name (screenshot)"},
+                    "timeout": {"type": "integer", "description": "seconds to wait for result (default 10)"},
+                },
+                "required": ["op"],
+            },
+        },
+    },
     {   # 代码级 UI 导航：确定性按键脚本，替代"截图→识图→决定→按键"慢循环
         "type": "function",
         "function": {
@@ -1635,7 +1658,7 @@ _CLIENT_TOOLS_BLOCKLIST = {
     "run_client", "run_server", "start_mc_server", "start_mc_client",
     "send_game_command", "game_input", "press_key", "type_text",
     "wait_for_screen", "verify_visual_loop", "server_console",
-    "kill_game", "wait_for_mc_ready", "press_keys",
+    "kill_game", "wait_for_mc_ready", "press_keys", "bridge_command",
     "run_test_client",  # runTestClient也会启动MC客户端窗口
 }
 if os.environ.get("DSH_DISABLE_CLIENT_TOOLS") == "1":
