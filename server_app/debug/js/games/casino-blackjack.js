@@ -29,6 +29,10 @@ function __bjValue(hand) {
 function __bjIsBJ(hand) { return hand.length === 2 && __bjValue(hand).total === 21; }
 // 庄家规则：17 点或以上停牌（含软 17 停）
 function __bjDealerShouldHit(hand) { return __bjValue(hand).total < 17; }
+// 分牌：两手起手牌点数相同（含 A-A），且余额够再押一份
+function __bjCanSplit(hand, walletChips, bet) {
+  return !!hand && hand.length === 2 && hand[0].r === hand[1].r && walletChips >= bet;
+}
 
 var BJ_BETS = [20, 50, 100, 200];
 var BJ_DEAL_GAP = 16, BJ_DEAL_FLIGHT = 12;
@@ -83,7 +87,10 @@ class CasinoBlackjack {
   _awaitBet() {
     this.phase = 'bet';
     this.deck = __bjShuffle(__bjNewDeck());
-    this.player = [];
+    this.hands = null;      // 分牌后为多手：[{..卡..}, bet, done, busted 挂在数组属性上]
+    this.curHand = 0;
+    this._splitDone = false;
+    this._acesSplit = false;
     this.dealer = [];
     this.bet = 0;
     this.holeFlipT = 0;   // 清上一局残留（否则第二局暗牌开局就翻开）
@@ -107,57 +114,112 @@ class CasinoBlackjack {
 
   _dealOne(target) {
     var card = this.deck.pop();
-    (target === 'p' ? this.player : this.dealer).push(card);
+    (target === 'd' ? this.dealer : target).push(card);
     Casino.audio.play('card-flick', 0.5);
     return card;
   }
+  _dealTo(hand) { return this._dealOne(hand); }
   _cardT(target, idx) { // 第 target/idx 张牌的起始帧
     return this.dealT + 20 + idx * BJ_DEAL_GAP;
   }
 
-  // 玩家动作
+  // ---------- 玩家动作（分牌后逐手操作） ----------
+  split() {
+    var h = this.hands && this.hands[this.curHand];
+    if (this.phase !== 'player' || !__bjCanSplit(h, this.wallet.get(), this.bet)) return;
+    if (!this.wallet.sub(this.bet)) { this._msg('算力不足，不能分牌'); return; }
+    this._splitDone = true;
+    var isAces = h[0].r === 14;
+    this._acesSplit = isAces;
+    h.bet = h.bet || this.bet;
+    var h2 = [h.pop()];
+    h2.bet = this.bet;
+    this.hands.push(h2);
+    this._fxText('分牌 SPLIT', '#ffc87a');
+    Casino.audio.play('voice-double', 0.6);
+    // 第一手立即补一张
+    this._dealTo(h);
+    this.fx.push({ kind: 'dealcard', to: 'h0', idx: h.length - 1, start: this.tick, dur: BJ_DEAL_FLIGHT });
+    var v = __bjValue(h);
+    if (isAces || v.total === 21) { // 分 A 各补一张即停；补成 21 也直接停
+      h.done = true;
+      this._nextHand();
+    } else {
+      this._msg('第 1 手 ' + v.total + (v.soft ? '（软）' : '') + ' 点 · 要牌还是停牌？');
+    }
+    this._renderActions();
+  }
   hit() {
     if (this.phase !== 'player') return;
-    this._dealOne('p');
+    var h = this.hands[this.curHand];
     Casino.audio.play('voice-hit', 0.6);
-    this.fx.push({ kind: 'dealcard', to: 'player', idx: this.player.length - 1, start: this.tick, dur: BJ_DEAL_FLIGHT });
-    var v = __bjValue(this.player);
+    this._dealTo(h);
+    this.fx.push({ kind: 'dealcard', to: 'h' + this.curHand, idx: h.length - 1, start: this.tick, dur: BJ_DEAL_FLIGHT });
+    var v = __bjValue(h);
     if (v.total > 21) {
-      this._msg('爆牌！' + v.total + ' 点');
+      this._msg('第 ' + (this.curHand + 1) + ' 手爆牌！' + v.total + ' 点');
       this._fxText('爆牌 BUST', '#ff6a5a', true);
       Casino.audio.play('voice-lose', 0.8);
-      this._settle('bust');
+      h.busted = true;
+      h.done = true;
+      if (this.curHand < this.hands.length - 1) this._nextHand();
+      else this._toDealer();
     } else if (v.total === 21) {
       this._stand(true);
     } else {
-      this._msg('你的牌 ' + v.total + (v.soft ? '（软）' : '') + ' 点');
+      this._msg('第 ' + (this.curHand + 1) + ' 手 ' + v.total + (v.soft ? '（软）' : '') + ' 点');
     }
     this._renderActions();
   }
   stand() { this._stand(false); }
-  _stand(auto) {
-    if (this.phase !== 'player') return;
+  _nextHand() {
+    this.curHand++;
+    var h = this.hands[this.curHand];
+    this._dealTo(h);
+    this.fx.push({ kind: 'dealcard', to: 'h' + this.curHand, idx: h.length - 1, start: this.tick, dur: BJ_DEAL_FLIGHT });
+    var v = __bjValue(h);
+    if (this._acesSplit || v.total === 21) {
+      h.done = true;
+      if (this.curHand < this.hands.length - 1) this._nextHand();
+      else this._toDealer();
+      return;
+    }
+    this._msg('第 ' + (this.curHand + 1) + ' 手 ' + v.total + (v.soft ? '（软）' : '') + ' 点 · 要牌还是停牌？');
+  }
+  _toDealer() {
     this.phase = 'dealer';
     Casino.audio.play('voice-stand', 0.6);
     this.holeFlipT = this.tick;
     this._msg('庄家亮牌…');
     this._renderActions();
   }
+  _stand(auto) {
+    if (this.phase !== 'player') return;
+    var h = this.hands[this.curHand];
+    h.done = true;
+    if (this.curHand < this.hands.length - 1) { this._nextHand(); return; }
+    this._toDealer();
+  }
   double() {
-    if (this.phase !== 'player' || this.player.length !== 2) return;
-    if (!this.wallet.sub(this.bet)) { this._msg('算力不足，不能加倍'); return; }
-    this.bet *= 2;
+    if (this.phase !== 'player') return;
+    var h = this.hands[this.curHand];
+    if (h.length !== 2) return;
+    if (!this.wallet.sub(h.bet || this.bet)) { this._msg('算力不足，不能加倍'); return; }
+    h.bet = (h.bet || this.bet) * 2;
     Casino.audio.play('voice-double-down', 0.7);
     Casino.audio.play('coins', 0.5);
     this._fxText('加倍 ×2', '#ffc87a');
-    this._dealOne('p');
-    this.fx.push({ kind: 'dealcard', to: 'player', idx: this.player.length - 1, start: this.tick, dur: BJ_DEAL_FLIGHT });
-    var v = __bjValue(this.player);
+    this._dealTo(h);
+    this.fx.push({ kind: 'dealcard', to: 'h' + this.curHand, idx: h.length - 1, start: this.tick, dur: BJ_DEAL_FLIGHT });
+    var v = __bjValue(h);
     if (v.total > 21) {
       this._msg('加倍后爆牌 ' + v.total);
       this._fxText('爆牌 BUST', '#ff6a5a', true);
       Casino.audio.play('voice-lose', 0.8);
-      this._settle('bust');
+      h.busted = true;
+      h.done = true;
+      if (this.curHand < this.hands.length - 1) this._nextHand();
+      else this._toDealer();
     } else {
       this._stand(true);
     }
@@ -166,38 +228,58 @@ class CasinoBlackjack {
 
   _settle(mode) {
     this.phase = 'settle';
+    var self = this;
     var dv = __bjValue(this.dealer);
-    var pv = __bjValue(this.player);
-    var result; // win | lose | push | bj | bust
-    if (mode === 'bust') result = 'bust';
-    else if (__bjIsBJ(this.player) && !__bjIsBJ(this.dealer)) result = 'bj';
-    else if (__bjIsBJ(this.dealer) && !__bjIsBJ(this.player)) result = 'lose';
-    else if (dv.total > 21 || pv.total > dv.total) result = 'win';
-    else if (pv.total < dv.total) result = 'lose';
-    else result = 'push';
-    var payout = 0;
-    if (result === 'bj') payout = Math.floor(this.bet * 2.5);
-    else if (result === 'win') payout = this.bet * 2;
-    else if (result === 'push') payout = this.bet;
+    var payout = 0, staked = 0, results = [];
+    this.hands.forEach(function (h) {
+      var bet = h.bet || self.bet;
+      staked += bet;
+      var pv = __bjValue(h).total;
+      var isBJ = !self._splitDone && __bjIsBJ(h); // 分牌后的 21 不算 Blackjack
+      var result; // win | lose | push | bj | bust
+      if (h.busted) result = 'bust';
+      else if (isBJ && !__bjIsBJ(self.dealer)) result = 'bj';
+      else if (__bjIsBJ(self.dealer) && !isBJ) result = 'lose';
+      else if (dv.total > 21 || pv > dv.total) result = 'win';
+      else if (pv < dv.total) result = 'lose';
+      else result = 'push';
+      if (result === 'bj') payout += Math.floor(bet * 2.5);
+      else if (result === 'win') payout += bet * 2;
+      else if (result === 'push') payout += bet;
+      results.push(result);
+    });
     if (payout > 0) {
       this.wallet.add(payout);
       for (var k = 0; k < 3; k++) this._fxChips('player', payout / 3, k * 5);
     }
-    var texts = {
-      bj: ['Blackjack！赔 3:2，赢 ' + payout, '#ffd98a', 'voice-blackjack'],
-      win: ['你赢了 ' + this.bet + '！', '#ffd98a', 'voice-win'],
-      push: ['平局，退回下注', '#a0c8e8', 'voice-push'],
-      lose: ['庄家胜（' + (dv.total > 21 ? '庄爆 ' + dv.total : dv.total + ' 比 ' + pv.total) + '）', '#e08080', 'voice-lose'],
-      bust: ['你爆牌，输 ' + this.bet, '#e08080', 'voice-lose']
-    };
-    var tx = texts[result];
-    this._msg(tx[0]);
-    this.banner = { text: result === 'bj' ? 'BLACKJACK ×1.5' : result === 'win' ? '你赢了 +' + this.bet : result === 'push' ? 'PUSH 平局' : result === 'bust' ? 'BUST 爆牌' : '庄家胜', color: tx[1], start: this.tick, dur: 90 };
-    this._fxText(result === 'bj' ? 'Blackjack!' : result === 'win' ? 'WIN' : result === 'push' ? 'PUSH' : 'LOSE', tx[1], true);
-    Casino.audio.play(tx[2], 0.85);
-    if (result === 'bj' || result === 'win') { this._fxShake(7, 14); Casino.paint && 0; }
-    this.result = result;
-    this.history.push(result === 'win' || result === 'bj' ? 'W' : result === 'push' ? 'P' : 'L');
+    var net = payout - staked;
+    var r0 = results[0];
+    var voices = { bj: 'voice-blackjack', win: 'voice-win', push: 'voice-push', lose: 'voice-lose', bust: 'voice-lose' };
+    var voice = net > 0 ? (r0 === 'bj' ? 'voice-blackjack' : 'voice-win') : net === 0 ? 'voice-push' : 'voice-lose';
+    var bannerText;
+    if (this.hands.length === 1) {
+      var texts = {
+        bj: ['Blackjack！赔 3:2，赢 ' + (payout - staked), '#ffd98a'],
+        win: ['你赢了 ' + (payout - staked) + '！', '#ffd98a'],
+        push: ['平局，退回下注', '#a0c8e8'],
+        lose: ['庄家胜（' + (dv.total > 21 ? '庄爆 ' + dv.total : dv.total + ' 比 ' + __bjValue(this.hands[0]).total) + '）', '#e08080'],
+        bust: ['你爆牌，输 ' + staked, '#e08080']
+      };
+      var tx = texts[r0];
+      this._msg(tx[0]);
+      this.banner = { text: r0 === 'bj' ? 'BLACKJACK ×1.5' : r0 === 'win' ? '你赢了 +' + (payout - staked) : r0 === 'push' ? 'PUSH 平局' : r0 === 'bust' ? 'BUST 爆牌' : '庄家胜', color: tx[1], start: this.tick, dur: 90 };
+      this._fxText(r0 === 'bj' ? 'Blackjack!' : r0 === 'win' ? 'WIN' : r0 === 'push' ? 'PUSH' : 'LOSE', tx[1], true);
+    } else {
+      var col = net > 0 ? '#ffd98a' : net === 0 ? '#a0c8e8' : '#e08080';
+      this._msg('两手 ' + results.join('/') + ' · 净 ' + (net >= 0 ? '+' : '') + net);
+      this.banner = { text: net > 0 ? '分牌净赢 +' + net : net === 0 ? '分牌打平' : '分牌净输 ' + net, color: col, start: this.tick, dur: 90 };
+      this._fxText(net > 0 ? 'WIN' : net === 0 ? 'PUSH' : 'LOSE', col, true);
+    }
+    Casino.audio.play(voice, 0.85);
+    if (net > 0) { this._fxShake(7, 14); Casino.paint && 0; }
+    this.result = this.hands.length === 1 ? r0 : (net > 0 ? 'win' : net === 0 ? 'push' : 'lose');
+    this.splitNet = this.hands.length > 1 ? net : null;
+    this.history.push(net > 0 ? 'W' : net === 0 ? 'P' : 'L');
     if (this.history.length > 14) this.history.shift();
     this._renderActions();
   }
@@ -235,9 +317,13 @@ class CasinoBlackjack {
       return;
     }
     if (this.phase === 'player') {
+      var h0 = this.hands[this.curHand];
       this.actEl.appendChild(mk('要牌', function () { self.hit(); }, '#8fce8f'));
       this.actEl.appendChild(mk('停牌', function () { self.stand(); }, '#a0c8e8'));
-      if (this.player.length === 2 && this.wallet.get() >= this.bet) {
+      if (__bjCanSplit(h0, this.wallet.get(), this.bet) && !this._splitDone) {
+        this.actEl.appendChild(mk('⑧ 分牌', function () { self.split(); }, '#b070e0'));
+      }
+      if (h0.length === 2 && this.wallet.get() >= (h0.bet || this.bet)) {
         this.actEl.appendChild(mk('加倍 ×2', function () { self.double(); }, '#ff9f5a'));
       }
       return;
@@ -278,18 +364,33 @@ class CasinoBlackjack {
     // 靴牌（右侧牌靴）
     this._shoe(c, w, h, s);
     // 庄家手牌
-    this._handRow(c, this.dealer, this._posCache.dealerCards, w, s, this.phase === 'dealer' || this.phase === 'settle', this._cardT('d', 0) < 0);
-    // 玩家手牌
-    this._handRow(c, this.player, this._posCache.playerCards, w, s, true);
-    // 点数标签
+    this._handRow(c, this.dealer, this._posCache.dealerCards, w, s, this.phase === 'dealer' || this.phase === 'settle', 'dealer');
+    // 玩家手牌（分牌后两手并排，当前手下方金线指示）
+    if (this.hands && this.hands.length) {
+      var two = this.hands.length > 1;
+      var base = this._posCache.playerCards;
+      for (var hi = 0; hi < this.hands.length; hi++) {
+        var off = two ? (hi === 0 ? -w * 0.095 : w * 0.095) : 0;
+        var at2 = [base[0] + off, base[1] - (two ? 10 * s : 0)];
+        this._handRow(c, this.hands[hi], at2, w * (two ? 0.82 : 1), s, true, 'h' + hi);
+        var hv = __bjValue(this.hands[hi]);
+        var lbl = (two ? '手' + (hi + 1) + ' ' : '你 ') + (this.hands[hi].busted ? '爆' : hv.total + (hv.soft && hv.total < 21 ? '软' : '')) +
+          ' · 押 ' + (this.hands[hi].bet || this.bet);
+        this._label(c, at2[0], at2[1] + 62 * s, lbl, this.phase === 'player' && this.curHand === hi ? '#ffd98a' : '#8fce8f', s);
+        if (two && this.phase === 'player' && this.curHand === hi) {
+          c.save();
+          c.strokeStyle = 'rgba(255,210,120,.9)'; c.lineWidth = 2.4;
+          c.shadowColor = '#ffc87a'; c.shadowBlur = 8;
+          c.beginPath(); c.moveTo(at2[0] - 44 * s, at2[1] + 46 * s); c.lineTo(at2[0] + 44 * s, at2[1] + 46 * s); c.stroke();
+          c.restore();
+        }
+      }
+    }
+    // 点数标签（庄家）
     if (this.dealer.length) {
       var dv = __bjValue(this.dealer);
       var showDv = (this.phase === 'dealer' || this.phase === 'settle') ? dv.total : __bjValue([this.dealer[0]]).total + ' + ?';
       this._label(c, w / 2, h * 0.545 + 46 * s, '庄家 ' + showDv, '#e0a8a0', s);
-    }
-    if (this.player.length) {
-      var pv = __bjValue(this.player);
-      this._label(c, w / 2, h * 0.78 + 62 * s, '你 ' + pv.total + (pv.soft && pv.total < 21 ? '（软）' : '') + (this.bet ? ' · 押 ' + this.bet : ''), '#8fce8f', s);
     }
     this._drawFx(c, s);
     c.restore();
@@ -308,27 +409,26 @@ class CasinoBlackjack {
     c.strokeStyle = 'rgba(255,200,120,.4)'; c.lineWidth = 1.5; c.stroke();
     c.restore();
   }
-  _handRow(c, hand, at, w, s, faceUpAll) {
-    if (!hand.length) return;
+  _handRow(c, hand, at, w, s, faceUpAll, fxTo) {
+    if (!hand || !hand.length) return;
     var cw = Math.max(34, Math.min(64, w * 0.052)), chh = cw * 1.45;
     var gap = cw * 0.72;
-    var isPlayer = hand === this.player;
     var startX = at[0] - (hand.length - 1) * gap / 2;
     for (var i = 0; i < hand.length; i++) {
       var x = startX + i * gap;
       var card = hand[i];
-      // 新牌 12 帧内从牌靴飞来（fx 记录）
+      // 新牌 BJ_DEAL_FLIGHT 帧内从牌靴飞来（fx 记录）
       var fly = this.fx.find(function (f) {
-        return f.kind === 'dealcard' && f.to === (isPlayer ? 'player' : 'dealer') && f.idx === i;
+        return f.kind === 'dealcard' && f.to === fxTo && f.idx === i;
       });
       var prog = fly ? Math.max(0, Math.min(1, (this.tick - fly.start) / fly.dur)) : 1;
       var shoe = this._posCache.shoe;
       var px = shoe[0] + (x - shoe[0]) * prog;
       var py = shoe[1] + (at[1] - shoe[1]) * prog;
-      var faceUp = faceUpAll || isPlayer;
+      var faceUp = faceUpAll || fxTo !== 'dealer';
       // 庄家暗牌翻开动画（dealer/settle 阶段）
       var flip = 1;
-      if (!isPlayer && i === 1 && this.holeFlipT) {
+      if (fxTo === 'dealer' && i === 1 && this.holeFlipT) {
         flip = Math.max(0, Math.min(1, (this.tick - this.holeFlipT - 20) / 10));
         faceUp = flip >= 0.5;
       }
@@ -410,7 +510,9 @@ class CasinoBlackjack {
       return;
     }
     if (this.phase === 'player' && this.tick % 25 === 12) {
-      if (__bjValue(this.player).total < 17) this.hit();
+      var hb = this.hands[this.curHand];
+      if (__bjCanSplit(hb, this.wallet.get(), this.bet) && Math.random() < 0.8) this.split();
+      else if (__bjValue(hb).total < 17) this.hit();
       else this.stand();
     }
   }
@@ -427,27 +529,35 @@ class CasinoBlackjack {
     if (this.phase === 'deal') {
       // 发牌序列：玩家→庄家明→玩家→庄家暗，帧间隔发
       var seq = Math.floor((this.tick - this.dealT - 20) / BJ_DEAL_GAP);
+      if (!this.hands) this.hands = [[]];
       while (this.dealSeq <= seq && this.dealSeq < 4) {
-        this._dealOne(this.dealSeq % 2 === 0 ? 'p' : 'd');
-        this.fx.push({ kind: 'dealcard', to: this.dealSeq % 2 === 0 ? 'player' : 'dealer', idx: Math.floor(this.dealSeq / 2), start: this.tick, dur: BJ_DEAL_FLIGHT });
+        if (this.dealSeq % 2 === 0) {
+          this._dealTo(this.hands[0]);
+          this.fx.push({ kind: 'dealcard', to: 'h0', idx: this.hands[0].length - 1, start: this.tick, dur: BJ_DEAL_FLIGHT });
+        } else {
+          this._dealOne('d');
+          this.fx.push({ kind: 'dealcard', to: 'dealer', idx: this.dealer.length - 1, start: this.tick, dur: BJ_DEAL_FLIGHT });
+        }
         this.dealSeq++;
       }
       if (this.dealSeq >= 4 && this.tick - this.dealT > 20 + 4 * BJ_DEAL_GAP + BJ_DEAL_FLIGHT) {
-        var pv = __bjValue(this.player);
+        this.hands[0].bet = this.bet;
+        var pv0 = __bjValue(this.hands[0]);
         this.phase = 'player'; // 先进入玩家阶段，_stand 的守卫才放行
-        if (__bjIsBJ(this.player) || __bjIsBJ(this.dealer)) {
+        if (__bjIsBJ(this.hands[0]) || __bjIsBJ(this.dealer)) {
           this._stand(true); // 天牌直接进亮牌
         } else {
-          this._msg('你的牌 ' + pv.total + (pv.soft ? '（软）' : '') + ' 点 · 要牌还是停牌？');
+          this._msg('你的牌 ' + pv0.total + (pv0.soft ? '（软）' : '') + ' 点 · 要牌还是停牌？');
         }
         this._renderActions();
       }
       return;
     }
     if (this.phase === 'dealer') {
-      // 亮暗牌后按规则补牌（每张间隔 34 帧，有节奏）
+      // 亮暗牌后按规则补牌（每张间隔 34 帧，有节奏）；玩家全爆则不补
+      var allBust = this.hands.every(function (h) { return h.busted; });
       var ready = this.tick - this.holeFlipT > 34;
-      if (ready && __bjDealerShouldHit(this.dealer)) {
+      if (ready && !allBust && __bjDealerShouldHit(this.dealer)) {
         if (!this._nextHitT) this._nextHitT = this.tick;
         if (this.tick - this._nextHitT >= 34) {
           this._dealOne('d');
@@ -455,7 +565,7 @@ class CasinoBlackjack {
           this._nextHitT = this.tick;
           this._msg('庄家补牌… ' + __bjValue(this.dealer).total + ' 点');
         }
-      } else if (ready && !__bjDealerShouldHit(this.dealer)) {
+      } else if (ready && (allBust || !__bjDealerShouldHit(this.dealer))) {
         this._nextHitT = 0;
         this._settle('normal');
       }
