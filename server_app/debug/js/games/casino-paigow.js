@@ -156,7 +156,7 @@ class CasinoPaigow {
   _buildDom(container) {
     var self = this;
     this.root = this._el('div', 'position:absolute;inset:0;color:#ecd9b8;pointer-events:none');
-    var bar = this._el('div', 'position:absolute;top:10px;left:10px;display:flex;gap:8px;pointer-events:auto');
+    var bar = this._el('div', 'position:absolute;top:10px;left:10px;display:flex;gap:8px;pointer-events:auto;z-index:3');
     var exitBtn = this._el('button', 'padding:4px 12px;border-radius:6px;border:1px solid rgba(240,120,100,.4);background:rgba(10,5,3,.45);color:#e0a090;cursor:pointer;font-family:inherit;font-size:11px', '← 离开');
     exitBtn.onclick = function () { self.destroy(); self.ctx.exit(); };
     bar.appendChild(exitBtn);
@@ -166,14 +166,14 @@ class CasinoPaigow {
     this.root.appendChild(bar);
     this.msgEl = this._el('div', 'position:absolute;left:6%;right:6%;bottom:212px;text-align:center;font-size:14px;color:#ffe9c0;text-shadow:0 1px 4px rgba(0,0,0,.95)', '');
     this.root.appendChild(this.msgEl);
-    this.actEl = this._el('div', 'position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;background:rgba(10,5,3,.78);border:1px solid #5a3a1c;border-radius:12px;padding:8px 12px;pointer-events:auto;max-width:94vw;box-sizing:border-box', '');
+    this.actEl = this._el('div', 'position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;background:rgba(10,5,3,.78);border:1px solid #5a3a1c;border-radius:12px;padding:8px 12px;pointer-events:auto;max-width:94vw;box-sizing:border-box;z-index:3', '');
     this.root.appendChild(this.actEl);
-    // 骨牌点击层（分牌阶段选牌）
-    this.clickLayer = this._el('div', 'position:absolute;inset:0;pointer-events:none');
+    // 骨牌点击层（分牌阶段选牌；z 低于按钮栏，避免盖住操作）
+    this.clickLayer = this._el('div', 'position:absolute;inset:0;pointer-events:none;z-index:1');
     this.clickLayer.onclick = function (ev) { self._onTap(ev, this); };
     this.root.appendChild(this.clickLayer);
     // 速查面板
-    this.helpEl = this._el('div', 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,640px);max-height:82vh;overflow:auto;background:rgba(16,9,5,.97);border:1px solid #6a4a28;border-radius:12px;padding:16px 18px;pointer-events:auto;display:none;z-index:5;line-height:1.7;font-size:12.5px;color:#d8c3a0');
+    this.helpEl = this._el('div', 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,640px);max-height:82vh;overflow:auto;background:rgba(16,9,5,.97);border:1px solid #6a4a28;border-radius:12px;padding:16px 18px;pointer-events:auto;display:none;z-index:6;line-height:1.7;font-size:12.5px;color:#d8c3a0');
     this.helpEl.innerHTML =
       '<div style="font-size:15px;font-weight:700;color:#ffc87a;margin-bottom:8px">牌九 · 对牌速查</div>' +
       '<div style="color:#e8d5b0;margin-bottom:6px">对牌 16 级（大→小）：</div>' +
@@ -249,7 +249,7 @@ class CasinoPaigow {
     if (this.phase !== 'split' || this.bot) return;
     var rect = layer.getBoundingClientRect();
     var x = ev.clientX - rect.left, y = ev.clientY - rect.top;
-    var rects = this._tileRects || [];
+    var rects = (this._posCache && this._posCache.tileRects) || [];
     var hit = -1, bd = 1e9;
     for (var i = 0; i < rects.length; i++) {
       var r = rects[i];
@@ -322,8 +322,8 @@ class CasinoPaigow {
     var cf = __pgCompare(seat.split.front, this.dealer.split.front);
     var bw = cb > 0, fw = cf > 0; // 同级算庄赢
     var t0 = this.tick;
-    this.fx.push({ kind: 'badge', at: i, hand: 'back', res: bw ? 'win' : 'lose', start: t0 + 20, dur: 70 });
-    this.fx.push({ kind: 'badge', at: i, hand: 'front', res: fw ? 'win' : 'lose', start: t0 + 48, dur: 70 });
+    this.fx.push({ kind: 'badge', at: i, hand: 'back', res: bw ? 'win' : 'lose', start: t0 + 20, dur: 1e9 }); // 徽章保留到下一局
+    this.fx.push({ kind: 'badge', at: i, hand: 'front', res: fw ? 'win' : 'lose', start: t0 + 48, dur: 1e9 });
     Casino.audio.play(i === 0 ? 'voice-compare-cards' : 'card-place', i === 0 ? 0.8 : 0.35);
     var res = bw && fw ? 'win' : (!bw && !fw) ? 'lose' : 'push';
     seat.res = res;
@@ -526,7 +526,7 @@ class CasinoPaigow {
         var grp = bi >= 0 ? 1 : 0; // 1=后手(右) 0=前手(左)
         var gi = bi >= 0 ? bi : seat.split.front.indexOf(seat.tiles[i]);
         var gap = tw * 1.08;
-        return [at[0] + (grp === 0 ? -1 : 1) * tw * 1.35 + (gi - 0.5) * gap, at[1]];
+        return [at[0] + (grp === 0 ? -1 : 1) * tw * 1.62 + (gi - 0.5) * gap, at[1]];
       }
       return [at[0] + (i - 1.5) * tw * 1.12, at[1]];
     };
@@ -555,20 +555,20 @@ class CasinoPaigow {
         y = tray[1] + (y - tray[1]) * fp + Math.sin(Math.PI * fp) * 18;
         alpha = 0.35 + 0.65 * fp;
       }
-      // 翻面：玩家发完翻上；庄家/AI 开牌时翻上
-      var up = true, sx = 1;
-      if (isPlayer && this.flipAt) {
-        var fp2 = Math.max(0, Math.min(1, (this.tick - this.flipAt - i * 6) / 10));
-        sx = 1 - Math.abs(1 - 2 * fp2);
-        up = fp2 >= 0.5;
-      } else if (!isPlayer) {
+      // 翻面：玩家发完翻上（发牌期间背面）；庄家/AI 开牌时翻上（动画完成后保持全宽）
+      var up = false, sx = 1;
+      if (isPlayer) {
+        if (this.flipAt) {
+          var fp2 = Math.max(0, Math.min(1, (this.tick - this.flipAt - i * 6) / 10));
+          sx = fp2 >= 1 ? 1 : 1 - Math.abs(1 - 2 * fp2);
+          up = fp2 >= 0.5;
+        }
+      } else {
         var flipAt = seatIdx === 4 ? this.dealer.flipAt : seat.splitT;
         if (flipAt) {
           var fp3 = Math.max(0, Math.min(1, (this.tick - flipAt) / 10));
-          sx = 1 - Math.abs(1 - 2 * fp3);
+          sx = fp3 >= 1 ? 1 : 1 - Math.abs(1 - 2 * fp3);
           up = fp3 >= 0.5;
-        } else {
-          up = false;
         }
       }
       this._tile(c, x, y, tw, th, seat.tiles[i], up, sx, alpha);
@@ -585,8 +585,8 @@ class CasinoPaigow {
     // 前/后手标签（玩家定牌后与已开牌的庄家）
     var showLbl = !!seat.split && (isPlayer || seatIdx === 4);
     if (showLbl) {
-      this._label(c, at[0] - tw * 1.35, at[1] + th * 0.72, '前 ' + __pgLabel(seat.split ? seat.split.front : seat.tiles.slice(0, 2)), '#a8c8e0', s * 0.9);
-      this._label(c, at[0] + tw * 1.35, at[1] + th * 0.72, '后 ' + __pgLabel(seat.split ? seat.split.back : seat.tiles.slice(2)), '#ffd98a', s * 0.9);
+      this._label(c, at[0] - tw * 1.62, at[1] + th * 0.74, '前 ' + __pgLabel(seat.split ? seat.split.front : seat.tiles.slice(0, 2)), '#a8c8e0', s * (isPlayer ? 1.1 : 0.9));
+      this._label(c, at[0] + tw * 1.62, at[1] + th * 0.74, '后 ' + __pgLabel(seat.split ? seat.split.back : seat.tiles.slice(2)), '#ffd98a', s * (isPlayer ? 1.1 : 0.9));
     }
     if (seatIdx === 4 && this.dealer.split && this.dealer.flipAt) {
       this._label(c, at[0], at[1] - th * 0.85, '庄家 · 后 ' + __pgLabel(this.dealer.split.back) + ' / 前 ' + __pgLabel(this.dealer.split.front), '#e0a8a0', s * 0.9);
@@ -668,7 +668,7 @@ class CasinoPaigow {
     var at = i === 4 ? pc.dealer : (i === 0 ? pc.player : pc.seats[i]);
     if (!at) return [400, 300];
     var tw = i === 0 ? 52 : 36;
-    return [at[0] + (which === 'back' ? 1 : -1) * tw * 1.35, at[1] - tw * 1.55 * 0.75];
+    return [at[0] + (which === 'back' ? 1 : -1) * tw * 1.62, at[1] - tw * 1.55 * 0.8];
   }
   _pt(ref) {
     var pc = this._posCache || { dealer: [400, 260], player: [400, 480], tray: [600, 260] };
@@ -703,7 +703,8 @@ class CasinoPaigow {
         c.restore();
       } else if (f.kind === 'badge') {
         var hc = self._handCenter(f.at, f.hand);
-        var a = p < 0.15 ? p / 0.15 : p > 0.8 ? (1 - p) / 0.2 : 1;
+        var el = self.tick - f.start;
+        var a = el < 0 ? 0 : Math.min(1, el / 8); // 淡入后常驻（下一局清空）
         c.save();
         c.globalAlpha = Math.max(0, a);
         var win = f.res === 'win';
