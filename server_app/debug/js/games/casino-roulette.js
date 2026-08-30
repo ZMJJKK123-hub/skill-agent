@@ -151,6 +151,7 @@ class CasinoRoulette {
       this.fx.push({ kind: 'chips', start: this.tick, dur: 60, n: res.total });
     }
     this.history.unshift(n);
+    Casino.stats.record('roulette', 'R');
     if (this.history.length > 12) this.history.pop();
     var colName = n === 0 ? '零' : (__roColor(n) === 'red' ? '红' : '黑');
     this._msg('开出 ' + colName + ' ' + n + ' · ' + (net > 0 ? '净赢 +' + net : net === 0 ? '打平' : '净输 ' + net));

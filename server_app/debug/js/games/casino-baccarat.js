@@ -144,6 +144,7 @@ class CasinoBaccarat {
     var oc = __bcOutcome(this.pHand, this.bHand);
     this.outcome = oc;
     this.history.unshift({ outcome: oc, p: __bcTotal(this.pHand), b: __bcTotal(this.bHand) });
+    Casino.stats.record('baccarat', 'R');
     if (this.history.length > 14) this.history.pop();
     var mult = __bcPayout(this.bet.key, oc);
     var ret = Math.floor(this.bet.amt * mult);

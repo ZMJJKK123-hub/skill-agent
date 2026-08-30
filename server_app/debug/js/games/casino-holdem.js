@@ -442,6 +442,7 @@ class CasinoHoldem {
     this.winnerSeat = this.players.indexOf(winner);
     this.history.push(winner.human ? 'W' : 'L');
     if (this.history.length > 14) this.history.shift();
+    Casino.stats.record('holdem', winner.human ? 'W' : 'L');
     var potNow = this.pot;
     if (winner.human) {
       this.wallet.add(this.pot);
@@ -486,6 +487,7 @@ class CasinoHoldem {
     this.phase = 'settle';
     this.history.push(best.human ? 'W' : 'L');
     if (this.history.length > 14) this.history.shift();
+    Casino.stats.record('holdem', best.human ? 'W' : 'L');
     var potNow = this.pot;
     var cat = __thCatName[__thBestAny(best.hand.concat(this.comm)).cat];
     if (best.human) {

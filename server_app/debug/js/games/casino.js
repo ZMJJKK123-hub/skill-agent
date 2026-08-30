@@ -65,6 +65,43 @@
       }
     },
 
+  // ---------- 跨局战绩（localStorage 持久化，大厅页脚汇总） ----------
+  stats: {
+    KEY: 'casinoStats',
+    _read() {
+      try { return JSON.parse(localStorage.getItem(this.KEY) || '{}') || {}; } catch (e) { return {}; }
+    },
+    _save(s) {
+      try { localStorage.setItem(this.KEY, JSON.stringify(s)); } catch (e) {}
+    },
+    // r: 'W' | 'L' | 'P' | 'R'（局数）
+    record(tableId, r) {
+      var s = this._read();
+      var t = s[tableId] || (s[tableId] = { W: 0, L: 0, P: 0, R: 0 });
+      t[r] = (t[r] || 0) + 1;
+      this._save(s);
+    },
+    // 页脚汇总文案：{ list: '德州 3胜2负 · …', total: '共 …' } 或 null
+    summary() {
+      var s = this._read();
+      var ids = ['holdem', 'blackjack', 'dice', 'slots', 'roulette', 'baccarat', 'goldenflower', 'craps', 'paigow'];
+      var names = { holdem: '德州', blackjack: '21点', dice: '骰宝', slots: '老虎机', roulette: '轮盘', baccarat: '百家乐', goldenflower: '炸金花', craps: 'Craps', paigow: '牌九' };
+      var parts = [], W = 0, L = 0, P = 0, any = false;
+      ids.forEach(function (id) {
+        var t = s[id];
+        if (!t) return;
+        any = true;
+        W += t.W || 0; L += t.L || 0; P += t.P || 0;
+        if (t.W || t.L || t.P) parts.push(names[id] + ' ' + t.W + '胜' + t.L + '负' + (t.P ? '·' + t.P + '平' : ''));
+        else if (t.R) parts.push(names[id] + ' ' + t.R + '局');
+      });
+      if (!any) return null;
+      var n = W + L;
+      return { list: parts.join(' · '), total: '总计 ' + W + '胜 / ' + L + '负' + (P ? ' / ' + P + '平' : '') + (n ? ' · 胜率 ' + Math.round(W / n * 100) + '%' : '') };
+    },
+    reset() { this._save({}); }
+  },
+
   // ---------- 子游戏注册表 ----------
   _tables: new Map(),
   register(id, def) { this._tables.set(id, def); },
@@ -680,6 +717,19 @@ class CasinoHub extends BaseGame {
       grid.appendChild(card);
     }, this);
     wrap.appendChild(grid);
+    // 页脚战绩汇总（跨局持久化）
+    var sum = Casino.stats.summary();
+    if (sum) {
+      var foot = this._el('div', 'max-width:860px;width:100%;text-align:center;font-size:12px;color:#b09678;line-height:1.7;border-top:1px solid #3a2412;padding-top:10px');
+      foot.appendChild(this._el('div', 'font-size:13px;color:#e8c890;font-weight:700;margin-bottom:2px', '📊 战绩速览'));
+      foot.appendChild(this._el('div', '', sum.list));
+      foot.appendChild(this._el('div', 'color:#8fce8f', sum.total));
+      var clearBtn = this._el('button', 'margin-top:6px;padding:4px 12px;border-radius:6px;border:1px solid #6a4a28;background:rgba(30,16,8,.8);color:#b09678;cursor:pointer;font-family:inherit;font-size:11px', '清空战绩');
+      clearBtn.onclick = function () { Casino.stats.reset(); this.renderLobby(); }.bind(this);
+      foot.appendChild(clearBtn);
+      wrap.appendChild(foot);
+      this.statsEl = foot;
+    } else this.statsEl = null;
   }
 
   _syncBailBtn() {

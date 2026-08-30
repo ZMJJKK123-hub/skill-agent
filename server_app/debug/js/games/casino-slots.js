@@ -115,6 +115,7 @@ class CasinoSlots {
     var win = this.betAmt * j.mult;
     this.history.push(win > 0 ? 'W' : 'L');
     if (this.history.length > 14) this.history.shift();
+    Casino.stats.record('slots', win > 0 ? 'W' : 'L');
     if (win > 0) {
       this.wallet.add(win);
       this.lights = this.tick;

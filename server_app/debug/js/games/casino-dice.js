@@ -98,6 +98,7 @@ class CasinoDice {
       this.phase = 'settle';
       this.history.push(verdict === 'win' ? 'W' : 'L');
       if (this.history.length > 14) this.history.shift();
+      Casino.stats.record('dice', verdict === 'win' ? 'W' : 'L');
       var isTripleBet = this.pendingBet === 'triple';
       var winAmt = verdict === 'win' ? (isTripleBet ? this.betAmt * 31 : this.betAmt * 2) : 0; // 围骰 30 赔 1
       if (winAmt) {

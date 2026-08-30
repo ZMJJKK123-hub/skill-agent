@@ -369,6 +369,7 @@ class CasinoPaigow {
     if (res === 'win') { this._fxShake(gee ? 9 : 6, 14); this._gleeAt = this.tick; }
     this.history.push(res === 'win' ? 'W' : res === 'lose' ? 'L' : 'P');
     if (this.history.length > 14) this.history.shift();
+    Casino.stats.record('paigow', res === 'win' ? 'W' : res === 'lose' ? 'L' : 'P');
     this._renderActions();
   }
 

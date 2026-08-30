@@ -281,6 +281,7 @@ class CasinoBlackjack {
     this.splitNet = this.hands.length > 1 ? net : null;
     this.history.push(net > 0 ? 'W' : net === 0 ? 'P' : 'L');
     if (this.history.length > 14) this.history.shift();
+    Casino.stats.record('blackjack', net > 0 ? 'W' : net === 0 ? 'P' : 'L');
     this._renderActions();
   }
   _againBtn() {

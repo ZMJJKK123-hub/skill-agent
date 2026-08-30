@@ -318,6 +318,7 @@ class CasinoGoldenflower {
     this.winnerSeat = this.players.indexOf(winner);
     this.history.push(winner.human ? 'W' : 'L');
     if (this.history.length > 14) this.history.shift();
+    Casino.stats.record('goldenflower', winner.human ? 'W' : 'L');
     var potNow = this.pot;
     if (winner.human) this.wallet.add(this.pot);
     else { winner.chips += this.pot; this.aiChips[this.winnerSeat - 1] = winner.chips; }
@@ -350,6 +351,7 @@ class CasinoGoldenflower {
     this.phase = 'settle';
     this.history.push(best.human ? 'W' : 'L');
     if (this.history.length > 14) this.history.shift();
+    Casino.stats.record('goldenflower', best.human ? 'W' : 'L');
     var potNow = this.pot;
     var ev = __gfEval(best.hand);
     if (best.human) {

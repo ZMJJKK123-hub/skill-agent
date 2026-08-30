@@ -145,6 +145,7 @@ class CasinoCraps {
     this.phase = 'bet';
     var r = this.roll, n = r.total;
     this.history.unshift(n);
+    Casino.stats.record('craps', 'R');
     if (this.history.length > 10) this.history.pop();
     var lines = [];
     var banner = null;
