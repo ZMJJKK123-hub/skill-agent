@@ -22,6 +22,8 @@ bugaudit/
 run_harness.py
 .chat/
 .supervisor/
+.zcode/
+src/
 
 # ---- 运行时日志 ----
 server_out*.log

@@ -73,13 +73,7 @@ def agent_loop(messages: list) -> str:
     _post_write_research = 0
     _post_write_strikes = 0
     _no_tool_strikes = 0
-    _existing_java = _has_custom_java()
-    _force_final_msg = None
-    _round_idx = 0
-    _round_tool_counts = {}
-    _session_log = SessionLog()
 
-    
     #检测是否有自己写过的代码 还是完全没动过模版代码
     def _has_custom_java():
         # 模板包 com/example 不算“已有自己写的代码”，否则 forced-write 永远不触发。
@@ -93,6 +87,11 @@ def agent_loop(messages: list) -> str:
             for root in (main, test) if root.exists()
             for p in root.rglob("*.java")
         )
+    _existing_java = _has_custom_java()
+    _force_final_msg = None
+    _round_idx = 0
+    _round_tool_counts = {}
+    _session_log = SessionLog()
 
     # 恢复：如果调用方没给初始消息，但存在事件日志，则从事件源重建历史（DSH replay）
     if not messages:
