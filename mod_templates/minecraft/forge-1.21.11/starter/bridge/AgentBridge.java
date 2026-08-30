@@ -225,6 +225,30 @@ public class AgentBridge {
                 out.addProperty("result", String.valueOf(r));
                 out.addProperty("target", hit.getBlockPos().toString());
             }
+            case "attack" -> {
+                // 近战攻击：优先 nearest=<半径> 内最近实体（可选 type 过滤），否则 pick 射线实体
+                var player = mc().player;
+                if (player == null) throw new IllegalStateException("not in world");
+                net.minecraft.world.entity.Entity target = null;
+                if (cmd.has("nearest")) {
+                    double radius = cmd.get("nearest").getAsDouble();
+                    var cls = cmd.has("type") ? cmd.get("type").getAsString() : null;
+                    double best = radius * radius;
+                    for (var e : mc().level.getEntities(player, player.getBoundingBox().inflate(radius))) {
+                        if (e == player || !e.isAlive()) continue;
+                        if (cls != null && !e.getClass().getSimpleName().toLowerCase().contains(cls.toLowerCase())) continue;
+                        double d = player.distanceToSqr(e);
+                        if (d < best) { best = d; target = e; }
+                    }
+                } else {
+                    var picked = player.pick(3.5, 1.0F, false);
+                    if (picked instanceof net.minecraft.world.phys.EntityHitResult ehr) target = ehr.getEntity();
+                }
+                if (target == null) throw new IllegalStateException("no target in reach");
+                mc().gameMode.attack(player, target);
+                player.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
+                out.addProperty("attacked", target.getType().toShortString() + " hp=" + String.format("%.0f", ((net.minecraft.world.entity.LivingEntity) target).getHealth()));
+            }
             case "close_screen" -> {
                 // 关闭当前界面（等价 ESC 确认动作），零键盘依赖
                 var s = mc().screen;

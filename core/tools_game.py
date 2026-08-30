@@ -91,7 +91,8 @@ def _vk_code(key: str) -> int:
 def bridge_command(op: str, index: int = None, value: str = None,
                    text: str = None, name: str = None, timeout: int = 10,
                    x: int = None, y: int = None, z: int = None,
-                   where: str = None, dir: str = None) -> str:
+                   where: str = None, dir: str = None,
+                   nearest: float = None, entity_type: str = None) -> str:
     """进程内 UI 自动化桥：直接调用按钮背后的 Java 函数（AgentBridge mod）。
 
     前置：starter/bridge/AgentBridge.java 已复制进 src/test 并在主 @Mod 构造器
@@ -124,6 +125,10 @@ def bridge_command(op: str, index: int = None, value: str = None,
             payload["where"] = str(where)
         if dir is not None:
             payload["dir"] = str(dir)
+        if nearest is not None:
+            payload["nearest"] = float(nearest)
+        if entity_type is not None:
+            payload["type"] = str(entity_type)
         result_path = run_dir / "bridge_result.json"
         result_path.unlink(missing_ok=True)  # 清掉旧结果，避免读到上条
         (run_dir / "bridge_cmd.json").write_text(
