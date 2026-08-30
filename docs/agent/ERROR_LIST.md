@@ -1151,3 +1151,9 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **[已验证-终验] glm-5.3 完整产出 MOD：jar 全资产齐（定义/模型/纹理/双语/配方）+ GameTest 双 PASS + 隐形客户端内 /give 成功（聊天日志"已将1个[甜甜浆果派]给予Dev"）+ 三级视觉核验（全景/快捷栏裁剪/纹理预览）；全程用户桌面零打扰**
 - **[教训] 视觉识图会误判小图标（把派认成红蘑菇）| 小图标判定以纹理预览放大图 + 游戏聊天 give 回执 + GameTest 为准，最多 2-3 次 analyze_image；重建世界复验是烧轮数的主因（本轮 100 轮上限收尾）| 已写入 TOOL_GUIDE 验证预算**
 - **[修正] AgentBridge.class 曾被打进发布 jar | 模板 build.gradle 已加 tasks.named('jar'){ exclude 'com/agentbridge/**' }（生产无害但保持产物干净）**
+
+## 2026-08-31 webserv_celestialheaven（天国维度——本项目最复杂 MOD 马拉松）
+- **[终验通过] 全新维度全链路自主产出：dimension+dimension_type+noise_settings+biome+configured_feature 完整 JSON 链（61 文件 jar）、天石/天晶/云绒草/天使之羽、GameTest 4/4 绿、服务端无 datapack 错误、隐形客户端内 /execute in 天国维度传送成功 + 3 次识图（最终 Yes）、git 快照 a7baf7ae**
+- **[webserv_celestialheaven] NEW_ERROR: AgentBridge 在 @Mod 构造器直接 new 使专用服务端崩（GuiEventListener DEDICATED_SERVER 拒载）| 客户端专属类必须 FMLLoader.getDist().isClient() 守卫 | agent 已自行修复**
+- **[工具gap已修] press_key/game_input 无右键键名（"right"=方向键）| 无法程序化使用物品（传送羽毛等）| _VK_MAP 新增 right_click/use/mouse_right→VK_RBUTTON(0x02)、left_click/attack→VK_LBUTTON(0x01)**
+- **[模型教训] glm-5.3 批量加载 10 技能→上下文过载→连续 39 次空响应死循环 | 复杂任务也要守住"最多 3 个技能"纪律；引擎侧已加空响应连续上限（5 次压缩/8 次收尾）**
