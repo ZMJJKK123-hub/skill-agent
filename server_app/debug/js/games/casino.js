@@ -102,6 +102,50 @@
     reset() { this._save({}); }
   },
 
+  // ---------- 大厅音景（WebAudio 合成低频环境音，零素材依赖；无音频环境静默降级） ----------
+  ambient: {
+    _ctx: null, _gain: null, _nodes: null, _timer: 0, _on: false,
+    start() {
+      try {
+        if (this._on) return true;
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return false;
+        var ctx = this._ctx || (this._ctx = new AC());
+        if (ctx.state === 'suspended') { try { ctx.resume(); } catch (e) {} }
+        var g = ctx.createGain();
+        g.gain.value = 0;
+        g.connect(ctx.destination);
+        var o1 = ctx.createOscillator(), o2 = ctx.createOscillator(); // 55Hz + 82.5Hz 纯五度低音垫
+        o1.frequency.value = 55; o2.frequency.value = 82.5;
+        o1.type = 'sine'; o2.type = 'sine';
+        var og = ctx.createGain(); og.gain.value = 0.5;
+        o1.connect(og); o2.connect(og); og.connect(g);
+        var lfo = ctx.createOscillator(), lg = ctx.createGain(); // 缓慢呼吸
+        lfo.frequency.value = 0.08; lg.gain.value = 0.3;
+        lfo.connect(lg); lg.connect(og.gain);
+        o1.start(); o2.start(); lfo.start();
+        this._gain = g; this._nodes = [o1, o2, lfo]; this._on = true;
+        var self = this;
+        this._timer = setInterval(function () {
+          if (!self._gain || !self._ctx) return;
+          if (self._ctx.state === 'suspended') { try { self._ctx.resume(); } catch (e) {} }
+          var target = (typeof window.sndOn === 'undefined' || window.sndOn) ? 0.045 : 0;
+          try { self._gain.gain.setTargetAtTime(target, self._ctx.currentTime, 0.6); } catch (e) {}
+        }, 700);
+        return true;
+      } catch (e) { return false; }
+    },
+    stop() {
+      try {
+        if (this._timer) { clearInterval(this._timer); this._timer = 0; }
+        if (this._nodes) this._nodes.forEach(function (n) { try { n.stop(); } catch (e) {} });
+        if (this._gain) this._gain.disconnect();
+      } catch (e) {}
+      this._nodes = null; this._gain = null; this._on = false;
+    },
+    active() { return !!this._on; }
+  },
+
   // ---------- 子游戏注册表 ----------
   _tables: new Map(),
   register(id, def) { this._tables.set(id, def); },
@@ -679,6 +723,7 @@ class CasinoHub extends BaseGame {
     this.state = 'lobby';
     this.table = null;
     this.tableId = null;
+    Casino.ambient.start(); // 大厅音景（进桌停止）
     this.panel.innerHTML = '';
     // 大厅内容整体居中（垂直+水平）
     var wrap = this._el('div', 'padding:16px 18px;box-sizing:border-box;max-width:980px;margin:0 auto;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px');
@@ -756,6 +801,7 @@ class CasinoHub extends BaseGame {
   openTable(id) {
     var def = Casino.get(id);
     if (!def) return;
+    Casino.ambient.stop(); // 进桌停音景，让位给桌面音效
     this.state = 'table';
     this.tableId = id;
     this.panel.innerHTML = '';
