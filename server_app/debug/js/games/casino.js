@@ -316,6 +316,19 @@
         }
       }
     },
+    // 战绩点：右上角 W/L/P 圆点串（各赌桌共用）
+    histDots(c, w, h, hist) {
+      if (!hist || !hist.length) return;
+      c.save();
+      for (var i = 0; i < hist.length; i++) {
+        var r = hist[i];
+        c.fillStyle = r === 'W' ? '#8fce8f' : r === 'L' ? '#e08080' : '#a0c8e8';
+        c.beginPath();
+        c.arc(w - 18 - (hist.length - 1 - i) * 14, h * 0.125, 4.4, 0, Math.PI * 2);
+        c.fill();
+      }
+      c.restore();
+    },
     // 人物：正面朝向玩家的酒馆常客——写实向建模：
     // 皮肤色/发型按名字散列、大衣驳领+衬衫+纽扣、双臂搭桌+手部、真眼(眼白+瞳孔)、
     // 帽子按性格；lean=看牌前倾姿态；folded 垂头；active/winner 聚光。

@@ -54,30 +54,37 @@ function __gfCompare(a, b) {
 }
 function __gfStrength(hand) {
   var e = __gfEval(hand);
-  return Math.min(1, (e.rank * 160 + (e.keys[0] || 0) * 6) / 1000);
+  // 强度曲线（中位散牌 ~0.09、对子 0.33+、顺子 0.55、金花 0.62、顺金 0.85、豹子 0.95）
+  // 旧公式散牌中位仅 0.078 且挤在 0.03~0.08，阈值形同虚设 → AI 首轮弃牌率畸高
+  if (e.rank === 0) return 0.05 + (((e.keys[0] || 7) - 5) / 9) * 0.15; // 散牌 0.05~0.20
+  if (e.rank === 1) return 0.30 + ((e.keys[0] || 7) / 14) * 0.18;     // 对子 0.33~0.48
+  if (e.rank === 2) return 0.55;                                        // 顺子
+  if (e.rank === 3) return 0.62;                                        // 金花
+  if (e.rank === 4) return 0.85;                                        // 顺金
+  return e.rank === 5.5 ? 0.90 : 0.95;                                  // 235 特杀 / 豹子
 }
 // AI 决策：call/raise/fold/peek（peek=这次先看牌再决定 → 返回 call 由调用方处理）
 function __gfAI(strength, persona, toCall, canRaise, roll) {
   roll = roll === undefined ? Math.random() : roll;
   if (toCall <= 0) {
-    if (canRaise && strength > 0.5 && roll < 0.5) return { type: 'raise' };
+    if (canRaise && strength > 0.45 && roll < 0.5) return { type: 'raise' };
     return { type: 'call' };
   }
   if (persona === 'aggr') {
-    if (strength < 0.18 && roll < 0.45) return { type: 'fold' };
-    if (canRaise && strength > 0.5 && roll < 0.4) return { type: 'raise' };
+    if (strength < 0.09 && roll < 0.5) return { type: 'fold' };       // 只有真正烂牌才走
+    if (canRaise && strength > 0.42 && roll < 0.4) return { type: 'raise' };
     return { type: 'call' };
   }
   if (persona === 'tight') {
-    if (strength < 0.28 && roll < 0.75) return { type: 'fold' };
-    if (strength < 0.18) return { type: 'fold' };
-    if (canRaise && strength > 0.65 && roll < 0.3) return { type: 'raise' };
+    if (strength < 0.10 && roll < 0.75) return { type: 'fold' };
+    if (strength < 0.065) return { type: 'fold' };
+    if (canRaise && strength > 0.58 && roll < 0.3) return { type: 'raise' };
     return { type: 'call' };
   }
   // bluff
-  if (strength < 0.22 && roll < 0.18 && canRaise) return { type: 'raise' };
-  if (strength < 0.28 && roll < 0.5) return { type: 'fold' };
-  if (canRaise && strength > 0.55 && roll < 0.3) return { type: 'raise' };
+  if (strength < 0.19 && roll < 0.16 && canRaise) return { type: 'raise' };
+  if (strength < 0.10 && roll < 0.5) return { type: 'fold' };
+  if (canRaise && strength > 0.40 && roll < 0.3) return { type: 'raise' };
   return { type: 'call' };
 }
 
@@ -101,6 +108,7 @@ class CasinoGoldenflower {
     this.tick = 0;
     this.destroyed = false;
     this.fx = [];
+    this.history = [];   // 战绩点 W/L
     this.dispPot = 0;
     this.banner = null;
     this.shake = null;
@@ -308,6 +316,8 @@ class CasinoGoldenflower {
   _awardFoldWin(winner) {
     this.phase = 'settle';
     this.winnerSeat = this.players.indexOf(winner);
+    this.history.push(winner.human ? 'W' : 'L');
+    if (this.history.length > 14) this.history.shift();
     var potNow = this.pot;
     if (winner.human) this.wallet.add(this.pot);
     else { winner.chips += this.pot; this.aiChips[this.winnerSeat - 1] = winner.chips; }
@@ -338,6 +348,8 @@ class CasinoGoldenflower {
   _finishReveal() {
     var best = this._revealWinner;
     this.phase = 'settle';
+    this.history.push(best.human ? 'W' : 'L');
+    if (this.history.length > 14) this.history.shift();
     var potNow = this.pot;
     var ev = __gfEval(best.hand);
     if (best.human) {
@@ -447,6 +459,7 @@ class CasinoGoldenflower {
       }
     }
     P.table(c, w, h);
+    Casino.paint.histDots(c, w, h, this.history);
     var reveal = this.phase === 'settle';
     var colors = { aggr: '#e06040', tight: '#5fa8e0', bluff: '#b070e0', player: '#4ac070' };
     for (var i = 1; i <= 3; i++) {
@@ -646,6 +659,10 @@ class CasinoGoldenflower {
     if (this.destroyed) return;
     var self = this;
     this.tick++;
+    if (this.bot && this.phase === 'settle' && this.tick % 40 === 20) {
+      this.againEl.innerHTML = '';
+      this._startHand();
+    }
     if (this.fx.length) this.fx = this.fx.filter(function (f) { return self.tick - f.start < f.dur; });
     if (this.banner && this.tick - this.banner.start >= this.banner.dur) this.banner = null;
     if (this.shake && this.tick - this.shake.start >= this.shake.dur) this.shake = null;

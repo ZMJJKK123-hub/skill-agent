@@ -42,6 +42,7 @@ class CasinoBlackjack {
     this.tick = 0;
     this.destroyed = false;
     this.fx = [];
+    this.history = [];   // 战绩点 W/L/P
     this.banner = null;
     this.shake = null;
     this.flash = null;
@@ -196,6 +197,8 @@ class CasinoBlackjack {
     Casino.audio.play(tx[2], 0.85);
     if (result === 'bj' || result === 'win') { this._fxShake(7, 14); Casino.paint && 0; }
     this.result = result;
+    this.history.push(result === 'win' || result === 'bj' ? 'W' : result === 'push' ? 'P' : 'L');
+    if (this.history.length > 14) this.history.shift();
     this._renderActions();
   }
   _againBtn() {
@@ -266,6 +269,7 @@ class CasinoBlackjack {
       }
     }
     P.table(c, w, h);
+    Casino.paint.histDots(c, w, h, this.history);
     // 荷官（对面中央，圆顶礼帽）
     P.seat(c, w / 2, h * 0.36, t, {
       name: '荷官', color: '#c8a050', persona: 'tight', scale: s * 1.25,
@@ -415,6 +419,7 @@ class CasinoBlackjack {
     var self = this;
     this.tick++;
     if (this.bot && (this.phase === 'bet' || this.phase === 'player')) this._botStep();
+    if (this.bot && this.phase === 'settle' && this.tick % 40 === 20) this._awaitBet();
     if (this.fx.length) this.fx = this.fx.filter(function (f) { return self.tick - f.start < f.dur + 20; });
     if (this.banner && this.tick - this.banner.start >= this.banner.dur) this.banner = null;
     if (this.shake && this.tick - this.shake.start >= this.shake.dur) this.shake = null;

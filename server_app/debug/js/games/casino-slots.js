@@ -43,6 +43,7 @@ class CasinoSlots {
     this.tick = 0;
     this.destroyed = false;
     this.fx = [];
+    this.history = [];   // 战绩点 W/L
     this.banner = null;
     this.shake = 0;
     this._posCache = null;
@@ -112,6 +113,8 @@ class CasinoSlots {
     var line = this.reels.map(function (r, i) { return this.strips[i][(Math.round(r.pos) % 20 + 20) % 20]; }, this);
     var j = __slJudge(line);
     var win = this.betAmt * j.mult;
+    this.history.push(win > 0 ? 'W' : 'L');
+    if (this.history.length > 14) this.history.shift();
     if (win > 0) {
       this.wallet.add(win);
       this.lights = this.tick;
@@ -173,6 +176,7 @@ class CasinoSlots {
       } else this.shake = 0;
     }
     P.table(c, w, h);
+    Casino.paint.histDots(c, w, h, this.history);
     // 机器主体（桌上中央偏上）
     this._cabinet(c, w, h, s, t);
     this._drawFx(c, s);
@@ -377,7 +381,7 @@ class CasinoSlots {
     if (this.destroyed) return;
     var self = this;
     this.tick++;
-    if (this.phase === 'bet' && this.bot) this._botStep();
+    if ((this.phase === 'bet' || this.phase === 'settle') && this.bot) this._botStep();
     if (this.fx.length) this.fx = this.fx.filter(function (f) { return self.tick - f.start < f.dur + 20; });
     if (this.banner && this.tick - this.banner.start >= this.banner.dur) this.banner = null;
     if (this.phase !== 'spin') return;

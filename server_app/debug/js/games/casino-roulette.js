@@ -466,6 +466,7 @@ class CasinoRoulette {
     var self = this;
     this.tick++;
     if (this.phase === 'bet' && this.bot) this._botStep();
+    if (this.bot && this.phase === 'settle' && this.tick % 40 === 20) this._awaitBet();
     if (this.fx.length) this.fx = this.fx.filter(function (f) { return self.tick - f.start < f.dur + 20; });
     if (this.banner && this.tick - this.banner.start >= this.banner.dur) this.banner = null;
     if (this.shake && this.tick - this.shake.start >= (this.shake.dur || 12)) this.shake = 0;

@@ -493,7 +493,7 @@ class CasinoPaigow {
     // 押注筹码
     if (this.bet && this.phase !== 'bet') Casino.paint.chips(c, L.bet[0], L.bet[1], this.bet);
     // 战绩点
-    this._historyDots(c, w, h);
+    Casino.paint.histDots(c, w, h, this.history);
     this._drawFx(c, s);
     c.restore();
     if (this._gleeAt && this.phase === 'settle') Casino.paint.confetti(c, w, h, t);
@@ -650,18 +650,6 @@ class CasinoPaigow {
     c.fillText(text, x, y);
     c.restore();
   }
-  _historyDots(c, w, h) {
-    if (!this.history.length) return;
-    c.save();
-    for (var i = 0; i < this.history.length; i++) {
-      var r = this.history[i];
-      c.fillStyle = r === 'W' ? '#8fce8f' : r === 'L' ? '#e08080' : '#a0c8e8';
-      c.beginPath();
-      c.arc(w - 18 - (this.history.length - 1 - i) * 14, h * 0.125, 4.4, 0, Math.PI * 2);
-      c.fill();
-    }
-    c.restore();
-  }
   _handCenter(i, which) { // 座位 i 前/后手牌组中心（供徽章）
     var pc = this._posCache;
     if (!pc) return [400, 300];
@@ -749,14 +737,12 @@ class CasinoPaigow {
     if (this.banner && this.tick - this.banner.start >= this.banner.dur) this.banner = null;
     if (this.shake && this.tick - this.shake.start >= this.shake.dur) this.shake = null;
 
-    if (this.phase === 'bet') {
-      if (this.bot && this.tick > 30) {
-        var w0 = this.wallet.get();
-        if (w0 >= 20) this.start(Math.min(100, w0));
-        else this.wallet.bailout();
-      }
-      return;
+    if (this.phase === 'bet' && this.bot && this.tick > 30) {
+      var w0 = this.wallet.get();
+      if (w0 >= 20) this.start(Math.min(100, w0));
+      else this.wallet.bailout();
     }
+    if (this.bot && this.phase === 'settle' && this.tick % 40 === 20) this._awaitBet();
     if (this.phase === 'deal') {
       var seq = Math.floor((this.tick - this.dealT - 16) / PG_DEAL_GAP);
       while (this._dealN <= seq && this._dealN < 20) {

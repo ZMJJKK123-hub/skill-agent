@@ -177,6 +177,7 @@ class CasinoHoldem {
     this.destroyed = false;
     this.aiChips = [1000, 1000, 1000];
     this.fx = [];
+    this.history = [];   // 战绩点 W/L
     this.dispPot = 0;
     this.banner = null;
     this.shake = null;
@@ -424,6 +425,8 @@ class CasinoHoldem {
   _awardFoldWin(winner) {
     this.phase = 'settle';
     this.winnerSeat = this.players.indexOf(winner);
+    this.history.push(winner.human ? 'W' : 'L');
+    if (this.history.length > 14) this.history.shift();
     var potNow = this.pot;
     if (winner.human) {
       this.wallet.add(this.pot);
@@ -466,6 +469,8 @@ class CasinoHoldem {
   _finishReveal() {
     var best = this._revealWinner;
     this.phase = 'settle';
+    this.history.push(best.human ? 'W' : 'L');
+    if (this.history.length > 14) this.history.shift();
     var potNow = this.pot;
     var cat = __thCatName[__thBestAny(best.hand.concat(this.comm)).cat];
     if (best.human) {
@@ -619,6 +624,7 @@ class CasinoHoldem {
       }
     }
     P.table(c, w, h);
+    Casino.paint.histDots(c, w, h, this.history);
     var reveal = this.phase === 'settle';
     var colors = { aggr: '#e06040', tight: '#5fa8e0', bluff: '#b070e0', player: '#4ac070' };
     // 三个对手（含思考倒计时环与看牌前倾）
@@ -963,6 +969,10 @@ class CasinoHoldem {
     if (this.destroyed) return;
     var self = this;
     this.tick++;
+    if (this.bot && this.phase === 'settle' && this.tick % 40 === 20) {
+      this.againEl.innerHTML = '';
+      this._startHand();
+    }
     if (this.fx.length) this.fx = this.fx.filter(function (f) { return self.tick - f.start < f.dur; });
     if (this.banner && this.tick - this.banner.start >= this.banner.dur) this.banner = null;
     if (this.shake && this.tick - this.shake.start >= this.shake.dur) this.shake = null;

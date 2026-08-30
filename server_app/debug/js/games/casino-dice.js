@@ -31,6 +31,7 @@ class CasinoDice {
     this.tick = 0;
     this.destroyed = false;
     this.fx = [];
+    this.history = [];   // 战绩点 W/L
     this.banner = null;
     this.shakeCup = 0;
     this._posCache = null;
@@ -95,6 +96,8 @@ class CasinoDice {
       var roll = this.roll;
       var verdict = __diceJudge(this.pendingBet, roll);
       this.phase = 'settle';
+      this.history.push(verdict === 'win' ? 'W' : 'L');
+      if (this.history.length > 14) this.history.shift();
       var isTripleBet = this.pendingBet === 'triple';
       var winAmt = verdict === 'win' ? (isTripleBet ? this.betAmt * 31 : this.betAmt * 2) : 0; // 围骰 30 赔 1
       if (winAmt) {
@@ -174,6 +177,7 @@ class CasinoDice {
       } else this.shakeCup = 0;
     }
     P.table(c, w, h);
+    Casino.paint.histDots(c, w, h, this.history);
     // 荷官
     P.seat(c, w / 2, h * 0.36, t, { name: '荷官', color: '#c8a050', persona: 'bluff', scale: s * 1.25, active: false, chipsLabel: '' });
     // 桌面押注区：大 / 小（带高亮）
@@ -338,6 +342,7 @@ class CasinoDice {
     var self = this;
     this.tick++;
     if (this.phase === 'bet' && this.bot) this._botStep();
+    if (this.bot && this.phase === 'settle' && this.tick % 40 === 20) this._awaitBet();
     if (this.fx.length) this.fx = this.fx.filter(function (f) { return self.tick - f.start < f.dur + 20; });
     if (this.banner && this.tick - this.banner.start >= this.banner.dur) this.banner = null;
     if (this.phase === 'shake') {
