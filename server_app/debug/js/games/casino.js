@@ -99,7 +99,18 @@
       var n = W + L;
       return { list: parts.join(' · '), total: '总计 ' + W + '胜 / ' + L + '负' + (P ? ' / ' + P + '平' : '') + (n ? ' · 胜率 ' + Math.round(W / n * 100) + '%' : '') };
     },
-    reset() { this._save({}); }
+    reset() { this._save({}); },
+    // 手气标记：已决局 ≥5 时按胜率给徽文案（null=样本不足不标）
+    luck(tableId) {
+      var t = this._read()[tableId];
+      if (!t) return null;
+      var n = (t.W || 0) + (t.L || 0);
+      if (n < 5) return null;
+      var r = (t.W || 0) / n;
+      if (r >= 0.6) return { txt: '🔥 手气旺', cls: '#ffd98a' };
+      if (r <= 0.35) return { txt: '❄ 冷桌', cls: '#a0c8e8' };
+      return { txt: '➖ 均势', cls: '#b09678' };
+    }
   },
 
   // ---------- 大厅音景（WebAudio 合成低频环境音，零素材依赖；无音频环境静默降级） ----------
@@ -766,6 +777,13 @@ class CasinoHub extends BaseGame {
       crowd.appendChild(dot);
       crowd.appendChild(txt);
       card.appendChild(crowd);
+      // 手气标记：跨局胜率 ≥5 局才显示
+      var luck = Casino.stats.luck(id);
+      if (luck) {
+        var badge = this._el('div', 'margin-top:6px;font-size:11px;font-weight:700;color:' + luck.cls + ';text-shadow:0 1px 3px rgba(0,0,0,.8)');
+        badge.textContent = luck.txt;
+        card.appendChild(badge);
+      }
       var seed = 0;
       for (var ci = 0; ci < id.length; ci++) seed = (seed * 31 + id.charCodeAt(ci)) % 997;
       this._crowd[id] = { n: 2 + seed % 4, textEl: txt, dotEl: dot, drift: (seed % 240) + 120 };
