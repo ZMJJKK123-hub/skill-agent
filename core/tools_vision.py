@@ -154,6 +154,7 @@ def _focus_minecraft_window():
         ok = user32.SetForegroundWindow(hwnd)
         if not ok:
             logger.warning("SetForegroundWindow 被系统拒绝，截图可能仍是桌面")
+        user32.ShowWindow(hwnd, 3)          # SW_MAXIMIZE：最大化游戏窗口，截图视野完整
         time.sleep(0.8)  # 等窗口切换 + 渲染一帧
         return rect
     except Exception:
