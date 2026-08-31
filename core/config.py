@@ -37,6 +37,13 @@ logger = logging.getLogger("agent")
 # 模型与 API 地址由会话注入（DSH_MODEL / DSH_BASE_URL），未注入时回退 DeepSeek 官方默认。
 MODEL = os.environ.get("DSH_MODEL", "GLM-4.5-Flash")
 
+# 单次请求补全上限（含 reasoning 模型的思考预算）。
+# reasoning 模型（如 GLM-5.3 系列）的思考与可见回复共享该预算：
+# 默认 8000 对复杂上下文经常不够，思考耗尽预算后返回空响应
+# （实测：每轮挂 ~3 分钟后 content/tool_calls 双空）。
+# 用此类模型时通过 DSH_MAX_COMPLETION_TOKENS 调大（建议 32768+）。
+MAX_COMPLETION_TOKENS = int(os.environ.get("DSH_MAX_COMPLETION_TOKENS", "8000"))
+
 # 运行模式：chat（通用对话，不复制 mod 模板）| mod（MOD 制作，工作区已复制模板）
 # 由 server 通过 run_task 的 DSH_MODE 环境变量注入。
 MODE = os.environ.get("DSH_MODE", "chat")

@@ -258,7 +258,7 @@ def agent_loop(messages: list) -> str:
                 model=MODEL,
                 messages=[{"role": "system", "content": config.SYSTEM}] + messages,
                 tools=leader_tools(),  # 阶段式：基础阶段只开放开发工具；解锁后开放全部
-                max_tokens=8000,
+                max_tokens=config.MAX_COMPLETION_TOKENS,
                 stream=True,
             )
         except Exception as _le:

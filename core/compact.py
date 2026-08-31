@@ -19,7 +19,7 @@ import os
 import time
 from pathlib import Path
 
-from .config import client, MODEL, logger
+from .config import client, MODEL, MAX_COMPLETION_TOKENS, logger
 
 # ── 压缩预算（对应 dsh config：thresholdRatio=0.8 / retainRatio=0.16）──
 # per-model context window map; env DSH_CONTEXT_WINDOW always wins.
@@ -166,7 +166,10 @@ def summarize_region(region: list) -> str:
     response = client.chat.completions.create(
         model=MODEL,
         messages=msgs,
-        max_tokens=MAX_SUMMARY_TOKENS,
+        # reasoning 模型的思考与回复共享预算：给足余量，防止
+        # 思考耗尽预算后返回空摘要（空摘要会通过"更小"校验，
+        # 导致整段历史被近空 checkpoint 替换）。
+        max_tokens=max(MAX_SUMMARY_TOKENS, MAX_COMPLETION_TOKENS),
     )
     summary = response.choices[0].message.content or ""
     return f"{CHECKPOINT_PREAMBLE}\n\n<compacted-summary>\n{summary}\n</compacted-summary>"

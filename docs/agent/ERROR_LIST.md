@@ -1180,3 +1180,17 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **[实现确认] VoidWardenEntity：Phase 引用 17 处、Voidling 召唤 5 处、50% 血量阈值判定在位；VoidWardenBossTest 覆盖 Health/Voidling/spawn 断言**
 - **[实战教训] 桥 attack 返回的 hp 是实例侧缓存，权威血量用 /data get entity 查询；玩家侧 regeneration 效果在 Boss 近战压制下时灵时不灵（正常）**
 - **[流程教训] 高复杂度任务 GameTest 基建（新注册机制）耗掉大量预算导致客户端验证预算不足（MAX 150 轮）；建议引擎为"客户端验证阶段"单独预算，避免与基建调试混用**
+
+## 2026-08-31 gemcraft_glm53_test（裸机全新环境实战——环境类问题修复手册）
+
+新用户把项目 clone 到没有开发环境的裸 Windows 机器时，构建会按顺序撞上以下问题。
+遇到环境类报错按本节顺序排查，**禁止改 build.gradle / gradle-wrapper / Forge 版本来"绕过"网络或环境问题**。
+
+- **[gemcraft_glm53_test] NEW_ERROR: gradlew 报 `ERROR: JAVA_HOME is set to an invalid directory: <路径>` 但目录明明存在 | cmd 里 `set JAVA_HOME=C:\xxx && ...` 会把 && 前的空格并进变量值（JAVA_HOME 带尾随空格），`%JAVA_HOME%\bin\java.exe` 检查必然失败 | 修复：用带引号形式 `set "JAVA_HOME=C:\path"`，或让用户在系统属性面板设置；注意 agent 子进程继承启动它的终端环境，用户改完环境变量必须重启会话才生效**
+- **[gemcraft_glm53_test] NEW_ERROR: Gradle/Mavenizer 下载依赖报 `PKIX path building failed` / `SSLHandshakeException`，所有依赖下载全挂 | 本机代理/加速器（实测 SteamTools，clash TUN 同理）对流量做 TLS MITM，证书链终点是其自签根证书（用 PowerShell SslStream 探测 services.gradle.org 可确认："SteamTools Certificate"），Java 不信任 | 修复：①导出该根证书与中间证书（powershell TcpClient+SslStream 读证书链，ExportCertificateParameter 落盘）；②`keytool -importcert -noprompt -trustcacerts -alias <别名> -file <证书> -keystore "%JAVA_HOME%\lib\security\cacerts" -storepass changeit` 逐个导入（若机器有多个 JDK/toolchain JDK，全部导入）；③重试构建。不要关代理软件（可能没有权限），不要改版本号**
+- **[gemcraft_glm53_test] 流程教训: keytool 全量循环导入证书会撞 bash 30 秒超时（进程树被强杀） | 改为只导入关键证书（MITM 根证书 + 关键中间证书），或分多次 bash 调用每次 2-3 张**
+- **[gemcraft_glm53_test] 流程教训: 写 Windows 系统证书库（certutil -addstore 等）被危险命令护栏拦截 | 只往 JDK 的 cacerts 导入即可满足 Gradle/Java，不需要动 Windows 证书库；杀残留进程用 PID（powershell Get-CimInstance Win32_Process 过滤 CommandLine + Stop-Process / taskkill /F /PID），不要 taskkill /f /im**
+- **[gemcraft_glm53_test] NEW_ERROR: 后台构建超时被杀后重建报 "另一个程序正在使用此文件"，新构建瞬间失败 | 超时只杀了 gradlew 包装进程，Gradle daemon 作为子进程幸存并持有 build.log/.gradle 锁 | 修复：①用 powershell 找到并 Stop-Process 全部残留 java/gradle 进程（按 PID）；②后续构建日志换新文件名（build2.log）绕开被锁文件；③或用 powershell Start-Process 完全脱离进程树启动构建（后台超时杀不到它）**
+- **[gemcraft_glm53_test] NEW_ERROR: build_mod_jar_forge 报 `cannot access local variable 'out' where it is not associated with a value` | 旧版工具 900s 超时分支引用未初始化变量（已在新代码修复，见 core/tools_mod.py）；运行中的旧会话仍会命中 | 修复：改用 bash 后台/Start-Process 分离方式直接跑 gradlew，再 wait_for_log 轮询 'BUILD SUCCESSFUL|BUILD FAILED'；Gradle 缓存使每次重试从断点续传**
+- **[gemcraft_glm53_test] 流程教训: 首次构建在慢速/代理网络上 15-40 分钟属正常（Mavenizer 一步实测 9 分钟）| wait_for_log 单次等待超时 ≠ 构建失败：反复 wait_for_log/tail_log 轮询同一构建即可，绝不因等待超时重新发起构建（会叠加进程与锁）；判断依据只有 build 日志里的 BUILD SUCCESSFUL/BUILD FAILED**
+- **[引擎] reasoning 模型（glm-5.3 系列）思考与回复共享 max_tokens 预算，默认 8000 不足时表现为每轮挂 2-3 分钟后连续空响应 | 已支持环境变量 DSH_MAX_COMPLETION_TOKENS（建议 32768），见根 README 4.2 节**

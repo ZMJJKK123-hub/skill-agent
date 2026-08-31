@@ -83,6 +83,7 @@ def _forge_build_jar(kw: dict) -> str:
     except Exception as e:
         return f"[build] 无法启动 Gradle: {e}"
 
+    out = ""
     try:
         out, _ = proc.communicate(timeout=900)
     except subprocess.TimeoutExpired:
@@ -207,6 +208,7 @@ def _run_game_test_server(kw: dict) -> str:
     except Exception as e:
         return f"[gametest] 无法启动 Gradle: {e}"
 
+    out = ""
     try:
         out, _ = proc.communicate(timeout=GAME_TEST_TIMEOUT)
     except subprocess.TimeoutExpired:

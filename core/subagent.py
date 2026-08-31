@@ -2,7 +2,7 @@ import json
 import threading
 import time
 
-from .config import client, MODEL, SUBAGENT_SYSTEM, MAX_SUBAGENT_TURNS, logger, MODE
+from .config import client, MODEL, SUBAGENT_SYSTEM, MAX_SUBAGENT_TURNS, MAX_COMPLETION_TOKENS, logger, MODE
 from .tools import maybe_inject_skill_catalog, tool_registry, bg_manager
 from .skillcheck import init_per_loop, run_loop_check, move_skills_to_end
 
@@ -79,7 +79,7 @@ def _run_subagent_impl(prompt: str, *, persona=None, tools=None,
                 model=MODEL,
                 messages=[{"role": "system", "content": sub_system}] + sub_messages,
                 tools=sub_tools,
-                max_tokens=8000,
+                max_tokens=MAX_COMPLETION_TOKENS,
             )
         except Exception as e:
             logger.exception(f"Subagent LLM 调用失败 | {e}")

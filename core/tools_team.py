@@ -429,7 +429,7 @@ class TeammateManager:
         第 11 课改造：身份重注入——compact 后消息列表骤降（<阈值）时，
         在开头插入 <identity> 块，防止队友忘了"我是谁"导致角色越权。
         """
-        from .config import client, MODEL, MAX_SUBAGENT_TURNS, TEAMMATE_SYSTEM_PREFIX
+        from .config import client, MODEL, MAX_SUBAGENT_TURNS, TEAMMATE_SYSTEM_PREFIX, MAX_COMPLETION_TOKENS
         from .tools import TOOLS, TOOL_HANDLERS
 
         sub_messages = [{"role": "user", "content": task}]
@@ -460,7 +460,7 @@ class TeammateManager:
                 model=MODEL,
                 messages=[{"role": "system", "content": TEAMMATE_SYSTEM_PREFIX + system}] + sub_messages,
                 tools=teammate_tools,
-                max_tokens=8000,
+                max_tokens=MAX_COMPLETION_TOKENS,
             )
 
             choice = response.choices[0]

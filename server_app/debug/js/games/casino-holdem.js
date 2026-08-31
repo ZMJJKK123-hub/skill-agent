@@ -210,14 +210,35 @@ class CasinoHoldem {
   }
 
   _onKey(e) {
+    if (this.destroyed) return;
     var tag = (e.target && e.target.tagName) || '';
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-    if (e.code === 'Space' || e.key === ' ') {
+    var k = (e.key || '').toLowerCase();
+    // 本桌消费的按键一律拦截冒泡：防止宿主页全局快捷键（如 R=重开）被误触发
+    if (k === ' ' || k === 'r' || k === 'f' || k === 'a' || k === 'd' || k === 'x' || k === 'enter') {
       e.preventDefault();
+      e.stopPropagation();
+    }
+    if (k === ' ') {
       if (this.destroyed || this.phase === 'deal') return;
       this.peek = !this.peek;
       this.peekT = this.tick;
       Casino.audio.play('card-flick', 0.5);
+      return;
+    }
+    if (k === 'enter') {
+      if (this.phase === 'settle') { this.againEl.innerHTML = ''; this._startHand(); }
+      return;
+    }
+    // 出牌键：仅轮到玩家且可行动时生效
+    if (this.phase !== 'bet' || this.turn !== 0 || this.players[0].folded || !this._dealt) return;
+    if (k === 'r') this.act(0, 'call');
+    else if (k === 'f') this.act(0, 'fold');
+    else if (k === 'a') this.act(0, 'raise');
+    else if (k === 'd') this.act(0, 'double');
+    else if (k === 'x') {
+      if (this.street === 0) { this._msg('期前不可全压（翻牌圈起按 X 全压）'); return; }
+      this.act(0, 'allin');
     }
   }
 
@@ -241,15 +262,25 @@ class CasinoHoldem {
     bar.appendChild(exitBtn);
     this.root.appendChild(bar);
     this.helpEl = this._el('div', 'display:none;position:absolute;top:46px;left:10px;max-width:min(560px,86vw);padding:10px 14px;border:1px solid #5a3a1c;border-radius:8px;background:rgba(16,8,4,.93);font-size:12px;line-height:1.9;color:#d8c0a0;pointer-events:auto',
-      '每人 2 张底牌 + 桌面 5 张公共牌，最终 7 选 5 组成最大牌型。<br>流程：期前（只能跟/弃）→ 翻牌圈 3 张 → 转牌 1 张 → 河牌 1 张 → 摊牌比大小。<br>牌型从大到小：<b style="color:#ffc87a">豹子</b>(葫芦) &gt; <b>同花顺</b> &gt; <b>金刚</b> &gt; <b>同花</b> &gt; <b>顺子</b> &gt; <b>三条</b> &gt; <b>两对</b> &gt; <b>对子</b> &gt; 散牌<br>操作：<b>空格</b>=翻看/盖回手牌 · <b>跟注</b> · <b>加注 +' + TH_RAISE + '</b> · <b>加倍 ×2</b> · <b>全压</b>(期前不可) · <b>弃牌</b>');
+      '每人 2 张底牌 + 桌面 5 张公共牌，最终 7 选 5 组成最大牌型。<br>流程：期前（只能跟/弃）→ 翻牌圈 3 张 → 转牌 1 张 → 河牌 1 张 → 摊牌比大小。<br>牌型从大到小：<b style="color:#ffc87a">豹子</b>(葫芦) &gt; <b>同花顺</b> &gt; <b>金刚</b> &gt; <b>同花</b> &gt; <b>顺子</b> &gt; <b>三条</b> &gt; <b>两对</b> &gt; <b>对子</b> &gt; 散牌<br>操作：<b>R</b>=跟注/过牌 · <b>F</b>=弃牌 · <b>A</b>=加注 +' + TH_RAISE + '</b> · <b>D</b>=加倍 ×2 · <b>X</b>=全压(期前不可) · <b>空格</b>=翻看/盖回手牌 · <b>回车</b>=下一局');
     this.root.appendChild(this.helpEl);
-    this.msgEl = this._el('div', 'position:absolute;left:6%;right:6%;bottom:198px;text-align:center;font-size:14px;color:#ffe9c0;text-shadow:0 1px 4px rgba(0,0,0,.95)', '');
+    // 消息条放左下角空地（不再压公共牌/底牌）；纯提示不可点
+    this.msgEl = this._el('div', 'position:absolute;left:14px;bottom:12px;max-width:38%;font-size:13px;line-height:1.55;color:#ffe9c0;text-shadow:0 1px 4px rgba(0,0,0,.95);pointer-events:none', '');
     this.root.appendChild(this.msgEl);
     this.handEl = this._el('div', 'display:none', '');
     this.root.appendChild(this.handEl);
-    this.actEl = this._el('div', 'position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;background:rgba(10,5,3,.78);border:1px solid #5a3a1c;border-radius:12px;padding:8px 12px;pointer-events:auto;max-width:94vw;box-sizing:border-box', '');
-    this.root.appendChild(this.actEl);
-    this.againEl = this._el('div', 'position:absolute;left:50%;bottom:14px;transform:translateX(-50%);pointer-events:auto', '');
+    // 出牌改键盘操作：右上角键位面板（在 W/L 战绩点下方，纯展示 pointer-events:none，不挡牌/座位）
+    this.hintEl = this._el('div', 'position:absolute;top:calc(12.5% + 20px);right:10px;max-width:150px;text-align:left;font-size:11px;line-height:1.7;color:#c8b090;background:rgba(10,5,3,.55);border:1px solid rgba(90,58,28,.55);border-radius:8px;padding:5px 9px;pointer-events:none', '');
+    this._hintInfo = this._el('div', 'font-weight:700;color:#ffd98a;white-space:nowrap');
+    this._hintStatus = this._el('div', 'color:#8fce8f;white-space:normal');
+    this._hintKeys = this._el('div', 'border-top:1px solid rgba(90,58,28,.55);margin-top:3px;padding-top:3px');
+    this._hintKeys.innerHTML = 'R 跟注 · F 弃牌<br>A 加注 · D 加倍<br>X 全压(期前不可)<br>空格 看牌 · ⏎ 下一局';
+    this.hintEl.appendChild(this._hintInfo);
+    this.hintEl.appendChild(this._hintStatus);
+    this.hintEl.appendChild(this._hintKeys);
+    this.root.appendChild(this.hintEl);
+    // 旧"再来一局"按钮已由回车键取代；保留空元素兼容 bot 自动化流程的 innerHTML 清空
+    this.againEl = this._el('div', 'display:none', '');
     this.root.appendChild(this.againEl);
     container.appendChild(this.root);
   }
@@ -520,14 +551,8 @@ class CasinoHoldem {
     this._againBtn();
   }
 
-  _againBtn() {
-    var self = this;
-    this.actEl.innerHTML = '';
-    this.againEl.innerHTML = '';
-    var b = this._el('button', 'padding:10px 30px;border-radius:8px;border:1px solid #ffc87a;background:rgba(50,28,10,.92);color:#ffc87a;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700', '🔄 再来一局');
-    b.onclick = function () { self.againEl.innerHTML = ''; self._startHand(); };
-    this.againEl.appendChild(b);
-  }
+  // "再来一局"已改为回车键（见 _onKey）；保留空实现兼容旧调用点
+  _againBtn() {}
 
   // ---------- 特效派生 ----------
   _fxText(seat, text, color, big) {
@@ -548,42 +573,29 @@ class CasinoHoldem {
     if (this.destroyed) return;
     this._renderActions();
   }
+  // 右上角键位面板：第 1 行 算力/底池，第 2 行 当前状态（轮到你时含跟注额与底池赔率）
   _renderActions() {
-    var self = this;
-    if (this.phase === 'settle') { this.actEl.innerHTML = ''; return; }
-    // 信息位：算力/底池 与按钮同排（左侧）
-    var info = '<span style="font-size:12px;color:#ffd98a;margin-right:6px;white-space:nowrap">算力 <b>' + this.wallet.get().toLocaleString() + '</b> · 底池 <b>' + Math.round(this.dispPot) + '</b></span>';
-    if (this.phase !== 'bet') { this.actEl.innerHTML = info; return; }
-    if (this.players[0].folded) {
-      this.actEl.innerHTML = info + '<span style="font-size:12px;color:#a08a6a">你已弃牌，等待其他玩家…</span>';
-      return;
-    }
-    if (this.turn !== 0) {
-      this.actEl.innerHTML = info + '<span style="font-size:12px;color:#a08a6a">' + this.players[this.turn].name + ' 思考中…</span>';
-      return;
-    }
-    if (!this._dealt) {
-      this.actEl.innerHTML = info + '<span style="font-size:12px;color:#a08a6a">发牌中…</span>';
-      return;
-    }
-    var toCall = this.currentBet - this.players[0].bet;
-    var mk = function (label, action, cls) {
-      var b = self._el('button', 'padding:9px 18px;border-radius:8px;border:1px solid ' + cls + ';background:rgba(26,13,6,.92);color:' + cls + ';cursor:pointer;font-family:inherit;font-size:13px;font-weight:600', label);
-      b.onclick = function () { self.act(0, action); };
-      return b;
-    };
-    this.actEl.innerHTML = '';
-    this.actEl.insertAdjacentHTML('beforeend', info);
-    this.actEl.appendChild(mk(toCall > 0 ? '跟注 ' + Math.min(toCall, this.wallet.get()) : '过牌', 'call', '#8fce8f'));
-    if (this.street > 0) {
-      if (!this.allInMode && this._anyCanRaise()) {
-        this.actEl.appendChild(mk('加注 +' + TH_RAISE, 'raise', '#ffc87a'));
-        var dblNeed = this.currentBet * 2 - this.players[0].bet;
-        if (this.wallet.get() >= dblNeed) this.actEl.appendChild(mk('加倍 ×2 → ' + this.currentBet * 2, 'double', '#ff9f5a'));
+    var info = '算力 ' + this.wallet.get().toLocaleString() + ' · 底池 ' + Math.round(this.dispPot);
+    var status = '';
+    if (this.phase === 'settle') {
+      status = '本局结束 · 按 ⏎ 下一局';
+    } else if (this.phase === 'bet') {
+      if (this.players[0].folded) status = '你已弃牌，等待其他玩家…';
+      else if (this.turn !== 0) status = this.players[this.turn].name + ' 思考中…';
+      else if (!this._dealt) status = '发牌中…';
+      else {
+        var toCall = this.currentBet - this.players[0].bet;
+        if (toCall > 0) {
+          status = '跟注 ' + Math.min(toCall, this.wallet.get());
+          var po = __thPotOdds(this.pot, toCall);
+          if (po) status += ' · 需 ≥' + po.pct + '% 胜率 · 赔 ' + po.ratio;
+        } else {
+          status = '轮到你 · 可过牌（R）';
+        }
       }
-      if (!this.allInMode && this.wallet.get() > 0) this.actEl.appendChild(mk('全压 ' + this.wallet.get(), 'allin', '#e06060'));
     }
-    this.actEl.appendChild(mk('弃牌', 'fold', '#a08a6a'));
+    this._hintInfo.textContent = info;
+    this._hintStatus.textContent = status;
   }
 
   // ---------- 场景渲染（大厅 canvas 每帧调用） ----------
@@ -706,7 +718,6 @@ class CasinoHoldem {
     }
     // 你的底牌（空格翻看）
     this._playerHand(c, w, h, s);
-    this._potOddsPill(c, w, h, s);
     this._drawFx(c, s);
     if (reveal && this.winnerSeat !== undefined) P.confetti(c, w, h, t);
     c.restore();
@@ -719,6 +730,19 @@ class CasinoHoldem {
     var cw = 34 * s, chh = 24 * s;
     var y = h * 0.625;
     var startX = w / 2 - 2 * cw * 1.18;
+    // 常驻空牌位框：5 个位置始终可见（深色底 + 米白描边），未发到/牌背都能看清
+    for (var k = 0; k < 5; k++) {
+      var kx = startX + k * cw * 1.18;
+      c.save();
+      c.fillStyle = 'rgba(8,6,10,.5)';
+      this._rr(c, kx - cw / 2, y - chh / 2, cw, chh, 2.5 * s);
+      c.fill();
+      c.strokeStyle = 'rgba(240,222,190,.55)';
+      c.lineWidth = 1.2;
+      this._rr(c, kx - cw / 2, y - chh / 2, cw, chh, 2.5 * s);
+      c.stroke();
+      c.restore();
+    }
     var deck = this._pt('deck');
     for (var i = 0; i < 5; i++) {
       var prog = this._dealCommProg(i);
@@ -733,49 +757,18 @@ class CasinoHoldem {
         this._miniCard(c, 0, 0, false, s);
       } else {
         c.translate(x, y);
+        // 翻转动画中水平压缩；静止时（背面 flip=0 / 正面 flip=1）必须全宽绘制，
+        // 否则 sx=0 会把牌缩没（实测：翻好的公共牌整排消失就是这个原因）
         var sx = 1 - Math.abs(1 - 2 * flip);
-        if (sx > 0.05) {
-          c.scale(Math.max(0.05, sx), 1);
-          this._miniCard(c, 0, 0, flip >= 0.5, s, this.comm[i]);
-        }
+        var squeezed = flip > 0.04 && flip < 0.96;
+        c.scale(squeezed ? Math.max(0.06, sx) : 1, 1);
+        this._miniCard(c, 0, 0, flip >= 0.5, s, this.comm[i]);
       }
       c.restore();
     }
   }
 
-  // 底池赔率提示：轮到你跟注时，显示跟注成本 vs 底池的打平胜率
-  _potOddsPill(c, w, h, s) {
-    this._potOddsTxt = null;
-    if (this.phase !== 'bet' || !this._dealt || this.turn !== 0) return;
-    var toCall = this.currentBet - this.players[0].bet;
-    if (toCall <= 0) return;
-    var po = __thPotOdds(this.pot, toCall);
-    var txt = '底池 ' + this.pot + ' · 跟 ' + toCall + ' → 需 ≥' + po.pct + '% 胜率 · 赔 ' + po.ratio;
-    this._potOddsTxt = txt;
-    var px = w / 2, py = h * 0.855;
-    c.save();
-    c.font = Math.round(12 * s) + 'px monospace';
-    var tw = c.measureText(txt).width + 20 * s;
-    c.fillStyle = 'rgba(12,7,4,.85)';
-    this._rrPill(c, px - tw / 2, py - 11 * s, tw, 22 * s, 11 * s);
-    c.fill();
-    c.strokeStyle = 'rgba(240,198,116,.5)'; c.lineWidth = 1;
-    this._rrPill(c, px - tw / 2, py - 11 * s, tw, 22 * s, 11 * s);
-    c.stroke();
-    c.fillStyle = '#e8d5b0';
-    c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.fillText(txt, px, py);
-    c.restore();
-  }
-  _rrPill(c, x, y, w2, h2, r) {
-    c.beginPath();
-    c.moveTo(x + r, y);
-    c.arcTo(x + w2, y, x + w2, y + h2, r);
-    c.arcTo(x + w2, y + h2, x, y + h2, r);
-    c.arcTo(x, y + h2, x, y, r);
-    c.arcTo(x, y, x + w2, y, r);
-    c.closePath();
-  }
+  // （原画布上的"底池赔率"胶囊已移除：它压在玩家底牌上；赔率信息并入右上角面板）
   _holeFan(c, x, y, hand, seat, s, leaning) {
     s = s || 1;
     var deck = this._pt('deck');
@@ -799,11 +792,11 @@ class CasinoHoldem {
         c.translate(cx, lift);
         c.rotate(rot);
         var flip = self._revealProg(seat, i);
+        // 同 _commRow：翻转动画时压缩，静止（背面/正面）全宽，避免牌消失
         var sx = 1 - Math.abs(1 - 2 * flip);
-        if (sx > 0.05) {
-          c.scale(Math.max(0.05, sx), 1);
-          self._miniCard(c, 0, 0, flip >= 0.5, s, card);
-        }
+        var squeezed = flip > 0.04 && flip < 0.96;
+        c.scale(squeezed ? Math.max(0.06, sx) : 1, 1);
+        self._miniCard(c, 0, 0, flip >= 0.5, s, card);
       }
       c.restore();
     }, this);
@@ -829,11 +822,13 @@ class CasinoHoldem {
       c.font = Math.round(8 * s) + 'px monospace';
       c.fillText(__thSuits[card.s], 0, 6.5 * s);
     } else {
-      c.fillStyle = '#3a1018';
+      // 牌背：深蓝 + 米白描边（原暗红牌背画在暗红毛毡上几乎看不见）
+      c.fillStyle = '#1d4a8a';
       this._rr(c, -cw / 2, -chh / 2, cw, chh, 2.5 * s);
       c.fill();
-      c.strokeStyle = '#6a2830'; c.lineWidth = 0.8; c.stroke();
-      c.strokeStyle = 'rgba(255,190,110,.28)';
+      c.strokeStyle = '#e8dfc8'; c.lineWidth = 1.4; c.stroke();
+      c.strokeStyle = 'rgba(255,220,150,.55)';
+      c.lineWidth = 1;
       c.beginPath();
       c.moveTo(-cw * 0.3, -chh * 0.3); c.lineTo(cw * 0.3, chh * 0.3);
       c.moveTo(cw * 0.3, -chh * 0.3); c.lineTo(-cw * 0.3, chh * 0.3);
@@ -893,7 +888,8 @@ class CasinoHoldem {
     }, this);
     // 标签：背面时提示空格看牌；看牌时显示当前成牌
     var label;
-    if (p.folded) label = '已弃牌';
+    if (p.folded && !reveal) label = ''; // 弃牌中不画标签：该位置与"底池"文字同高会重叠
+    else if (p.folded) label = '已弃牌';
     else if (reveal) label = '你的手牌 · ' + __thCatName[__thBestAny(p.hand.concat(this.comm || [])).cat];
     else if (!this._dealt) label = '发牌中…';
     else if (this.peek || this.peekT > 0 && this._peekProg(0) >= 1) {
@@ -910,11 +906,12 @@ class CasinoHoldem {
     c.restore();
   }
   _bigBack(c, cw, chh) {
-    c.fillStyle = '#3a1018';
+    // 牌背改深蓝 + 米白边（与暗红毛毡/木桌拉开对比）
+    c.fillStyle = '#1d4a8a';
     this._rr(c, -cw / 2, -chh / 2, cw, chh, cw * 0.12);
     c.fill();
-    c.strokeStyle = '#6a2830'; c.lineWidth = 1.2; c.stroke();
-    c.strokeStyle = 'rgba(255,190,110,.25)'; c.lineWidth = 1;
+    c.strokeStyle = '#e8dfc8'; c.lineWidth = 1.6; c.stroke();
+    c.strokeStyle = 'rgba(255,220,150,.5)'; c.lineWidth = 1.2;
     c.beginPath();
     c.moveTo(-cw * 0.3, -chh * 0.3); c.lineTo(cw * 0.3, chh * 0.3);
     c.moveTo(cw * 0.3, -chh * 0.3); c.lineTo(-cw * 0.3, chh * 0.3);
