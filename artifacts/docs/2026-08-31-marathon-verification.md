@@ -55,3 +55,12 @@
 - 桥新增 `interact` op（显式坐标构造 BlockHitResult → gameMode.useItemOn，PASS 时兜底直调 useWithoutItem+手动发包）——零焦点依赖的"程序化右键"
 - 桥新增 `close_screen` op（onClose，替代 ESC 键）
 - 坑位记录：player.pick 视线在眼睛高度会 MISS 脚部方块；世界未开作弊时所有命令报 "Unknown or incomplete command"（与命令拼写无关）
+
+## voidwarden-1.0.0.jar — 虚空守望者（Boss 战机制：阶段切换/技能轮换/召唤物）
+
+| 验证项 | 结果 |
+|---|---|
+| 构建 | jar：`VoidWardenEntity`（Phase×17/Voidling 召唤×5/50% 阈值）+ `VoidlingEntity` + 渲染器×2 + Boss 测试类 |
+| GameTest | Health/Voidling/spawn 断言覆盖（agent 另攻坚了 1.21.11 TEST_FUNCTION 纯代码注册路线） |
+| 可玩性（**双向战损实测**） | **玩家被 Boss 击杀 ×4**（权威日志 `Dev was slain by Void Warden`）+ **Phase II 实际触发**（`Void Warden tears open the void! Phase II!`）+ **桥 attack op 进程内近战实测掉血 80→41**（hp=69/72/46/10 实时读数）+ `/kill` 终结掉 3 实体 |
+| 备注 | 视觉识图一度把派误判为蘑菇（见上轮教训），本轮以权威日志为准；press_key 鼠标键映射已在引擎补齐（本轮根因） |
