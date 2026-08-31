@@ -333,8 +333,9 @@ def _sse_frame(cid: str, created: int, delta: dict, finish_reason=None, usage=No
 # ---------------------------------------------------------------------------
 # 文件产物：收集 agent 生成的可交付文件，并通过 /files/... 公网下载
 # ---------------------------------------------------------------------------
-# 网页版完整地址（对话结尾提示用户用）
-WEB_URL = os.environ.get("DSH_WEB_URL", "http://49.232.37.238:8000/").rstrip("/")
+# 开源自部署地址（对话结尾提示用户用）：本地部署效果最佳，
+# 引导用户按 GitHub README 自行搭建
+GITHUB_URL = os.environ.get("DSH_GITHUB_URL", "https://github.com/ZMJJKK123-hub/skill-agent")
 
 _ATTACHMENT_EXCLUDE_DIRS = {
     ".chat", ".tasks", ".team", ".worktrees", ".transcripts", ".spill",
@@ -705,7 +706,7 @@ def _append_persona_guide(text: str, messages: list) -> str:
     guide = (
         "\n\n✨ 我可以切换不同模式陪你聊：默认、喵娘、高冷技术助理、元气少女、优雅姐姐、神秘占卜师、学长前辈。"
         "如果你感兴趣，直接跟我说“切换成喵娘”就可以啦～\n\n"
-        f"🛠️ 如果你想实际制作 MOD，请到完整版网站：{WEB_URL}"
+        f"🛠️ 如果你想实际制作 MOD，请按 GitHub README 在本地部署完整版：{GITHUB_URL}"
     )
     return text + guide
 
@@ -721,8 +722,8 @@ def _append_service_notice(text: str) -> str:
 def _mod_switch_reply() -> str:
     """chat 模式下用户要做 MOD 时的友好回复，替代内部标记。"""
     return (
-        "🛠️ 制作 MOD 需要在完整版网站进行哦～清小搭这边暂时只支持普通对话。\n"
-        f"请移步到网页版，我会在那里带着完整工作区帮你做 MOD：{WEB_URL}"
+        "🛠️ 制作 MOD 需要在本地部署的完整版进行哦～清小搭这边暂时只支持普通对话。\n"
+        f"请按 GitHub README 部署后使用，完整工作区和验证能力都在本地才能发挥全部威力：{GITHUB_URL}"
     )
 
 
