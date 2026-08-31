@@ -1174,3 +1174,9 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **[坑] player.pick 射线在眼睛高度——瞄脚部高度方块必 MISS（返回走物品分支得 Pass）| interact 用显式坐标，不依赖 pick**
 - **[坑] 世界未开作弊（Allow Commands OFF）时一切命令报 "Unknown or incomplete command"（不是命令拼错！）| 桥建世界必须先点 Allow Commands 再 Create**
 - **[1.21.11 GameTest 新注册] TEST_FUNCTION/TEST_INSTANCE 纯代码路线（Holder.direct 内联环境）可替代注解扫描； datapack JSON 需 "type":"minecraft:function" dispatch key**
+
+## 2026-08-31 webserv_voidwarden（Boss 战机制——双向战损实测）
+- **[实战验证] 双向战损达成（权威日志）：玩家被 Boss 击杀 4 次（Dev was slain by Void Warden）+ Phase II 成功触发（Void Warden tears open the void! Phase II!）+ Boss 血量 80→41（桥 attack op 进程内近战实测掉血）+ /kill 终结掉 3 实体**
+- **[实现确认] VoidWardenEntity：Phase 引用 17 处、Voidling 召唤 5 处、50% 血量阈值判定在位；VoidWardenBossTest 覆盖 Health/Voidling/spawn 断言**
+- **[实战教训] 桥 attack 返回的 hp 是实例侧缓存，权威血量用 /data get entity 查询；玩家侧 regeneration 效果在 Boss 近战压制下时灵时不灵（正常）**
+- **[流程教训] 高复杂度任务 GameTest 基建（新注册机制）耗掉大量预算导致客户端验证预算不足（MAX 150 轮）；建议引擎为"客户端验证阶段"单独预算，避免与基建调试混用**
