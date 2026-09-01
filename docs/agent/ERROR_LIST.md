@@ -1182,7 +1182,6 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **[流程教训] 高复杂度任务 GameTest 基建（新注册机制）耗掉大量预算导致客户端验证预算不足（MAX 150 轮）；建议引擎为"客户端验证阶段"单独预算，避免与基建调试混用**
 
 ## 2026-08-31 gemcraft_glm53_test（裸机全新环境实战——环境类问题修复手册）
-
 新用户把项目 clone 到没有开发环境的裸 Windows 机器时，构建会按顺序撞上以下问题。
 遇到环境类报错按本节顺序排查，**禁止改 build.gradle / gradle-wrapper / Forge 版本来"绕过"网络或环境问题**。
 
