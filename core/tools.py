@@ -97,7 +97,7 @@ if config.MODE == "mod":
 config.SYSTEM = config.build_system_prompt()
 
 TOOL_HANDLERS = {
-    "bash":         lambda **kw: run_bash(kw["command"]),
+    "bash":         lambda **kw: run_bash(kw["command"], kw.get("timeout_seconds")),
     "grep":         lambda **kw: run_grep(kw["pattern"], kw.get("path", "."),
                                           kw.get("glob_filter"), kw.get("max_results", 50),
                                           kw.get("context_lines", 0)),
@@ -176,7 +176,10 @@ TOOL_HANDLERS = {
     "task_get":     lambda **kw: json.dumps(task_manager.get_task(**kw), ensure_ascii=False),
     "task_clear":   lambda **kw: json.dumps(task_manager.clear(), ensure_ascii=False),
     "claim_task":   lambda **kw: _claim_task(kw),
-    "run_in_background": lambda **kw: bg_manager.run(kw["command"]),
+    "run_in_background": lambda **kw: bg_manager.run(kw["command"], kw.get("timeout_seconds")),
+    # 轮次预算扩展：runtime-context 每轮播报剩余，剩余 <20 预警，
+    # 模型评估任务确实未完成时主动申请更多轮数（绝对硬顶 1000）。
+    "extend_round_limit": lambda **kw: config.round_budget.extend(kw.get("extra_rounds")),
     "spawn_teammate":  lambda **kw: teammate_manager.spawn(kw["name"], kw["system_prompt"]),
     "send_to_teammate": lambda **kw: teammate_manager.send_task(kw["to_name"], kw["task"]),
     "team_status":     lambda **kw: teammate_manager.render_status(),
@@ -218,11 +221,12 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "bash",
-            "description": "Run a shell command.",
+            "description": "Run a shell command. Pass timeout_seconds matching your own estimate of how long the operation takes (default 30s, max 600s): quick reads 10-30s, keytool/cert loops 60-180s, downloads 120-600s. On timeout the process tree is killed; if the operation legitimately needs longer, retry with a larger timeout_seconds or use run_in_background.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "command": {"type": "string"},
+                    "timeout_seconds": {"type": "integer", "description": "Your estimated upper bound for this command in seconds (default 30, max 600)"},
                 },
                 "required": ["command"],
             },
@@ -561,13 +565,28 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "run_in_background",
-            "description": "Run a shell command in the background. Returns immediately with a task ID. Use for long-running commands like npm install, pytest, docker build, pip install. Results delivered as background notifications in subsequent turns.",
+            "description": "Run a shell command in the background. Returns immediately with a task ID. Use for long-running commands like builds, npm install, pytest, docker build, pip install. Pass timeout_seconds matching your own estimate (default 600s, max 3600s); first-time Forge/Gradle builds on cold cache typically need 1200-2700s. Results delivered as background notifications in subsequent turns.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "command": {"type": "string"},
+                    "timeout_seconds": {"type": "integer", "description": "Your estimated upper bound in seconds (default 600, max 3600)"},
                 },
                 "required": ["command"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "extend_round_limit",
+            "description": "Extend this session's round budget when the task genuinely needs more rounds (long environment debugging, many-file refactors, cold-cache builds). The runtime-context snapshot shows 'Round budget: used/max (remaining)'. Call this ONLY when remaining < 20 AND real work is still in progress — request a realistic increment (50-200). Do NOT use it to avoid finishing; wrap up and summarize instead.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "extra_rounds": {"type": "integer", "description": "Additional rounds to add (1-300 per call)"},
+                },
+                "required": ["extra_rounds"],
             },
         },
     },
@@ -835,11 +854,12 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "build_mod_jar_forge",
-            "description": "Build the Forge mod project into an installable jar by running the Gradle wrapper (gradlew build). This takes several minutes on first build (downloads deps + remaps). On success, copies the jar(s) from build/libs/ into the project's dist/ folder so they can be placed directly in .minecraft/mods/. Parameters: gradle_task (default 'build').",
+            "description": "Build the Forge mod project into an installable jar by running the Gradle wrapper (gradlew build). Pass timeout matching your own estimate (default 900s, max 3600s): cold-cache first build downloads deps + remaps and typically needs 1800-2700s; warm rebuilds take under 60s. On success, copies the jar(s) from build/libs/ into the project's dist/ folder so they can be placed directly in .minecraft/mods/. Parameters: gradle_task (default 'build'), timeout (seconds).",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "gradle_task": {"type": "string"},
+                    "timeout": {"type": "integer", "description": "Your estimated upper bound in seconds (default 900, max 3600; cold-cache first build: pass 1800-2700)"},
                 },
             },
         },
@@ -979,13 +999,13 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "run_test_gametest",
-            "description": "RUN THIS FOR AGENT SELF-VERIFICATION: 'gradlew runTestGameTestServer' - GameTest automation server loading BOTH src/main and src/test, runs every @GameTest under src/test/java (isolated; never packaged into the final jar). THE core of the write->run->fix loop: write assertion tests in src/test, run this, parse Passed/Failed, fix src/main logic, re-run until pass. DIFFERENT from run_game_test_server: the latter only scans src/main @GameTest (shipped in jar as egg/getreward tests); for Agent validation you MUST use run_test_gametest. Leader/MAIN agent tool only.",
+            "description": "RUN THIS FOR AGENT SELF-VERIFICATION: 'gradlew runTestGameTestServer' - GameTest automation server loading BOTH src/main and src/test, runs every @GameTest under src/test/java (isolated; never packaged into the final jar). THE core of the write->run->fix loop: write assertion tests in src/test, run this, parse Passed/Failed, fix src/main logic, re-run until pass. DIFFERENT from run_game_test_server: the latter only scans src/main @GameTest (shipped in jar as egg/getreward tests); for Agent validation you MUST use run_test_gametest. timeout: your own estimate in seconds (default 180, max 3600; pass 900-1800 if Gradle cache is cold / deps need downloading). Leader/MAIN agent tool only.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "timeout": {
                         "type": "integer",
-                        "description": "Optional seconds (default 180)",
+                        "description": "Your estimated upper bound in seconds (default 180, max 3600)",
                     },
                 },
             },

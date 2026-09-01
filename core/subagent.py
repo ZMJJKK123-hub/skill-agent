@@ -12,7 +12,7 @@ IS_MOD_MODE = MODE == "mod"
 # run_game_test_server / read_game_test_log：GameTest 进程重且会互踩 run 目录
 # M3: 声明式过滤（tool_registry.schemas）替代手工列表拷贝。
 SUBAGENT_EXCLUDED = {
-    "task", "ask_user_question",
+    "task", "ask_user_question", "extend_round_limit",
     "run_game_test_server", "read_game_test_log",
     "run_client", "run_server", "run_data_gen",
     "run_test_client", "run_test_server", "run_test_data", "run_test_gametest",

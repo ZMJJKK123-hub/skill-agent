@@ -28,15 +28,23 @@ def _escapes_workspace(command: str) -> bool:
     return bool(re.search(r"\b(?:cd|pushd)\s+[\"\']?(?:\.\.|[/\\]|[a-z]:)", command.lower()))
 
 
-def run_bash(command: str) -> str:
+# bash 超时：默认 30s，模型按任务自估传入 timeout_seconds（1-600）。
+# 实测教训（gemcraft_glm53_test）：keytool 批量导入、下载、start /b 继承句柄
+# 等正常操作反复撞死 30s，模型被迫绕行——超时应由模型对操作长度自估。
+BASH_DEFAULT_TIMEOUT = 30
+BASH_MAX_TIMEOUT = 600
+
+
+def run_bash(command: str, timeout_seconds: int = None) -> str:
     """执行命令并返回 stdout/stderr，含基本安全防护（Windows）。
 
     用 Popen + 手动 taskkill /f /t /pid 杀进程树，避免 subprocess.run 在
     shell=True 下 timeout 死锁（cmd.exe 被杀但孙子进程 node.exe 持有管道
     导致 communicate 永不返回）。
+    timeout_seconds：模型自估的操作时长上限（1-600s）；缺省 30s。
     """
     dangerous = [
-        "format",
+        "format ",  # 带尾空格：只拦磁盘格式化 format c:，不误伤 PowerShell Format-Table/Format-List（gemcraft_glm53_test 实测误拦 4 次只读排查命令）
         "diskpart", "reg delete", "shutdown",
         # 致命：taskkill /im 会杀掉 Agent 自身进程（python.exe）
         "taskkill /f /im python.exe",
@@ -55,6 +63,11 @@ def run_bash(command: str) -> str:
     # 第 12 课：cwd 跟随线程 session 基座（worktree_use 后落在 worktree 内）
     from .tools_runtime import worktree_manager
     base = worktree_manager.resolve_dir() if worktree_manager else os.getcwd()
+    try:
+        timeout = int(timeout_seconds) if timeout_seconds else BASH_DEFAULT_TIMEOUT
+    except (TypeError, ValueError):
+        timeout = BASH_DEFAULT_TIMEOUT
+    timeout = max(1, min(timeout, BASH_MAX_TIMEOUT))
     proc = subprocess.Popen(
         command, shell=True, cwd=base,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -62,7 +75,7 @@ def run_bash(command: str) -> str:
         env={**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"},
     )
     try:
-        out, _ = proc.communicate(timeout=30)
+        out, _ = proc.communicate(timeout=timeout)
     except subprocess.TimeoutExpired:
         from .process_manager import kill_pid
         kill_pid(proc.pid)
@@ -70,13 +83,17 @@ def run_bash(command: str) -> str:
             out, _ = proc.communicate(timeout=5)
         except subprocess.TimeoutExpired:
             out = ""
-        return ("Error: Timeout (30s) — 进程树已被强杀。\n"
-                "如果你在启动服务器（node server.js / npm start / python -m http.server），"
-                "禁止单独执行启动命令。必须用一条组合命令完成"
-                "「后台启动 → 等待 → 测试 → 杀进程」：\n"
-                "  start /b cmd /c \"node server.js > server.log 2>&1\" & "
-                "timeout /t 3 /nobreak >nul & curl -s http://localhost:3000/api/users & "
-                "for /f \"tokens=5\" %a in ('netstat -aon ^| findstr :3000 ^| findstr LISTENING') do taskkill /f /pid %a\n"
-                "注意：禁止用 taskkill /f /im python.exe，会杀掉 Agent 自身。")
+        return (
+            f"Error: Timeout ({timeout}s) — 进程树已被强杀。\n"
+            f"若该操作本来就需要更久（下载/批量 keytool/首次构建等），重新调用时传 "
+            f"timeout_seconds=<估计秒数，上限 600>；超过 600s 的长任务改用 run_in_background"
+            f"（可传 timeout_seconds 最长 3600s）。\n"
+            f"如果你在启动服务器（node server.js / npm start / python -m http.server），"
+            "禁止单独执行启动命令。必须用一条组合命令完成"
+            "「后台启动 → 等待 → 测试 → 杀进程」：\n"
+            "  start /b cmd /c \"node server.js > server.log 2>&1\" & "
+            "timeout /t 3 /nobreak >nul & curl -s http://localhost:3000/api/users & "
+            "for /f \"tokens=5\" %a in ('netstat -aon ^| findstr :3000 ^| findstr LISTENING') do taskkill /f /pid %a\n"
+            "注意：禁止用 taskkill /f /im python.exe，会杀掉 Agent 自身。")
     out = (out or "").strip()
     return out[:50000] if out else "(no output)"

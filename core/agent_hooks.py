@@ -103,6 +103,10 @@ def _inject_runtime_context_snapshot(messages):
     parts = []
     try:
         parts.append("Current time (UTC): " + datetime.now(timezone.utc).isoformat(timespec="seconds"))
+        # 轮次预算播报：让模型每轮知道自己还剩多少轮（gemcraft_glm53_test
+        # 教训——写死预算在最后一步掐断任务，模型对剩余额度毫无感知）。
+        from .config import round_budget
+        parts.append(round_budget.render_status())
         if todo_manager.todos:
             parts.append("Todo progress:\n" + todo_manager.render())
         tasks = task_manager.list_tasks()

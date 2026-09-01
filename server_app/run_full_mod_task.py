@@ -83,6 +83,11 @@ def main() -> int:
         "DSH_BASE_URL": env_extra.get("DSH_BASE_URL", os.environ.get("DSH_BASE_URL", "")),
         "DSH_MODEL": env_extra.get("DSH_MODEL", os.environ.get("DSH_MODEL", "")),
         "DSH_CONTEXT_WINDOW": env_extra.get("DSH_CONTEXT_WINDOW", ""),
+        # run_task.py 会设 DSH_NO_ENV_FILE=1（.env 不进 agent 进程），因此
+        # 所有需要生效的 DSH_* 配置必须在这里显式转发，否则静默回退默认值
+        # （实测：DSH_MAX_COMPLETION_TOKENS 未转发 → reasoning 模型空响应死循环）。
+        "DSH_MAX_COMPLETION_TOKENS": env_extra.get(
+            "DSH_MAX_COMPLETION_TOKENS", os.environ.get("DSH_MAX_COMPLETION_TOKENS", "")),
     }
 
     run_task = PROJECT_ROOT / "server_app" / "run_task.py"

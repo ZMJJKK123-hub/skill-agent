@@ -19,6 +19,7 @@ BASE_TOOL_NAMES = {
     "detect_environment",
     "download_file",
     "edit_file",
+    "extend_round_limit",
     "extract_archive",
     "glob",
     "grep",

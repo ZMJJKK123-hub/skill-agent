@@ -178,11 +178,16 @@ DSH_MAX_COMPLETION_TOKENS=32768
 | 变量 | 默认 | 说明 |
 |---|---|---|
 | `DSH_MAX_COMPLETION_TOKENS` | `8000` | 单次补全上限（含 reasoning 思考预算）；GLM-5.3 系列 reasoning 模型建议 `32768+`，DeepSeek 等非思考模型保持默认 |
+| `DSH_MAX_TOOL_ROUNDS` | `200` | 单任务工具轮上限；模型临耗尽时可调 `extend_round_limit` 工具自行扩展 |
+| `DSH_MAX_TOTAL_ROUNDS` | `300` | 总轮数上限（同样可被 extend_round_limit 扩展） |
+| `DSH_ABSOLUTE_MAX_ROUNDS` | `1000` | 轮次预算绝对硬顶（extend 也不能突破，防无限续命烧钱） |
 | `DSH_AUTO_MODE` | `0` | `1` = 全自动模式，`ask_user_question` 不阻塞等待用户 |
 | `DSH_MAX_TOOL_ROUNDS` | `100` | 单任务工具轮上限（防死循环） |
 | `DSH_MAX_TOTAL_ROUNDS` | `150` | 总轮数硬上限 |
 | `DSH_DISABLE_CLIENT_TOOLS` | 未设 | `1` = 低内存服务器模式，移除所有游戏 GUI 工具，只保留 build+GameTest+资源校验 |
 | `DSH_SANDBOX_MODE` | `full-access` | 会话沙箱：`full-access` / `workspace-write` / `read-only` |
+
+**超时与轮次预算的运行时策略**（引擎不会写死卡死 agent）：bash 默认 30s（上限 600s）、后台任务默认 600s（上限 3600s）、构建/GameTest 默认 900s/180s（上限 3600s）——**这些超时由模型按任务自估传入**（冷缓存首建会自动传 1800-2700s）；轮次预算每轮通过 runtime-context 向模型播报"已用/上限（剩余）"，剩余 <20 时预警，模型可调 `extend_round_limit(extra_rounds=N)` 申请更多轮数（绝对硬顶 1000）。
 
 ---
 

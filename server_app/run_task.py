@@ -403,9 +403,14 @@ def main() -> int:
     if prompt_file:
         try:
             task_prompt = Path(prompt_file).read_text(encoding="utf-8")
-            # 读完后删除临时文件（server 不再管它）
+            # 读完后删除临时文件——仅限 TEMP 目录下的（server 写入的一次性副本约定）。
+            # powerforge_test 实测：续跑时 DSH_PROMPT_FILE 指向用户真实文件，
+            # 无条件 unlink 会把原件吃掉（prompt_*.txt 两次消失的元凶）。
+            import tempfile as _tempfile
             try:
-                Path(prompt_file).unlink()
+                _pf = Path(prompt_file).resolve()
+                if _pf.is_relative_to(Path(_tempfile.gettempdir()).resolve()):
+                    _pf.unlink()
             except OSError:
                 pass
         except OSError as e:

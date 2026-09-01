@@ -2,10 +2,11 @@ import json
 import os
 import re
 import subprocess
+import time
 from pathlib import Path
 
 from . import config
-from .config import client, MODEL, logger, MODE
+from .config import client, MODEL, logger, MODE, round_budget
 from .tools import (
     TOOL_HANDLERS, bg_manager,
     format_background_results, teammate_manager, maybe_inject_skill_catalog,
@@ -64,8 +65,9 @@ def agent_loop(messages: list) -> str:
     #控制智能体行为的注入变量
     _known_issues_injected = False
     _agents_injected = False
-    _tool_rounds = 0
     _wrote_file = False
+    # 瞬时 API 错误退避重试状态（正常响应到达即清零）
+    _retry_transient_api_error, _reset_api_retries = _make_api_retry_state()
     _pre_write_reads = 0
     _pre_write_warned = False
     _starter_auto_written = False
@@ -94,6 +96,8 @@ def agent_loop(messages: list) -> str:
     _round_idx = 0
     _round_tool_counts = {}
     _session_log = SessionLog()
+    # 轮次预算：续跑进程时计数清零（新的一轮 agent_loop），上限配置保留
+    round_budget.reset()
 
     # 恢复：如果调用方没给初始消息，但存在事件日志，则从事件源重建历史（DSH replay）
     if not messages:
@@ -112,6 +116,7 @@ def agent_loop(messages: list) -> str:
     _step_machine.start_turn()
     while True:
         _round_idx += 1
+        round_budget.total_rounds_used = _round_idx
         _round_tool_counts = {}
         # ── Layer 0s: 排空监管信箱（第 13 课）──
         # 后台监管线程发现异常会写信箱；这里读后即删，按严重度
@@ -269,6 +274,8 @@ def agent_loop(messages: list) -> str:
                 logger.warning(f"上下文超限，自动压缩后重试: {_le}")
                 messages = auto_compact(messages)
                 continue
+            if _retry_transient_api_error(_le):
+                continue
             raise
 
         content_parts: list[str] = []
@@ -314,6 +321,11 @@ def agent_loop(messages: list) -> str:
                 logger.warning(f"流式上下文超限，自动压缩后重试: {_le2}")
                 messages = auto_compact(messages)
                 continue
+            # 瞬时网络/API 错误（连接断开、超时、5xx、过载）退避重试，
+            # 不让一次网络抖动炸掉上百轮的长任务（powerforge_test 实测：
+            # 103 轮时 APIConnectionError 直接冒泡终止整个会话）。
+            if _retry_transient_api_error(_le2):
+                continue
             raise
 
         from types import SimpleNamespace as _NS
@@ -333,6 +345,17 @@ def agent_loop(messages: list) -> str:
         # 的真实回复，下一轮继续返回空内容，形成死循环。改为注入用户警告并直接重试。
         if content is None and not tool_calls:
             _empty_strikes += 1
+            # 诊断盲区修复（老问题）：空响应轮在 finish_reason 落日志之前就 continue，
+            # gemcraft/powerforge 两次事故都因此拿不到直接证据。现在记录：
+            #   finish_reason=length → max_tokens 被 reasoning 烧光（对策：加大预算）
+            #   finish_reason=stop 且 reasoning_len>0 → 模型思考后未输出正文（对策：提示词/模型侧）
+            #   reasoning_len=0 → 网关返回空 choice（对策：换端点/重试策略）
+            logger.warning(
+                f"空响应诊断 | strike={_empty_strikes} | finish_reason={finish_reason} | "
+                f"reasoning_len={len(''.join(reasoning_parts))} | content_len=0 | "
+                f"msg_count={len(messages)} | est_tokens={estimate_tokens(messages)} | "
+                f"max_completion_tokens={config.MAX_COMPLETION_TOKENS}"
+            )
             logger.warning(f"模型返回空内容且无工具调用（连续第 {_empty_strikes} 次）")
             # 上限兜底（webserv_heaven 实测：glm-5.3 遇超大上下文连续 39 次空响应，
             # 无上限时空转烧 API）。连续 5 次仍空 → 触发压缩（可能上下文异常膨胀），
@@ -383,6 +406,8 @@ def agent_loop(messages: list) -> str:
             },
         )
         choice = _NS(message=message, finish_reason=finish_reason or "stop")
+        # 流式响应完整到达：瞬时错误重试计数清零
+        _reset_api_retries()
 
         # ── 打印思考过程（不进 messages）──
         reasoning = getattr(message, "reasoning_content", None)
@@ -392,7 +417,11 @@ def agent_loop(messages: list) -> str:
 
         # 记录助手回复（只记录 content/tool_calls，不含 reasoning）
         messages.append(message.to_dict())
-        _empty_strikes = 0  # 正常响应到达，连续空响应计数清零
+        # 连续空响应计数清零——但仅当响应是"真进展"（调了工具，或有实质文本）。
+        # powerforge_test 实测：reasoning 模型预算不足时会产出"少量文字但无工具"
+        # 的假恢复轮，重置计数导致 8 次强收尾永远凑不齐，空转拖到总轮上限。
+        if tool_calls or (content and len(content.strip()) > 20):
+            _empty_strikes = 0
         # ── skill-source 引用校验（仅 mod 模式）──
         # chat 模式：普通对话无需 <skill-source> 引用块，跳过校验直接通过。
         if choice.finish_reason != "tool_calls" and IS_MOD_MODE:
@@ -462,8 +491,12 @@ def agent_loop(messages: list) -> str:
                     if _m.get("tool_call_id") not in _gt_call_ids:
                         continue
                     _content = str(_m.get("content", ""))
+                    # "required tests passed" 宽匹配：Gradle 实际输出形如
+                    # "All 1 required tests passed :)"（带数量词），字面匹配
+                    # "All required tests passed" 会漏判导致出口闸失明
+                    # （gemcraft_glm53_test 实测）。
                     if (_content.lstrip().startswith("[gametest]")
-                            or "All required tests passed" in _content
+                            or "required tests passed" in _content
                             or "GAME TESTS COMPLETE" in _content
                             or "RESULT: PASS" in _content):
                         _ran_gt = True
@@ -654,8 +687,10 @@ def agent_loop(messages: list) -> str:
 
         # 完成信号：dist 出现 jar 且 GameTest 已通过才算可收尾；只出 jar 不算完成。
         try:
+            # 宽匹配 "required tests passed"：见上方 gametest-check 处的说明
+            # （Gradle 实际输出带数量词 "All 1 required tests passed"）。
             _gt_pass_markers = (
-                "All required tests passed",
+                "required tests passed",
                 "GAME TESTS COMPLETE",
                 "RESULT: PASS",
                 "[gametest]",
@@ -742,21 +777,35 @@ def agent_loop(messages: list) -> str:
             continue
 
         # 防死循环：统计工具调用轮次；超限强制收尾
+        # 预算由 round_budget 管理（默认 200，可通过 extend_round_limit 工具扩展，
+        # 绝对硬顶 1000）——裸机环境战（证书/网络修复）与写 MOD 不再等价受罚。
         if message.tool_calls:
-            _tool_rounds += 1
-            if _tool_rounds >= MAX_TOOL_ROUNDS:
+            round_budget.tool_rounds_used += 1
+            # 临近上限预警（剩余 <=20 只提醒一次；extend 后回升可再触发）
+            if round_budget.should_warn_low():
+                _replace_runtime_slot(
+                    messages,
+                    "reminder",
+                    "<reminder>Round budget low: " + round_budget.render_status() + "</reminder>",
+                )
+            if round_budget.tool_rounds_used >= round_budget.max_tool_rounds:
                 _force_final_msg = (
-                    f"Max tool rounds reached ({MAX_TOOL_ROUNDS}). Partial progress is in run.log; "
-                    "stopping the loop to prevent an infinite tool-call loop."
+                    f"Max tool rounds reached ({round_budget.max_tool_rounds}). "
+                    f"Partial progress is in run.log; stopping the loop to prevent "
+                    f"an infinite tool-call loop. "
+                    f"(If the task was genuinely unfinished, rerun the session — "
+                    f"checkpoint/state is preserved, or use extend_round_limit earlier "
+                    f"next time.)"
                 )
                 logger.warning(_force_final_msg)
                 continue
 
         # 总轮数硬上限（含纯文本重试轮）：出口闸失明时纯文本轮不计 _tool_rounds，
         # 实测曾连续多轮打回不终止（webserv_amber），给整个循环一个硬边界
-        if _round_idx >= MAX_TOTAL_ROUNDS:
+        if _round_idx >= round_budget.max_total_rounds:
             _force_final_msg = (
-                f"Max total rounds reached ({MAX_TOTAL_ROUNDS}). Partial progress is in run.log; stopping."
+                f"Max total rounds reached ({round_budget.max_total_rounds}). "
+                f"Partial progress is in run.log; stopping."
             )
             logger.warning(_force_final_msg)
             continue
@@ -807,10 +856,11 @@ def _messages_hint_mod(messages: list) -> bool:
 
 
 
-# 防死循环：同一 agent_loop 内允许的最大工具调用轮次（每轮可能含多个 tool_call）
-MAX_TOOL_ROUNDS = int(os.environ.get("DSH_MAX_TOOL_ROUNDS", "100"))
-# 总轮数硬上限（含纯文本重试轮）：出口闸失明时的最后防线
-MAX_TOTAL_ROUNDS = int(os.environ.get("DSH_MAX_TOTAL_ROUNDS", "150"))
+# 防死循环轮次预算：已迁至 config.round_budget（默认 200/300，运行时可通过
+# extend_round_limit 工具扩展，绝对硬顶 DSH_ABSOLUTE_MAX_ROUNDS=1000）。
+# 兼容别名：外部若有代码引用旧常量名仍可用。
+MAX_TOOL_ROUNDS = round_budget.max_tool_rounds
+MAX_TOTAL_ROUNDS = round_budget.max_total_rounds
 
 # 超大工具结果阈值：超过则落盘 spill 文件，模型只看到前后预览
 MAX_INLINE_TOOL_CHARS = 3000
@@ -960,6 +1010,61 @@ def _is_context_overflow(exc: Exception) -> bool:
         "maximum context length",
     )
     return any(m in text for m in markers)
+
+
+# ── 瞬时 API 错误退避重试（powerforge_test 教训：103 轮会话被一次
+#    APIConnectionError 冒泡终止）。最多 4 次，5/10/20/40s 指数退避；
+#    正常响应到达后计数清零。非瞬时错误（认证/参数类）不重试直接抛。
+_API_TRANSIENT_NAMES = {
+    "APIConnectionError", "APITimeoutError", "APIStatusError",
+    "ReadTimeout", "ConnectTimeout", "ConnectionResetError",
+    "RemoteProtocolError", "ChunkedEncodingError",
+}
+_API_TRANSIENT_MARKERS = (
+    "connection error", "connection reset", "timeout", "timed out",
+    "temporarily unavailable", "bad gateway", "service unavailable",
+    "overloaded", "rate limit", "internal server error", "server error",
+    "econnreset", "eof occurred", "connection aborted",
+)
+
+
+def _is_transient_api_error(exc: Exception) -> bool:
+    if type(exc).__name__ in _API_TRANSIENT_NAMES:
+        # APIStatusError 需再看状态码/文本：4xx 认证/参数类不重试
+        if type(exc).__name__ == "APIStatusError":
+            code = getattr(exc, "status_code", None)
+            if code is not None and 400 <= code < 500 and code not in (408, 429):
+                return False
+        return True
+    text = str(exc).lower()
+    return any(m in text for m in _API_TRANSIENT_MARKERS)
+
+
+def _make_api_retry_state():
+    """每轮 agent_loop 独立的重试状态（闭包计数，正常响应清零）。"""
+    state = {"retries": 0}
+
+    def retry(exc: Exception) -> bool:
+        if not _is_transient_api_error(exc):
+            return False
+        if state["retries"] >= 4:
+            logger.warning(f"瞬时 API 错误重试已耗尽（4 次），放弃: {type(exc).__name__}")
+            return False
+        state["retries"] += 1
+        wait = 5 * (2 ** (state["retries"] - 1))  # 5/10/20/40s
+        logger.warning(
+            f"瞬时 API 错误，{wait}s 后退避重试（第 {state['retries']}/4 次）: "
+            f"{type(exc).__name__}: {str(exc)[:200]}"
+        )
+        print(f"[system] API 瞬时错误（{type(exc).__name__}），{wait}s 后自动重试 "
+              f"({state['retries']}/4)...", flush=True)
+        time.sleep(wait)
+        return True
+
+    def reset() -> None:
+        state["retries"] = 0
+
+    return retry, reset
 
 
 def _replace_runtime_slot(messages: list, tag_prefix: str, content: str) -> None:

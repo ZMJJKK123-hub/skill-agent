@@ -20,6 +20,12 @@ class BackgroundTask:
     status: str = "running"
     result: Optional[str] = None
 
+# 后台任务超时：默认 600s，模型按任务自估传入（1-3600）。
+# 实测教训：首次 Forge 构建/MC 依赖下载常超 600s，写死后被中途杀掉
+# （幸有 Gradle 缓存续命）——长任务时长应由模型自己估计。
+BG_DEFAULT_TIMEOUT = 600
+BG_MAX_TIMEOUT = 3600
+
 class BackgroundManager:
     """后台任务管理器。慢操作丢守护线程，主循环不阻塞。
 
@@ -32,8 +38,11 @@ class BackgroundManager:
         self.notification_queue: queue.Queue = queue.Queue()
         self.lock = threading.Lock()
 
-    def run(self, command: str) -> str:
-        """启动后台任务，立即返回 task_id。调用方不阻塞。"""
+    def run(self, command: str, timeout_seconds: int = None) -> str:
+        """启动后台任务，立即返回 task_id。调用方不阻塞。
+
+        timeout_seconds：模型自估的任务时长上限（1-3600s）；缺省 600s。
+        """
         # 复用 run_bash 的危险命令检查
         dangerous = [
             "format",
@@ -54,6 +63,11 @@ class BackgroundManager:
             if mode == "read-only" and _is_mutating(command):
                 return "Error: read-only 模式禁止修改性操作"
 
+        try:
+            timeout = int(timeout_seconds) if timeout_seconds else BG_DEFAULT_TIMEOUT
+        except (TypeError, ValueError):
+            timeout = BG_DEFAULT_TIMEOUT
+        timeout = max(1, min(timeout, BG_MAX_TIMEOUT))
         task_id = f"bg_{len(self.tasks)}_{int(time.time())}"
         task = BackgroundTask(task_id=task_id, command=command)
         with self.lock:
@@ -65,21 +79,22 @@ class BackgroundManager:
         base = worktree_manager.resolve_dir() if worktree_manager else os.getcwd()
         thread = threading.Thread(
             target=self._execute,
-            args=(task_id, command, base),
+            args=(task_id, command, base, timeout),
             daemon=True,
         )
         thread.start()
         logger.info(
             f"BackgroundManager.run | task_id={task_id} | command={command} | "
-            f"base={base}"
+            f"base={base} | timeout={timeout}s"
         )
         return task_id
 
-    def _execute(self, task_id: str, command: str, base: str):
+    def _execute(self, task_id: str, command: str, base: str, timeout: int = BG_DEFAULT_TIMEOUT):
         """在守护线程里跑子进程。Windows 适配：Popen + taskkill，不用 subprocess.run。
 
         第 12 课：base 由 run() 在启动前于主线程捕获并传入——
         后台任务落在主线程当前 worktree 内（若已 worktree_use）。
+        timeout 由调用方（模型）自估传入；缺省 600s，上限 3600s。
         """
         proc = subprocess.Popen(
             command, shell=True, cwd=base,
@@ -88,7 +103,7 @@ class BackgroundManager:
             env={**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"},
         )
         try:
-            out, _ = proc.communicate(timeout=600)
+            out, _ = proc.communicate(timeout=timeout)
             result = (out or "").strip()[:50000] or "(no output)"
             status = "completed"
         except subprocess.TimeoutExpired:
@@ -98,7 +113,10 @@ class BackgroundManager:
                 proc.communicate(timeout=5)
             except:
                 pass
-            result = "Error: Background task timed out (600s)"
+            result = (
+                f"Error: Background task timed out ({timeout}s). "
+                f"若任务本来需要更久，重新发起时传更大的 timeout_seconds（上限 3600）。"
+            )
             status = "failed"
         except Exception as e:
             result = f"Error: {e}"

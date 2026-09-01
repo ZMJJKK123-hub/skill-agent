@@ -44,6 +44,86 @@ MODEL = os.environ.get("DSH_MODEL", "GLM-4.5-Flash")
 # 用此类模型时通过 DSH_MAX_COMPLETION_TOKENS 调大（建议 32768+）。
 MAX_COMPLETION_TOKENS = int(os.environ.get("DSH_MAX_COMPLETION_TOKENS", "8000"))
 
+# ---------- 轮次预算（运行时可由 extend_round_limit 工具扩展）----------
+# 设计动机（gemcraft_glm53_test 实测教训）：
+# 旧实现把 MAX_TOOL_ROUNDS=100 写死为局部变量，且"环境战"（证书/网络/
+# 僵尸进程修复）与"写 MOD"等价计数——首次裸机会话在最后一步被掐断。
+# 现在预算是共享对象：主循环计数、runtime-context 每轮向模型播报剩余、
+# 临近上限预警、模型可调 extend_round_limit 主动申请更多轮数。
+class RoundBudget:
+    """主 agent 循环的轮次预算（工具轮 + 总轮双计数，可扩展）。"""
+
+    def __init__(self):
+        self.tool_rounds_used = 0
+        self.total_rounds_used = 0
+        self.max_tool_rounds = int(os.environ.get("DSH_MAX_TOOL_ROUNDS", "200"))
+        self.max_total_rounds = int(os.environ.get("DSH_MAX_TOTAL_ROUNDS", "300"))
+        # 绝对硬顶：extend 也不能突破，防模型无限续命烧钱
+        self.absolute_max = int(os.environ.get("DSH_ABSOLUTE_MAX_ROUNDS", "1000"))
+        self._warned_low = False
+
+    def tool_remaining(self) -> int:
+        return max(0, self.max_tool_rounds - self.tool_rounds_used)
+
+    def total_remaining(self) -> int:
+        return max(0, self.max_total_rounds - self.total_rounds_used)
+
+    def should_warn_low(self, threshold: int = 20) -> bool:
+        """剩余工具轮 <= threshold 且未预警过（extend 后剩余回升会重置）。"""
+        if self.tool_remaining() > threshold:
+            self._warned_low = False
+            return False
+        if self._warned_low:
+            return False
+        self._warned_low = True
+        return True
+
+    def extend(self, extra_rounds) -> str:
+        """extend_round_limit 工具的实现：两个上限同时加，硬顶保护。"""
+        try:
+            extra = int(extra_rounds)
+        except (TypeError, ValueError):
+            return "Error: extra_rounds must be an integer"
+        if extra < 1:
+            return "Error: extra_rounds must be >= 1"
+        if extra > 300:
+            return "Error: extra_rounds too large (max 300 per call); call again if truly needed"
+        new_max = min(self.max_tool_rounds + extra, self.absolute_max)
+        new_total = min(self.max_total_rounds + extra, self.absolute_max)
+        if new_max == self.max_tool_rounds and new_total == self.max_total_rounds:
+            return (f"Error: budget already at absolute hard cap "
+                    f"({self.absolute_max} rounds); cannot extend further")
+        added = new_max - self.max_tool_rounds
+        self.max_tool_rounds = new_max
+        self.max_total_rounds = new_total
+        # 剩余回升后允许下一次低预算预警再次触发
+        if self.tool_remaining() > 20:
+            self._warned_low = False
+        return (f"Round budget extended by {added}. "
+                f"Now: {self.tool_rounds_used}/{self.max_tool_rounds} tool rounds used "
+                f"({self.tool_remaining()} remaining), "
+                f"{self.total_rounds_used}/{self.max_total_rounds} total rounds used.")
+
+    def render_status(self) -> str:
+        return (
+            f"Round budget: {self.tool_rounds_used}/{self.max_tool_rounds} tool rounds used "
+            f"({self.tool_remaining()} remaining); "
+            f"{self.total_rounds_used}/{self.max_total_rounds} total rounds used "
+            f"({self.total_remaining()} remaining). "
+            f"If the task is genuinely unfinished when remaining < 20, call "
+            f"extend_round_limit(extra_rounds=50~200) to request more; otherwise wrap up "
+            f"(summarize progress and current blockers)."
+        )
+
+    def reset(self) -> None:
+        """新一轮 agent_loop（进程重启/续跑）时清零计数但保留上限配置。"""
+        self.tool_rounds_used = 0
+        self.total_rounds_used = 0
+        self._warned_low = False
+
+
+round_budget = RoundBudget()
+
 # 运行模式：chat（通用对话，不复制 mod 模板）| mod（MOD 制作，工作区已复制模板）
 # 由 server 通过 run_task 的 DSH_MODE 环境变量注入。
 MODE = os.environ.get("DSH_MODE", "chat")

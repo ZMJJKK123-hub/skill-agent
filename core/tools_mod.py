@@ -52,14 +52,33 @@ def _build_source_zip() -> str:
         return f"[build] 源码 zip 预生成失败: {e}"
 
 
+# 构建超时：默认 900s，模型自估传入（上限 3600）。
+# 实测：裸机+代理网络下首次构建 15-40 分钟（Mavenizer 一步就 9 分钟），
+# 900s 写死导致首建被反复掐断——冷缓存场景由模型传 1800-2700。
+BUILD_DEFAULT_TIMEOUT = 900
+BUILD_MAX_TIMEOUT = 3600
+
+
+def _resolve_timeout(kw, default: int, cap: int) -> int:
+    """从工具参数里解析模型自估的超时（缺省 default，夹在 [1, cap]）。"""
+    raw = kw.get("timeout") if isinstance(kw, dict) else None
+    try:
+        t = int(raw) if raw else default
+    except (TypeError, ValueError):
+        t = default
+    return max(1, min(t, cap))
+
+
 def _forge_build_jar(kw: dict) -> str:
     """build_mod_jar_forge：构建 Forge mod 项目为可安装 jar（gradlew build）。
 
-    与 run_bash 的 30s 超时不同，这里用同步长超时（900s）等待 Forge Gradle
-    首次构建完成（下载依赖 + 反混淆通常需要数分钟）。构建成功后把
-    build/libs/*.jar 复制到工程根的 dist/ 目录便于识别/下载。
+    与 run_bash 的默认 30s 超时不同，这里用长超时等待 Forge Gradle 构建
+    （依赖下载 + 反混淆通常需要数分钟）。timeout 参数由模型按缓存冷热
+    自估传入（缺省 900s，上限 3600s）。构建成功后把 build/libs/*.jar
+    复制到工程根的 dist/ 目录便于识别/下载。
     """
     task = kw.get("gradle_task", "build")
+    timeout = _resolve_timeout(kw, BUILD_DEFAULT_TIMEOUT, BUILD_MAX_TIMEOUT)
     base = worktree_manager.resolve_dir() if worktree_manager else os.getcwd()
 
     if os.name == "nt" or sys.platform == "win32":
@@ -85,13 +104,18 @@ def _forge_build_jar(kw: dict) -> str:
 
     out = ""
     try:
-        out, _ = proc.communicate(timeout=900)
+        out, _ = proc.communicate(timeout=timeout)
     except subprocess.TimeoutExpired:
         try:
             subprocess.run(f"taskkill /f /t /pid {proc.pid}", shell=True, capture_output=True)
         except Exception:
             pass
-        return f"[build] Gradle 构建超时（>900s）。\n日志尾部:\n{(out or '')[-3000:]}"
+        return (
+            f"[build] Gradle 构建超时（>{timeout}s）。\n"
+            f"Gradle 缓存会保留进度：重试会从断点续传。若这是冷缓存首次构建"
+            f"（需下载依赖+反混淆，正常 15-40 分钟），重新调用时传更大的 "
+            f"timeout=1800~2700。\n日志尾部:\n{(out or '')[-3000:]}"
+        )
 
     ok = proc.returncode == 0
     tail = (out or "")[-3000:]
@@ -180,10 +204,11 @@ def _run_game_test_server(kw: dict) -> str:
     - 在 mod 工作目录执行 gradlew.bat/gradlew runGameTestServer（对应 build.gradle
       已配置的 register('gameTestServer')）。
     - 运行前自动确保 run/eula.txt（服务端首次启动必须接受 EULA）。
-    - Popen + taskkill 进程树，超时 GAME_TEST_TIMEOUT 秒（首次构建可能数分钟）。
+    - timeout 参数由模型自估（缺省 900s，上限 3600s；首跑 Gradle 下载依赖需更久）。
     - 输出截断返回给模型；模型再调用 read_game_test_log 读日志修复。
     """
     task = kw.get("gradle_task", "runGameTestServer")
+    timeout = _resolve_timeout(kw, GAME_TEST_TIMEOUT, BUILD_MAX_TIMEOUT)
     base = worktree_manager.resolve_dir() if worktree_manager else os.getcwd()
     _ensure_game_test_eula(base)
 
@@ -210,7 +235,7 @@ def _run_game_test_server(kw: dict) -> str:
 
     out = ""
     try:
-        out, _ = proc.communicate(timeout=GAME_TEST_TIMEOUT)
+        out, _ = proc.communicate(timeout=timeout)
     except subprocess.TimeoutExpired:
         try:
             subprocess.run(f"taskkill /f /t /pid {proc.pid}", shell=True, capture_output=True)
@@ -221,9 +246,10 @@ def _run_game_test_server(kw: dict) -> str:
         except Exception:
             pass
         return (
-            f"[gametest] runGameTestServer 超时（>{GAME_TEST_TIMEOUT}s），进程已终止。\n"
+            f"[gametest] runGameTestServer 超时（>{timeout}s），进程已终止。\n"
             f"注意：GameTestServer 运行完测试后可能不会自动退出（若有测试通过则等待全部完成）。\n"
-            f"请用 read_game_test_log 读取 run/logs/latest.log 查看测试结果与错误。"
+            f"请用 read_game_test_log 读取 run/logs/latest.log 查看测试结果与错误。\n"
+            f"若首跑需下载依赖，重试时传更大的 timeout=1800~2700。"
         )
 
     ok = proc.returncode == 0
@@ -290,12 +316,17 @@ def _read_game_test_log(kw: dict) -> str:
 
 
 def _gt_tool(name, kw):
-    """gradle 工具公共入口：懒定位工作目录，调用 gradletools 并序列化结果。"""
+    """gradle 工具公共入口：懒定位工作目录，调用 gradletools 并序列化结果。
+
+    timeout 从工具参数透传（模型自估；缺省沿用 gradletools 各自的默认值，
+    如 run_test_gametest=180s、run_client 后台启动不受影响）。
+    """
     import json as _json
     base = worktree_manager.resolve_dir() if worktree_manager else None
     if not base:
         import core.config as _c
         base = str(_c.WORKDIR)
     fn = _GT[name]
-    r = fn(base)
+    timeout = _resolve_timeout(kw, 180, BUILD_MAX_TIMEOUT) if isinstance(kw, dict) else 180
+    r = fn(base, timeout=timeout)
     return _json.dumps(r, ensure_ascii=False)
