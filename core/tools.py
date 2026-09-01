@@ -854,12 +854,13 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "build_mod_jar_forge",
-            "description": "Build the Forge mod project into an installable jar by running the Gradle wrapper (gradlew build). Pass timeout matching your own estimate (default 900s, max 3600s): cold-cache first build downloads deps + remaps and typically needs 1800-2700s; warm rebuilds take under 60s. On success, copies the jar(s) from build/libs/ into the project's dist/ folder so they can be placed directly in .minecraft/mods/. Parameters: gradle_task (default 'build'), timeout (seconds).",
+            "description": "Build the Forge mod project into an installable jar (gradlew build). TWO modes: (RECOMMENDED for cold-cache/long builds) background=true submits the build as a tracked job — returns immediately with a handle, NO kill-timeout; observe with wait_for_log('BUILD SUCCESSFUL|BUILD FAILED', log_path='run/mc-build.log') or mc_status. Default foreground mode waits synchronously (timeout: your own estimate, default 900s max 3600s; cold-cache first build needs 1800-2700s, warm rebuilds <60s) and auto-copies jars to dist/. On foreground success the jar lands in dist/ ready for .minecraft/mods/.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "gradle_task": {"type": "string"},
-                    "timeout": {"type": "integer", "description": "Your estimated upper bound in seconds (default 900, max 3600; cold-cache first build: pass 1800-2700)"},
+                    "timeout": {"type": "integer", "description": "Foreground mode only: your estimated upper bound in seconds (default 900, max 3600)"},
+                    "background": {"type": "boolean", "description": "Submit as tracked background job instead of waiting (recommended for first/cold builds)"},
                 },
             },
         },

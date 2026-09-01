@@ -1181,6 +1181,13 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **[实战教训] 桥 attack 返回的 hp 是实例侧缓存，权威血量用 /data get entity 查询；玩家侧 regeneration 效果在 Boss 近战压制下时灵时不灵（正常）**
 - **[流程教训] 高复杂度任务 GameTest 基建（新注册机制）耗掉大量预算导致客户端验证预算不足（MAX 150 轮）；建议引擎为"客户端验证阶段"单独预算，避免与基建调试混用**
 
+## 2026-09-01 powerforge_test（GUI 机器马拉松 + 运行礼仪新增）
+- **[桌面礼仪-必须遵守] 分离式启动命令禁止弹出可见控制台窗口 | `powershell Start-Process -FilePath 'cmd.exe' -ArgumentList '/c','xxx.cmd'` 裸用会在用户桌面弹出黑色 cmd 窗口（用户实测被弹窗打扰）| 正确写法加 `-WindowStyle Hidden`：`Start-Process -FilePath 'cmd.exe' -ArgumentList '/c','xxx.cmd' -WorkingDirectory '<dir>' -WindowStyle Hidden`；python 用 `creationflags=CREATE_NO_WINDOW(0x08000000)` 或 `DETACHED_PROCESS(0x00000008)`；分离式 gradle/GameTest 脚本同样适用**
+- **[1.21.11 沙箱 GameTest 架构事实] `src/test` 在 GameTestServer 中是隔离类加载（静态不共享、跨层类型不可传参），注解扫描 glue 不存在、构造期不可触 BuiltInRegistries → src/test 的 @GameTest/TEST_FUNCTION 代码注册架构上不生效 | 可行路线：测试实现放 main 源集（testsupport 包），mod 构造器经 RegisterEvent 直注 TEST_FUNCTION + test_instance JSON/结构文件放 main 数据包**
+- **[引擎-已修] run_task.py 读 DSH_PROMPT_FILE 后无条件 unlink | 续跑时指向用户真实文件会把原件删掉（prompt_*.txt 两次消失元凶）| 已改为仅 TEMP 目录下的副本才删除**
+- **[引擎-已修] 空响应计数器被"有字但无工具"的假恢复轮重置 | reasoning 模型预算不足时产出少量文字无工具调用，重置连续计数导致 8 次强收尾永远凑不齐 | 已改为仅当响应含 tool_calls 或实质文本(>20字符)才清零；空响应轮现记录 finish_reason/reasoning_len/est_tokens 诊断字段**
+- **[引擎-已修] 瞬时 API 错误（APIConnectionError/getaddrinfo failed 等）直接冒泡终止会话 | powerforge 103 轮长会话被一次网络抖动炸掉 | 已加 4 次 5/10/20/40s 指数退避重试（含流式段），401/400 类不重试**
+
 ## 2026-08-31 gemcraft_glm53_test（裸机全新环境实战——环境类问题修复手册）
 新用户把项目 clone 到没有开发环境的裸 Windows 机器时，构建会按顺序撞上以下问题。
 遇到环境类报错按本节顺序排查，**禁止改 build.gradle / gradle-wrapper / Forge 版本来"绕过"网络或环境问题**。

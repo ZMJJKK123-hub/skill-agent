@@ -72,14 +72,33 @@ def _resolve_timeout(kw, default: int, cap: int) -> int:
 def _forge_build_jar(kw: dict) -> str:
     """build_mod_jar_forge：构建 Forge mod 项目为可安装 jar（gradlew build）。
 
-    与 run_bash 的默认 30s 超时不同，这里用长超时等待 Forge Gradle 构建
-    （依赖下载 + 反混淆通常需要数分钟）。timeout 参数由模型按缓存冷热
-    自估传入（缺省 900s，上限 3600s）。构建成功后把 build/libs/*.jar
-    复制到工程根的 dist/ 目录便于识别/下载。
+    两种模式（通用作业模型：长任务提交与等待分离）：
+    - background=true（推荐用于冷缓存/超长构建）：经 process_manager 托管
+      后台启动，立即返回句柄，无强杀超时；用 wait_for_log('BUILD SUCCESSFUL',
+      log_path='run/mc-build.log') 或 mc_status 观察，完成后 jar 在 build/libs/。
+    - 默认前台模式：同步等待（timeout 自估，上限 3600s），完成后自动把
+      build/libs/*.jar 复制到 dist/。
     """
     task = kw.get("gradle_task", "build")
-    timeout = _resolve_timeout(kw, BUILD_DEFAULT_TIMEOUT, BUILD_MAX_TIMEOUT)
     base = worktree_manager.resolve_dir() if worktree_manager else os.getcwd()
+
+    # ── 作业模式：提交即返回，无强杀（通用解：长构建永不阻塞工具调用）──
+    if kw.get("background"):
+        from .gradletools import start_gradle_task
+        res = start_gradle_task(task, base, "mc-build")
+        if not res.get("success"):
+            return f"[build] 后台构建启动失败: {res.get('message')}"
+        return (
+            f"[build] 后台构建作业已提交（job 模式，无强杀超时）。\n"
+            f"  handle=mc-build | pid={res['pid']} | log={res['log_path']}\n"
+            f"观察方式：wait_for_log(pattern='BUILD SUCCESSFUL|BUILD FAILED', "
+            f"log_path='{res['log_path']}', timeout=600) 或 mc_status。\n"
+            f"完成后：jar 在 build/libs/（前台模式才会自动复制 dist/；"
+            f"需要 dist 时用 bash 复制或再跑一次前台 build_mod_jar_forge，"
+            f"热缓存下只需几十秒）。"
+        )
+
+    timeout = _resolve_timeout(kw, BUILD_DEFAULT_TIMEOUT, BUILD_MAX_TIMEOUT)
 
     if os.name == "nt" or sys.platform == "win32":
         if os.path.exists(os.path.join(base, "gradlew.bat")):
