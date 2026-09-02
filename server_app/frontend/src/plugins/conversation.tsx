@@ -278,30 +278,54 @@ function Messages() {
   // ── 自动滚动跟随（标准聊天行为）──
   // 消息区在 AppShell 的滚动容器里（main .overflow-y-auto）。
   // 用户位于底部时新内容自动跟随；上滚回看时不打扰，并显示"回到底部"。
-  // 此前完全没有滚动处理：长回复全在视口外，用户要手动往下追。
+  // 决策一律以"实时 DOM 位置"为准，不用缓存标志：scroll 事件的派发晚于
+  // 程序化 scrollTop 修改与 React effect，缓存标志存在竞态——用户刚滚到
+  // 顶、scroll 事件未派发时 effect 先看到旧标志把视图拽回底部，随后
+  // scroll 事件在底部触发，回看状态被吞（实测：拦截 scrollTop 赋值抓到
+  // effect 在用户置顶后立刻拽底的调用栈）。
   const listRef = useRef<HTMLDivElement>(null)
-  const stickRef = useRef(true)
   const [showBackToBottom, setShowBackToBottom] = useState(false)
+  const measure = () => {
+    const scroller = listRef.current?.closest('.overflow-y-auto') as HTMLElement | null
+    if (!scroller) return null
+    return {
+      scroller,
+      atBottom: scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 60,
+      overflow: scroller.scrollHeight - scroller.clientHeight,
+    }
+  }
   useEffect(() => {
     // 依赖 sessionId：空态时 Messages 提前 return EmptyState，listRef 未挂载
-    // （依赖 [] 只在挂载时空绑一次），进入会话后必须重绑——否则滚动监听
-    // 永远不生效，"回到底部"浮钮从不出现（实测缺陷）。
-    const scroller = listRef.current?.closest('.overflow-y-auto') as HTMLElement | null
-    if (!scroller) return
-    stickRef.current = true // 新会话从贴底开始
-    setShowBackToBottom(false)
+    // （依赖 [] 只在挂载时空绑一次），进入会话后必须重绑。
+    const r = measure()
+    if (!r) return
     const onScroll = () => {
-      const atBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 60
-      stickRef.current = atBottom
-      setShowBackToBottom(!atBottom && scroller.scrollHeight > scroller.clientHeight + 100)
+      const m = measure()
+      if (!m) return
+      setShowBackToBottom(!m.atBottom && m.overflow > 100)
     }
-    scroller.addEventListener('scroll', onScroll, { passive: true })
-    return () => scroller.removeEventListener('scroll', onScroll)
+    r.scroller.addEventListener('scroll', onScroll, { passive: true })
+    return () => r.scroller.removeEventListener('scroll', onScroll)
   }, [sessionId])
+  // 新会话：强制贴底起步
   useEffect(() => {
-    const scroller = listRef.current?.closest('.overflow-y-auto') as HTMLElement | null
-    if (scroller && stickRef.current) scroller.scrollTop = scroller.scrollHeight
-  }, [chatMessages.length, events.length, sessionId])
+    const r = measure()
+    if (!r) return
+    r.scroller.scrollTop = r.scroller.scrollHeight
+    setShowBackToBottom(false)
+  }, [sessionId])
+  // 内容变化：实时位置决策（在底部→跟随；在回看→不拽并刷新浮钮显隐，
+  // 内容增长不触发 scroll 事件，浮钮必须在这里同步刷新）
+  useEffect(() => {
+    const r = measure()
+    if (!r) return
+    if (r.atBottom) {
+      r.scroller.scrollTop = r.scroller.scrollHeight
+      setShowBackToBottom(false)
+    } else {
+      setShowBackToBottom(r.overflow > 100)
+    }
+  }, [chatMessages.length, events.length])
 
   // 标签页标题反映运行状态：多标签时一眼看到哪个在跑
   const runningForTitle = phase === 'running' || phase === 'creating'
@@ -414,7 +438,6 @@ function Messages() {
             const scroller = listRef.current?.closest('.overflow-y-auto') as HTMLElement | null
             if (scroller) {
               scroller.scrollTop = scroller.scrollHeight
-              stickRef.current = true
               setShowBackToBottom(false)
             }
           }}
