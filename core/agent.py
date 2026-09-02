@@ -710,7 +710,9 @@ def agent_loop(messages: list) -> str:
                             f"（dist/{_dist_jars[0]} 存在且测试通过）。\n"
                             "若本 MOD 含自定义实体、刷怪蛋或物品图标，先按 docs/agent/CLIENT_VERIFY.md "
                             "完成客户端视觉验证（识图开启时 screenshot + analyze_image 即可）。\n"
-                            "验证完成或不需要验证时：停止调用工具，下一轮直接输出面向用户的最终总结——"
+                            "验证完成或不需要验证时：先调用 stop_mc_process(handle='all') 关闭你启动过的"
+                            "游戏客户端/服务器（不要把游戏窗口留在用户桌面），然后停止调用工具，"
+                            "下一轮直接输出面向用户的最终总结——"
                             "创建/修改了哪些文件、MOD 功能与关键数值、合成配方、安装方法、验证结论。"
                             "</completion-gate>"
                         ))
@@ -1240,7 +1242,14 @@ def _drain_interjections(messages: list) -> None:
                 if key in existing:
                     logger.info(f"跳过重复注入的排队消息: {str(m.get('content'))[:40]}")
                     continue
-                messages.append(m)
+                # 带标记注入：用户在上一轮运行中追加的需求。此前裸注入会被
+                # 模型当作同轮的重复输入合并处理，只回最后一条（实测：
+                # "回复一/回复二" 连发，"二"永远得不到回答）。
+                content = str(m.get("content", ""))
+                injected = {"role": "user", "content": f"[用户追加的排队消息] {content}" if content else content}
+                if m.get("images"):
+                    injected["images"] = m["images"]
+                messages.append(injected)
                 existing.add(key)
                 added += 1
             if added:

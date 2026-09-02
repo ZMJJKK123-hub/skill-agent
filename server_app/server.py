@@ -300,8 +300,82 @@ def _get_session(session_id: str) -> Session:
     return sess
 
 
+def _kill_session_game_processes(session_root: Path) -> None:
+    """杀掉会话里 agent 启动的游戏进程（mc-client/mc-server 等）。
+
+    读 process_manager 落盘的 run/.agent_processes.json 清单（chat 模式在
+    会话根、mod 模式在 mod/ 下各有一份），按 pid 树杀（客户端 java 是
+    gradle 包装进程的子进程，必须 /T）。daemon 被强杀（暂停/删除）时
+    finally 不会执行，这里是唯一兜底。
+    """
+    for manifest in (session_root / "run" / ".agent_processes.json",
+                     session_root / "mod" / "run" / ".agent_processes.json"):
+        try:
+            if not manifest.is_file():
+                continue
+            data = json.loads(manifest.read_text(encoding="utf-8"))
+            for handle, info in (data or {}).items():
+                pid = int((info or {}).get("pid", 0))
+                if pid <= 0:
+                    continue
+                if os.name == "nt":
+                    subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)],
+                                   capture_output=True, timeout=20,
+                                   creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                else:
+                    try:
+                        os.kill(pid, 9)
+                    except OSError:
+                        pass
+            print(f"[server] 已按清单清理会话游戏进程: {manifest.parent.parent.name}/{manifest.parent.name}")
+        except Exception as e:
+            print(f"[server] 清理游戏进程清单失败（忽略）: {manifest} {e}")
+
+
+def _kill_java_pids_for_dir(dir_path: Path) -> list:
+    """杀掉命令行引用了指定目录的 java 进程（Gradle 守护等，删除会话用）。
+
+    Gradle 守护 JVM 不在 .agent_processes.json 清单里，但会锁住
+    mod/.gradle 下的缓存文件，导致 rmtree 静默失败、磁盘残留（实测
+    26ad6024224f 残留 39MB）。仅 Windows 实现；其他平台靠 rmtree 重试。
+    """
+    killed = []
+    if os.name != "nt":
+        return killed
+    marker = str(dir_path).replace("/", "\\").lower()
+    try:
+        ps_script = (
+            "Get-CimInstance Win32_Process -Filter \"Name='java.exe' OR Name='javaw.exe'\" | "
+            "ForEach-Object { \"$($_.ProcessId)|$($_.CommandLine)\" }"
+        )
+        r = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", ps_script],
+            capture_output=True, text=True, timeout=20,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        for line in (r.stdout or "").splitlines():
+            line = line.strip()
+            if "|" not in line:
+                continue
+            pid_s, _, cmdline = line.partition("|")
+            cmdline_l = (cmdline or "").replace("/", "\\").lower()
+            if marker not in cmdline_l:
+                continue
+            try:
+                pid = int(pid_s)
+            except ValueError:
+                continue
+            kr = subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)],
+                                capture_output=True, timeout=20,
+                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            if kr.returncode == 0:
+                killed.append(pid)
+    except Exception as e:
+        print(f"[server] 枚举/杀 java 进程失败（忽略）: {e}")
+    return killed
+
+
 def _purge_session(sess: Session) -> None:
-    """彻底清理一个会话：kill 子进程 + 删目录 + 移除内存记录（幂等）。
+    """彻底清理一个会话：kill 子进程 + 杀游戏/Gradle 进程 + 删目录 + 移除内存记录（幂等）。
 
     供删除会话 / 删除历史 / 批量删除 / 全部删除复用。
     """
@@ -313,7 +387,20 @@ def _purge_session(sess: Session) -> None:
         except Exception:
             pass
     sessions.pop(sess.id, None)
-    shutil.rmtree(sess.mod_dir.parent, ignore_errors=True)
+    session_root = sess.mod_dir.parent
+    # 先杀游戏客户端/服务器（清单 pid），再杀引用本目录的 Gradle 守护 JVM
+    _kill_session_game_processes(session_root)
+    _kill_java_pids_for_dir(session_root)
+    # rmtree 带重试：进程刚被杀时文件句柄释放有延迟，立即删仍可能失败
+    # （此前 ignore_errors=True 静默吞掉 → 磁盘残留几十 MB，实测缺陷）
+    import shutil as _shutil
+    for _ in range(3):
+        _shutil.rmtree(session_root, ignore_errors=True)
+        if not session_root.exists():
+            return
+        time.sleep(1.0)
+    if session_root.exists():
+        print(f"[server] 警告：会话目录删除后仍有残留（文件被占用）: {session_root}")
 
 
 def _is_safe_session_id(session_id: str) -> bool:
@@ -330,8 +417,19 @@ def _purge_session_dir(session_id: str) -> None:
     if not _is_safe_session_id(session_id):
         return
     sess_dir = SESSIONS_DIR / session_id
-    if sess_dir.exists():
+    if not sess_dir.exists():
+        return
+    # 与 _purge_session 同样的清理顺序：杀清单游戏进程 + 引用本目录的
+    # Gradle 守护，再带重试删目录（否则被锁文件残留）
+    _kill_session_game_processes(sess_dir)
+    _kill_java_pids_for_dir(sess_dir)
+    for _ in range(3):
         shutil.rmtree(sess_dir, ignore_errors=True)
+        if not sess_dir.exists():
+            return
+        time.sleep(1.0)
+    if sess_dir.exists():
+        print(f"[server] 警告：会话目录删除后仍有残留（文件被占用）: {sess_dir}")
 
 
 def _purge_session_for_user(session_id: str, username: str) -> bool:
@@ -998,6 +1096,9 @@ def pause_task(session_id: str, authorization: str = Header(default="")):
     except Exception:
         pass
     sess.proc = None
+    # daemon 被强杀，其 finally 兜底不会执行：这里按清单杀掉它启动的
+    # 游戏客户端/服务器，防止暂停后游戏窗口一直留在用户桌面
+    _kill_session_game_processes(sess.mod_dir.parent)
     # 清理 daemon 状态文件（daemon 被强杀，finally 不执行）
     try:
         (sess.mod_dir.parent / ".chat" / "daemon.pid").unlink(missing_ok=True)

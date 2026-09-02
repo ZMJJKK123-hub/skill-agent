@@ -310,6 +310,26 @@ def daemon_loop(session_dir: Path, session_root_path: Path, mode: str) -> None:
         except OSError as e:
             print(f"[run_task] 写 daemon 状态失败: {e}", flush=True)
 
+    def _cleanup_game_processes_if_idle() -> None:
+        """空闲时关掉 agent 启动的游戏客户端/服务器。
+
+        此前没有任何收尾清理——完成闸提示词又只说"停止调用工具"，模型
+        从不主动关客户端，任务跑完后游戏窗口永远留在用户桌面（26ad6024224f
+        实测：客户端 + Gradle 守护共 4 个 java 进程幸存）。
+        有排队消息时保留进程（下一轮立即继续验证，避免反复重启客户端）。
+        """
+        try:
+            from core.process_manager import stop_all as _stop_all
+            if pending_count(session_root_path) == 0:
+                _stopped = _stop_all(str(session_dir), force=True)
+                if _stopped and _stopped != "No running game processes.":
+                    print(f"[run_task] 空闲收尾，已关闭游戏进程: {_stopped}", flush=True)
+        except Exception as e:
+            print(f"[run_task] 游戏进程收尾清理失败: {e}", flush=True)
+
+    # daemon 启动 = 首轮已跑完：立刻做一次空闲清理（首轮启动的客户端
+    # 就是在这里被关掉的），此后每轮正常结束再各清一次
+    _cleanup_game_processes_if_idle()
     _set_state("waiting")
 
     try:
@@ -362,6 +382,9 @@ def daemon_loop(session_dir: Path, session_root_path: Path, mode: str) -> None:
                 _set_state("waiting")
                 continue
 
+            # 本轮正常结束：空闲即关游戏进程（提示词引导之外的代码兜底）
+            _cleanup_game_processes_if_idle()
+
             # 本轮结束，回到空闲等待（server 据此再次显示"完成"）
             _set_state("waiting")
     except KeyboardInterrupt:
@@ -369,6 +392,13 @@ def daemon_loop(session_dir: Path, session_root_path: Path, mode: str) -> None:
         # 同一控制台的 daemon 子进程 → 优雅退出，不打印吓人的 traceback
         print("[run_task] daemon stopped (interrupt)", flush=True)
     finally:
+        # 退出兜底：daemon 结束时杀掉本进程托管的游戏进程（Ctrl+C 优雅
+        # 退出路径；被 server 强杀时走 server 侧 _kill_session_game_processes）
+        try:
+            from core.process_manager import stop_all as _stop_all_finally
+            _stop_all_finally(str(session_dir), force=True)
+        except Exception:
+            pass
         try:
             daemon_pid_file.unlink(missing_ok=True)
         except OSError:
@@ -504,25 +534,56 @@ def main() -> int:
             print(f"[run_task] 加载对话历史失败（继续，仅当前 prompt）: {e}", flush=True)
             messages = []
         # 把当前 prompt 作为本轮 user 消息（历史已在步骤 2.5 提前写入）。
-        # chat 模式：历史最后一条就是这条 prompt，跳过重复追加（否则出现
-        # `hi` + `hi` 两条相同消息）；图片附件挂到这条历史消息上。
-        # mod 模式：历史里是用户原始输入（DSH_USER_PROMPT），这里追加包装了
-        # 工作目录与产出要求的 task_prompt 给 agent——两条并存是有意的，
-        # 图片附件只挂在包装消息上（历史那条同轮剥离，避免模型收到双份图）。
         # 空 prompt（自动续跑 resume）不追加——排队消息已在历史里。
         if not task_prompt:
             if not messages:
                 print("[run_task] 无 prompt 且无历史可续，退出", flush=True)
                 return 1
-        elif messages and messages[-1].get("role") == "user" and messages[-1].get("content") == task_prompt:
-            print("[run_task] 历史已包含当前 prompt，跳过重复追加", flush=True)
-            if prompt_images:
-                messages[-1]["images"] = prompt_images
         else:
-            if prompt_images and messages and messages[-1].get("role") == "user":
-                messages[-1].pop("images", None)  # 同一轮的裸 prompt 不再带图
-            messages.append({"role": "user", "content": task_prompt,
-                             **({"images": prompt_images} if prompt_images else {})})
+            # ① 排队消息被 server 同步写进历史（enqueue 竞态）时，它们属于
+            # "本轮之后"的需求：从 messages 滤掉，交给 agent_loop 的
+            # _drain_interjections 以带标记方式注入——否则模型把多条需求
+            # 当作一轮合并处理，只回最后一条（实测：回复"二"永远丢失）。
+            try:
+                from core.conversation import pending_path as _pending_path
+                _pset = set()
+                _pp = _pending_path(session_root_path)
+                if _pp.exists():
+                    import json as _json
+                    for _ln in _pp.read_text(encoding="utf-8").splitlines():
+                        _ln = _ln.strip()
+                        if not _ln:
+                            continue
+                        try:
+                            _pm = _json.loads(_ln)
+                            _pset.add((_pm.get("role"), _pm.get("content")))
+                        except ValueError:
+                            continue
+                if _pset:
+                    _before = len(messages)
+                    messages = [m for m in messages if (m.get("role"), m.get("content")) not in _pset]
+                    if len(messages) != _before:
+                        print(f"[run_task] 已把 {_before - len(messages)} 条排队消息移出本轮（等 drain 注入）", flush=True)
+            except Exception as e:
+                print(f"[run_task] 排队消息对照失败（忽略）: {e}", flush=True)
+            # ② 查重必须扫全列表而非只看末条：运行中排队时末条可能是
+            # "下一条排队消息"而非本轮 prompt，只看末条会重复 append
+            # （实测 288f3a3a1f41：messages=[u1,u2,u1] 重复）。
+            # chat 模式：历史已有本轮 prompt → 跳过（图片挂到该条上）。
+            # mod 模式：历史是原始输入，这里追加包装版给 agent（有意并存，
+            # 图片只挂包装消息，历史那条同轮剥离避免双份图）。
+            if any(m.get("role") == "user" and m.get("content") == task_prompt for m in messages):
+                print("[run_task] 历史已包含当前 prompt，跳过重复追加", flush=True)
+                if prompt_images:
+                    for m in reversed(messages):
+                        if m.get("role") == "user" and m.get("content") == task_prompt:
+                            m["images"] = prompt_images
+                            break
+            else:
+                if prompt_images and messages and messages[-1].get("role") == "user":
+                    messages[-1].pop("images", None)  # 同一轮的裸 prompt 不再带图
+                messages.append({"role": "user", "content": task_prompt,
+                                 **({"images": prompt_images} if prompt_images else {})})
 
     # 5. 跑完整 agent 循环（首轮）
     _run_one_round(messages, session_dir, session_root_path, mode)

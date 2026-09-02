@@ -115,6 +115,8 @@ const zh: Record<string, string> = {
   'games.title': '小游戏',
   'games.restart': '重开（游戏内按 R 也可以）',
   'games.close': '关闭',
+
+  'toast.newChat': '已开始新对话',
 }
 
 const en: Record<string, string> = {

@@ -261,16 +261,15 @@ async function _pollOnce(sid: string) {
       pending: st.pending ?? 0,
       phase: st.finished ? 'finished' : st.paused ? 'paused' : 'running',
     })
-    // chat 模式：任务结束且还没记录 assistant 回复 → 从 logTail 提取最终回复。
-    // 事件流已有 reply 事件（每轮流式回复大框）时跳过——最后一轮 reply 即最终回复，避免重复。
-    if (st.finished && state.mode === 'chat' && !state.events.some((e) => e.type === 'reply')) {
-      const last = state.chatMessages[state.chatMessages.length - 1]
-      if (last?.role !== 'assistant') {
-        const reply = extractFinalReply(st.log_tail)
-        if (reply) {
-          setState({ chatMessages: [...state.chatMessages, { role: 'assistant', content: reply }] })
-        }
-      }
+    // chat 模式：轮次跑完重载磁盘对话历史（权威穿插顺序）。
+    // 此前回复只留在事件流里、渲染在全部用户消息之后——连续多发时界面
+    // 变成"问题一堆、回复一堆"；且排队消息是运行中乐观插入的，本地顺序
+    // 不可靠（u2 会排到 a1 前面），daemon 秒级续跑又让前端错过中间轮的
+    // finished 窗口。磁盘 conversation.jsonl 由 run_task 每轮追加、顺序
+    // 严格 u/a 交替，完成时以它为准覆盖本地状态（mod 模式同款做法）。
+    // 运行中的当前轮仍由事件流实时显示，不受影响。
+    if (st.finished && state.mode === 'chat') {
+      void loadConversation(sid)
     }
     // mod 模式：完成时从后端拉对话历史，取最终总结渲染成气泡
     // （run_task 收尾把 agent 最终回复写入 conversation.jsonl；运行中不轮询它）

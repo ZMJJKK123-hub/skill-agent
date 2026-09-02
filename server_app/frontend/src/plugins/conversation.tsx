@@ -241,9 +241,13 @@ function Messages() {
   // 导致工具调用和思考过程在长任务中被挤出 UI（用户看到"只调了两个工具"）。
   // supervisor 的 tool_call/tool_result 是内部监管动作（读参考文档、试读日志），
   // 对用户是噪音（718d315bec0b：7 次 run.log 读取失败显示成一串红 ✗），不进时间线。
+  // 先筛出事件源。round 事件虽不渲染，但保留它作为"轮次分界"：
+  // 不同轮次的最终回复必须分成两组——否则两轮回复被拼成一条合并气泡，
+  // 与磁盘历史里的两条 assistant 消息前缀对不上，去重失效、重开会话时
+  // 重复显示（实测缺陷：OK/第二条收到 拼成一条又显示一遍）。
   const shownEvents = useMemo(() => {
     return events.filter((e) =>
-      VISIBLE_EVENT_TYPES.has(e.type)
+      (VISIBLE_EVENT_TYPES.has(e.type) || e.type === 'round')
       && !(e.peer === 'supervisor' && (e.type === 'tool_call' || e.type === 'tool_result'))
     ).slice(-500)
   }, [events])
