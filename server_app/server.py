@@ -395,14 +395,12 @@ def _cleanup_orphan_sessions() -> None:
 
 
 def _auth_username(authorization: str) -> str:
-    """从 Authorization: Bearer <token> 取用户名；无效抛 401。"""
-    token = ""
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization[len("Bearer "):].strip()
-    username = auth_store.validate_token(token)
-    if not username:
-        raise HTTPException(401, "登录已失效，请重新登录")
-    return username
+    """纯本地模式：恒返回固定本地用户，不再校验 token。
+
+    登录/注册前端已移除（v1.0.1）；auth_store 与 /api/login 等接口保留
+    但不再被调用——以后要恢复多用户，改回 token 校验即可。
+    """
+    return "local"
 
 
 def _assert_owner(sess: Session, username: str) -> None:

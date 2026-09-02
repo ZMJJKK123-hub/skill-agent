@@ -19,10 +19,10 @@ export const sidebarPlugin: PluginManifest = {
           <span className="truncate font-semibold">
             MOD Forge
             <span
-              title="1.0.0 预览版"
+              title="1.0.1 预览版"
               className="ml-1.5 inline-block translate-y-[-1px] rounded border border-forge-500/50 bg-forge-500/10 px-1 py-px align-middle text-[9px] font-medium tracking-wide text-forge-300"
             >
-              v1.0.0 预览版
+              v1.0.1 预览版
             </span>
           </span>
         )}

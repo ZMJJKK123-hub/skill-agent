@@ -64,7 +64,9 @@ const STORAGE_KEY = 'modforge_ui'
 function loadState(): UiState {
   const base: UiState = {
     settingsOpen: false,
-    user: null,
+    // v1.0.1 纯本地版：登录已移除，user 恒为本地用户——所有依赖
+    // user 非空的判断（可发送/显示历史等）自然通过，auth.tsx 不再挂载
+    user: { username: 'local' },
     activeWorkspace: null,
     viewMode: 'chat',
     apiKey: '',

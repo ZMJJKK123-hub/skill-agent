@@ -1,10 +1,10 @@
 @echo off
 chcp 65001 >nul
-title MOD Forge v1.0.0
+title MOD Forge v1.0.1
 cd /d "%~dp0.."
 
 echo ============================================
-echo   MOD Forge v1.0.0 预览版
+echo   MOD Forge v1.0.1 预览版
 echo ============================================
 echo.
 
