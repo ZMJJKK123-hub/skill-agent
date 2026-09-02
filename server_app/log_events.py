@@ -13,6 +13,7 @@
 """
 
 import itertools
+import json
 import time
 from pathlib import Path
 from typing import Optional
@@ -101,6 +102,20 @@ def _parse_run_block(text: str) -> list[dict]:
                 skip_final_reply = True
             i += 1
             continue
+        elif stripped.startswith("[思考+]"):
+            # 流式思考增量（agent.py 每个 reasoning delta 一行，JSON 编码
+            # 防内嵌换行破坏行解析）。前端把相邻 thinking_delta 聚合为一段。
+            _flush_reply()
+            raw = _after(stripped, "[思考+]")
+            if raw.startswith(" "):
+                raw = raw[1:]
+            try:
+                frag = json.loads(raw)
+                if not isinstance(frag, str):
+                    frag = raw
+            except ValueError:
+                frag = raw
+            events.append(_ev("thinking_delta", frag, seq)); seq += 1
         elif stripped.startswith("[思考]"):
             _flush_reply()
             events.append(_ev("thinking", _after(stripped, "[思考]"), seq)); seq += 1

@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import * as api from './api'
 import type { EventItem, HistoryEntry } from './api'
-import { getUi } from './store'
+import { getUi, resolveModelConfig } from './store'
 
 // 会话/生成编排：一个对话 = 一个工作区文件夹（后端 /api/session 创建）
 export interface GenSettings {
@@ -258,15 +258,24 @@ export async function poll() {
 }
 
 let pollInFlight = false
+// 事件批次序号：每次轮询追加的事件递增（错峰渐入用）
+let eventBatchSeq = 0
 
 async function _pollOnce(sid: string) {
   try {
     const ev = await api.getEvents(sid, state.cursor ?? undefined)
     if (state.sessionId !== sid) return
     if (ev.events.length > 0) {
-      setState({ events: [...state.events, ...ev.events], cursor: ev.cursor })
+      // 批次标：同一次轮询到达的事件共用批次号，渲染层按批内序号
+      // 错峰渐入（避免"一次蹦出三行"的观感）
+      eventBatchSeq += 1
+      const tagged = ev.events.map((e) => ({ ...e, batch: eventBatchSeq }))
+      setState({ events: [...state.events, ...tagged], cursor: ev.cursor })
     }
-    const st = await api.getStatus(sid, getUi().apiKey)
+    // apiKey 用当前选中 provider 的 key（v1.0.2 后顶层 apiKey 恒空）：
+    // 服务重启恢复的旧会话内存 key 为空，轮询带上 key 让后端回填，
+    // 否则刷新后继续旧会话会 400"API Key 为空"（实测缺陷）
+    const st = await api.getStatus(sid, resolveModelConfig(getUi()).apiKey)
     if (state.sessionId !== sid) return
     setState({
       elapsed: st.elapsed,

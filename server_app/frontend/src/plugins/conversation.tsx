@@ -12,16 +12,6 @@ function errMsg(e: unknown): string {
   return String(e)
 }
 
-/** 思考气泡的显示名：peer 映射（supervisor/teammate/subagent），无 peer 是主 agent */
-function thinkingName(ev: EventItem, t: (k: string) => string): string {
-  switch (ev.peer) {
-    case 'supervisor': return '🛡 Supervisor'
-    case 'teammate': return '👥 Teammate'
-    case 'subagent': return '🔬 Subagent'
-    default: return t('conv.agent')
-  }
-}
-
 /** 消息内图片缩略图：本地乐观消息是 data URL 直接显示；
  *  历史加载的是 uploads 文件名，经 /api/session/image 取回 */
 function MessageImages({ images, sessionId, alignEnd }: { images: string[]; sessionId?: string | null; alignEnd?: boolean }) {
@@ -108,30 +98,50 @@ function ChatBubble({ role, content, images, sessionId }: { role: 'user' | 'assi
   )
 }
 
-/** 思考过程：极简内联，不用框，点击展开 */
-function ThinkingGroup({ events, t }: { events: EventItem[]; t: (k: string) => string }) {
+/** 思考段：相邻 thinking/thinking_delta 事件聚合的产物 */
+interface ThinkingSeg {
+  id: string
+  content: string
+  streaming: boolean // 段仍在增长（事件流末尾、尚未出现后续动作）
+}
+
+/** 思考过程：流式展示——思考中自动展开逐段增长，完成后收成一行摘要，
+ *  随时可手动展开。 */
+function ThinkingGroup({ segs }: { segs: ThinkingSeg[] }) {
   const [open, setOpen] = useState(false)
-  if (events.length === 0) return null
-  const totalLines = events.reduce(
-    (n, ev) => n + ev.content.split('\n').filter((l) => l.trim()).length, 0)
+  const streaming = segs.length > 0 && segs[segs.length - 1].streaming
+  // 思考开始（末段进入 streaming）自动展开；思考结束（streaming 转 false）
+  // 自动收起。非思考期间的手动开关不受打扰。
+  useEffect(() => {
+    if (streaming) setOpen(true)
+    else setOpen(false)
+  }, [streaming])
+  if (segs.length === 0) return null
+  const totalLines = segs.reduce(
+    (n, s) => n + s.content.split('\n').filter((l) => l.trim()).length, 0)
   return (
-    <div className="fade-in-up opacity-70">
+    <div className="fade-in-up opacity-80">
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-1.5 py-0.5 text-[13px] text-muted transition hover:text-main"
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-          <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
-        </svg>
-        <span>Agent thinking · {events.length} 段 / {totalLines} 行</span>
+        {streaming ? (
+          <span className="animate-pulse">思考中</span>
+        ) : (
+          <span>Agent thinking</span>
+        )}
+        <span className="text-faint">· {segs.length} 段 / {totalLines} 行</span>
         <span className="text-[11px] text-faint">{open ? '收起' : '展开'}</span>
       </button>
       {open && (
-        <div className="mt-1 space-y-2 pl-5">
-          {events.map((ev, i) => (
-            <div key={ev.id} className="text-[12px] leading-relaxed text-muted">
-              <span className="text-faint">#{i + 1} {thinkingName(ev, t)}</span>
-              <div className="mt-0.5 whitespace-pre-wrap break-words">{ev.content}</div>
+        <div className="mt-1 space-y-2 border-l border-line pl-3">
+          {segs.map((seg, i) => (
+            <div key={seg.id} className="text-[12px] leading-relaxed text-muted">
+              <span className="text-faint">#{i + 1}</span>
+              <div className="mt-0.5 whitespace-pre-wrap break-words">
+                {seg.content}
+                {seg.streaming && <span className="animate-pulse"> …</span>}
+              </div>
             </div>
           ))}
         </div>
@@ -140,53 +150,52 @@ function ThinkingGroup({ events, t }: { events: EventItem[]; t: (k: string) => s
   )
 }
 
-/** 工具调用：极简单行，✨ 图标，无边框无背景 */
-function ToolCallRow({ ev }: { ev: EventItem }) {
-  const [open, setOpen] = useState(false)
-  const tool = ev.tool ?? 'tool'
-  const oneLine = ev.content.replace(/\s+/g, ' ').trim().slice(0, 120)
-  return (
-    <div className="fade-in-up opacity-70">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-1.5 py-0.5 text-left text-[13px] text-muted transition hover:text-main"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-faint">
-          <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
-        </svg>
-        <span className="shrink-0">Tool call · <span className="text-forge-400">{tool}</span> · </span>
-        <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-faint">{oneLine}</span>
-      </button>
-      {open && (
-        <div className="ml-5 mt-0.5 max-h-48 overflow-auto whitespace-pre-wrap break-all font-mono text-[11px] text-faint">
-          {ev.content}
-        </div>
-      )}
-    </div>
-  )
+/** 合成后的工具条目：调用 + 就近配对的结果 */
+interface ToolEntry {
+  id: string
+  tool: string
+  params: string
+  result?: string
+  status: 'success' | 'failed' | 'running'
+  batch: number
 }
 
-/** 工具结果：极简，✓/✗ + 截断内容，点击展开 */
-function ToolResultRow({ ev }: { ev: EventItem }) {
+/** 工具调用行：一行只有工具名（状态色）+ 展开箭头；参数与结果都收进
+ *  展开（用户要求的最简形态）。同批到达的行错峰渐入（逐行出现）。 */
+function ToolRow({ entry, delayMs }: { entry: ToolEntry; delayMs: number }) {
   const [open, setOpen] = useState(false)
-  const ok = ev.status !== 'failed'
-  const lines = ev.content.split('\n')
-  const body = (lines.slice(1).join('\n').trim() || (lines[0] ?? '')).trim()
+  const color =
+    entry.status === 'success' ? 'text-emerald-500'
+    : entry.status === 'failed' ? 'text-red-500'
+    : 'text-muted animate-pulse'
   return (
-    <div className="fade-in-up opacity-70">
+    <div className="fade-in-up" style={{ animationDelay: `${delayMs}ms` }}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className={`flex w-full items-center gap-1.5 py-0.5 text-left text-[13px] transition ${ok ? 'text-emerald-500' : 'text-red-500'}`}
+        className={`flex items-center gap-1 py-0.5 text-left text-[13px] transition ${color} hover:opacity-80`}
       >
-        <span className="shrink-0">{ok ? '✓' : '✗'}</span>
-        <span className="shrink-0">{ok ? 'Result' : 'Failed'}</span>
-        <span className="min-w-0 flex-1 truncate font-mono text-[12px] opacity-60">{body.replace(/\s+/g, ' ').slice(0, 100)}</span>
-        <span className="shrink-0 text-[11px] text-faint">{open ? '收起' : `${body.length}`}</span>
+        {/* 展开箭头（SVG 三角，非 emoji） */}
+        <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor" className={`shrink-0 transition-transform ${open ? 'rotate-90' : ''}`}>
+          <path d="M3 1.5L9.5 6L3 10.5V1.5z" />
+        </svg>
+        <span className="font-mono">{entry.tool}</span>
+        {entry.status === 'running' && <span className="text-[11px] text-faint">运行中</span>}
       </button>
       {open && (
-        <pre className="ml-5 mt-0.5 max-h-48 overflow-auto whitespace-pre-wrap break-all font-mono text-[11px] leading-relaxed text-faint">
-          {body}
-        </pre>
+        <div className="ml-4 mt-0.5 max-h-52 space-y-1.5 overflow-auto">
+          {entry.params && (
+            <div>
+              <div className="text-[10px] text-faint">参数</div>
+              <pre className="whitespace-pre-wrap break-all font-mono text-[11px] leading-relaxed text-muted">{entry.params}</pre>
+            </div>
+          )}
+          {entry.result != null && (
+            <div>
+              <div className="text-[10px] text-faint">结果</div>
+              <pre className="whitespace-pre-wrap break-all font-mono text-[11px] leading-relaxed text-muted">{entry.result}</pre>
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
@@ -205,7 +214,7 @@ function DividerRow({ ev }: { ev: EventItem }) {
   return (
     <div className="flex items-center gap-2 py-0.5">
       <div className="h-px flex-1 bg-line" />
-      <span className="text-[10px] text-faint">🔁 {text}</span>
+      <span className="text-[10px] text-faint">{text}</span>
       <div className="h-px flex-1 bg-line" />
     </div>
   )
@@ -222,28 +231,19 @@ function LogRow({ ev }: { ev: EventItem }) {
   )
 }
 
-/** 用户可见的事件类型白名单：只展示 思考 / 工具调用 / 工具结果 / 回复。
+/** 用户可见的事件类型白名单：回复直接渲染；思考与工具由聚合逻辑
+ *  （thinkingSegs / toolEntries）转成流式思考段和合成工具行。
  *  其余（log/round/system/protocol/worktree/background/todo 等运行日志）
  *  是给开发者看的内部流水，不进用户时间线。 */
-const VISIBLE_EVENT_TYPES = new Set(['thinking', 'tool_call', 'tool_result', 'reply'])
+const VISIBLE_EVENT_TYPES = new Set(['reply'])
 
-/** DSH 风格事件渲染器：按类型分派（thinking 由 ThinkingGroup 聚合渲染） */
-function EventView({ ev, t }: { ev: EventItem; t: (k: string) => string }) {
+/** DSH 风格事件渲染器：按类型分派（thinking/tool 由聚合渲染，不在此） */
+function EventView({ ev }: { ev: EventItem }) {
   switch (ev.type) {
-    case 'tool_call':
-      return <ToolCallRow ev={ev} />
-    case 'tool_result':
-      return <ToolResultRow ev={ev} />
     case 'reply':
       return <ReplyRow ev={ev} />
     case 'round':
       return <DividerRow ev={ev} />
-    case 'todo':
-    case 'background':
-    case 'protocol':
-    case 'worktree':
-    case 'system':
-    case 'log':
     default:
       return <LogRow ev={ev} />
   }
@@ -285,6 +285,9 @@ function Messages() {
   // effect 在用户置顶后立刻拽底的调用栈）。
   const listRef = useRef<HTMLDivElement>(null)
   const [showBackToBottom, setShowBackToBottom] = useState(false)
+  // 视窗跟随状态（见下方内容 effect 的判定说明）
+  const wasAtBottomRef = useRef(true)
+  const lastScrollTopRef = useRef(0)
   const measure = () => {
     const scroller = listRef.current?.closest('.overflow-y-auto') as HTMLElement | null
     if (!scroller) return null
@@ -302,6 +305,8 @@ function Messages() {
     const onScroll = () => {
       const m = measure()
       if (!m) return
+      wasAtBottomRef.current = m.atBottom
+      lastScrollTopRef.current = m.scroller.scrollTop
       setShowBackToBottom(!m.atBottom && m.overflow > 100)
     }
     r.scroller.addEventListener('scroll', onScroll, { passive: true })
@@ -312,19 +317,35 @@ function Messages() {
     const r = measure()
     if (!r) return
     r.scroller.scrollTop = r.scroller.scrollHeight
+    wasAtBottomRef.current = true
+    lastScrollTopRef.current = r.scroller.scrollTop
     setShowBackToBottom(false)
   }, [sessionId])
-  // 内容变化：实时位置决策（在底部→跟随；在回看→不拽并刷新浮钮显隐，
-  // 内容增长不触发 scroll 事件，浮钮必须在这里同步刷新）
+  // 内容变化：区分"用户滚动"与"内容增长把视口顶开"——
+  // 内容增长不触发 scroll 事件（scrollTop 不变），用户滚动必触发但事件
+  // 派发可能晚于本 effect（竞态窗口）。判定：上一次记录的贴底状态 +
+  // scrollTop 是否被外部改变过（与 lastScrollTopRef 对比）。
+  // 此前用"实时位置"判定：内容增长瞬间视口被动离开底部 → 被误判成
+  // 用户回看 → 跟随失效、浮钮误出现（实测：没碰过滚动却停在顶部）。
   useEffect(() => {
     const r = measure()
     if (!r) return
-    if (r.atBottom) {
-      r.scroller.scrollTop = r.scroller.scrollHeight
-      setShowBackToBottom(false)
+    const { scroller } = r
+    if (wasAtBottomRef.current) {
+      if (Math.abs(scroller.scrollTop - lastScrollTopRef.current) < 1) {
+        // 位置没被用户改过 → 安全跟随新内容
+        scroller.scrollTop = scroller.scrollHeight
+        setShowBackToBottom(false)
+      } else {
+        // 用户刚滚动、scroll 事件尚未派发（竞态窗口）→ 尊重用户不拽
+        wasAtBottomRef.current = r.atBottom
+        setShowBackToBottom(!r.atBottom && r.overflow > 100)
+      }
     } else {
+      // 回看中：不拽动，仅按最新溢出量刷新浮钮
       setShowBackToBottom(r.overflow > 100)
     }
+    lastScrollTopRef.current = scroller.scrollTop
   }, [chatMessages.length, events.length])
 
   // 标签页标题反映运行状态：多标签时一眼看到哪个在跑
@@ -334,21 +355,71 @@ function Messages() {
     return () => { document.title = 'MOD Forge' }
   }, [runningForTitle])
 
-  // 先筛出用户可见的事件，再保留最近 500 条。
-  // 之前直接 events.slice(-120) 会被大量 log/todo/round 等不可见事件占满名额，
-  // 导致工具调用和思考过程在长任务中被挤出 UI（用户看到"只调了两个工具"）。
-  // supervisor 的 tool_call/tool_result 是内部监管动作（读参考文档、试读日志），
-  // 对用户是噪音（718d315bec0b：7 次 run.log 读取失败显示成一串红 ✗），不进时间线。
-  // 先筛出事件源。round 事件虽不渲染，但保留它作为"轮次分界"：
-  // 不同轮次的最终回复必须分成两组——否则两轮回复被拼成一条合并气泡，
-  // 与磁盘历史里的两条 assistant 消息前缀对不上，去重失效、重开会话时
-  // 重复显示（实测缺陷：OK/第二条收到 拼成一条又显示一遍）。
+  // 事件源（含不直接渲染但参与"切断"逻辑的类型）。
+  // round 事件作轮次分界：不同轮次的回复必须分成两组，否则两轮回复被拼成
+  // 一条合并气泡，与磁盘历史的两条 assistant 消息前缀对不上，去重失效、
+  // 重开会话时重复显示。
+  // supervisor 的动作是内部监管，对用户是噪音，不进时间线。
   const shownEvents = useMemo(() => {
-    return events.filter((e) =>
-      (VISIBLE_EVENT_TYPES.has(e.type) || e.type === 'round')
-      && !(e.peer === 'supervisor' && (e.type === 'tool_call' || e.type === 'tool_result'))
-    ).slice(-500)
+    return events.filter((e) => e.peer !== 'supervisor').slice(-800)
   }, [events])
+
+  // 思考段聚合：相邻 thinking / thinking_delta 合并为一段，任何其他类型
+  // 事件切断；段位于事件流末尾且仍在增长 → streaming（前端流式思考）。
+  // 旧 [思考] 整段事件（历史会话回放）同样归段，兼容。
+  const thinkingSegs = useMemo(() => {
+    const segs: ThinkingSeg[] = []
+    let cur: ThinkingSeg | null = null
+    let streaming = false
+    for (let i = 0; i < shownEvents.length; i++) {
+      const e = shownEvents[i]
+      if (e.type === 'thinking_delta') {
+        if (!cur) {
+          cur = { id: e.id, content: '', streaming: false }
+          segs.push(cur)
+        }
+        cur.content += e.content
+      } else if (e.type === 'thinking') {
+        cur = { id: e.id, content: e.content, streaming: false }
+        segs.push(cur)
+      } else {
+        cur = null
+      }
+      streaming = e.type === 'thinking_delta' && i === shownEvents.length - 1
+    }
+    if (segs.length > 0 && streaming) segs[segs.length - 1].streaming = true
+    return segs
+  }, [shownEvents])
+
+  // 工具条目合成：tool_call 与其后紧邻的 tool_result 顺序配对（后端
+  // [tool]/[tool-result] 成对打印，顺序可靠），末尾未配对的 call 视为
+  // 运行中。结果不再单独成行，整行只显示工具名 + 状态色 + 展开箭头。
+  const toolEntries = useMemo(() => {
+    const entries: ToolEntry[] = []
+    for (const e of shownEvents) {
+      if (e.type === 'tool_call') {
+        entries.push({
+          id: e.id,
+          tool: e.tool ?? 'tool',
+          params: e.content,
+          status: 'running',
+          batch: e.batch ?? 0,
+        })
+      } else if (e.type === 'tool_result') {
+        const lines = e.content.split('\n')
+        const body = (lines.slice(1).join('\n').trim() || (lines[0] ?? '')).trim()
+        // 就近填给最近一个未完成的调用
+        for (let i = entries.length - 1; i >= 0; i--) {
+          if (entries[i].status === 'running') {
+            entries[i].result = body
+            entries[i].status = e.status === 'failed' ? 'failed' : 'success'
+            break
+          }
+        }
+      }
+    }
+    return entries
+  }, [shownEvents])
 
   // chat 模式：重开会话时历史 assistant 气泡与 reply 事件是同一内容
   // （conversation.jsonl 与流式日志各存一份），按前缀匹配去重——
@@ -467,20 +538,29 @@ function Messages() {
         {running && (
           <div className="text-xs text-faint">
             {phase === 'creating'
-              ? '⏳ 正在准备工作区…'
-              : `⏳ ${t('conv.running')}${displayElapsed != null ? ` · ${displayElapsed}s` : ''}…`}
+              ? '正在准备工作区…'
+              : `${t('conv.running')}${displayElapsed != null ? ` · ${displayElapsed}s` : ''}…`}
           </div>
         )}
 
-        {/* DSH 风格事件流（白名单）：思考聚合为一个默认收起的分组，*/}
-        {/* 工具调用/结果单行小框，每轮回复用大框，其余运行日志不展示 */}
-        <ThinkingGroup events={shownEvents.filter((e) => e.type === 'thinking')} t={t} />
+        {/* 流式思考：思考中自动展开逐段增长，完成后收成一行；工具行 = */}
+        {/* 工具名+状态色+箭头（参数/结果收进展开），同批错峰渐入逐行出现 */}
+        <ThinkingGroup segs={thinkingSegs} />
+        {toolEntries.map((entry, i) => {
+          // 同一批（同一次轮询到达）内的行错峰 70ms，营造逐行出现；
+          // 跨批不叠加（老行已显示过，delay 归零）
+          const sameBatchCount = entry.batch > 0
+            ? toolEntries.filter((x) => x.batch === entry.batch).indexOf(entry)
+            : 0
+          const delay = entry.batch > 0 && i >= sameBatchCount ? Math.min(sameBatchCount, 5) * 70 : 0
+          return <ToolRow key={entry.id} entry={entry} delayMs={delay} />
+        })}
         {visibleEvents.map((item) => {
           if (Array.isArray(item)) {
             const content = item.map((e) => e.content).join('\n\n')
             return <ChatBubble key={item[0].id} role="assistant" content={content} />
           }
-          return <EventView key={item.id} ev={item} t={t} />
+          return <EventView key={item.id} ev={item} />
         })}
 
         {/* chat 模式：当前轮最终回答放在事件流之后 */}
@@ -591,7 +671,6 @@ function EmptyState({ error }: { error?: string | null }) {
           >
             lyx525100
           </span>
-          （点击可全选复制）
         </div>
       </div>
     </div>

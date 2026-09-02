@@ -894,6 +894,11 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
     username = _auth_username(authorization)
     sess = _get_session(req.session_id)
     _assert_owner(sess, username)
+    # 请求带了 key 先回填再校验：服务重启恢复的旧会话内存 key 为空
+    # （key 不落盘），带 key 的请求不该被 400 拦下（实测：刷新后继续
+    # 旧会话，请求明明带了 key 仍报"API Key 为空"）
+    if req.api_key:
+        sess.api_key = req.api_key
     if not (sess.api_key and sess.api_key.strip()):
         raise HTTPException(400, "API Key 为空，无法启动任务（请在设置中填写 API Key）")
     # 纯图片消息允许空文本（图片本身即需求）；两者皆空才拒绝

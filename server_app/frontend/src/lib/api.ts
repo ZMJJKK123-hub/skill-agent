@@ -25,12 +25,13 @@ export interface StatusResponse extends SessionStats {
 export interface EventItem {
   id: string
   ts: number
-  type: string // thinking | tool_call | todo | log | round | system | background | protocol | worktree | tool_result
+  type: string // thinking | thinking_delta | tool_call | todo | log | round | system | background | protocol | worktree | tool_result
   source: string
   content: string
   tool?: string
   peer?: string   // teammate | subagent | supervisor
   status?: string // tool_result: success | failed
+  batch?: number  // 同一次轮询到达的批次（渲染时逐行错峰渐入）
 }
 
 export interface EventsResponse {

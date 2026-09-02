@@ -311,6 +311,10 @@ def agent_loop(messages: list) -> str:
                     continue
                 if getattr(delta, "reasoning_content", None):
                     reasoning_parts.append(delta.reasoning_content)
+                    # 思考增量实时落盘（run.log → /api/events → 前端流式思考）。
+                    # JSON 编码：delta 内嵌换行会破坏 log_events 的行解析，
+                    # 编码后保证一个 delta 一行；前端聚合相邻 [思考+] 为一段。
+                    print(f"[思考+] {json.dumps(delta.reasoning_content, ensure_ascii=False)}", flush=True)
                     # 流式思考转发：外部接入层（清小搭 8001）可实时收到 delta
                     if REASONING_SINK is not None:
                         try:
@@ -408,10 +412,12 @@ def agent_loop(messages: list) -> str:
         )
         choice = _NS(message=message, finish_reason=finish_reason or "stop")
 
-        # ── 打印思考过程（不进 messages）──
+        # ── 思考过程（不进 messages）──
+        # 整段 [思考] 打印已删除：流式期间每个增量已按 [思考+] 实时落盘，
+        # 轮末再打整段会让前端同一段思考显示两遍。logger.info 保留
+        # （写 agent.log，不进用户事件流）。
         reasoning = getattr(message, "reasoning_content", None)
         if reasoning:
-            print(f"\n[思考] {reasoning}")
             logger.info(f"reasoning_content:\n{reasoning}")
 
         # 记录助手回复（只记录 content/tool_calls，不含 reasoning）
