@@ -1,0 +1,72 @@
+C:\Users\59639\Desktop\skill-agent\server_app\server.py:1715: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+INFO:     Started server process [42136]
+INFO:     Waiting for application startup.
+[server] 启动完成：恢复 1 个历史会话
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:55921 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52294 - "GET /?bust=1788347141187 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52294 - "GET /assets/index-DTwaoxxA.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /assets/index-BogADP5T.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52294 - "GET /api/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52294 - "GET /api/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52294 - "POST /api/session HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52294 - "POST /api/task HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52294 - "GET /api/events?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52294 - "GET /api/status?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52294 - "GET /api/question?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52294 - "POST /api/task HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52294 - "POST /api/task HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52294 - "GET /?bust=1788347141187 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52294 - "GET /api/conversation?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/events?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/status?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/question?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/events?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/status?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/question?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/events?session_id=7ddb68f750e0&cursor=%7B%22run%22%3A484%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/status?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/question?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/events?session_id=7ddb68f750e0&cursor=%7B%22run%22%3A484%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/status?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/question?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/events?session_id=7ddb68f750e0&cursor=%7B%22run%22%3A903%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/status?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/question?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/events?session_id=7ddb68f750e0&cursor=%7B%22run%22%3A903%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/status?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/question?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/events?session_id=7ddb68f750e0&cursor=%7B%22run%22%3A903%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/status?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/question?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/events?session_id=7ddb68f750e0&cursor=%7B%22run%22%3A1057%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/status?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/question?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/events?session_id=7ddb68f750e0&cursor=%7B%22run%22%3A1812%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/status?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/question?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/events?session_id=7ddb68f750e0&cursor=%7B%22run%22%3A3922%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/status?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/question?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/events?session_id=7ddb68f750e0&cursor=%7B%22run%22%3A3922%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/status?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/question?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/events?session_id=7ddb68f750e0&cursor=%7B%22run%22%3A3922%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/status?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/question?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/events?session_id=7ddb68f750e0&cursor=%7B%22run%22%3A3922%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/status?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/question?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/events?session_id=7ddb68f750e0&cursor=%7B%22run%22%3A3922%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/status?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53177 - "GET /api/question?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62536 - "GET /api/conversation?session_id=7ddb68f750e0 HTTP/1.1" 200 OK
