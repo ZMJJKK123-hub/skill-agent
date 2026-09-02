@@ -36,9 +36,8 @@ export const sidebarPlugin: PluginManifest = {
       const label = t('nav.newChat')
       return (
         <div className="px-2 py-3">
-          <div className="mb-2 px-1 text-xs text-faint">
-            {!props?.collapsed && <span>{t('nav.workspace')}</span>}
-          </div>
+          {/* 不再显示"工作区"分组标题：下面只有一个新对话按钮，
+              分组名名不副实还占一行 */}
           {!props?.collapsed && (
             <div className="space-y-1">
               <button

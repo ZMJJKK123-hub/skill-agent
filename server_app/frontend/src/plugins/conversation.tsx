@@ -39,7 +39,48 @@ function MessageImages({ images, sessionId, alignEnd }: { images: string[]; sess
   )
 }
 
-/** AI 回复气泡：深海蓝半透明 + 暗金边框 + 毛玻璃，无头像 */
+/** 一键复制小按钮（无 emoji，SVG 图标），点击后短暂变为"已复制" */
+function CopyButton({ getText, className = '' }: { getText: () => string; className?: string }) {
+  const t = useT()
+  const [copied, setCopied] = useState(false)
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(getText())
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1500)
+    } catch {
+      /* 剪贴板不可用（非安全上下文等）静默 */
+    }
+  }
+  return (
+    <button
+      onClick={() => void copy()}
+      className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-faint hoverable hover:text-main ${className}`}
+    >
+      {copied ? (
+        <>
+          {/* 对勾 */}
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 6L9 17l-5-5" />
+          </svg>
+          已复制
+        </>
+      ) : (
+        <>
+          {/* 双矩形：复制 */}
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+          复制
+        </>
+      )}
+    </button>
+  )
+}
+
+/** AI 回复气泡：主题令牌配色（此前硬编码深蓝底，浅色主题下是一块黑），
+ *  右下角带一键复制全文 */
 function ChatBubble({ role, content, images, sessionId }: { role: 'user' | 'assistant'; content: string; images?: string[]; sessionId?: string | null }) {
   const isUser = role === 'user'
   if (isUser) {
@@ -53,16 +94,15 @@ function ChatBubble({ role, content, images, sessionId }: { role: 'user' | 'assi
     )
   }
   return (
-    <div className="fade-in-up flex justify-start">
-      <div
-        className="max-w-[88%] rounded-xl px-4 py-3 text-sm leading-relaxed backdrop-blur-sm"
-        style={{
-          background: 'rgba(20, 25, 40, 0.7)',
-          border: '1px solid rgba(200, 180, 150, 0.4)',
-          borderRadius: '12px',
-        }}
-      >
+    <div className="fade-in-up group flex justify-start">
+      <div className="relative max-w-[88%] rounded-xl border border-line bg-panel px-4 py-3 text-sm leading-relaxed">
         <Markdown content={content} />
+        {/* 悬停显示的复制全文按钮（group-hover） */}
+        <div className="absolute -bottom-2 right-2 hidden group-hover:block">
+          <div className="rounded-md border border-line bg-panel px-1">
+            <CopyButton getText={() => content} />
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -78,7 +118,7 @@ function ThinkingGroup({ events, t }: { events: EventItem[]; t: (k: string) => s
     <div className="fade-in-up opacity-70">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 py-0.5 text-[13px] text-blue-100/60 transition hover:text-blue-100/90"
+        className="flex items-center gap-1.5 py-0.5 text-[13px] text-muted transition hover:text-main"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
           <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
@@ -89,8 +129,8 @@ function ThinkingGroup({ events, t }: { events: EventItem[]; t: (k: string) => s
       {open && (
         <div className="mt-1 space-y-2 pl-5">
           {events.map((ev, i) => (
-            <div key={ev.id} className="text-[12px] leading-relaxed text-blue-100/50">
-              <span className="text-blue-200/40">#{i + 1} {thinkingName(ev, t)}</span>
+            <div key={ev.id} className="text-[12px] leading-relaxed text-muted">
+              <span className="text-faint">#{i + 1} {thinkingName(ev, t)}</span>
               <div className="mt-0.5 whitespace-pre-wrap break-words">{ev.content}</div>
             </div>
           ))}
@@ -109,16 +149,16 @@ function ToolCallRow({ ev }: { ev: EventItem }) {
     <div className="fade-in-up opacity-70">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-1.5 py-0.5 text-left text-[13px] text-blue-100/60 transition hover:text-blue-100/90"
+        className="flex w-full items-center gap-1.5 py-0.5 text-left text-[13px] text-muted transition hover:text-main"
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-white/50">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-faint">
           <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
         </svg>
-        <span className="shrink-0">Tool call · <span className="text-blue-200/80">{tool}</span> · </span>
-        <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-slate-400">{oneLine}</span>
+        <span className="shrink-0">Tool call · <span className="text-forge-400">{tool}</span> · </span>
+        <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-faint">{oneLine}</span>
       </button>
       {open && (
-        <div className="ml-5 mt-0.5 max-h-48 overflow-auto whitespace-pre-wrap break-all font-mono text-[11px] text-slate-400/80">
+        <div className="ml-5 mt-0.5 max-h-48 overflow-auto whitespace-pre-wrap break-all font-mono text-[11px] text-faint">
           {ev.content}
         </div>
       )}
@@ -136,8 +176,7 @@ function ToolResultRow({ ev }: { ev: EventItem }) {
     <div className="fade-in-up opacity-70">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-1.5 py-0.5 text-left text-[13px] transition"
-        style={{ color: ok ? 'rgba(134, 239, 172, 0.6)' : 'rgba(248, 113, 113, 0.6)' }}
+        className={`flex w-full items-center gap-1.5 py-0.5 text-left text-[13px] transition ${ok ? 'text-emerald-500' : 'text-red-500'}`}
       >
         <span className="shrink-0">{ok ? '✓' : '✗'}</span>
         <span className="shrink-0">{ok ? 'Result' : 'Failed'}</span>
@@ -145,7 +184,7 @@ function ToolResultRow({ ev }: { ev: EventItem }) {
         <span className="shrink-0 text-[11px] text-faint">{open ? '收起' : `${body.length}`}</span>
       </button>
       {open && (
-        <pre className="ml-5 mt-0.5 max-h-48 overflow-auto whitespace-pre-wrap break-all font-mono text-[11px] leading-relaxed text-slate-400/70">
+        <pre className="ml-5 mt-0.5 max-h-48 overflow-auto whitespace-pre-wrap break-all font-mono text-[11px] leading-relaxed text-faint">
           {body}
         </pre>
       )}
@@ -235,6 +274,41 @@ function Messages() {
     }
     setDisplayElapsed(null)
   }, [phase, elapsed])
+
+  // ── 自动滚动跟随（标准聊天行为）──
+  // 消息区在 AppShell 的滚动容器里（main .overflow-y-auto）。
+  // 用户位于底部时新内容自动跟随；上滚回看时不打扰，并显示"回到底部"。
+  // 此前完全没有滚动处理：长回复全在视口外，用户要手动往下追。
+  const listRef = useRef<HTMLDivElement>(null)
+  const stickRef = useRef(true)
+  const [showBackToBottom, setShowBackToBottom] = useState(false)
+  useEffect(() => {
+    // 依赖 sessionId：空态时 Messages 提前 return EmptyState，listRef 未挂载
+    // （依赖 [] 只在挂载时空绑一次），进入会话后必须重绑——否则滚动监听
+    // 永远不生效，"回到底部"浮钮从不出现（实测缺陷）。
+    const scroller = listRef.current?.closest('.overflow-y-auto') as HTMLElement | null
+    if (!scroller) return
+    stickRef.current = true // 新会话从贴底开始
+    setShowBackToBottom(false)
+    const onScroll = () => {
+      const atBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 60
+      stickRef.current = atBottom
+      setShowBackToBottom(!atBottom && scroller.scrollHeight > scroller.clientHeight + 100)
+    }
+    scroller.addEventListener('scroll', onScroll, { passive: true })
+    return () => scroller.removeEventListener('scroll', onScroll)
+  }, [sessionId])
+  useEffect(() => {
+    const scroller = listRef.current?.closest('.overflow-y-auto') as HTMLElement | null
+    if (scroller && stickRef.current) scroller.scrollTop = scroller.scrollHeight
+  }, [chatMessages.length, events.length, sessionId])
+
+  // 标签页标题反映运行状态：多标签时一眼看到哪个在跑
+  const runningForTitle = phase === 'running' || phase === 'creating'
+  useEffect(() => {
+    document.title = runningForTitle ? '进行中 · MOD Forge' : 'MOD Forge'
+    return () => { document.title = 'MOD Forge' }
+  }, [runningForTitle])
 
   // 先筛出用户可见的事件，再保留最近 500 条。
   // 之前直接 events.slice(-120) 会被大量 log/todo/round 等不可见事件占满名额，
@@ -332,7 +406,27 @@ function Messages() {
 
   // ── 统一微信式聊天流：chat 模式显示气泡对话；mod 模式 DSH 风格事件流 ──
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-3 p-4 md:p-6">
+    <div ref={listRef} className="mx-auto w-full max-w-4xl space-y-3 p-4 md:p-6">
+      {/* 回到底部浮钮：上滚回看历史时出现（fixed 定位于视口右下） */}
+      {showBackToBottom && (
+        <button
+          onClick={() => {
+            const scroller = listRef.current?.closest('.overflow-y-auto') as HTMLElement | null
+            if (scroller) {
+              scroller.scrollTop = scroller.scrollHeight
+              stickRef.current = true
+              setShowBackToBottom(false)
+            }
+          }}
+          className="fixed bottom-28 right-6 z-30 flex items-center gap-1.5 rounded-full border border-line bg-panel px-3 py-1.5 text-xs text-muted shadow-lg hoverable"
+        >
+          {/* 向下箭头 */}
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 5v14M5 12l7 7 7-7" />
+          </svg>
+          回到底部
+        </button>
+      )}
       <div className="space-y-3">
         {/* chat 模式：历史消息（保持原始顺序，最后一个 assistant 留到事件流之后） */}
         {mode === 'chat' && beforeLastAssistant.map((m, i) => (
@@ -425,6 +519,9 @@ function Messages() {
 
 function EmptyState({ error }: { error?: string | null }) {
   const t = useT()
+  // 快捷示例：点击填入输入框（经自定义事件，Composer 监听后 setText + 聚焦）。
+  // i18n 里这三个键早就存在但从未渲染——用户第一眼就有可点的示例。
+  const quickPicks = [t('conv.quickSword'), t('conv.quickFood'), t('conv.quickBlock')]
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
       <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-forge-500 text-3xl font-bold text-ink-950">
@@ -432,6 +529,17 @@ function EmptyState({ error }: { error?: string | null }) {
       </div>
       <div className="text-lg font-semibold">{t('conv.title')}</div>
       <div className="max-w-md text-sm text-muted">{t('conv.desc')}</div>
+      <div className="mt-2 flex max-w-lg flex-wrap justify-center gap-2">
+        {quickPicks.map((q) => (
+          <button
+            key={q}
+            onClick={() => window.dispatchEvent(new CustomEvent('modforge:prefill', { detail: q }))}
+            className="rounded-full border border-line px-3 py-1.5 text-xs text-muted hoverable hover:text-main"
+          >
+            {q}
+          </button>
+        ))}
+      </div>
       {/* 发起失败（服务失联/404/断网等）在空态也要可见——此前 error 只在
           running 视图渲染，sessionId=null 时点发送毫无反馈（实测静默失败缺陷） */}
       {error && (
@@ -615,6 +723,20 @@ function Composer() {
   const running = sess.phase === 'running' || sess.phase === 'creating'
   const paused = sess.phase === 'paused' || sess.paused
 
+  // 空态快捷示例点击 → 填入输入框并聚焦
+  useEffect(() => {
+    const onPrefill = (e: Event) => {
+      const detail = (e as CustomEvent<string>).detail || ''
+      setText(detail)
+      ;(document.querySelector('main textarea') as HTMLTextAreaElement | null)?.focus()
+    }
+    window.addEventListener('modforge:prefill', onPrefill)
+    return () => window.removeEventListener('modforge:prefill', onPrefill)
+  }, [])
+
+  // 拖拽图片进输入区（第三条上传路径：点选/粘贴/拖拽）
+  const [dragOver, setDragOver] = useState(false)
+
   const addImageFiles = async (files: File[]) => {
     const pics = files.filter((f) => f.type.startsWith('image/'))
     if (pics.length === 0) return
@@ -734,10 +856,23 @@ function Composer() {
         </div>
       )}
       {/* 未配置时不显示提示框（用户要求）：提示只在发送按钮悬停 title 出现 */}
-      <div className="rounded-xl border border-line bg-panel p-3">
-        {/* 待上传图片缩略图（选择/粘贴后、发送前） */}
+      <div
+        className={`rounded-xl border bg-panel p-3 transition-colors ${dragOver ? 'border-forge-500' : 'border-line'}`}
+        onDragOver={(e) => {
+          e.preventDefault()
+          setDragOver(true)
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault()
+          setDragOver(false)
+          const files = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith('image/'))
+          if (files.length > 0) void addImageFiles(files)
+        }}
+      >
+        {/* 待上传图片缩略图（选择/粘贴/拖拽后、发送前）+ 数量计数 */}
         {images.length > 0 && (
-          <div className="mb-2 flex flex-wrap gap-2">
+          <div className="mb-2 flex flex-wrap items-start gap-2">
             {images.map((src, i) => (
               <div key={i} className="relative">
                 <img src={src} alt={`待上传 ${i + 1}`} className="h-20 w-20 rounded-lg border border-line object-cover" />
@@ -750,6 +885,7 @@ function Composer() {
                 </button>
               </div>
             ))}
+            <span className="self-end text-[11px] text-faint">{images.length}/{MAX_IMAGES_PER_MESSAGE}</span>
           </div>
         )}
         <textarea
@@ -764,6 +900,9 @@ function Composer() {
             }
           }}
           onKeyDown={(e) => {
+            // 输入法组合中的 Enter 是"选候选词"，不是发送——此前未检查
+            // isComposing，中文用户每次选词都会误发（实测缺陷）
+            if (e.nativeEvent.isComposing) return
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault()
               if (running || paused) {

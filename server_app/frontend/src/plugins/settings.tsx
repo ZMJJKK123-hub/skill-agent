@@ -37,11 +37,15 @@ function SettingsPanel() {
     providers,
   })
   useEffect(() => {
-    if (settingsOpen) setDraft({
-      model, loader, version, sandbox,
-      visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey,
-      providers,
-    })
+    if (settingsOpen) {
+      // 每次打开回到"通用"分区：此前记住上次分区，重开常停在意外位置
+      setSection('general')
+      setDraft({
+        model, loader, version, sandbox,
+        visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey,
+        providers,
+      })
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settingsOpen])
 
@@ -76,7 +80,7 @@ function SettingsPanel() {
   ]
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={cancel}>
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70" onClick={cancel}>
       <div
         className="flex h-[80vh] w-[760px] max-w-[92vw] flex-col overflow-hidden rounded-xl border border-strong bg-panel"
         onClick={(e) => e.stopPropagation()}

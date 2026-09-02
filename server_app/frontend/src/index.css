@@ -142,3 +142,17 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 .fade-in-up { animation: fade-in-up 0.3s ease-out; }
+
+/* ── 代码块复制按钮（markdown.tsx DOM 注入，Tailwind JIT 不可达）── */
+.markdown-body pre { position: relative; }
+.md-copy {
+  position: absolute; top: 6px; right: 6px;
+  padding: 2px 8px; font-size: 11px; line-height: 1.4;
+  color: var(--text-faint); background: var(--panel);
+  border: 1px solid var(--border); border-radius: 6px;
+  opacity: 0; transition: opacity 0.15s ease, color 0.15s ease;
+  cursor: pointer;
+}
+.markdown-body pre:hover .md-copy { opacity: 1; }
+.md-copy:hover { color: var(--text); }
+.md-copy-done { color: #10b981; }

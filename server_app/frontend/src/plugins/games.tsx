@@ -31,10 +31,46 @@ const INIT_H = 560
 const MIN_W = 360
 const MIN_H = 320
 
+// 面板开合状态需在两个注入实例（顶栏按钮 / 全局面板）间共享：
+// 模块级微型 store（两个 SlotView 实例不在同一子树，props 传不进去）
+let _gameOpen = false
+const _gameListeners = new Set<() => void>()
+function _setGameOpen(v: boolean) {
+  _gameOpen = v
+  _gameListeners.forEach((l) => l())
+}
+function useGameOpen(): [boolean, (v: boolean) => void] {
+  const [open, setOpen] = useState(_gameOpen)
+  useEffect(() => {
+    const l = () => setOpen(_gameOpen)
+    _gameListeners.add(l)
+    return () => { _gameListeners.delete(l) }
+  }, [])
+  return [open, _setGameOpen]
+}
+
+/** 顶栏入口按钮（运行中微亮提示可打发等待） */
 function GameWindow() {
   const t = useT()
   const sess = useSession()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useGameOpen()
+  if (open) return null
+  const running = sess.phase === 'running' || sess.phase === 'creating'
+  return (
+    <button
+      onClick={() => setOpen(true)}
+      title={t('games.launch')}
+      className={`hoverable rounded-md px-2 py-1 ${running ? 'text-forge-400' : 'text-muted'}`}
+    >
+      {t('games.title')}
+    </button>
+  )
+}
+
+/** 可拖拽缩放的游戏浮窗（open 时渲染） */
+function GameWindowPanel() {
+  const t = useT()
+  const [open, setOpen] = useGameOpen()
   const [game, setGame] = useState('snake-2048')
   const [nonce, setNonce] = useState(0)
 
@@ -111,21 +147,7 @@ function GameWindow() {
     return () => window.removeEventListener('keydown', handler, true)
   }, [open])
 
-  const running = sess.phase === 'running' || sess.phase === 'creating'
-
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        title={t('games.launch')}
-        className={`fixed bottom-4 right-4 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-line bg-panel text-xl shadow-xl hoverable ${
-          running ? 'animate-pulse' : ''
-        }`}
-      >
-        游戏
-      </button>
-    )
-  }
+  if (!open) return null
 
   return (
     <div
@@ -189,6 +211,8 @@ export const gamesPlugin: PluginManifest = {
   id: 'modforge-games',
   name: '小游戏',
   apply(ctx) {
-    ctx.slots.inject(SLOTS.overlay, 'games', () => <GameWindow />)
+    // 入口按钮进顶栏；游戏面板本体仍是全局浮层（可拖拽缩放）
+    ctx.slots.inject(SLOTS.headerActions, 'games-entry', () => <GameWindow />)
+    ctx.slots.inject(SLOTS.overlay, 'games', () => <GameWindowPanel />)
   },
 }
