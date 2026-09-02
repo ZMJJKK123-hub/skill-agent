@@ -37,7 +37,7 @@ export interface SessionState {
   history: HistoryEntry[]
   // 多轮对话支持：
   mode: 'chat' | 'mod' | null        // 当前会话运行模式（null=未开始）
-  chatMessages: { role: string; content: string }[]  // 聊天气泡历史（chat 模式）
+  chatMessages: { role: string; content: string; images?: string[] }[]  // 聊天气泡历史（chat 模式；images=上传图片，本地为 data URL、历史加载为文件名）
   paused: boolean            // 已暂停（可继续）
   pending: number            // 运行中排队消息数（>0 时当前轮结束后自动续跑）
   stoppedNotice: boolean     // 是否显示"您已终止该对话"横线
@@ -97,19 +97,20 @@ export async function loadHistory() {
 
 // 发起对话 → 建新工作区文件夹 → 启动生成 → 开始轮询
 // mode: 'chat'（通用对话，不复制模板）| 'mod'（MOD 制作，需先 prepareModWorkspace）
-export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'chat' | 'mod' = 'chat') {
+// images: 用户随消息上传的图片（data URL），后端落盘后随消息传给视觉模型
+export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'chat' | 'mod' = 'chat', images: string[] = []) {
   // 运行中（creating/running）：消息排队（后端 pending），当前轮结束后自动续跑
   if (state.phase === 'creating' || state.phase === 'running') {
     if (state.sessionId) {
       try {
         await api.startTask(state.sessionId, prompt, mode, false, settings.apiKey, settings.model, settings.baseUrl,
           settings.visionEnabled, settings.visionApiKey, settings.visionBaseUrl, settings.visionModel,
-          settings.autoMode, settings.searchApiKey)
+          settings.autoMode, settings.searchApiKey, images)
         // 本地乐观显示排队消息：chat 模式走 chatMessages 气泡；
         // mod 模式只渲染 prompts，也要 push 进去（否则插话后界面无反馈）
         setState({
           prompts: [...state.prompts, prompt],
-          chatMessages: [...state.chatMessages, { role: 'user', content: prompt }],
+          chatMessages: [...state.chatMessages, { role: 'user', content: prompt, ...(images.length ? { images } : {}) }],
           pending: state.pending + 1,
         })
       } catch (e) {
@@ -128,12 +129,12 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
       const prompts = state.mode === 'mod' ? [...state.prompts, prompt] : state.prompts
       setState({
         phase: 'running', paused: false, stoppedNotice: false,
-        chatMessages: [...state.chatMessages, { role: 'user', content: prompt }],
+        chatMessages: [...state.chatMessages, { role: 'user', content: prompt, ...(images.length ? { images } : {}) }],
         prompts,
       })
       await api.startTask(state.sessionId, prompt, state.mode ?? 'chat', true, settings.apiKey, settings.model, settings.baseUrl,
         settings.visionEnabled, settings.visionApiKey, settings.visionBaseUrl, settings.visionModel,
-        settings.autoMode, settings.searchApiKey)
+        settings.autoMode, settings.searchApiKey, images)
       void poll()
       startPolling(2000)
     } catch (e) {
@@ -180,16 +181,19 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
       await api.prepareModWorkspace(sid)
     }
     const prompts = [...state.prompts, prompt]
-    // 标题：已有（文件夹名）优先，否则用首条输入截断
-    const title = state.title ?? (prompt.length > 24 ? prompt.slice(0, 24) + '…' : prompt)
-    // chat 模式：把用户消息加入聊天气泡
-    const chatMessages = mode === 'chat'
-      ? [...state.chatMessages, { role: 'user' as const, content: prompt }]
-      : state.chatMessages
+    // 标题：已有（文件夹名）优先，否则用首条输入截断；纯图片消息用固定占位
+    const titleText = prompt.trim() || '图片消息'
+    const title = state.title ?? (titleText.length > 24 ? titleText.slice(0, 24) + '…' : titleText)
+    // 用户消息加入聊天气泡（chat 与 mod 都写：mod 模式的用户气泡也
+    // 从 chatMessages 渲染，图片附件才能在运行中/历史里回显）
+    const chatMessages = [
+      ...state.chatMessages,
+      { role: 'user' as const, content: prompt, ...(images.length ? { images } : {}) },
+    ]
     setState({ prompts, phase: 'running', title, chatMessages })
     await api.startTask(sid, prompt, mode, false, settings.apiKey, settings.model, settings.baseUrl,
       settings.visionEnabled, settings.visionApiKey, settings.visionBaseUrl, settings.visionModel,
-      settings.autoMode, settings.searchApiKey)
+      settings.autoMode, settings.searchApiKey, images)
     void poll()
     void loadHistory()
   } catch (e) {

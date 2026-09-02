@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { PluginManifest, SLOTS } from '../shell/registry'
 import { useUi, setUi, resolveModelConfig, hasModelConfig } from '../lib/store'
 import { useT } from '../lib/i18n'
 import { useSession, sendPrompt, startPolling, stopPolling, regenerate, answerQuestion, pauseTask, resumeTask } from '../lib/session'
-import { downloadJar, downloadSourceZip } from '../lib/api'
+import { downloadJar, downloadSourceZip, sessionImageUrl } from '../lib/api'
 import type { EventItem } from '../lib/api'
 import { Markdown } from '../lib/markdown'
 
@@ -22,14 +22,32 @@ function thinkingName(ev: EventItem, t: (k: string) => string): string {
   }
 }
 
+/** 消息内图片缩略图：本地乐观消息是 data URL 直接显示；
+ *  历史加载的是 uploads 文件名，经 /api/session/image 取回 */
+function MessageImages({ images, sessionId, alignEnd }: { images: string[]; sessionId?: string | null; alignEnd?: boolean }) {
+  return (
+    <div className={`mb-1.5 flex flex-wrap gap-1.5 ${alignEnd ? 'justify-end' : ''}`}>
+      {images.map((img, i) => (
+        <img
+          key={i}
+          src={img.startsWith('data:') ? img : sessionId ? sessionImageUrl(sessionId, img) : ''}
+          className="max-h-40 max-w-[220px] rounded-lg object-cover"
+          alt={`附件图片 ${i + 1}`}
+        />
+      ))}
+    </div>
+  )
+}
+
 /** AI 回复气泡：深海蓝半透明 + 暗金边框 + 毛玻璃，无头像 */
-function ChatBubble({ role, content }: { role: 'user' | 'assistant'; content: string }) {
+function ChatBubble({ role, content, images, sessionId }: { role: 'user' | 'assistant'; content: string; images?: string[]; sessionId?: string | null }) {
   const isUser = role === 'user'
   if (isUser) {
     return (
       <div className="fade-in-up flex justify-end">
         <div className="max-w-[80%] rounded-2xl rounded-br-md bg-forge-500 px-4 py-2.5 text-sm text-ink-950">
-          <div className="whitespace-pre-wrap break-words">{content}</div>
+          {images && images.length > 0 && <MessageImages images={images} sessionId={sessionId} alignEnd />}
+          {content && <div className="whitespace-pre-wrap break-words">{content}</div>}
         </div>
       </div>
     )
@@ -196,7 +214,7 @@ function Messages() {
   const { user } = useUi()
   const t = useT()
   const sess = useSession()
-  const { phase, prompts, events, elapsed, hasJar, error, mode, chatMessages, stoppedNotice, sessionId, paused } = sess
+  const { phase, events, elapsed, hasJar, error, mode, chatMessages, stoppedNotice, sessionId, paused } = sess
   const [displayElapsed, setDisplayElapsed] = useState<number | null>(null)
 
   useEffect(() => {
@@ -301,12 +319,14 @@ function Messages() {
       <div className="space-y-3">
         {/* chat 模式：历史消息（保持原始顺序，最后一个 assistant 留到事件流之后） */}
         {mode === 'chat' && beforeLastAssistant.map((m, i) => (
-          <ChatBubble key={i} role={m.role === 'user' ? 'user' : 'assistant'} content={m.content} />
+          <ChatBubble key={i} role={m.role === 'user' ? 'user' : 'assistant'} content={m.content} images={m.images} sessionId={sessionId} />
         ))}
 
-        {/* mod 模式：用户 prompt 气泡 */}
-        {mode === 'mod' && prompts.map((p, i) => (
-          <ChatBubble key={i} role="user" content={p} />
+        {/* mod 模式：用户消息气泡（含上传图片）——与 chat 同源 chatMessages。
+            此前用 prompts 纯文本渲染，历史图片无法回显；prompts 数组仍保留
+            供排队等内部逻辑使用。 */}
+        {mode === 'mod' && chatMessages.filter((m) => m.role === 'user').map((m, i) => (
+          <ChatBubble key={`mu-${i}`} role="user" content={m.content} images={m.images} sessionId={sessionId} />
         ))}
 
         {/* 运行中提示（所有模式）：只显示状态 + 本地 1s 秒数，具体步骤看下方事件流 */}
@@ -331,7 +351,7 @@ function Messages() {
 
         {/* chat 模式：当前轮最终回答放在事件流之后 */}
         {mode === 'chat' && lastAssistant.map((m, i) => (
-          <ChatBubble key={i} role={m.role === 'user' ? 'user' : 'assistant'} content={m.content} />
+          <ChatBubble key={i} role={m.role === 'user' ? 'user' : 'assistant'} content={m.content} images={m.images} sessionId={sessionId} />
         ))}
 
         {/* mod 模式：完成后渲染最终总结气泡（conversation.jsonl 的最后一条 assistant）。
@@ -529,20 +549,75 @@ function QuestionCard() {
   )
 }
 
+/** 每条消息最多携带的图片数（与后端 /api/task 的 images 上限一致） */
+const MAX_IMAGES_PER_MESSAGE = 4
+
+/** 图片文件 → data URL：小图（≤600KB）原样返回；
+ *  大图 canvas 缩放到 1280 内并转 JPEG 0.85，控制上传与 token 体积 */
+async function fileToDataUrl(file: File): Promise<string> {
+  const raw = await new Promise<string>((resolve, reject) => {
+    const r = new FileReader()
+    r.onload = () => resolve(String(r.result))
+    r.onerror = () => reject(new Error('读取图片失败'))
+    r.readAsDataURL(file)
+  })
+  if (file.size <= 600 * 1024) return raw
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const im = new Image()
+      im.onload = () => resolve(im)
+      im.onerror = () => reject(new Error('解析图片失败'))
+      im.src = raw
+    })
+    const scale = Math.min(1, 1280 / Math.max(img.width, img.height))
+    if (scale >= 1) return raw
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.round(img.width * scale)
+    canvas.height = Math.round(img.height * scale)
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return raw
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+    return canvas.toDataURL('image/jpeg', 0.85)
+  } catch {
+    return raw
+  }
+}
+
 function Composer() {
   const { user, model, providers, version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey, settingsOpen } = useUi()
   const t = useT()
   const sess = useSession()
   const [text, setText] = useState('')
+  // 随消息上传的图片（data URL，发送时压缩为附件传给后端落盘）
+  const [images, setImages] = useState<string[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
   // /mod 应用内确认：不再用 window.confirm——原生对话框在"禁止此页再弹窗"
   // 或自动化环境里会被自动接受，确认形同虚设（实测缺陷）。改为状态驱动浮层。
   const [modConfirm, setModConfirm] = useState<string | null>(null)
+  const [modImages, setModImages] = useState<string[]>([])
   const running = sess.phase === 'running' || sess.phase === 'creating'
   const paused = sess.phase === 'paused' || sess.paused
 
+  const addImageFiles = async (files: File[]) => {
+    const pics = files.filter((f) => f.type.startsWith('image/'))
+    if (pics.length === 0) return
+    const room = MAX_IMAGES_PER_MESSAGE - images.length
+    if (pics.length > room) alert(t('conv.tooManyImages'))
+    if (room <= 0) return
+    const encoded: string[] = []
+    for (const f of pics.slice(0, room)) {
+      try {
+        encoded.push(await fileToDataUrl(f))
+      } catch {
+        /* 单张解析失败跳过 */
+      }
+    }
+    if (encoded.length > 0) setImages((prev) => [...prev, ...encoded])
+  }
+
   const send = () => {
     const prompt = text.trim()
-    if (!prompt) return
+    if (!prompt && images.length === 0) return
     const r = resolveModelConfig({ model, providers })
     const settings = { apiKey: r.apiKey, baseUrl: r.baseUrl, model: r.model, game: 'minecraft', loader: 'forge', version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey }
 
@@ -555,6 +630,7 @@ function Composer() {
         return
       }
       setModConfirm(modPrompt) // 弹应用内确认条，等用户点"确认开始"
+      setModImages(images)
       return
     }
 
@@ -562,17 +638,20 @@ function Composer() {
     // 完成后的迭代需求会被降级成只读咨询（P1 实测缺陷：daemon 以 chat 重启
     // 后整个会话锁死只读）。新建/纯 chat 会话仍是 chat；server 端还有
     // mode.txt 记忆 + /mod 前缀强制双保险。
-    void sendPrompt(prompt, settings, sess.mode === 'mod' ? 'mod' : 'chat')
+    void sendPrompt(prompt, settings, sess.mode === 'mod' ? 'mod' : 'chat', images)
     setText('')
+    setImages([])
   }
 
   const confirmMod = () => {
     if (!modConfirm) return
     const r = resolveModelConfig({ model, providers })
     const settings = { apiKey: r.apiKey, baseUrl: r.baseUrl, model: r.model, game: 'minecraft', loader: 'forge', version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey }
-    void sendPrompt(modConfirm, settings, 'mod')
+    void sendPrompt(modConfirm, settings, 'mod', modImages)
     setModConfirm(null)
+    setModImages([])
     setText('')
+    setImages([])
   }
 
   // 可发送 = 已配置可用模型（v1.0.2：官方默认已移除，完全由用户提供）。
@@ -604,7 +683,7 @@ function Composer() {
   ) : (
     <button
       onClick={send}
-      disabled={!text.trim() || !canChat}
+      disabled={(!text.trim() && images.length === 0) || !canChat}
       title={canChat ? '' : notReadyReason}
       className="rounded-lg bg-forge-500 px-4 py-1.5 text-sm font-medium text-ink-950 hover:bg-forge-400 disabled:opacity-40"
     >
@@ -639,26 +718,73 @@ function Composer() {
       )}
       {/* 未配置时不显示提示框（用户要求）：提示只在发送按钮悬停 title 出现 */}
       <div className="rounded-xl border border-line bg-panel p-3">
+        {/* 待上传图片缩略图（选择/粘贴后、发送前） */}
+        {images.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-2">
+            {images.map((src, i) => (
+              <div key={i} className="relative">
+                <img src={src} alt={`待上传 ${i + 1}`} className="h-20 w-20 rounded-lg border border-line object-cover" />
+                <button
+                  onClick={() => setImages((prev) => prev.filter((_, j) => j !== i))}
+                  title="移除图片"
+                  className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-line bg-panel text-[10px] text-faint hoverable hover:text-red-400"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onPaste={(e) => {
+            // 粘贴图片：剪贴板里有图片文件时直接加入待上传列表
+            const files = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith('image/'))
+            if (files.length > 0) {
+              e.preventDefault()
+              void addImageFiles(files)
+            }
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault()
               if (running || paused) {
                 // 运行中/暂停后回车：排队发送
-                if (text.trim()) send()
-              } else if (text.trim()) {
+                if (text.trim() || images.length > 0) send()
+              } else if (text.trim() || images.length > 0) {
                 send()
               }
             }
           }}
           rows={3}
           disabled={!canChat}
-          placeholder={canChat ? t('conv.placeholder') : t('conv.noModelShort')}
+          placeholder={canChat ? t('conv.placeholder') : t('conv.configureFirst')}
           className="w-full resize-none bg-transparent text-sm outline-none placeholder:text-faint disabled:opacity-60"
         />
           <div className="mt-2 flex items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                void addImageFiles(Array.from(e.target.files ?? []))
+                e.target.value = '' // 允许重复选择同一张
+              }}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={!canChat}
+              title={t('conv.attach')}
+              className="flex h-7 w-7 items-center justify-center rounded-md border border-line text-muted hoverable disabled:opacity-50"
+            >
+              {/* 回形针：上传图片附件 */}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+              </svg>
+            </button>
             <select
               value={model}
               onChange={(e) => setUi({ model: e.target.value })}

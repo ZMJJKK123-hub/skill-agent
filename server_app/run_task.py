@@ -23,6 +23,7 @@
   python run_task.py <session_dir> <api_key> <task_prompt>
 """
 
+import json
 import os
 import re
 import sys
@@ -438,12 +439,25 @@ def main() -> int:
     os.environ["DSH_NO_ENV_FILE"] = "1"
     os.environ["DEEPSEEK_API_KEY"] = api_key
 
+    # 用户随消息上传的图片（.chat/uploads 文件名 JSON 数组，可为空）：
+    # 写历史供前端回显 / agent 恢复；模型调用边界再展开为 image_url 片段
+    prompt_images = []
+    _pi = os.environ.get("DSH_PROMPT_IMAGES", "")
+    if _pi:
+        try:
+            _parsed = json.loads(_pi)
+            if isinstance(_parsed, list):
+                prompt_images = [str(n) for n in _parsed if isinstance(n, str) and n]
+        except ValueError:
+            print("[run_task] DSH_PROMPT_IMAGES 解析失败，忽略图片附件", flush=True)
+
     # 2.5 立即把用户消息写入对话历史（必须在 import agent 之前！）
     #     agent import 要 7-8 秒（openai SDK），若等 import 完再写，
     #     用户发消息后立刻点开历史会话会读到空记录（实测 bug）。
     #     conversation 模块很轻，不触发 openai，可安全提前导入。
     #     chat 和 mod 模式都写：历史会话打开时能显示用户 prompt 气泡。
-    #     空 prompt（自动续跑 resume）不写——否则历史里出现空气泡。
+    #     空 prompt（自动续跑 resume）不写——否则历史里出现空气泡；
+    #     纯图片消息 DSH_USER_PROMPT 已由 server 回退为"（图片）"。
     #     mod 模式优先写 DSH_USER_PROMPT（用户原始输入）：包装后的 task_prompt
     #     以"你是一个 MOD 制作器…（C:\本地路径）"开头，直接进历史会污染
     #     侧栏标题并泄漏服务器路径。
@@ -451,7 +465,7 @@ def main() -> int:
     if mode in ("chat", "mod") and user_prompt:
         try:
             from core.conversation import append_user as _early_append_user
-            _early_append_user(session_root_path, user_prompt)
+            _early_append_user(session_root_path, user_prompt, images=prompt_images)
         except Exception as e:
             print(f"[run_task] 提前写入历史失败: {e}", flush=True)
 
@@ -491,9 +505,10 @@ def main() -> int:
             messages = []
         # 把当前 prompt 作为本轮 user 消息（历史已在步骤 2.5 提前写入）。
         # chat 模式：历史最后一条就是这条 prompt，跳过重复追加（否则出现
-        # `hi` + `hi` 两条相同消息）。
+        # `hi` + `hi` 两条相同消息）；图片附件挂到这条历史消息上。
         # mod 模式：历史里是用户原始输入（DSH_USER_PROMPT），这里追加包装了
-        # 工作目录与产出要求的 task_prompt 给 agent——两条并存是有意的。
+        # 工作目录与产出要求的 task_prompt 给 agent——两条并存是有意的，
+        # 图片附件只挂在包装消息上（历史那条同轮剥离，避免模型收到双份图）。
         # 空 prompt（自动续跑 resume）不追加——排队消息已在历史里。
         if not task_prompt:
             if not messages:
@@ -501,8 +516,13 @@ def main() -> int:
                 return 1
         elif messages and messages[-1].get("role") == "user" and messages[-1].get("content") == task_prompt:
             print("[run_task] 历史已包含当前 prompt，跳过重复追加", flush=True)
+            if prompt_images:
+                messages[-1]["images"] = prompt_images
         else:
-            messages.append({"role": "user", "content": task_prompt})
+            if prompt_images and messages and messages[-1].get("role") == "user":
+                messages[-1].pop("images", None)  # 同一轮的裸 prompt 不再带图
+            messages.append({"role": "user", "content": task_prompt,
+                             **({"images": prompt_images} if prompt_images else {})})
 
     # 5. 跑完整 agent 循环（首轮）
     _run_one_round(messages, session_dir, session_root_path, mode)

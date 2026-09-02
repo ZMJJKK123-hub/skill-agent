@@ -78,6 +78,9 @@ const zh: Record<string, string> = {
   'auth.needApiKey': '请先在左下角「设置」里添加模型提供方。',
   'conv.noModel': '暂无模型配置：点左下角「设置」→「模型」，添加提供方后即可使用',
   'conv.noModelShort': '暂无配置',
+  'conv.configureFirst': '请先进行配置',
+  'conv.attach': '上传图片',
+  'conv.tooManyImages': '一次最多上传 4 张图片',
 
   'conv.title': '开始生成你的 Minecraft MOD',
   'conv.desc': '输入需求，从零生成 mod 源码；或先在左侧导入已有的 mod 文件夹，再描述你想修改的内容。',
@@ -191,6 +194,9 @@ const en: Record<string, string> = {
   'auth.needApiKey': 'Please add a model provider in Settings (bottom-left) first.',
   'conv.noModel': 'No model configured: open Settings (bottom-left) → Models, add a provider to start',
   'conv.noModelShort': 'Not configured',
+  'conv.configureFirst': 'Please configure a model first',
+  'conv.attach': 'Upload image',
+  'conv.tooManyImages': 'Up to 4 images per message',
 
   'conv.title': 'Generate your Minecraft MOD',
   'conv.desc': 'Describe your request to generate a mod from scratch, or import an existing mod folder on the left and describe what to change.',

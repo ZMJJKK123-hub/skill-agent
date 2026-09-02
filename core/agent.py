@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 import re
@@ -279,7 +280,7 @@ def agent_loop(messages: list) -> str:
         try:
             stream = client.chat.completions.create(
                 model=MODEL,
-                messages=[{"role": "system", "content": config.SYSTEM}] + messages,
+                messages=[{"role": "system", "content": config.SYSTEM}] + _expand_image_parts(messages),
                 tools=leader_tools(),  # 阶段式：基础阶段只开放开发工具；解锁后开放全部
                 max_tokens=8000,
                 stream=True,
@@ -907,7 +908,7 @@ def _summarize_completion(messages: list, fallback: str) -> str:
             "如何安装使用、已完成的验证。")}]
         resp = client.chat.completions.create(
             model=MODEL,
-            messages=[{"role": "system", "content": config.SYSTEM}] + msgs,
+            messages=[{"role": "system", "content": config.SYSTEM}] + _expand_image_parts(msgs),
             max_tokens=4000,
         )
         text = resp.choices[0].message.content
@@ -929,6 +930,46 @@ SESSION_ROOT = os.environ.get("DSH_SESSION_ROOT", "")
 def _current_session_root() -> str:
     """动态读取当前会话根目录（支持按 sessionId 隔离对话历史）。"""
     return os.environ.get("DSH_SESSION_ROOT", "")
+
+
+def _expand_image_parts(messages: list) -> list:
+    """把带 images 附件的 user 消息展开成多模态 content 片段（模型调用边界）。
+
+    消息历史里 content 始终保持纯文本——token 估算/自动压缩/事件落盘/
+    debug 快照都不受影响；只在发给模型前把 images（.chat/uploads 文件名）
+    读出转 base64 data URL 拼成 image_url 片段。需要主模型本身支持
+    视觉输入（如 glm-4.6v）；纯文本消息原样透传，行为不变。
+    """
+    has_images = any(
+        isinstance(m, dict) and m.get("role") == "user" and m.get("images")
+        for m in messages
+    )
+    if not has_images:
+        return messages
+    session_root = _current_session_root()
+    out = []
+    for m in messages:
+        imgs = m.get("images") if isinstance(m, dict) else None
+        if not (imgs and m.get("role") == "user"):
+            out.append(m)
+            continue
+        parts = [{"type": "text", "text": m.get("content") or "（用户发送了图片）"}]
+        for name in list(imgs)[:4]:
+            p = Path(session_root) / ".chat" / "uploads" / str(name)
+            try:
+                b64 = base64.b64encode(p.read_bytes()).decode("ascii")
+                mime = "image/png" if p.suffix.lower() == ".png" else "image/jpeg"
+                parts.append({
+                    "type": "image_url",
+                    "image_url": {"url": f"data:{mime};base64,{b64}"},
+                })
+            except OSError as e:
+                logger.warning(f"图片附件读取失败（跳过）: {p} {e}")
+        expanded = {k: v for k, v in m.items() if k != "images"}
+        expanded["content"] = parts
+        out.append(expanded)
+    logger.info("image parts: 已展开带附件的 user 消息（多模态输入）")
+    return out
 
 # 流式思考转发钩子：由外部接入层（如清小搭 8001 服务）设置。
 # 收到模型 delta.reasoning_content 时会实时调用 callback(text)；

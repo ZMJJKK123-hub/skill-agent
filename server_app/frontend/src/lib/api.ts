@@ -170,6 +170,7 @@ export function startTask(
   visionModel?: string,
   autoMode?: boolean,
   searchApiKey?: string,
+  images?: string[],
 ) {
   const body: Record<string, unknown> = { session_id: sessionId, prompt, mode, resume, model, base_url: baseUrl }
   if (apiKey) body.api_key = apiKey
@@ -179,6 +180,8 @@ export function startTask(
   if (visionModel !== undefined) body.vision_model = visionModel
   if (autoMode !== undefined) body.auto_mode = autoMode
   if (searchApiKey !== undefined) body.search_api_key = searchApiKey
+  // 用户上传的图片（data URL，最多 4 张）：后端落盘 .chat/uploads 后传给 agent
+  if (images && images.length > 0) body.images = images
   return api<{ session_id: string; status: string; mode: string; resume?: boolean }>('/api/task', {
     method: 'POST',
     body: JSON.stringify(body),
@@ -200,10 +203,22 @@ export function prepareModWorkspace(sessionId: string) {
 }
 
 // 会话对话历史（多轮聊天的 user/assistant 消息对）+ 模式推断
+// user 消息可带 images（.chat/uploads 里的文件名，经 sessionImageUrl 取回）
+export interface ConversationMessage {
+  role: string
+  content: string
+  images?: string[]
+}
+
 export function getConversation(sessionId: string) {
-  return api<{ session_id: string; messages: { role: string; content: string }[]; mode: 'chat' | 'mod' | null }>(
+  return api<{ session_id: string; messages: ConversationMessage[]; mode: 'chat' | 'mod' | null }>(
     `/api/conversation?session_id=${encodeURIComponent(sessionId)}`,
   )
+}
+
+// 历史消息里图片附件的取回地址（文件名由后端落盘 .chat/uploads）
+export function sessionImageUrl(sessionId: string, name: string) {
+  return `/api/session/image?session_id=${encodeURIComponent(sessionId)}&name=${encodeURIComponent(name)}`
 }
 
 // ── 状态 / 事件 ──

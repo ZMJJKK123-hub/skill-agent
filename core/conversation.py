@@ -86,26 +86,31 @@ def load_recent_history(session_root: str | os.PathLike, max_rounds: int = MAX_H
     return tail
 
 
-def append_message(session_root: str | os.PathLike, role: str, content: str) -> None:
-    """追加一条对话消息（role: user | assistant）。"""
+def append_message(session_root: str | os.PathLike, role: str, content: str,
+                   images: list | None = None) -> None:
+    """追加一条对话消息（role: user | assistant）。
+
+    images：user 消息随附的图片附件（.chat/uploads 里的文件名列表），
+    供前端回显与 agent 恢复上下文时重建多模态消息。
+    """
     if role not in ("user", "assistant"):
         raise ValueError(f"conversation.append_message: invalid role {role!r}")
     path = conversation_path(session_root)
-    entry = {
-        "role": role,
-        "content": content,
-        "ts": None,  # 占位：需要时间戳时由调用方覆盖（保持简单）
-    }
+    entry = {"role": role, "content": content}
+    if role == "user" and images:
+        entry["images"] = [str(n) for n in images]
     try:
         with open(path, "a", encoding="utf-8") as f:
-            f.write(json.dumps({"role": role, "content": content}, ensure_ascii=False) + "\n")
-        logger.info(f"conversation.append_message | role={role} | len={len(content)}")
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        logger.info(f"conversation.append_message | role={role} | len={len(content)}"
+                    + (f" | images={len(images)}" if (role == 'user' and images) else ""))
     except OSError as e:
         logger.error(f"conversation.append_message 写入失败: {e}")
 
 
-def append_user(session_root: str | os.PathLike, content: str) -> None:
-    append_message(session_root, "user", content)
+def append_user(session_root: str | os.PathLike, content: str,
+                images: list | None = None) -> None:
+    append_message(session_root, "user", content, images)
 
 
 def append_assistant(session_root: str | os.PathLike, content: str) -> None:
@@ -183,7 +188,8 @@ def pending_path(session_root: str | os.PathLike) -> Path:
     return chat_dir(session_root) / PENDING_FILE
 
 
-def enqueue_pending(session_root: str | os.PathLike, content: str) -> None:
+def enqueue_pending(session_root: str | os.PathLike, content: str,
+                    images: list | None = None) -> None:
     """把运行中用户发来的消息排入队列（当前轮跑完后由前端自动续跑处理）。
 
     同步写入 conversation.jsonl 历史——否则消息只进 pending 队列、
@@ -191,14 +197,17 @@ def enqueue_pending(session_root: str | os.PathLike, content: str) -> None:
     追加输入的内容在 data 里为空）。
     """
     path = pending_path(session_root)
+    entry = {"role": "user", "content": content}
+    if images:
+        entry["images"] = [str(n) for n in images]
     try:
         with open(path, "a", encoding="utf-8") as f:
-            f.write(json.dumps({"role": "user", "content": content}, ensure_ascii=False) + "\n")
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
         logger.info(f"conversation.enqueue_pending | 已排队用户消息")
     except OSError as e:
         logger.error(f"conversation.enqueue_pending 写入失败: {e}")
     # 同步写入对话历史（幂等：只追加，不重复）
-    append_user(session_root, content)
+    append_user(session_root, content, images)
 
 
 def drain_pending(session_root: str | os.PathLike) -> list:

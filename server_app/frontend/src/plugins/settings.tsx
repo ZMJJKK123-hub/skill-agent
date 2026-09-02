@@ -172,7 +172,6 @@ function GeneralSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft
           type="password"
           value={draft.searchApiKey}
           onChange={(e) => setDraft({ ...draft, searchApiKey: e.target.value })}
-          placeholder="tvly-…（留空则使用 DuckDuckGo fallback）"
           className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500"
         />
       </Field>
@@ -392,7 +391,6 @@ function VisionSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft)
           type="password"
           value={draft.visionApiKey}
           onChange={(e) => setDraft({ ...draft, visionApiKey: e.target.value })}
-          placeholder="留空自动用 GLM-4.6V-Flash（读桌面 glm4v-vision-mcp/server/.env）"
           className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500"
         />
       </Field>
@@ -400,7 +398,6 @@ function VisionSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft)
         <input
           value={draft.visionBaseUrl}
           onChange={(e) => setDraft({ ...draft, visionBaseUrl: e.target.value })}
-          placeholder="留空自动用 https://open.bigmodel.cn/api/paas/v4"
           className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500"
         />
       </Field>
@@ -408,7 +405,6 @@ function VisionSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft)
         <input
           value={draft.visionModel}
           onChange={(e) => setDraft({ ...draft, visionModel: e.target.value })}
-          placeholder="留空自动用 glm-4.6v-flash"
           className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500"
         />
       </Field>
@@ -554,14 +550,15 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function SettingsEntry({ collapsed }: { collapsed?: boolean }) {
   const t = useT()
+  // 此前渲染了 <span>设置</span> + <span>{t('nav.settings')}</span> 两个文本，
+  // 左下角出现两个并排的"设置"（用户实测指出）。只保留一个并居中。
   return (
     <button
       onClick={() => setUi({ settingsOpen: true })}
-      className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hoverable"
+      className="flex w-full items-center justify-center rounded px-2 py-1.5 text-sm hoverable"
       title={t('nav.settings')}
     >
-      <span>设置</span>
-      {!collapsed && <span>{t('nav.settings')}</span>}
+      <span>{t('nav.settings')}</span>
     </button>
   )
 }

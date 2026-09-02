@@ -19,10 +19,10 @@ export const sidebarPlugin: PluginManifest = {
           <span className="truncate font-semibold">
             MOD Forge
             <span
-              title="1.0.1 预览版"
+              title="V0.1.0 预览版"
               className="ml-1.5 inline-block translate-y-[-1px] rounded border border-forge-500/50 bg-forge-500/10 px-1 py-px align-middle text-[9px] font-medium tracking-wide text-forge-300"
             >
-              v1.0.1 预览版
+              V0.1.0 预览版
             </span>
           </span>
         )}
@@ -47,7 +47,7 @@ export const sidebarPlugin: PluginManifest = {
                   setUi({ activeWorkspace: null, toast: t('toast.newChat') })
                 }}
                 title={t('nav.newChat')}
-                className={`block w-full truncate rounded px-2 py-1.5 text-left text-sm ${
+                className={`block w-full truncate rounded px-2 py-1.5 text-center text-sm ${
                   activeWorkspace === null ? 'bg-subtle text-main' : 'text-muted hoverable'
                 }`}
               >
@@ -85,11 +85,12 @@ export const sidebarPlugin: PluginManifest = {
 
       // 侧栏标题：服务端在首条消息落盘前会回退到裸 ID 前缀（实测缺陷），
       // 当前会话用本地乐观标题覆盖；server 标题正常时以 server 为准。
+      // 未取名（裸 ID/空）一律显示「新对话」占位，不用 ID 代替名称。
       const displayTitle = (h: { sessionId: string; title?: string }) => {
         const local = h.sessionId === sess.sessionId ? sess.title : null
         const serverRaw = !h.title || h.title === h.sessionId.slice(0, 8)
         if (local && serverRaw) return local
-        return h.title || h.sessionId.slice(0, 8)
+        return h.title && !serverRaw ? h.title : t('nav.newChat')
       }
 
       return (

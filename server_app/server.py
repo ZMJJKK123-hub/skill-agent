@@ -174,8 +174,8 @@ class SessionRequest(BaseModel):
     game: str = "minecraft"   # 默认 Minecraft
     loader: str = ""          # 可选：Mod Loader（如 forge / fabric）
     version: str = ""         # 可选：游戏版本（如 1.21.1）
-    model: str = "deepseek-v4-flash"          # 生成模型
-    base_url: str = "https://api.deepseek.com"  # OpenAI 兼容 API 地址
+    model: str = ""         # 生成模型（v1.0.2：无内置默认，完全由用户提供）
+    base_url: str = ""      # OpenAI 兼容 API 地址（同上）
     sandbox: str = "full-access"              # 沙箱模式：full-access | workspace-write | read-only
     vision_enabled: bool = True               # 识图模式开关（默认开启）
     vision_api_key: str = ""                  # 视觉 API Key（独立于主模型）
@@ -199,6 +199,7 @@ class TaskRequest(BaseModel):
     vision_model: Optional[str] = None     # 可选：覆盖会话视觉模型名
     auto_mode: Optional[bool] = None       # 可选：覆盖会话全自动模式开关
     search_api_key: Optional[str] = None   # 可选：覆盖会话搜索 API Key
+    images: list = []  # 随消息上传的图片（data URL，≤4 张；落盘 .chat/uploads 后传给 agent）
 
 
 class AuthRequest(BaseModel):
@@ -725,6 +726,61 @@ def reset_session(session_id: str, authorization: str = Header(default="")):
     return {"session_id": sess.id, "status": "reset"}
 
 
+# ---------- 用户上传图片（.chat/uploads，随消息传给视觉模型） ----------
+_UPLOAD_NAME_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+_UPLOAD_MAX_IMAGES = 4                     # 每条消息最多 4 张（与前端 MAX_IMAGES_PER_MESSAGE 一致）
+_UPLOAD_MAX_BYTES = 12 * 1024 * 1024       # 单张解码后上限
+_DATAURL_RE = re.compile(r"^data:image/(png|jpe?g|webp|gif);base64,(.+)$", re.S)
+
+
+def _save_upload_images(session_root: Path, images: list) -> list:
+    """把前端上传的 data URL 图片落盘 <session>/.chat/uploads/，返回文件名列表。
+
+    文件名（而非全路径）写进对话历史与消息附件字段：不泄漏服务器路径，
+    前端经 /api/session/image 取回，agent 恢复上下文时按会话根拼接。
+    """
+    names: list = []
+    if not images:
+        return names
+    uploads = session_root / ".chat" / "uploads"
+    uploads.mkdir(parents=True, exist_ok=True)
+    import base64 as _b64
+    ts = int(time.time() * 1000)
+    ext_map = {"png": "png", "jpg": "jpg", "jpeg": "jpg", "webp": "webp", "gif": "gif"}
+    for i, item in enumerate(images[:_UPLOAD_MAX_IMAGES]):
+        if not isinstance(item, str):
+            continue
+        m = _DATAURL_RE.match(item.strip())
+        if not m:
+            raise HTTPException(400, "图片格式不受支持（仅支持 png/jpeg/webp/gif）")
+        try:
+            data = _b64.b64decode(m.group(2))
+        except Exception:
+            raise HTTPException(400, "图片数据解码失败")
+        if len(data) > _UPLOAD_MAX_BYTES:
+            raise HTTPException(400, "单张图片过大（>12MB），请压缩后重试")
+        name = f"upload_{ts}_{i}.{ext_map[m.group(1).lower()]}"
+        try:
+            (uploads / name).write_bytes(data)
+        except OSError as e:
+            raise HTTPException(500, f"图片保存失败: {e}")
+        names.append(name)
+    return names
+
+
+@app.get("/api/session/image")
+def get_session_image(session_id: str, name: str, authorization: str = Header(default="")):
+    """返回会话用户上传的图片附件（历史消息回显用）。"""
+    sess = _get_session(session_id)
+    _assert_owner(sess, _auth_username(authorization))
+    if not _UPLOAD_NAME_RE.match(name):
+        raise HTTPException(400, "非法图片文件名")
+    p = sess.mod_dir.parent / ".chat" / "uploads" / name
+    if not p.is_file():
+        raise HTTPException(404, "图片不存在")
+    return FileResponse(p)
+
+
 @app.post("/api/task")
 def start_task(req: TaskRequest, authorization: str = Header(default="")):
     """为会话启动 agent 子进程（每会话一进程，天然隔离）。
@@ -742,8 +798,11 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
     _assert_owner(sess, username)
     if not (sess.api_key and sess.api_key.strip()):
         raise HTTPException(400, "API Key 为空，无法启动任务（请在设置中填写 API Key）")
-    if not req.prompt.strip() and not req.resume:
+    # 纯图片消息允许空文本（图片本身即需求）；两者皆空才拒绝
+    if not req.prompt.strip() and not req.images and not req.resume:
         raise HTTPException(400, "提示词为空，请填写内容")
+    # 上传图片先落盘（排队/恢复/新启动三条分支都要用到文件名）
+    upload_names = _save_upload_images(sess.mod_dir.parent, req.images)
 
     mode = req.mode if req.mode in ("chat", "mod") else "chat"
     # ── P1 修复①：会话模式记忆 + /mod 前缀强制 ──
@@ -786,9 +845,10 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
             # 其他进程存活时的 resume（如运行中）维持原 409 防御。
             raise HTTPException(409, "Task already running；请先暂停再继续")
         try:
-            if req.prompt.strip():
+            if req.prompt.strip() or upload_names:
                 from core.conversation import enqueue_pending
-                enqueue_pending(sess.mod_dir.parent, req.prompt)
+                enqueue_pending(sess.mod_dir.parent, req.prompt.strip() or "（图片）",
+                                images=upload_names)
         except Exception:
             raise HTTPException(500, "排队消息写入失败")
         return {"session_id": sess.id, "status": "queued", "mode": mode}
@@ -797,10 +857,11 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
     if req.resume:
         # 带 prompt 的恢复 = 暂停后强注入新消息：先写入 pending（同时落历史），
         # 恢复的 run_task 从断点加载后，agent 第一轮会 drain 到该消息作为 user 注入。
-        if req.prompt.strip():
+        if req.prompt.strip() or upload_names:
             try:
                 from core.conversation import enqueue_pending
-                enqueue_pending(sess.mod_dir.parent, req.prompt)
+                enqueue_pending(sess.mod_dir.parent, req.prompt.strip() or "（图片）",
+                                images=upload_names)
             except Exception:
                 raise HTTPException(500, "排队消息写入失败")
         # 校验断点存在（没有断点则回退普通启动，由 run_task 决定）
@@ -814,7 +875,7 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
         prompt = (
             f"你是一个 MOD 制作器。请在当前工作目录（{sess.mod_dir}）下"
             f"为游戏生成一个满足以下需求的 MOD。\n"
-            f"要求：\n{req.prompt}\n\n"
+            f"要求：\n{req.prompt.strip() or '（需求见用户上传的图片）'}\n\n"
             f"请直接创建/修改需要的所有文件，完成后汇总你创建了哪些文件。"
         )
     else:
@@ -880,7 +941,12 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
                  # 用户原始输入：mod 模式 task_prompt 会被包装成
                  # "你是一个 MOD 制作器…（C:\路径）…"，写进对话历史会污染
                  # 侧栏标题并泄漏服务器路径；run_task 优先用这条写历史。
-                 "DSH_USER_PROMPT": req.prompt,
+                 # 纯图片消息回退"（图片）"，历史里不留空气泡。
+                 "DSH_USER_PROMPT": req.prompt.strip() or ("（图片）" if upload_names else ""),
+                 # 随消息上传的图片（.chat/uploads 文件名 JSON 数组）：
+                 # run_task 写历史、agent 模型调用边界展开为 image_url 片段
+                 **({"DSH_PROMPT_IMAGES": json.dumps(upload_names, ensure_ascii=False)}
+                    if upload_names else {}),
                  # 本网站接入标记：core/config 的 chat 只读提示词据此引导
                  # 用户输入 /mod 进入制造模式，而不是把用户导去外部网页版
                  # （外部平台接入层不注入此变量，保持"去网页版"引导）。
