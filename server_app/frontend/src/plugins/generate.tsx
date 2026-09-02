@@ -18,8 +18,10 @@ function GeneratePanel() {
           </span>
         </div>
         <div className="flex justify-between">
-          <span>{t('conv.running')}</span>
-          <span className="text-faint">{elapsed ? `${elapsed}s` : '—'}</span>
+          <span>耗时</span>
+          {/* P2 修复：elapsed 只在 running 态展示——已完成会话的 elapsed 是从
+              文件时间推断的残留值，与"完成 ✓"并排显示"进行中 60s"自相矛盾（实测） */}
+          <span className="text-faint">{phase === 'running' && elapsed ? `${elapsed}s` : '—'}</span>
         </div>
         <div className="flex justify-between">
           <span>模式</span>

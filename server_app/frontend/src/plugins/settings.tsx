@@ -17,6 +17,7 @@ type Draft = {
   visionModel: string
   autoMode: boolean
   searchApiKey: string
+  providers: Provider[]
 }
 
 const VERSIONS = ['1.21.11', '1.21.10', '1.21.9']
@@ -27,16 +28,19 @@ function SettingsPanel() {
   const t = useT()
   const [section, setSection] = useState<SectionKey>('general')
 
-  // 通用配置草稿：应用前不落库
-  const { apiKey, loader, version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey } = useUi()
+  // 通用配置草稿：应用前不落库（providers 同样纳入草稿——增删改全部
+  // 只改 draft，点"应用"才生效，"取消"整体丢弃，实测缺陷 #8 的修复）
+  const { apiKey, loader, version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey, providers } = useUi()
   const [draft, setDraft] = useState({
     apiKey, loader, version, sandbox,
     visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey,
+    providers,
   })
   useEffect(() => {
     if (settingsOpen) setDraft({
       apiKey, loader, version, sandbox,
       visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey,
+      providers,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settingsOpen])
@@ -55,6 +59,7 @@ function SettingsPanel() {
       visionModel: draft.visionModel.trim(),
       autoMode: draft.autoMode,
       searchApiKey: draft.searchApiKey.trim(),
+      providers: draft.providers,
       settingsOpen: false,
     })
   }
@@ -185,11 +190,17 @@ function GeneralSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft
   )
 }
 
-function ModelsSection() {
+function ModelsSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft) => void }) {
   const t = useT()
-  const { providers } = useUi()
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ name: '', baseUrl: '', apiKey: '', model: '', protocol: 'openai' })
+  // 编辑态：editId = 正在编辑的 provider；模型 ID 以 chip 形式逐个增删
+  const [editId, setEditId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState({ name: '', baseUrl: '', apiKey: '' })
+  const [newModel, setNewModel] = useState('')
+
+  const providers = draft.providers
+  const modelsOf = (p: Provider) => p.model.split(',').map((s) => s.trim()).filter(Boolean)
 
   const save = () => {
     if (!form.name.trim() || !form.model.trim()) return
@@ -201,31 +212,125 @@ function ModelsSection() {
       model: form.model.trim(),
       protocol: form.protocol,
     }
-    setUi({ providers: [...providers, p] })
+    setDraft({ ...draft, providers: [...providers, p] })
     setForm({ name: '', baseUrl: '', apiKey: '', model: '', protocol: 'openai' })
     setShowForm(false)
   }
-  const remove = (id: string) => setUi({ providers: providers.filter((p) => p.id !== id) })
+  const remove = (id: string) => setDraft({ ...draft, providers: providers.filter((p) => p.id !== id) })
+
+  const startEdit = (p: Provider) => {
+    setEditId(p.id)
+    setEditForm({ name: p.name, baseUrl: p.baseUrl, apiKey: p.apiKey })
+    setNewModel('')
+  }
+  const applyEdit = () => {
+    if (!editId) return
+    setDraft({
+      ...draft,
+      providers: providers.map((p) =>
+        p.id === editId ? { ...p, name: editForm.name.trim(), baseUrl: editForm.baseUrl.trim(), apiKey: editForm.apiKey.trim() } : p,
+      ),
+    })
+    setEditId(null)
+  }
+  const addModel = (pid: string) => {
+    const mid = newModel.trim()
+    if (!mid) return
+    setDraft({
+      ...draft,
+      providers: providers.map((p) => {
+        if (p.id !== pid) return p
+        const ms = modelsOf(p)
+        if (ms.includes(mid)) return p
+        return { ...p, model: [...ms, mid].join(',') }
+      }),
+    })
+    setNewModel('')
+  }
+  const removeModel = (pid: string, mid: string) => {
+    setDraft({
+      ...draft,
+      providers: providers.map((p) => {
+        if (p.id !== pid) return p
+        const ms = modelsOf(p).filter((m) => m !== mid)
+        if (ms.length === 0) return p // 至少保留一个模型 ID
+        return { ...p, model: ms.join(',') }
+      }),
+    })
+  }
 
   return (
     <div>
-      <h2 className="mb-3 text-lg font-semibold">{t('models.title')}</h2>
+      <h2 className="mb-1 text-lg font-semibold">{t('models.title')}</h2>
+      <p className="mb-3 text-xs text-faint">提供方的增删改与模型 ID 管理均为草稿：点右下角「应用」保存，「取消」丢弃全部改动。</p>
       <div className="mb-2 rounded-md border border-forge-500/40 bg-forge-500/10 px-3 py-2 text-sm">
         <div className="font-medium text-forge-300">DeepSeek</div>
         <div className="text-xs text-faint">deepseek-v4-flash / deepseek-v4-pro · 官方 api.deepseek.com</div>
       </div>
       {providers.length === 0 && <div className="mb-2 px-1 text-xs text-faint">{t('models.empty')}</div>}
-      {providers.map((p) => (
-        <div key={p.id} className="mb-2 flex items-center justify-between rounded-md border border-line px-3 py-2 text-sm">
-          <div>
-            <div className="font-medium">{p.name}</div>
-            <div className="text-xs text-faint">{p.model}</div>
+      {providers.map((p) =>
+        editId === p.id ? (
+          <div key={p.id} className="mb-2 space-y-2 rounded-md border border-forge-500/40 bg-forge-500/5 p-3 text-sm">
+            <div className="text-xs font-medium text-forge-300">编辑提供方</div>
+            <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} placeholder={t('models.name')} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500" />
+            <input value={editForm.baseUrl} onChange={(e) => setEditForm({ ...editForm, baseUrl: e.target.value })} placeholder={t('models.baseUrl')} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500" />
+            <input value={editForm.apiKey} onChange={(e) => setEditForm({ ...editForm, apiKey: e.target.value })} type="password" placeholder={t('models.apiKey')} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500" />
+            <div>
+              <div className="mb-1 text-xs text-faint">模型 ID（点 ✕ 移除；至少保留一个）</div>
+              <div className="flex flex-wrap gap-1.5">
+                {modelsOf(p).map((mid) => (
+                  <span key={mid} className="flex items-center gap-1 rounded-md border border-line bg-field px-2 py-1 text-xs">
+                    {mid}
+                    <button onClick={() => removeModel(p.id, mid)} title="移除此模型 ID" className="text-faint hover:text-red-400">
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="mt-2 flex gap-2">
+                <input
+                  value={newModel}
+                  onChange={(e) => setNewModel(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      addModel(p.id)
+                    }
+                  }}
+                  placeholder="输入新的模型 ID 后回车，如 glm-4.7-flash"
+                  className="flex-1 rounded-md border border-line bg-field px-3 py-1.5 text-xs outline-none focus:border-forge-500"
+                />
+                <button onClick={() => addModel(p.id)} className="rounded-md border border-forge-500/40 px-3 py-1.5 text-xs text-forge-400 hover:bg-forge-500/10">
+                  ＋ 添加
+                </button>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={applyEdit} className="rounded-md bg-forge-500 px-3 py-1.5 text-sm font-medium text-ink-950 hover:bg-forge-400">
+                保存修改
+              </button>
+              <button onClick={() => setEditId(null)} className="hoverable rounded-md border border-line px-3 py-1.5 text-sm">
+                {t('settings.cancel')}
+              </button>
+            </div>
           </div>
-          <button onClick={() => remove(p.id)} className="hoverable rounded px-2 py-1 text-xs text-muted">
-            {t('models.remove')}
-          </button>
-        </div>
-      ))}
+        ) : (
+          <div key={p.id} className="mb-2 flex items-center justify-between rounded-md border border-line px-3 py-2 text-sm">
+            <div className="min-w-0">
+              <div className="font-medium">{p.name}</div>
+              <div className="truncate text-xs text-faint">{modelsOf(p).join(' / ')}</div>
+            </div>
+            <div className="flex shrink-0 gap-1">
+              <button onClick={() => startEdit(p)} className="hoverable rounded px-2 py-1 text-xs text-muted">
+                编辑
+              </button>
+              <button onClick={() => remove(p.id)} className="hoverable rounded px-2 py-1 text-xs text-muted">
+                {t('models.remove')}
+              </button>
+            </div>
+          </div>
+        ),
+      )}
 
       {showForm ? (
         <div className="mt-2 space-y-2 rounded-md border border-line p-3">
@@ -237,7 +342,7 @@ function ModelsSection() {
           </div>
           <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={t('models.name')} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none" />
           <input value={form.baseUrl} onChange={(e) => setForm({ ...form, baseUrl: e.target.value })} placeholder={t('models.baseUrl')} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none" />
-          <input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder={t('models.model') + '（可逗号分隔多个）'} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none" />
+          <input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder={t('models.model') + '（可逗号分隔多个，保存后可在编辑里逐个增删）'} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none" />
           <input value={form.apiKey} onChange={(e) => setForm({ ...form, apiKey: e.target.value })} type="password" placeholder={t('models.apiKey')} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none" />
           <div className="flex gap-2">
             <button onClick={save} className="rounded-md bg-forge-500 px-3 py-1.5 text-sm font-medium text-ink-950 hover:bg-forge-400">
@@ -315,7 +420,9 @@ function PluginsSection() {
       <h2 className="mb-3 text-lg font-semibold">{t('plugins.title')}</h2>
       {composition.map((p) => {
         const disabled = disabledPlugins.includes(p.id)
-        const locked = p.id === 'modforge-settings'
+        // settings 与 sidebar 均为常驻插件：禁用 sidebar 会连设置入口一起藏掉，
+        // 用户没有任何 UI 路径恢复（实测自锁缺陷），与 settings 一同锁定
+        const locked = p.id === 'modforge-settings' || p.id === 'modforge-sidebar'
         return (
           <div key={p.id} className="mb-2 flex items-center justify-between rounded-md border border-line px-3 py-2 text-sm">
             <span>
@@ -411,7 +518,7 @@ function SectionContent({
     case 'general':
       return <GeneralSection draft={draft} setDraft={setDraft} />
     case 'models':
-      return <ModelsSection />
+      return <ModelsSection draft={draft} setDraft={setDraft} />
     case 'vision':
       return <VisionSection draft={draft} setDraft={setDraft} />
     case 'plugins':

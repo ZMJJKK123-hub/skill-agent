@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import * as api from './api'
 import type { EventItem, HistoryEntry } from './api'
+import { getUi } from './store'
 
 // 会话/生成编排：一个对话 = 一个工作区文件夹（后端 /api/session 创建）
 export interface GenSettings {
@@ -246,7 +247,7 @@ async function _pollOnce(sid: string) {
     if (ev.events.length > 0) {
       setState({ events: [...state.events, ...ev.events], cursor: ev.cursor })
     }
-    const st = await api.getStatus(sid)
+    const st = await api.getStatus(sid, getUi().apiKey)
     if (state.sessionId !== sid) return
     setState({
       elapsed: st.elapsed,
@@ -266,6 +267,17 @@ async function _pollOnce(sid: string) {
           setState({ chatMessages: [...state.chatMessages, { role: 'assistant', content: reply }] })
         }
       }
+    }
+    // mod 模式：完成时从后端拉对话历史，取最终总结渲染成气泡
+    // （run_task 收尾把 agent 最终回复写入 conversation.jsonl；运行中不轮询它）
+    if (st.finished && state.mode === 'mod') {
+      const last = state.chatMessages[state.chatMessages.length - 1]
+      if (!last || last.role !== 'assistant') {
+        void loadConversation(sid)
+      }
+      // 完成时刷新侧栏：新会话标题在服务端落盘后这里才拿得到正确值
+      // （此前发起瞬间 loadHistory 拿到的是裸 ID 前缀且不再更新）
+      void loadHistory()
     }
     // 当前轮正常跑完 + 有排队消息 → 自动续跑处理排队消息
     if (st.finished && !st.paused && (st.pending ?? 0) > 0) {
@@ -322,7 +334,16 @@ function extractFinalReply(logTail: string): string | null {
 export async function loadConversation(sessionId: string) {
   try {
     const { messages, mode } = await api.getConversation(sessionId)
-    setState({ chatMessages: messages, mode: mode ?? state.mode })
+    // mod 模式：从历史恢复用户 prompt 气泡——此前 prompts 被清空后无人恢复，
+    // 打开历史只见工具流水、看不到当时的 MOD 需求（实测缺陷）
+    const userPrompts = mode === 'mod'
+      ? messages.filter((m) => m.role === 'user').map((m) => m.content)
+      : []
+    setState({
+      chatMessages: messages,
+      mode: mode ?? state.mode,
+      prompts: userPrompts.length > 0 ? userPrompts : state.prompts,
+    })
   } catch {
     /* 未登录/无历史时忽略 */
   }

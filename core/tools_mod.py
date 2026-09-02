@@ -31,10 +31,16 @@ def _build_source_zip() -> str:
     """
     import zipfile
 
-    base = worktree_manager.resolve_dir() if worktree_manager else os.getcwd()
+    # base 必须是 Path：resolve_dir()/os.getcwd() 都返回 str，
+    # 直接 .parent 会抛 'str' object has no attribute 'parent'
+    # （此前 zip 预生成一直在收尾时静默失败，mod.zip 从未预生成）
+    from pathlib import Path as _Path
+    base = _Path(worktree_manager.resolve_dir() if worktree_manager else os.getcwd())
     zip_path = base.parent / "mod.zip"  # <session>/mod.zip（与 server SESSIONS_DIR 布局一致）
     skip = {"build", "dist", ".worktrees", ".team", ".tasks",
-            ".transcripts", "__pycache__", ".git", "mc_java_sources"}
+            ".transcripts", "__pycache__", ".git", "mc_java_sources",
+            # run/ 是游戏运行目录（存档/日志/缓存，几十 MB 且非源码），不打进 zip
+            "run", "run-data", ".gradle", ".chat", ".screenshots", ".spill"}
     try:
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
             if os.path.isdir(base):

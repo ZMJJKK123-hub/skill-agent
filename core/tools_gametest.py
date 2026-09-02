@@ -84,13 +84,18 @@ def parse_gametest_results(lines: int = 200, log_path: str = None) -> str:
         for e_ in errors[-20:]:
             out.append(f"  - {e_[:300]}")
 
-    # Determine overall verdict
-    if failed or errors:
+    # Determine overall verdict: 显式通过优先。只有失败条目才判 FAIL；
+    # passed 与 error 并存时（数据包解析 ERROR + 测试全过）按 PASS 算，
+    # 否则配方格式类噪音会把绿灯判成红灯（红宝石剑会话实测误报）。
+    if failed:
         out.append("")
         out.append("RESULT: FAIL")
     elif passed:
         out.append("")
         out.append("RESULT: PASS")
+    elif errors:
+        out.append("")
+        out.append("RESULT: FAIL")
     else:
         out.append("")
         out.append("RESULT: UNKNOWN (no clear pass/fail markers found; check full log)")

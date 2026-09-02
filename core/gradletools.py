@@ -209,10 +209,18 @@ def run_test_data(base, timeout=120):
 def run_test_gametest(base, timeout=180):
     res = _run_gradle("runTestGameTestServer", timeout, base)
     txt = res.get("raw", "")
+    # 判定顺序：显式通过标记最优先。数据包解析错误（如配方旧格式
+    # "Failed to parse"）或 DISTXFORM 等 ERROR 行不是 GameTest 失败，
+    # 不能盖过 "All N required tests passed"（红宝石剑会话曾因此连续
+    # 误报 FAIL，白跑多轮 build+GameTest）。
+    if re.search(r"All [1-9]\d* required tests passed", txt):
+        return _ok(res, "TestGameTestServer OK (all required tests passed)")
     if res["exit_code"] != 0 and "BUILD SUCCESSFUL" not in txt and "Done (" not in txt:
         t, m, l = _dev_err(res)
         return _fail(res, "TestGameTestServer FAILED", t, m, l)
-    if re.search(r"FAILED|Failed to|Exception", txt):
+    # 只认 GameTest 自己报告的失败；裸 "Failed to"/"Exception" 会命中
+    # 非测试噪音（数据包解析、dist 清理器日志），造成假阴性。
+    if re.search(r"required tests failed|tests failed|FAILED!", txt):
         return _fail(res, "TestGameTestServer: some tests failed", "GameTestFailure", txt[-800:], "")
     return _ok(res, "TestGameTestServer OK (src/test gametests passed)")
 

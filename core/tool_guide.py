@@ -82,7 +82,7 @@ dedicated tool; use bash only when no tool exists.
 - restore_snapshot: hard reset to a previous snapshot (DESTRUCTIVE - only when you are sure).
 
 ### In-process UI automation (bridge_command — PREFERRED, no focus stealing)
-- Setup (2 steps): copy `starter/bridge/AgentBridge.java` to `src/main/java/com/agentbridge/AgentBridge.java` (MAIN sources — test sources load in a duplicate classloader and break), and add `new com.agentbridge.AgentBridge();` at the end of your main @Mod constructor (direct call, same sourceset; it self-disables in production via a build.gradle check). Start the client with `start_mc_client`, wait for readiness with wait_for_log pattern '[AgentBridge] armed|Sound engine started'.
+- Setup (3 steps): copy `starter/bridge/AgentBridge.java` to `src/main/java/com/agentbridge/AgentBridge.java` (MAIN sources — test sources load in a duplicate classloader and break), and at the end of your main @Mod constructor add EXACTLY `if (net.minecraftforge.fml.loading.FMLEnvironment.dist.isClient()) { new com.agentbridge.AgentBridge(); }` — the dist guard is MANDATORY: without it runTestGameTestServer crashes with "Attempted to load class ... for invalid dist DEDICATED_SERVER" (DISTXFORM); it self-disables in production via a build.gradle check. Start the client with `start_mc_client`, wait for readiness with wait_for_log pattern '[AgentBridge] armed|Sound engine started'.
 - Then drive the UI as CODE, no screenshots needed to decide:
   1) `bridge_command op=screen_info` -> screen class + widgets [{index,label,active,editable}]. Read labels to decide.
   2) `bridge_command op=click index=<n>` -> invokes the button's onPress handler directly (background window OK).

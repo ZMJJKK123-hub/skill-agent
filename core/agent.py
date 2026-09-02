@@ -69,12 +69,14 @@ def agent_loop(messages: list) -> str:
     _pre_write_reads = 0
     _pre_write_warned = False
     _starter_auto_written = False
+    _skeleton_written = False   # 写前预算终局：最小骨架是否已自动写入
     _write_strikes = 0
     _post_write_research = 0
     _post_write_strikes = 0
     _no_tool_strikes = 0
     _gametest_rejects = 0  # GameTest 出口闸连续打回计数（≥3 且 dist 有产物 → 强制收尾）
     _empty_strikes = 0     # 连续空响应计数（≥5 压缩，≥8 强制收尾）
+    _gate_round = None     # 完成闸首次触发的轮号（宽限计数基准）
 
     #检测是否有自己写过的代码 还是完全没动过模版代码
     def _has_custom_java():
@@ -134,6 +136,22 @@ def agent_loop(messages: list) -> str:
             _save_session_log(_session_log)
             if IS_MOD_MODE:
                 supervisor_manager.stop()
+                # 强制收尾路径补齐产物（与自然收尾对齐）：
+                # 宽限耗尽直接 return 时此前跳过了 jar 重建与 zip 预生成，
+                # 用户点下载要现场打包（d70b3f40 实测 zip 未生成）。
+                try:
+                    import os as _os
+                    if (_os.path.exists("gradlew.bat") or _os.path.exists("gradlew")) and _os.path.exists("build.gradle"):
+                        print("[run_task] 开始构建 mod jar（首次构建需数分钟）...", flush=True)
+                        from .tools import _forge_build_jar
+                        print(f"[run_task] {_forge_build_jar({})[:2000]}", flush=True)
+                except Exception as _e:
+                    logger.info(f"强制收尾构建跳过: {_e}")
+                try:
+                    from .tools import _build_source_zip
+                    print(f"[run_task] {_build_source_zip()}", flush=True)
+                except Exception as _e:
+                    logger.info(f"强制收尾 zip 预生成跳过: {_e}")
             return _force_final_msg
 
         # ── Layer 0c2: 断点保存 + 运行中插话注入（暂停/继续 与 queue 支持）──
@@ -181,6 +199,11 @@ def agent_loop(messages: list) -> str:
                 "（mod 工程根目录的事实来源，优先级高于技能描述）。读完按其中适用条目执行，"
                 "尤其注意：GameTest 自检必须用 run_test_gametest（扫描 src/test/java），"
                 "禁止用 run_game_test_server 做自检。未读取前不要写任何代码/资源。\n"
+                "【写前查坑，强制】写任何 Java 文件之前，必须先用一次 grep 在 "
+                "docs/agent/ERROR_LIST.md 里检索你即将用到的注册常量与关键 API 名"
+                "（例如 BLOCK_ENTITY_TYPE、blit、makeMockPlayer、useWithoutItem、"
+                "Registries 常量、MenuScreens 等），已有条目直接照修复写，不要等编译报错才查——"
+                "c43424752e7d 实测：同族坑已入库仍被写出，三连 FAIL 才修完。\n"
                 "如果本 MOD 涉及自定义实体、刷怪蛋或物品图标，你还必须 run_read "
                 "C:/Users/59639/Desktop/skill-agent/docs/agent/CLIENT_VERIFY.md "
                 "（客户端验证指导，服务器/GameTest 发现不了客户端渲染与图标问题），"
@@ -653,12 +676,14 @@ def agent_loop(messages: list) -> str:
         _step_machine.end_step(reason="completed")
 
         # 完成信号：dist 出现 jar 且 GameTest 已通过才算可收尾；只出 jar 不算完成。
+        # 匹配方式是 startswith：因此 run_mod_test_cycle 特意把 "RESULT: PASS"
+        # 放在输出第一行让闸看得见；"[gametest]" 前缀不能作为通过标记
+        # （run_game_test_server 无论成败都以它开头，会把闸带偏）。
         try:
             _gt_pass_markers = (
                 "All required tests passed",
                 "GAME TESTS COMPLETE",
                 "RESULT: PASS",
-                "[gametest]",
             )
             _gt_passed = any(
                 str(m.get("content", "")).lstrip().startswith(_gt_pass_markers)
@@ -670,11 +695,33 @@ def agent_loop(messages: list) -> str:
                     if f.endswith(".jar") and "examplemod" not in f
                 ]
                 if _dist_jars:
-                    _force_final_msg = (
-                        f"MOD jar exists: dist/{_dist_jars[0]} and GameTest passed. Task is complete; stop calling tools and summarize."
-                    )
-                    logger.warning(_force_final_msg)
-                    continue
+                    # 首次达标不立即掐断：注入收尾提醒 + 宽限窗口。
+                    # 含自定义实体/物品图标 的 MOD 还需按 CLIENT_VERIFY.md 做
+                    # 客户端视觉验证（718d315bec0b：模型刚装好 AgentBridge
+                    # 准备验证图标就被闸掐掉，验证没做成）；宽限耗尽才强制收尾。
+                    # 注意：除"强制收尾"分支外都落空（不 continue），让本轮后续
+                    # 守卫（防死循环计数 / compact / concluded）照常执行——
+                    # 宽限分支里 continue 会跳过它们，等于宽限期内失去全部保险。
+                    if _gate_round is None:
+                        _gate_round = _round_idx
+                        _replace_runtime_slot(messages, "completion-gate", (
+                            "<completion-gate> build + GameTest 已达标"
+                            f"（dist/{_dist_jars[0]} 存在且测试通过）。\n"
+                            "若本 MOD 含自定义实体、刷怪蛋或物品图标，先按 docs/agent/CLIENT_VERIFY.md "
+                            "完成客户端视觉验证（识图开启时 screenshot + analyze_image 即可）。\n"
+                            "验证完成或不需要验证时：停止调用工具，下一轮直接输出面向用户的最终总结——"
+                            "创建/修改了哪些文件、MOD 功能与关键数值、合成配方、安装方法、验证结论。"
+                            "</completion-gate>"
+                        ))
+                        logger.info(f"completion-gate 首次触发（round {_round_idx}），注入收尾提醒，宽限 {COMPLETION_GRACE_ROUNDS} 轮")
+                    elif _round_idx - _gate_round >= COMPLETION_GRACE_ROUNDS:
+                        _force_final_msg = _summarize_completion(messages, (
+                            f"MOD 完成：dist/{_dist_jars[0]} 已生成且 GameTest 通过。"
+                            f"（总结生成失败，此为系统回退文本；详细过程见运行日志。）"
+                        ))
+                        logger.warning("completion-gate 宽限耗尽，强制收尾")
+                        continue
+                    # 宽限期内：不干预，正常走完本轮守卫（模型做验证或自行总结）
         except Exception:
             pass
 
@@ -699,6 +746,30 @@ def agent_loop(messages: list) -> str:
                     ),
                 })
                 continue
+            # 终局手段（缺陷1）：新 modid 没有 starter 可匹配时，软提醒会无限循环
+            # （c43424752e7d 连续 4 次 write-first-stop 无效）。第二次超预算直接写
+            # 最小可编译骨架，把 agent 推进到写/改/编译阶段，并视为已过"写前"关卡。
+            if _write_strikes >= 2 and not _skeleton_written:
+                _sk_modid = _auto_write_skeleton(messages)
+                if _sk_modid:
+                    _skeleton_written = True
+                    _wrote_file = True  # 切换到写后预算，写前 nag 到此为止
+                    _pre_write_warned = False
+                    logger.warning(f"写前预算终局：已写入 modid={_sk_modid} 最小骨架")
+                    messages.append({
+                        "role": "user",
+                        "content": (
+                            f"<auto-skeleton> 你已多次超预算未写码，系统已在 "
+                            f"src/main/java/com/{_sk_modid}/ 写入最小可编译主类骨架"
+                            f"（modid={_sk_modid}，1.21.11 注册写法已就位）。"
+                            f"立刻基于它继续：①按命名规则同步 mods.toml 的 modId、"
+                            f"build.gradle 的 group/archivesName、settings.gradle 的 "
+                            f"rootProject.name；②在其上扩展物品/方块/BlockEntity 等注册与逻辑。"
+                            f"本轮之后禁止再 read/grep starter 与 mc_java_sources，"
+                            f"下一轮必须是 write_file 或 edit_file。</auto-skeleton>"
+                        ),
+                    })
+                    continue
             logger.warning(f"写前研究超预算（{_pre_write_reads}），强制提醒写文件")
             messages.append({
                 "role": "user",
@@ -779,12 +850,14 @@ def agent_loop(messages: list) -> str:
             continue  # 跳过 nag reminder，直接进入下一轮
 
         # ── Nag Reminder：连续 3 轮没更新 todo 就注入提醒 ──
+        # 仅 mod 模式：chat 咨询里"一句话问答 + 两次查证"也会触发催促，
+        # 是纯噪音（cbc300ed23b3 实测模型还要分心解释为什么不更新 todo）。
         if used_todo:
             rounds_since_todo = 0
         else:
             rounds_since_todo += 1
 
-        if rounds_since_todo >= 3:
+        if IS_MOD_MODE and rounds_since_todo >= 3:
             logger.info("触发 nag reminder：连续 3 轮未更新 todo")
             _replace_runtime_slot(
                 messages,
@@ -808,9 +881,41 @@ def _messages_hint_mod(messages: list) -> bool:
 
 
 # 防死循环：同一 agent_loop 内允许的最大工具调用轮次（每轮可能含多个 tool_call）
-MAX_TOOL_ROUNDS = int(os.environ.get("DSH_MAX_TOOL_ROUNDS", "100"))
-# 总轮数硬上限（含纯文本重试轮）：出口闸失明时的最后防线
-MAX_TOTAL_ROUNDS = int(os.environ.get("DSH_MAX_TOTAL_ROUNDS", "150"))
+# 默认 200：含真实客户端验证的任务（建世界/bridge 逐屏点击）实测 100 轮不够，
+# 20:41 ruby-sword 会话在验证中途撞上限被掐断。可用 DSH_MAX_TOOL_ROUNDS 覆盖。
+MAX_TOOL_ROUNDS = int(os.environ.get("DSH_MAX_TOOL_ROUNDS", "200"))
+# 总轮数硬上限（含纯文本重试轮）：出口闸失明时的最后防线，保持 1.5 倍余量
+MAX_TOTAL_ROUNDS = int(os.environ.get("DSH_MAX_TOTAL_ROUNDS", "300"))
+# 完成闸宽限轮数：达标后先注入收尾提醒（含客户端验证指引），超过该轮数仍
+# 未自然收尾才强制结束并生成总结。默认 25：覆盖一次完整客户端验证
+# （启动客户端→建世界→give→截图→识图约 10~20 轮）。防"绿灯即掐"也防无限验证循环。
+COMPLETION_GRACE_ROUNDS = int(os.environ.get("DSH_COMPLETION_GRACE_ROUNDS", "25"))
+
+
+def _summarize_completion(messages: list, fallback: str) -> str:
+    """完成闸收尾：让模型做一次无工具的最终总结作为用户可见回复。
+
+    直接返回闸的系统文本会让"最终回复"变成内部串（718d315bec0b 实测：
+    conversation.jsonl 里的 assistant 消息是 "MOD jar exists... stop calling
+    tools and summarize"，用户看到完成却没有任何说明）。失败/空回复时回退。
+    """
+    try:
+        msgs = list(messages) + [{"role": "user", "content": (
+            "[system] 任务完成判定已满足（dist jar 存在且 GameTest 通过）。"
+            "请立即输出面向用户的最终总结，不要再调用任何工具。内容包含："
+            "创建/修改了哪些文件、MOD 功能与关键数值、合成配方、"
+            "如何安装使用、已完成的验证。")}]
+        resp = client.chat.completions.create(
+            model=MODEL,
+            messages=[{"role": "system", "content": config.SYSTEM}] + msgs,
+            max_tokens=4000,
+        )
+        text = resp.choices[0].message.content
+        if text and text.strip():
+            return text.strip()
+    except Exception as e:
+        logger.warning(f"完成总结调用失败，回退闸文本: {e}")
+    return fallback
 
 # 超大工具结果阈值：超过则落盘 spill 文件，模型只看到前后预览
 MAX_INLINE_TOOL_CHARS = 3000
@@ -847,7 +952,10 @@ def _maybe_spill(name: str, output: str) -> str:
     # Port of dsh spill-policy: skip read_file to avoid read -> spill -> read again loop.
     # 完成判定关键工具同样豁免：出口闸依赖其输出中的 GameTest 通过标记，
     # spill 预览可能截掉标记导致闸失明、无限打回（webserv_amber 实测）。
-    if name in ("read_file", "run_test_gametest", "run_mod_test_cycle",
+    # load_skill 必须豁免：技能正文被 spill 截成前 1200+后 1200 的拼接预览后，
+    # move_skills_to_end 会把这份残片当成"技能全文"滚进 <active-skills>，
+    # 上下文里永远缺失技能中段（cbc300ed23b3 实测模型抱怨 skill is truncated）。
+    if name in ("read_file", "load_skill", "run_test_gametest", "run_mod_test_cycle",
                 "run_game_test_server", "parse_gametest_results",
                 "read_game_test_log", "build_mod_jar_forge"):
         return output
@@ -950,6 +1058,80 @@ def _auto_write_starter(messages: list) -> bool:
     except Exception:
         return False
     return False
+
+
+def _infer_modid(messages: list) -> str | None:
+    """从用户消息推断 modid：显式 modid=xxx 优先，否则取全角括号里的英文名压成小写连写。"""
+    import re as _re
+    for m in messages:
+        if m.get("role") != "user":
+            continue
+        c = m.get("content", "") if isinstance(m.get("content"), str) else ""
+        m2 = _re.search(r"modid[ =:]+([a-z0-9_\-]{2,32})", c, _re.I)
+        if m2:
+            return m2.group(1).lower()
+    for m in messages:
+        if m.get("role") != "user":
+            continue
+        c = m.get("content", "") if isinstance(m.get("content"), str) else ""
+        m3 = _re.search(r"[（(]([A-Za-z][A-Za-z0-9 ]{2,31})[）)]", c)
+        if m3:
+            modid = _re.sub(r"[^a-z0-9_]", "", m3.group(1).lower())
+            if 3 <= len(modid) <= 32:
+                return modid
+    return None
+
+
+def _auto_write_skeleton(messages: list) -> str | None:
+    """写前预算的终局手段：starter 匹配失败时，直接生成最小可编译主类骨架。
+
+    背景（c43424752e7d 实测）：新 modid 任务没有可匹配的 starter，
+    _auto_write_starter 永远 False → 守卫退化成无限 <write-first-stop> 软提醒
+    （连续 4 次无效，监管线程还专门写信箱）。本函数从用户需求推断 modid，
+    写出符合本模板 1.21.11 硬事实（FMLJavaModLoadingContext.get().getModBusGroup()）
+    的最小主类，把 agent 从"只读绕圈"直接推进到写/改/编译阶段。
+    返回写入的 modid；无法推断或已存在时返回 None（保持原软提醒行为）。
+    """
+    modid = _infer_modid(messages)
+    if not modid:
+        return None
+    cls = modid.title().replace("_", "").replace("-", "") + "Mod"
+    pkg_dir = os.path.join(os.getcwd(), "src", "main", "java", "com", modid)
+    dest = os.path.join(pkg_dir, f"{cls}.java")
+    src_root = os.path.join(os.getcwd(), "src", "main", "java")
+    # 已有任何非模板 Java（含骨架自身）都不再写
+    def _is_template(p):
+        parts = [x.lower() for x in p.parts]
+        return "com" in parts and "example" in parts and "examplemod" in parts
+    from pathlib import Path as _P
+    if any(p.suffix == ".java" and not _is_template(p) for p in _P(src_root).rglob("*.java")):
+        return None
+    try:
+        os.makedirs(pkg_dir, exist_ok=True)
+        with open(dest, "w", encoding="utf-8") as f:
+            f.write(
+                f"package com.{modid};\n\n"
+                f"import net.minecraftforge.fml.common.Mod;\n"
+                f"import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;\n"
+                f"import net.minecraftforge.registries.DeferredRegister;\n"
+                f"import net.minecraftforge.registries.ForgeRegistries;\n\n"
+                f"@Mod({cls}.MODID)\n"
+                f"public class {cls} {{\n"
+                f"    public static final String MODID = \"{modid}\";\n\n"
+                f"    // 可在此扩展各注册表（物品/方块/BlockEntity 等），需要再加\n"
+                f"    public static final DeferredRegister<net.minecraft.world.item.Item> ITEMS =\n"
+                f"            DeferredRegister.create(ForgeRegistries.ITEMS, MODID);\n\n"
+                f"    public {cls}() {{\n"
+                f"        // 1.21.11 硬事实：注册挂 getModBusGroup()，不要写 IEventBus/getModEventBus\n"
+                f"        ITEMS.register(FMLJavaModLoadingContext.get().getModBusGroup());\n"
+                f"    }}\n"
+                f"}}\n"
+            )
+        logger.warning(f"auto-wrote minimal mod skeleton: {dest} (modid={modid})")
+        return modid
+    except Exception as e:
+        logger.warning(f"auto_write_skeleton 失败: {e}")
+        return None
 
 
 def _is_context_overflow(exc: Exception) -> bool:

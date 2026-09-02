@@ -78,7 +78,7 @@ function loadState(): UiState {
     providers: [],
     disabledPlugins: [],
     toast: null,
-    visionEnabled: false,
+    visionEnabled: true,
     visionApiKey: '',
     visionBaseUrl: '',
     visionModel: '',
@@ -89,8 +89,9 @@ function loadState(): UiState {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const loaded = { ...base, ...(JSON.parse(raw) as Partial<UiState>) }
-      // 设置插件永远启用：清掉历史上可能被误关的持久化状态
-      loaded.disabledPlugins = (loaded.disabledPlugins || []).filter((p) => p !== 'modforge-settings')
+      // 设置插件永远启用：清掉历史上可能被误关的持久化状态（sidebar 同理——
+      // 禁用 sidebar 会藏掉设置入口造成自锁，实测缺陷 #9）
+      loaded.disabledPlugins = (loaded.disabledPlugins || []).filter((p) => p !== 'modforge-settings' && p !== 'modforge-sidebar')
       // 模型迁移：持久化的模型既不是官方 id、也不在任何自定义 provider 里
       // （如已下线的 DeepSeek-V4-Flash-0731）→ 回退官方默认，避免下拉框空值
       if (loaded.model && !OFFICIAL_MODELS.includes(loaded.model)) {
@@ -98,6 +99,12 @@ function loadState(): UiState {
           p.model.split(',').map((s) => s.trim()).includes(loaded.model!),
         )
         if (!known) loaded.model = OFFICIAL_MODEL
+      }
+      // 一次性迁移：识图模式改为默认开启（红宝石剑会话因旧默认 false 导致
+      // analyze_image 全部失败、被迫绕远路）。只翻转一次，之后的开关尊重用户选择。
+      if (!localStorage.getItem('modforge_vision_default_on')) {
+        localStorage.setItem('modforge_vision_default_on', '1')
+        loaded.visionEnabled = true
       }
       return loaded
     }

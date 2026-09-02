@@ -69,6 +69,9 @@ class Session:
         self.game = game          # 目标游戏（重置时重建骨架用）
         self.loader = loader      # 加载器（如 forge）
         self.version = version    # 版本（如 1.21.1）
+        # 会话运行模式（chat | mod）：P1 修复新增——mod 会话完成后的裸消息
+        # 沿用 mod，防止被降级成只读咨询。持久化在 <session>/mode.txt。
+        self.mode = "chat"
         self.model = model        # 生成用的模型名（如 deepseek-v4-flash / 自定义 provider 的模型）
         self.base_url = base_url  # 生成用的 API base_url（OpenAI 兼容）
         self.sandbox = sandbox    # 会话沙箱模式：full-access | workspace-write | read-only
@@ -745,6 +748,31 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
         raise HTTPException(400, "提示词为空，请填写内容")
 
     mode = req.mode if req.mode in ("chat", "mod") else "chat"
+    # ── P1 修复①：会话模式记忆 + /mod 前缀强制 ──
+    # 问题（d70b3f408f53 实测）：mod 会话完成后用户直接说"把生命值改成 30"，
+    # 前端固定以 chat 模式发送 → daemon 被以只读模式重启 → 之后连 /mod 前缀
+    # 也只排队进这个 chat daemon，会话被锁死在只读。修复三层：
+    #   ① 会话曾以 mod 跑过（mode.txt 落盘）→ 后续普通消息默认沿用 mod；
+    #   ② prompt 以 /mod 开头 → 无论请求声明什么 mode 都强制 mod；
+    #   ③ 排队/续跑同样走这套推断（下方 enqueue 分支也用 session_mode）。
+    mode_file = sess.mod_dir.parent / "mode.txt"
+    if mode_file.exists():
+        try:
+            persisted = mode_file.read_text(encoding="utf-8").strip()
+            if persisted in ("chat", "mod"):
+                sess.mode = persisted
+        except OSError:
+            pass
+    if req.prompt.strip().lower().startswith("/mod"):
+        mode = "mod"
+        sess.mode = "mod"
+    elif sess.mode == "mod" and mode == "chat" and (sess.mod_dir.exists() and any(sess.mod_dir.iterdir())):
+        # 会话是 mod 会话且工作区在 → 沿用 mod（裸消息默认迭代修改）
+        mode = "mod"
+    try:
+        mode_file.write_text(mode, encoding="utf-8")
+    except OSError:
+        pass
     # mod 模式要求 mod/ 已复制模板（/api/session/mod 调用过）
     if mode == "mod" and not (sess.mod_dir.exists() and any(sess.mod_dir.iterdir())):
         raise HTTPException(400, "MOD 工作区尚未准备：请先通过 /mod 触发模板复制")
@@ -926,11 +954,18 @@ def get_session(session_id: str, authorization: str = Header(default="")):
 
 
 @app.get("/api/status")
-def get_status(session_id: str, authorization: str = Header(default="")):
-    """返回会话是否运行中 + 日志尾部（前端轮询展示进度）。"""
+def get_status(session_id: str, api_key: str = "", authorization: str = Header(default="")):
+    """返回会话是否运行中 + 日志尾部（前端轮询展示进度）。
+
+    顺带回填 key：服务重启后恢复的旧会话 api_key 为空（key 不落盘），
+    前端只要带着自己的 key 轮询，就趁这次访问补进内存会话——
+    之后任何不带 key 的调用路径（自动续跑等）都不会再 400。
+    """
     username = _auth_username(authorization)
     sess = _get_session(session_id)
     _assert_owner(sess, username)
+    if api_key and not sess.api_key:
+        sess.api_key = api_key
     stats = _session_stats(sess)
     running = stats["running"]
     finished = stats["finished"]
@@ -998,7 +1033,9 @@ def download_mod(session_id: str, authorization: str = Header(default="")):
     # agent.log/run.log（运行时日志）都不是源码，打进 zip 会把下载撑爆。
     skip = {"build", "dist", ".gradle", ".chat", "agent.log", "run.log",
             ".worktrees", ".team", ".tasks",
-            ".transcripts", "__pycache__", ".git", "mc_java_sources"}
+            ".transcripts", "__pycache__", ".git", "mc_java_sources",
+            # run/ 是游戏运行目录（存档/日志），与 agent 收尾规则对齐，不打进源码 zip
+            "run", "run-data", ".screenshots", ".spill"}
 
     with _download_lock:
         # 缓存逻辑：若已存在 mod.zip 且比所有源码文件都新，则直接复用，
@@ -1447,13 +1484,19 @@ WEB_DIR.mkdir(exist_ok=True)
 
 @app.get("/")
 def index():
-    """根路由显式返回首页；首页缺失时兜底返回 debug 维护页，避免用户看到白屏/JSON 报错。"""
+    """根路由显式返回首页；首页缺失时兜底返回 debug 维护页，避免用户看到白屏/JSON 报错。
+
+    no-cache：index.html 引用的 JS/CSS 文件名带内容 hash，但 index 本身没有——
+    浏览器启发式缓存会让老标签页拿旧 bundle（新 JS 已部署却报"功能没生效"，
+    实测需手动强刷）。no-cache = 每次与服务器校验 ETag，变了才重新下载；
+    带哈希的静态资源仍走正常缓存，刷新开销只有一次 304。
+    """
     index_file = WEB_DIR / "index.html"
     if index_file.exists():
-        return FileResponse(str(index_file))
+        return FileResponse(str(index_file), headers={"Cache-Control": "no-cache"})
     debug_idx = DEBUG_DIR / "index.html"
     if debug_idx.exists():
-        return FileResponse(str(debug_idx))
+        return FileResponse(str(debug_idx), headers={"Cache-Control": "no-cache"})
     return {"error": "index.html not found", "web_dir": str(WEB_DIR)}
 
 

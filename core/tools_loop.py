@@ -95,4 +95,8 @@ def run_mod_test_cycle(modid=None, validate=True, build=True, run_tests=True,
 
     out.append("")
     out.append("RESULT: PASS" if result_ok else "RESULT: FAIL")
-    return "\n".join(out)
+    # 判定行必须同时放第一行：agent 主循环的完成信号按 startswith 匹配
+    # "RESULT: PASS"，藏在末尾会看不见 → 出口闸失明 → 白烧几十轮
+    # （4e9bcf6328e5 红宝石剑会话实测：PASS 在末尾，闸全程没触发）。
+    verdict = "RESULT: PASS" if result_ok else "RESULT: FAIL"
+    return f"{verdict} (details below)\n" + "\n".join(out)

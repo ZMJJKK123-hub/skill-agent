@@ -95,7 +95,10 @@ def finalize_known_issues(session_dir: Path) -> None:
         m = re.search(r"([A-Za-z_][\w.]*Exception|[A-Za-z_][\w.]*Error)", s)
         if m:
             return m.group(1)
-        m = re.match(r"[A-Za-z_][\w.]*", s)
+        # P3 修复：此 pattern 此前没有捕获组却调 group(1) → IndexError
+        # "no such group" → 整个 finalize_known_issues 静默失败（d70b3f408f53
+        # 实测每轮收尾都崩，KNOWN_ISSUES 自动沉淀全丢）。加组即可。
+        m = re.match(r"([A-Za-z_][\w.]*)", s)
         if m:
             return m.group(1)
         return "other"

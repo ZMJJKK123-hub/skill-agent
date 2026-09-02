@@ -95,9 +95,10 @@ def bridge_command(op: str, index: int = None, value: str = None,
                    nearest: float = None, entity_type: str = None) -> str:
     """进程内 UI 自动化桥：直接调用按钮背后的 Java 函数（AgentBridge mod）。
 
-    前置：starter/bridge/AgentBridge.java 已复制进 src/test 并在主 @Mod 构造器
-    注册，客户端经 run_test_client 启动。协议：写 run/bridge_cmd.json（含唯一
-    id），轮询 run/bridge_result.json 直到 id 匹配；screenshot 额外等图片落盘。
+    前置：starter/bridge/AgentBridge.java 已复制进 src/main，主 @Mod 构造器末尾
+    以 FMLEnvironment.dist.isClient() 守卫实例化（缺守卫 GameTest 服务器会
+    DISTXFORM 崩溃），客户端经 start_mc_client 启动。协议：写 run/bridge_cmd.json
+    （含唯一 id），轮询 run/bridge_result.json 直到 id 匹配；screenshot 额外等图片落盘。
     """
     import json as _json
     from pathlib import Path as _P

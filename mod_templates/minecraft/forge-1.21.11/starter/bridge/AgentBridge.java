@@ -8,8 +8,17 @@ package com.agentbridge;
 //      （必须放 main 源集：test 源集在 SECURE-BOOTSTRAP 模块加载器里，
 //        Minecraft/eventbus 类是重复副本，LinkageError + 静态实例读空——
 //        webserv_moonstone 实测；main 与主 mod 同加载器，无此问题）
-//   2. 主 @Mod 构造器末尾加一行：new com.agentbridge.AgentBridge();
-//      （生产 jar 内本类自动失活：构造器检测工作区无 build.gradle 即返回）
+//   2. 主 @Mod 构造器末尾加（dist 守卫必须，不能省）：
+//        if (net.minecraftforge.fml.loading.FMLEnvironment.dist.isClient()) {
+//            new com.agentbridge.AgentBridge();
+//        }
+//      守卫原因：本类 import 了客户端专属类（GuiEventListener 等），
+//        专用服务器（runTestGameTestServer）一旦加载本类即报
+//        "Attempted to load class ... for invalid dist DEDICATED_SERVER"
+//        （DISTXFORM），mod 加载失败、GameTest 全挂——4e9bcf6328e5 实测。
+//        守卫后服务器路径永不触发类加载，客户端照常工作。
+//      （生产 jar 内本类自动失活：构造器检测工作区无 build.gradle 即返回；
+//        build.gradle 的 jar 任务也会 exclude com/agentbridge/**）
 //   客户端用 start_mc_client 启动即可（无需 test 客户端），配合 bridge_command：
 //     screen_info / click / set_text / chat / screenshot（详见各 op 注释）
 //

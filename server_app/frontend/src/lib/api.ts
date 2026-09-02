@@ -207,8 +207,10 @@ export function getConversation(sessionId: string) {
 }
 
 // ── 状态 / 事件 ──
-export function getStatus(sessionId: string) {
-  return api<StatusResponse>(`/api/status?session_id=${sessionId}`)
+export function getStatus(sessionId: string, apiKey = '') {
+  // apiKey 可选：服务重启后恢复的旧会话内存 key 为空，轮询带上 key 让后端回填
+  const q = apiKey ? `&api_key=${encodeURIComponent(apiKey)}` : ''
+  return api<StatusResponse>(`/api/status?session_id=${sessionId}${q}`)
 }
 
 export function getResult(sessionId: string) {

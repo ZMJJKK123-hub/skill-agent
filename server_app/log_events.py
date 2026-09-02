@@ -285,6 +285,21 @@ def build_event_stream(session_dir: Path, cursor: Optional[dict] = None) -> dict
     for ev in events:
         ev["id"] = f"ev-{next(_ID_COUNTER)}"
 
+    # peer 传播：[supervisor:xxx]/[subagent:xxx] 工具的 [tool-result] 行自身
+    # 不带 peer 标记，前端按 peer 过滤内部工具时会漏掉这些红色失败行。
+    # 把最近一个带 peer 的 tool_call 的 peer 传给紧随其后的 tool_result。
+    last_peer = None
+    for ev in events:
+        if ev["type"] == "tool_call":
+            last_peer = ev.get("peer")
+        elif ev["type"] == "tool_result":
+            if last_peer and not ev.get("peer"):
+                ev["peer"] = last_peer
+            if not ev.get("peer"):
+                last_peer = None  # 主 agent 自己的工具结果，重置
+        else:
+            last_peer = None
+
     return {"events": events, "cursor": next_cursor}
 
 

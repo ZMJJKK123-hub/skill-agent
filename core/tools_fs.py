@@ -20,7 +20,9 @@ def run_read(path: str, limit: int = None, offset: int = 0) -> str:
     """
     try:
         base = worktree_manager.resolve_dir() if worktree_manager else None
-        text = safe_path(path, base).read_text(encoding="utf-8")
+        fp = safe_path(path, base)
+        fp = _remap_mc_sources(fp)
+        text = fp.read_text(encoding="utf-8")
         lines = text.splitlines()
         if offset and offset > 0:
             lines = lines[offset - 1:]
@@ -102,6 +104,31 @@ _SEARCH_SKIP_DIRS = {
     "__pycache__", "run", "bin", "venv", "mc_java_sources",
 }
 
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_MC_SOURCE_TREES = ("mc_java_sources_1.21.11", "mc_java_sources_26.2")
+
+
+def _remap_mc_sources(fp: Path) -> Path:
+    """工作区缺 mc_java_sources junction 时，把该前缀引用重映射到仓库根源码树。
+
+    chat 会话不建 junction（_ensure_mc_java_sources 仅 mod 模式启用），但
+    工具指引明确让模型用 search_api/read_file 查 mc_java_sources——不重映射
+    则每次必然空手而归（cbc300ed23b3 实测 4 连空，模型被迫靠参数记忆答题，
+    还把本项目映射里不存在的 ResourceLocation 写进了答案）。
+    """
+    if fp.exists():
+        return fp
+    workdir_mc = Path(config.WORKDIR) / "mc_java_sources"
+    try:
+        rel = fp.resolve().relative_to(workdir_mc.resolve())
+    except (ValueError, OSError):
+        return fp
+    for tree in _MC_SOURCE_TREES:
+        cand = _REPO_ROOT / tree / rel
+        if cand.exists():
+            return cand
+    return fp
+
 
 def _search_base() -> str:
     return worktree_manager.resolve_dir() if worktree_manager else os.getcwd()
@@ -160,6 +187,8 @@ def run_grep(pattern: str, path: str = ".", glob_filter: str = None,
     try:
         base = Path(_search_base()).resolve()
         root = (base / path).resolve() if not Path(path).is_absolute() else Path(path).resolve()
+        # 源码树重映射：工作区无 mc_java_sources（chat 会话）时落到仓库根参考树
+        root = _remap_mc_sources(root)
         # 沙箱：非 full-access 禁止搜工作区之外；但只读参考树 mc_java_sources / docs/agent 例外
         if _sandbox_mode() != "full-access" and not str(root).startswith(str(base)):
             repo_root = Path(__file__).resolve().parent.parent

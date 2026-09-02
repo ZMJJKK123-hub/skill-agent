@@ -221,8 +221,13 @@ function Messages() {
   // 先筛出用户可见的事件，再保留最近 500 条。
   // 之前直接 events.slice(-120) 会被大量 log/todo/round 等不可见事件占满名额，
   // 导致工具调用和思考过程在长任务中被挤出 UI（用户看到"只调了两个工具"）。
+  // supervisor 的 tool_call/tool_result 是内部监管动作（读参考文档、试读日志），
+  // 对用户是噪音（718d315bec0b：7 次 run.log 读取失败显示成一串红 ✗），不进时间线。
   const shownEvents = useMemo(() => {
-    return events.filter((e) => VISIBLE_EVENT_TYPES.has(e.type)).slice(-500)
+    return events.filter((e) =>
+      VISIBLE_EVENT_TYPES.has(e.type)
+      && !(e.peer === 'supervisor' && (e.type === 'tool_call' || e.type === 'tool_result'))
+    ).slice(-500)
   }, [events])
 
   // chat 模式：重开会话时历史 assistant 气泡与 reply 事件是同一内容
@@ -287,7 +292,7 @@ function Messages() {
   // 空态判断以"是否有会话"为准：无会话 → 引导页；
   // 有会话（含历史会话，phase=idle + chatMessages 有内容）→ 显示聊天流
   if (!sessionId) {
-    return <EmptyState loggedIn={!!user} configured={!!apiKey} />
+    return <EmptyState loggedIn={!!user} configured={!!apiKey} error={sess.phase === 'error' ? error : null} />
   }
 
   // ── 统一微信式聊天流：chat 模式显示气泡对话；mod 模式 DSH 风格事件流 ──
@@ -328,6 +333,14 @@ function Messages() {
         {mode === 'chat' && lastAssistant.map((m, i) => (
           <ChatBubble key={i} role={m.role === 'user' ? 'user' : 'assistant'} content={m.content} />
         ))}
+
+        {/* mod 模式：完成后渲染最终总结气泡（conversation.jsonl 的最后一条 assistant）。
+            此前 mod 模式只渲染事件流，完成时界面没有任何回复（718d315bec0b 实测：
+            显示"完成 ✓"却没有说明文字）。 */}
+        {mode === 'mod' && (phase === 'finished' || paused) && (() => {
+          const lastA = [...chatMessages].reverse().find((m) => m.role === 'assistant' && m.content)
+          return lastA ? <ChatBubble role="assistant" content={lastA.content} /> : null
+        })()}
 
         {/* 已暂停：横线提示"您已终止该对话" */}
         {stoppedNotice && phase !== 'running' && (
@@ -373,7 +386,7 @@ function Messages() {
   )
 }
 
-function EmptyState({ loggedIn, configured }: { loggedIn: boolean; configured: boolean }) {
+function EmptyState({ loggedIn, configured, error }: { loggedIn: boolean; configured: boolean; error?: string | null }) {
   const t = useT()
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
@@ -382,6 +395,37 @@ function EmptyState({ loggedIn, configured }: { loggedIn: boolean; configured: b
       </div>
       <div className="text-lg font-semibold">{t('conv.title')}</div>
       <div className="max-w-md text-sm text-muted">{t('conv.desc')}</div>
+      {/* 发起失败（服务失联/404/断网等）在空态也要可见——此前 error 只在
+          running 视图渲染，sessionId=null 时点发送毫无反馈（实测静默失败缺陷） */}
+      {error && (
+        <div className="max-w-md rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300">
+          <div className="font-medium">发起失败：{error}</div>
+          {/404|Not Found/i.test(error) && (
+            <div className="mt-1 text-xs text-red-300/80">服务连接异常（404）：服务可能已更新或重启，请刷新页面后重试。</div>
+          )}
+        </div>
+      )}
+      {/* 作者联系方式：放空态空白处，方便用户咨询 */}
+      <div className="mt-6 max-w-sm rounded-xl border border-line bg-panel/60 p-3 text-xs text-muted">
+        <div className="mb-1 font-medium text-forge-300">💬 联系作者</div>
+        <div>
+          使用遇到问题、想提需求或反馈 bug？加作者微信交流：
+          <span
+            className="cursor-pointer select-all rounded bg-field px-1.5 py-0.5 font-mono text-forge-300"
+            title="点击全选复制"
+            onClick={(e) => {
+              const range = document.createRange()
+              range.selectNodeContents(e.currentTarget)
+              const sel = window.getSelection()
+              sel?.removeAllRanges()
+              sel?.addRange(range)
+            }}
+          >
+            lyx525100
+          </span>
+          （点击可全选复制）
+        </div>
+      </div>
     </div>
   )
 }
@@ -490,6 +534,9 @@ function Composer() {
   const t = useT()
   const sess = useSession()
   const [text, setText] = useState('')
+  // /mod 应用内确认：不再用 window.confirm——原生对话框在"禁止此页再弹窗"
+  // 或自动化环境里会被自动接受，确认形同虚设（实测缺陷）。改为状态驱动浮层。
+  const [modConfirm, setModConfirm] = useState<string | null>(null)
   const running = sess.phase === 'running' || sess.phase === 'creating'
   const paused = sess.phase === 'paused' || sess.paused
 
@@ -499,22 +546,32 @@ function Composer() {
     const r = resolveModelConfig({ apiKey, model, providers })
     const settings = { apiKey: r.apiKey, baseUrl: r.baseUrl, model: r.model, game: 'minecraft', loader: 'forge', version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey }
 
-    // /mod 拦截：固定格式触发 mod 制作模式
-    if (prompt.startsWith('/mod')) {
+    // /mod 拦截：固定格式触发 mod 制作模式（大小写不敏感——/MOD /Mod 同样生效；
+    // 此前只认小写，大写会静默按 chat 发出烧 token，实测 bug #10）
+    if (/^\/mod(\s|$)/i.test(prompt)) {
       const modPrompt = prompt.slice(4).trim()
       if (!modPrompt) {
         alert('用法：/mod <你的 MOD 需求描述>，例如：/mod 做一把钻石剑')
         return
       }
-      const ok = window.confirm(`即将复制 MOD 模板与 MC 源码，开始制作 MOD：\n\n“${modPrompt.slice(0, 80)}${modPrompt.length > 80 ? '…' : ''}”\n\n确认开始吗？`)
-      if (!ok) return
-      void sendPrompt(modPrompt, settings, 'mod')
-      setText('')
+      setModConfirm(modPrompt) // 弹应用内确认条，等用户点"确认开始"
       return
     }
 
-    // 普通消息：chat 模式（通用对话，不复制模板）；运行中则排队
-    void sendPrompt(prompt, settings, 'chat')
+    // 普通消息：mod 会话（含打开的历史 mod 会话）沿用 mod 模式——否则
+    // 完成后的迭代需求会被降级成只读咨询（P1 实测缺陷：daemon 以 chat 重启
+    // 后整个会话锁死只读）。新建/纯 chat 会话仍是 chat；server 端还有
+    // mode.txt 记忆 + /mod 前缀强制双保险。
+    void sendPrompt(prompt, settings, sess.mode === 'mod' ? 'mod' : 'chat')
+    setText('')
+  }
+
+  const confirmMod = () => {
+    if (!modConfirm) return
+    const r = resolveModelConfig({ apiKey, model, providers })
+    const settings = { apiKey: r.apiKey, baseUrl: r.baseUrl, model: r.model, game: 'minecraft', loader: 'forge', version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey }
+    void sendPrompt(modConfirm, settings, 'mod')
+    setModConfirm(null)
     setText('')
   }
 
@@ -563,6 +620,28 @@ function Composer() {
   return (
     <div className="mx-auto w-full max-w-4xl">
       <QuestionCard />
+      {modConfirm && (
+        <div className="mb-2 rounded-xl border border-forge-500/40 bg-forge-500/10 p-3">
+          <div className="mb-1 text-xs font-medium text-forge-300">即将开始 MOD 制作</div>
+          <div className="mb-2 text-sm text-main">
+            将复制 MOD 模板与 MC 源码，开始制作：“{modConfirm.slice(0, 80)}{modConfirm.length > 80 ? '…' : ''}”
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={confirmMod}
+              className="rounded-md bg-forge-500 px-4 py-1.5 text-sm font-medium text-ink-950 hover:bg-forge-400"
+            >
+              ✓ 确认开始
+            </button>
+            <button
+              onClick={() => setModConfirm(null)}
+              className="hoverable rounded-md border border-line px-4 py-1.5 text-sm"
+            >
+              取消
+            </button>
+          </div>
+        </div>
+      )}
       {!canChat && (
         <div className="mb-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-400">
           {notReadyReason}

@@ -1180,3 +1180,50 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **[实现确认] VoidWardenEntity：Phase 引用 17 处、Voidling 召唤 5 处、50% 血量阈值判定在位；VoidWardenBossTest 覆盖 Health/Voidling/spawn 断言**
 - **[实战教训] 桥 attack 返回的 hp 是实例侧缓存，权威血量用 /data get entity 查询；玩家侧 regeneration 效果在 Boss 近战压制下时灵时不灵（正常）**
 - **[流程教训] 高复杂度任务 GameTest 基建（新注册机制）耗掉大量预算导致客户端验证预算不足（MAX 150 轮）；建议引擎为"客户端验证阶段"单独预算，避免与基建调试混用**
+
+
+## 2026-08-31 rubysword 会话 4e9bcf6328e5（红宝石剑——出口闸/误报/桥三连坑）
+
+- **`RESULT: PASS` 藏在输出末尾导致出口闸失明**：run_mod_test_cycle 原来把判定行放最后，主循环完成信号按 startswith 匹配永远看不到 → jar+全绿也收不了尾，烧满 100 轮。修复：判定行置于输出第一行。
+- **GameTest 假阴性（配方旧格式噪音）**：数据包解析错误行含 "Failed to parse"，被 `FAILED|Failed to|Exception` 宽松正则当成测试失败，实际 "All 1 required tests passed"。修复：显式通过标记优先判定，失败只认 `required tests failed|tests failed|FAILED!`。
+- **AgentBridge 无 dist 守卫炸专用服务器**：`new com.agentbridge.AgentBridge()` 未加 `FMLEnvironment.dist.isClient()` 守卫 → runTestGameTestServer 加载客户端类报 DISTXFORM。修复：构造器末尾守卫式实例化（见 KNOWN_ISSUES 条目）。
+- **1.21.11 测试代码 API 陷阱**：`ItemStack.getAttributeModifiers(EquipmentSlot)` 已删除（用 `DataComponents.ATTRIBUTE_MODIFIERS`）；`ServerLevel.getRecipeManager()` 不存在（`level.getServer().getRecipeManager()`），且 `byKey` 收 `ResourceKey<Recipe<?>>` 不收裸 `Identifier`。
+- **配方 key 旧格式**：`"key": {"R": {"item": "minecraft:redstone"}}` 在 1.21.11 报 "No key type"；必须纯字符串 `"R": "minecraft:redstone"`。
+
+
+## 2026-09-01 jarverify（真实客户端装机实测——方块物品名 key 前缀坑）
+- **1.21.11 BlockItem 翻译前缀默认是 `item.`**：`Item.Properties` 默认 `descriptionId = ITEM_DESCRIPTION_ID`（Item.java:411），BlockItem 不会自动改前缀。lang 写 `block.<modid>.<name>` 时注册必须显式 `.useBlockDescriptionPrefix()`，否则游戏内名字原样回显 `item.rubylamp.ruby_lamp`（run/mods 装 jar + /give 实测）。
+  修复（二选一）：注册时 `.useBlockDescriptionPrefix()`，或 lang 直接用 `item.` 前缀。
+  此前 GameTest 与图标验证都发现不了（断言看数值、识图看纹理，都不看名字）——/give 回执是唯一可靠检查点。
+- **dev runClient 的 classpath 资源与 jar 不完全一致**：验证翻译/资源问题必须用构建出的 jar 装进 run/mods 测，别只信 dev 运行。
+- **dev classpath mod 与 run/mods 同 modid 会重复加载冲突**：装 jar 测试要选 classpath 是另一 modid 的工作区。
+
+## 2026-09-01 Auto-recorded from runtime
+
+- **Auto-recorded:** throw new IllegalStateException("Item cannot have both durability and be stackable");
+- **Auto-recorded:** So the user's bug: they have (per old 1.20.x convention) `"block.<modid>.<name>"` in `zh_cn.json`, but the BlockItem's actual translation key is `item.<modid>.<name>` → key not found → raw key echo `item.<modid>.<name>`.
+
+
+## 2026-09-01 guiverify（储物柜真机实测——BlockEntity 容器接口坑）
+- **方块实体容器必须 `implements Container`**：只 `implements MenuProvider` 的 BlockEntity，GUI 能打开、自己的存取逻辑正常，但原版互操作全部失效——漏斗/投掷器不吞吐、比较器无输出、`/item replace block <pos> container.N` 报 "Target position is not a container"（真机实测）。
+- 规避：BlockEntity 直接实现 Container（或对外暴露 capability）；GameTest 里加一条 `/data`/capability 断言。快速检查点：放一个柜子后 `/item replace block ~ ~ ~ container.0 with minecraft:diamond 1`，报 not a container 即中招。
+- 自测覆盖盲区：agent 的 GameTest 断言自己的 SimpleContainer 存取 ≠ 原版互操作；容器类 MOD 验收必须含互操作检查。
+
+## 2026-09-02 Auto-recorded from runtime
+
+- **Auto-recorded:** Cancelable events are `@Cancelable` (`Event#isCancelable()` true); use `Event#setCanceled(true/false)`. Canceling a non-cancelable event throws `UnsupportedOperationException` — always check first.
+- **Auto-recorded:** } catch (NoSuchFieldException | IllegalAccessException e) {
+- **Auto-recorded:** throw new RuntimeException(e);
+- **Auto-recorded:** mc_java_sources/net/minecraftforge/fml/event/lifecycle/ParallelDispatchEvent.java:29: return getQueue().map(q->q.enqueueWork(getContainer(), work)).orElseThrow(()->new RuntimeException("No work queue found!"));
+- **Auto-recorded:** } catch (ClassNotFoundException e) {
+- **Auto-recorded:** LOGGER.fatal(Logging.LOADING, "Failed to load mod class {} for @EventBusSubscriber annotation", data.clazz(), e);
+- **Auto-recorded:** throw new IllegalArgumentException("No declared methods found in " + listenerClass);
+- **Auto-recorded:** * If you implement this interface on an ordinary class, an exception will be thrown when attempting to
+
+## 2026-09-02 Auto-recorded from runtime
+
+- **Auto-recorded:** - `@ObjectHolder(registryName = "...", value = "...")` on `public static` fields injects objects after `RegisterEvent`. Class-level `@ObjectHolder` or `@Mod` provides the default namespace. Missing registry/name → compil
+- **Auto-recorded:** If the parent is not generated before the child model when passing in a `ResourceLocation`, then an exception will be thrown.
+- **Auto-recorded:** Variants can be generated using `BlockStateProvider#getVariantBuilder`. Each variant specifies a list of [properties] (`PartialBlockstate`) which when matches a `BlockState` in a level, will display a model chosen from t
+- **Auto-recorded:** `mods.toml` is broken into three parts: the non-mod-specific properties, which are linked to the mod file; the mod properties, with a section for each mod; and the dependency configurations, with a section for each mod's
+- **Auto-recorded:** GatherDataEvent not found in mc_java_sources glob — maybe path differs (net/minecraftforge/client/event? or net/minecraftforge/data/event?). Let me search for it. Actually for chapter 9 (datagen), I could avoid deep data

@@ -209,6 +209,7 @@ DUTY:
 
 RULES:
 1. Do NOT call load_skill. Use read_file only on relative paths inside the workspace; if a read fails, ignore it.
+1b. The run.log tail is ALREADY included in the prompt above — do NOT read_file run.log or any log under data/sessions (they sit outside the sandbox and always error; repeated failed reads are pure noise).
 2. Do NOT demand skill-source or skill-first compliance.
 3. ALERT only for: banned commands (taskkill python.exe), Forge version facts violated, same build/test failing 3+ times with no change of approach, or clear task drift.
 4. Do not invent problems. If nothing is clearly wrong, output exactly: NO_ISSUE.
