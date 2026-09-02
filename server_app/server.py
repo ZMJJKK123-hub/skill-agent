@@ -123,12 +123,45 @@ def _kill_stale_daemon(session_dir: Path) -> None:
         pass
 
 
+def _session_key_file(session_root: Path) -> Path:
+    """会话 API Key 落盘文件（<session>/.chat/api_key.txt）。
+
+    v1.0.1 起纯本地单用户部署：key 允许落盘，服务重启恢复会话后可
+    直接继续跑任务，不再依赖前端每次请求回填（此前内存 key 恢复为空，
+    刷新后继续旧会话 400"API Key 为空"——靠回填修补过，现在根治）。
+    """
+    return session_root / ".chat" / "api_key.txt"
+
+
+def _read_session_key(session_root: Path) -> str:
+    try:
+        f = _session_key_file(session_root)
+        if f.is_file():
+            return f.read_text(encoding="utf-8").strip()
+    except OSError:
+        pass
+    return ""
+
+
+def _write_session_key(session_root: Path, api_key: str) -> None:
+    try:
+        f = _session_key_file(session_root)
+        if not api_key:
+            f.unlink(missing_ok=True)
+            return
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(api_key, encoding="utf-8")
+    except OSError:
+        pass
+
+
 def _restore_sessions() -> None:
     """启动时扫描 data/sessions/*/，把历史会话重建进内存表。
 
     这样服务重启后，之前的 mod.zip / 产物树 / 事件日志依然可访问（下载、
     文件预览、事件回放），解决“历史记录点下载提示会话不存在”的问题。
-    api_key 不落盘 → 恢复的会话置空，下载/回放不受影响。
+    api_key 自 .chat/api_key.txt 读回（本地模式允许落盘），恢复的会话
+    可直接继续任务。
 
     兼容普通会话（纯聊天，无 mod/ 子目录）：不再要求 mod 目录存在。
     """
@@ -146,7 +179,7 @@ def _restore_sessions() -> None:
         # 恢复的历史会话：owner 从 owner.txt 读（重启后仍归原用户）
         owner_txt = child / "owner.txt"
         owner = owner_txt.read_text(encoding="utf-8").strip() if owner_txt.exists() else ""
-        sess = Session(session_id, mod_dir, api_key="", owner=owner)
+        sess = Session(session_id, mod_dir, api_key=_read_session_key(child), owner=owner)
         sessions[session_id] = sess
 
         # 有 run.log 说明跑过任务；有 mod.zip 说明已打包完成
@@ -894,11 +927,12 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
     username = _auth_username(authorization)
     sess = _get_session(req.session_id)
     _assert_owner(sess, username)
-    # 请求带了 key 先回填再校验：服务重启恢复的旧会话内存 key 为空
-    # （key 不落盘），带 key 的请求不该被 400 拦下（实测：刷新后继续
-    # 旧会话，请求明明带了 key 仍报"API Key 为空"）
+    # 请求带了 key 先回填再校验：服务重启恢复的旧会话内存 key 可能为空
+    # （旧会话无落盘文件），带 key 的请求不该被 400 拦下；key 同时落盘
+    # （本地模式允许），下次重启恢复即可直接用
     if req.api_key:
         sess.api_key = req.api_key
+        _write_session_key(sess.mod_dir.parent, req.api_key)
     if not (sess.api_key and sess.api_key.strip()):
         raise HTTPException(400, "API Key 为空，无法启动任务（请在设置中填写 API Key）")
     # 纯图片消息允许空文本（图片本身即需求）；两者皆空才拒绝

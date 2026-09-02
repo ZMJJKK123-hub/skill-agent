@@ -105,45 +105,77 @@ interface ThinkingSeg {
   streaming: boolean // 段仍在增长（事件流末尾、尚未出现后续动作）
 }
 
-/** 思考过程：流式展示——思考中自动展开逐段增长，完成后收成一行摘要，
- *  随时可手动展开。 */
-function ThinkingGroup({ segs }: { segs: ThinkingSeg[] }) {
-  const [open, setOpen] = useState(false)
-  const streaming = segs.length > 0 && segs[segs.length - 1].streaming
-  // 思考开始（末段进入 streaming）自动展开；思考结束（streaming 转 false）
-  // 自动收起。非思考期间的手动开关不受打扰。
+/** 打字机：active 时把 target 逐字吐出（每 tick 吐 1-6 字，积压越多
+ *  追赶越快），非 active 直接显示全文。
+ *  挂载一律从 0 字起步：streaming 判定可能闪断（首批事件尾部混有
+ *  日志行），若按初始 active 初始化进度到"全文"，此后永远直接显示
+ *  全量、不再吐字（实测：2315 字瞬间全出，无逐字效果）。 */
+function useTypewriter(target: string, active: boolean): string {
+  const [shownLen, setShownLen] = useState(0)
+  const posRef = useRef(0)
   useEffect(() => {
-    if (streaming) setOpen(true)
+    if (!active) {
+      // 结束/非流式：未吐完的部分瞬间补齐
+      if (posRef.current < target.length) {
+        posRef.current = target.length
+        setShownLen(target.length)
+      }
+      return
+    }
+    if (posRef.current > target.length) posRef.current = target.length
+    const timer = window.setInterval(() => {
+      const cur = posRef.current
+      if (cur >= target.length) return
+      // 基础 1 字/次；积压多时加速追赶，保持连续不断顿
+      const backlog = target.length - cur
+      const step = backlog > 60 ? 6 : backlog > 24 ? 3 : 1
+      posRef.current = cur + step
+      setShownLen(cur + step)
+    }, 28)
+    return () => window.clearInterval(timer)
+  }, [target, active])
+  return active ? target.slice(0, shownLen) : target
+}
+
+/** 思考段视图：streaming 段用打字机逐字吐出 */
+function ThinkingSegView({ seg }: { seg: ThinkingSeg }) {
+  const shown = useTypewriter(seg.content, seg.streaming)
+  return (
+    <div className="text-[12px] leading-relaxed text-muted">
+      <div className="mt-0.5 whitespace-pre-wrap break-words">
+        {shown}
+        {seg.streaming && shown.length < seg.content.length + 1 && <span className="animate-pulse"> …</span>}
+      </div>
+    </div>
+  )
+}
+
+/** 时间线里的单个思考段：思考中自动展开（打字机），完成后收成一行，
+ *  随时手动展开。与工具行按真实发生顺序交织（此前全部思考聚合在
+ *  顶部一大块、永远停在消息流开头，用户看不到"思考→工具→思考"交替）。 */
+function ThinkingSegRow({ seg }: { seg: ThinkingSeg }) {
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    if (seg.streaming) setOpen(true)
     else setOpen(false)
-  }, [streaming])
-  if (segs.length === 0) return null
-  const totalLines = segs.reduce(
-    (n, s) => n + s.content.split('\n').filter((l) => l.trim()).length, 0)
+  }, [seg.streaming])
+  const lines = seg.content.split('\n').filter((l) => l.trim()).length
   return (
     <div className="fade-in-up opacity-80">
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-1.5 py-0.5 text-[13px] text-muted transition hover:text-main"
       >
-        {streaming ? (
+        {seg.streaming ? (
           <span className="animate-pulse">思考中</span>
         ) : (
-          <span>Agent thinking</span>
+          <span>思考 · {lines} 行</span>
         )}
-        <span className="text-faint">· {segs.length} 段 / {totalLines} 行</span>
         <span className="text-[11px] text-faint">{open ? '收起' : '展开'}</span>
       </button>
       {open && (
-        <div className="mt-1 space-y-2 border-l border-line pl-3">
-          {segs.map((seg, i) => (
-            <div key={seg.id} className="text-[12px] leading-relaxed text-muted">
-              <span className="text-faint">#{i + 1}</span>
-              <div className="mt-0.5 whitespace-pre-wrap break-words">
-                {seg.content}
-                {seg.streaming && <span className="animate-pulse"> …</span>}
-              </div>
-            </div>
-          ))}
+        <div className="mt-1 border-l border-line pl-3">
+          <ThinkingSegView seg={seg} />
         </div>
       )}
     </div>
@@ -160,26 +192,28 @@ interface ToolEntry {
   batch: number
 }
 
-/** 工具调用行：一行只有工具名（状态色）+ 展开箭头；参数与结果都收进
- *  展开（用户要求的最简形态）。同批到达的行错峰渐入（逐行出现）。 */
+/** 工具调用行：工具名（状态色）+ 参数首行摘要 + 展开箭头；结果收进
+ *  展开（用户反馈：参数摘要保留在行上，只收 result）。同批错峰渐入。 */
 function ToolRow({ entry, delayMs }: { entry: ToolEntry; delayMs: number }) {
   const [open, setOpen] = useState(false)
   const color =
     entry.status === 'success' ? 'text-emerald-500'
     : entry.status === 'failed' ? 'text-red-500'
     : 'text-muted animate-pulse'
+  const oneLine = entry.params.replace(/\s+/g, ' ').trim().slice(0, 100)
   return (
     <div className="fade-in-up" style={{ animationDelay: `${delayMs}ms` }}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className={`flex items-center gap-1 py-0.5 text-left text-[13px] transition ${color} hover:opacity-80`}
+        className={`flex w-full items-center gap-1.5 py-0.5 text-left text-[13px] transition ${color} hover:opacity-80`}
       >
         {/* 展开箭头（SVG 三角，非 emoji） */}
         <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor" className={`shrink-0 transition-transform ${open ? 'rotate-90' : ''}`}>
           <path d="M3 1.5L9.5 6L3 10.5V1.5z" />
         </svg>
-        <span className="font-mono">{entry.tool}</span>
-        {entry.status === 'running' && <span className="text-[11px] text-faint">运行中</span>}
+        <span className="shrink-0 font-mono">{entry.tool}</span>
+        <span className="min-w-0 flex-1 truncate font-mono text-[12px] opacity-60">{oneLine}</span>
+        {entry.status === 'running' && <span className="shrink-0 text-[11px] text-faint">运行中</span>}
       </button>
       {open && (
         <div className="ml-4 mt-0.5 max-h-52 space-y-1.5 overflow-auto">
@@ -204,6 +238,12 @@ function ToolRow({ entry, delayMs }: { entry: ToolEntry; delayMs: number }) {
 /** 每轮回复大框：与最终回复同款气泡样式，多轮循环中每轮一个 */
 function ReplyRow({ ev }: { ev: EventItem }) {
   return <ChatBubble role="assistant" content={ev.content} />
+}
+
+/** 流式回复：当前活跃的回复组用打字机逐字吐出（与思考一致的节奏） */
+function TypingReply({ content }: { content: string }) {
+  const shown = useTypewriter(content, true)
+  return <ChatBubble role="assistant" content={shown} />
 }
 
 /** 中间分界线（round / system 事件）：居中显示，不归属任何人 */
@@ -357,73 +397,24 @@ function Messages() {
 
   // 事件源（含不直接渲染但参与"切断"逻辑的类型）。
   // round 事件作轮次分界：不同轮次的回复必须分成两组，否则两轮回复被拼成
-  // 一条合并气泡，与磁盘历史的两条 assistant 消息前缀对不上，去重失效、
-  // 重开会话时重复显示。
   // supervisor 的动作是内部监管，对用户是噪音，不进时间线。
+  // 截断按"实质事件"（非思考增量）计 500 条：一轮流式思考可产生数千条
+  // thinking_delta，按总条数截断会被 delta 占满名额、把工具/回复挤出
+  // 时间线（实测：2515 条 delta 占满 800 名额，11 个工具全部消失）。
+  // delta 随所在段保留，聚合后体积很小。
   const shownEvents = useMemo(() => {
-    return events.filter((e) => e.peer !== 'supervisor').slice(-800)
+    const kept = events.filter((e) => e.peer !== 'supervisor')
+    let count = 0
+    let start = 0
+    for (let i = kept.length - 1; i >= 0; i--) {
+      if (kept[i].type !== 'thinking_delta') {
+        count++
+        if (count > 500) { start = i + 1; break }
+      }
+    }
+    return kept.slice(start)
   }, [events])
 
-  // 思考段聚合：相邻 thinking / thinking_delta 合并为一段，任何其他类型
-  // 事件切断；段位于事件流末尾且仍在增长 → streaming（前端流式思考）。
-  // 旧 [思考] 整段事件（历史会话回放）同样归段，兼容。
-  const thinkingSegs = useMemo(() => {
-    const segs: ThinkingSeg[] = []
-    let cur: ThinkingSeg | null = null
-    let streaming = false
-    for (let i = 0; i < shownEvents.length; i++) {
-      const e = shownEvents[i]
-      if (e.type === 'thinking_delta') {
-        if (!cur) {
-          cur = { id: e.id, content: '', streaming: false }
-          segs.push(cur)
-        }
-        cur.content += e.content
-      } else if (e.type === 'thinking') {
-        cur = { id: e.id, content: e.content, streaming: false }
-        segs.push(cur)
-      } else {
-        cur = null
-      }
-      streaming = e.type === 'thinking_delta' && i === shownEvents.length - 1
-    }
-    if (segs.length > 0 && streaming) segs[segs.length - 1].streaming = true
-    return segs
-  }, [shownEvents])
-
-  // 工具条目合成：tool_call 与其后紧邻的 tool_result 顺序配对（后端
-  // [tool]/[tool-result] 成对打印，顺序可靠），末尾未配对的 call 视为
-  // 运行中。结果不再单独成行，整行只显示工具名 + 状态色 + 展开箭头。
-  const toolEntries = useMemo(() => {
-    const entries: ToolEntry[] = []
-    for (const e of shownEvents) {
-      if (e.type === 'tool_call') {
-        entries.push({
-          id: e.id,
-          tool: e.tool ?? 'tool',
-          params: e.content,
-          status: 'running',
-          batch: e.batch ?? 0,
-        })
-      } else if (e.type === 'tool_result') {
-        const lines = e.content.split('\n')
-        const body = (lines.slice(1).join('\n').trim() || (lines[0] ?? '')).trim()
-        // 就近填给最近一个未完成的调用
-        for (let i = entries.length - 1; i >= 0; i--) {
-          if (entries[i].status === 'running') {
-            entries[i].result = body
-            entries[i].status = e.status === 'failed' ? 'failed' : 'success'
-            break
-          }
-        }
-      }
-    }
-    return entries
-  }, [shownEvents])
-
-  // chat 模式：重开会话时历史 assistant 气泡与 reply 事件是同一内容
-  // （conversation.jsonl 与流式日志各存一份），按前缀匹配去重——
-  // 已有气泡的 reply 不再渲染；实时轮次（尚未入历史）照常实时显示。
   // chat 模式：重开会话时历史 assistant 气泡与 reply 事件是同一内容
   // （conversation.jsonl 与流式日志各存一份），按前缀匹配去重——
   // 已有气泡的 reply 不再渲染；实时轮次（尚未入历史）照常实时显示。
@@ -446,33 +437,95 @@ function Messages() {
     [chatMessages],
   )
 
-  // 连续 reply 事件合并为一个助手气泡：
-  // 流式过程中一次回复可能被后端按轮询切片拆成多个 reply 事件，
-  // 只要中间没有 thinking/tool 等事件，就把它们拼成同一条完整回复。
-  const visibleEvents = useMemo(() => {
-    const out: (EventItem | EventItem[])[] = []
-    let current: EventItem[] | null = null
-    for (const ev of shownEvents) {
-      if (ev.type === 'reply') {
-        if (current) {
-          current.push(ev)
+  // ── 时间线：思考段 / 工具行 / 回复组 / 轮次分界 按真实发生顺序交织 ──
+  // 此前思考被聚合在顶部一大块（永远停在消息流开头）、工具全部堆在其后，
+  // "思考→工具→思考→回复"的交替过程被打散（用户实测反馈）。
+  // 一条时间线一次遍历产出：相邻 thinking/delta 聚一段、tool_call 与其后
+  // 紧邻 result 顺序配对（后端成对打印）、连续 reply 合并一组。
+  const timeline = useMemo(() => {
+    type Item =
+      | { kind: 'think'; key: string; seg: ThinkingSeg }
+      | { kind: 'tool'; key: string; entry: ToolEntry; batchIdx: number }
+      | { kind: 'reply'; key: string; events: EventItem[] }
+      | { kind: 'divider'; key: string; ev: EventItem }
+    const out: Item[] = []
+    let curSeg: ThinkingSeg | null = null
+    let curReply: EventItem[] | null = null
+    for (const e of shownEvents) {
+      if (e.type === 'thinking_delta' || e.type === 'thinking') {
+        curReply = null
+        if (!curSeg) {
+          curSeg = { id: e.id, content: '', streaming: false }
+          out.push({ kind: 'think', key: e.id, seg: curSeg })
+        }
+        // 旧整段事件与增量混排时加换行防粘连
+        if (e.type === 'thinking' && curSeg.content) curSeg.content += '\n'
+        curSeg.content += e.content
+        continue
+      }
+      curSeg = null
+      if (e.type === 'reply') {
+        if (curReply) {
+          curReply.push(e)
         } else {
-          current = [ev]
-          out.push(current)
+          curReply = [e]
+          out.push({ kind: 'reply', key: e.id, events: curReply })
         }
         continue
       }
-      // 任何非 reply 事件（即使不渲染，如 round）都切断当前回复组，
-      // 避免把不同轮次的回复错误合并。
-      current = null
-      if (ev.type !== 'thinking' && VISIBLE_EVENT_TYPES.has(ev.type)) {
-        out.push(ev)
+      curReply = null
+      if (e.type === 'tool_call') {
+        out.push({
+          kind: 'tool', key: e.id,
+          entry: { id: e.id, tool: e.tool ?? 'tool', params: e.content, status: 'running', batch: e.batch ?? 0 },
+          batchIdx: 0,
+        })
+      } else if (e.type === 'tool_result') {
+        const lines = e.content.split('\n')
+        const body = (lines.slice(1).join('\n').trim() || (lines[0] ?? '')).trim()
+        // 就近配对：倒序找最近一个未完成的工具
+        for (let i = out.length - 1; i >= 0; i--) {
+          const it = out[i]
+          if (it.kind === 'tool' && it.entry.status === 'running') {
+            it.entry.result = body
+            it.entry.status = e.status === 'failed' ? 'failed' : 'success'
+            break
+          }
+        }
+      } else if (e.type === 'round') {
+        out.push({ kind: 'divider', key: e.id, ev: e })
+      }
+      // 其余类型（log 等）只切断回复组，不产出成员
+    }
+    // 末段 streaming 判定：倒序找最近的实质动作，尾部噪音日志不算
+    let streaming = false
+    for (let i = shownEvents.length - 1; i >= 0; i--) {
+      const t = shownEvents[i].type
+      if (t === 'thinking_delta') { streaming = true; break }
+      if (t === 'tool_call' || t === 'tool_result' || t === 'reply' || t === 'round') break
+    }
+    if (streaming) {
+      for (let i = out.length - 1; i >= 0; i--) {
+        const it = out[i]
+        if (it.kind === 'think') { it.seg.streaming = true; break }
       }
     }
-    return out.filter((item) => {
-      if (!Array.isArray(item)) return true
+    // 同批工具错峰序号（同一次轮询到达的行 70ms 递增渐入）
+    const batchCount = new Map<number, number>()
+    for (const it of out) {
+      if (it.kind !== 'tool') continue
+      const b = it.entry.batch
+      if (b > 0) {
+        const n = batchCount.get(b) ?? 0
+        it.batchIdx = n
+        batchCount.set(b, n + 1)
+      }
+    }
+    // 回复组去重：权威气泡在场时隐藏全部；否则按前缀匹配滤掉已入历史的
+    return out.filter((it) => {
+      if (it.kind !== 'reply') return true
       if (hasAssistantBubbles) return false
-      const merged = item.map((e) => e.content).join('\n\n')
+      const merged = it.events.map((e) => e.content).join('\n\n')
       return !assistantPrefixes.has(merged.slice(0, 50))
     })
   }, [shownEvents, assistantPrefixes, hasAssistantBubbles])
@@ -543,24 +596,25 @@ function Messages() {
           </div>
         )}
 
-        {/* 流式思考：思考中自动展开逐段增长，完成后收成一行；工具行 = */}
-        {/* 工具名+状态色+箭头（参数/结果收进展开），同批错峰渐入逐行出现 */}
-        <ThinkingGroup segs={thinkingSegs} />
-        {toolEntries.map((entry, i) => {
-          // 同一批（同一次轮询到达）内的行错峰 70ms，营造逐行出现；
-          // 跨批不叠加（老行已显示过，delay 归零）
-          const sameBatchCount = entry.batch > 0
-            ? toolEntries.filter((x) => x.batch === entry.batch).indexOf(entry)
-            : 0
-          const delay = entry.batch > 0 && i >= sameBatchCount ? Math.min(sameBatchCount, 5) * 70 : 0
-          return <ToolRow key={entry.id} entry={entry} delayMs={delay} />
-        })}
-        {visibleEvents.map((item) => {
-          if (Array.isArray(item)) {
-            const content = item.map((e) => e.content).join('\n\n')
-            return <ChatBubble key={item[0].id} role="assistant" content={content} />
+        {/* 时间线：思考段（思考中展开+打字机，完成收一行）/ 工具行（状态色+ */}
+        {/* 参数摘要+箭头展开）/ 回复气泡 / 轮次分界，按真实发生顺序交织 */}
+        {timeline.map((item, idx) => {
+          switch (item.kind) {
+            case 'think':
+              return <ThinkingSegRow key={item.key} seg={item.seg} />
+            case 'tool':
+              return <ToolRow key={item.key} entry={item.entry} delayMs={Math.min(item.batchIdx, 5) * 70} />
+            case 'reply': {
+              const content = item.events.map((e) => e.content).join('\n\n')
+              // 运行中且是时间线末尾的回复组 = 当前活跃回复 → 打字机逐字输出
+              const isActive = running && idx === timeline.length - 1
+              return isActive
+                ? <TypingReply key={item.key} content={content} />
+                : <ChatBubble key={item.key} role="assistant" content={content} />
+            }
+            case 'divider':
+              return <EventView key={item.key} ev={item.ev} />
           }
-          return <EventView key={item.id} ev={item} />
         })}
 
         {/* chat 模式：当前轮最终回答放在事件流之后 */}
