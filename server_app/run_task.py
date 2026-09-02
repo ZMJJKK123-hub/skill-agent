@@ -260,6 +260,40 @@ def _run_one_round(messages: list, session_dir: Path,
     return final
 
 
+def _strip_pending_messages(messages: list, session_root) -> list:
+    """把仍在排队（pending 文件里）的消息移出本轮上下文。
+
+    enqueue_pending 会同步写历史——运行中排队的消息会出现在
+    load_recent_history 的结果里，但它们属于"之后的轮次"（daemon 一轮
+    只消费一条）。不滤掉的话本轮模型会看到多条待答需求，常合并处理
+    只答最后一条（实测 甲/乙/丙 三连发，乙被吞、丙的轮次回复"收到
+    上下文更新"）。按 (role, content) 对照，pending 空时原样返回。
+    """
+    try:
+        from core.conversation import pending_path as _pending_path
+        _pset = set()
+        _pp = _pending_path(session_root)
+        if _pp.exists():
+            import json as _json
+            for _ln in _pp.read_text(encoding="utf-8").splitlines():
+                _ln = _ln.strip()
+                if not _ln:
+                    continue
+                try:
+                    _pm = _json.loads(_ln)
+                    _pset.add((_pm.get("role"), _pm.get("content")))
+                except ValueError:
+                    continue
+        if _pset:
+            _before = len(messages)
+            messages = [m for m in messages if (m.get("role"), m.get("content")) not in _pset]
+            if len(messages) != _before:
+                print(f"[run_task] 已把 {_before - len(messages)} 条排队消息移出本轮（等 daemon 逐条处理）", flush=True)
+    except Exception as e:
+        print(f"[run_task] 排队消息对照失败（忽略）: {e}", flush=True)
+    return messages
+
+
 def daemon_loop(session_dir: Path, session_root_path: Path, mode: str) -> None:
     """chat / mod 模式常驻循环（M-opt1：消除每轮冷启动）。
 
@@ -285,7 +319,7 @@ def daemon_loop(session_dir: Path, session_root_path: Path, mode: str) -> None:
     """
     import time as _time
     from core.conversation import (
-        pending_count, drain_pending, load_recent_history,
+        pending_count, drain_pending_one, load_recent_history,
     )
 
     idle_timeout = float(os.environ.get("DSH_DAEMON_IDLE_TIMEOUT", "600"))
@@ -346,28 +380,35 @@ def daemon_loop(session_dir: Path, session_root_path: Path, mode: str) -> None:
                     return
                 continue
 
-            # 有排队消息：消费队列（enqueue_pending 已同步写入历史，
-            # 这里只需清空队列文件，历史里已有该消息，避免 load 时重复）
+            # 有排队消息：每轮只消费最早的一条。出队后立刻写进对话历史
+            # （enqueue 不再同步落盘）——磁盘历史保持"处理顺序"：
+            # [u甲,a甲,乙,...]，模型本轮末尾是待答的 user，而不是上一轮
+            # 的 assistant（否则模型没有可答的问题，只能回"收到上下文
+            # 更新"，实测 7ddb68f750e0）。
             last_activity = _time.time()
             _set_state("working")  # server 据此转 running
-            # 消费 → 组装上下文 → 跑一轮。任何一步失败都必须把状态
-            # 回退到 waiting：否则 server 会把空闲 daemon 当成"运行中"，
-            # 前端无限转圈（实测：一轮异常后状态永久卡在 working）。
             try:
-                drain_pending(session_root_path)
+                from core.conversation import append_user as _daemon_append_user
+                _drained = drain_pending_one(session_root_path)
+                for _dm in _drained:
+                    _daemon_append_user(session_root_path,
+                                        str(_dm.get("content", "")),
+                                        _dm.get("images"))
             except Exception as e:
-                print(f"[run_task] drain_pending 失败: {e}", flush=True)
+                print(f"[run_task] drain_pending_one 失败: {e}", flush=True)
                 _set_state("waiting")
                 continue
 
             # 组装上下文：历史已包含新消息（enqueue_pending 同步写历史）。
-            # 不重置任何状态：长对话语义下任务/队友/协议状态跨轮保留。
+            # 过滤仍在排队的消息（一轮只答一条）；不重置任何状态：
+            # 长对话语义下任务/队友/协议状态跨轮保留。
             try:
                 messages = load_recent_history(session_root_path)
             except Exception as e:
                 print(f"[run_task] 加载对话历史失败（跳过本轮）: {e}", flush=True)
                 _set_state("waiting")
                 continue
+            messages = _strip_pending_messages(messages, session_root_path)
             if not messages:
                 print("[run_task] daemon 轮无历史消息，跳过", flush=True)
                 _set_state("waiting")
@@ -491,8 +532,11 @@ def main() -> int:
     #     mod 模式优先写 DSH_USER_PROMPT（用户原始输入）：包装后的 task_prompt
     #     以"你是一个 MOD 制作器…（C:\本地路径）"开头，直接进历史会污染
     #     侧栏标题并泄漏服务器路径。
+    #     resume 一律不写：带消息的 resume 已把消息 enqueue 进队列（由
+    #     daemon 消费时落盘，保证处理顺序），这里写会双写且顺序错乱。
+    _is_resume = os.environ.get("DSH_RESUME", "") == "1"
     user_prompt = os.environ.get("DSH_USER_PROMPT", "") or task_prompt
-    if mode in ("chat", "mod") and user_prompt:
+    if mode in ("chat", "mod") and user_prompt and not _is_resume:
         try:
             from core.conversation import append_user as _early_append_user
             _early_append_user(session_root_path, user_prompt, images=prompt_images)
@@ -513,6 +557,12 @@ def main() -> int:
     #      首轮即带历史，agent 能看到之前的对话，mod 制作可多轮迭代）
     #    - 若运行中排队的消息尚未被 agent 消费（例如恢复时队列里有消息），
     #      会由 agent_loop 每轮开头的 _drain_interjections 自动注入
+    # 禁止 agent_loop 中途 drain 排队消息：排队一律由 daemon 逐条消费
+    # （每轮一条，严格"问一条答一条"）。首轮 import 要 7-8 秒，期间到达
+    # 的排队消息若被轮中途注入，会与本轮需求合并处理、只答最后一条
+    # （实测 甲/乙/丙 三连发，乙被吞）。无条件设置（而非仅组装时检测）：
+    # 组装时队列可能还空，消息几秒后才到。
+    os.environ["DSH_DEFER_DRAIN"] = "1"
     messages = []
     resume = os.environ.get("DSH_RESUME", "") == "1"
     if resume:
@@ -541,31 +591,10 @@ def main() -> int:
                 return 1
         else:
             # ① 排队消息被 server 同步写进历史（enqueue 竞态）时，它们属于
-            # "本轮之后"的需求：从 messages 滤掉，交给 agent_loop 的
-            # _drain_interjections 以带标记方式注入——否则模型把多条需求
-            # 当作一轮合并处理，只回最后一条（实测：回复"二"永远丢失）。
-            try:
-                from core.conversation import pending_path as _pending_path
-                _pset = set()
-                _pp = _pending_path(session_root_path)
-                if _pp.exists():
-                    import json as _json
-                    for _ln in _pp.read_text(encoding="utf-8").splitlines():
-                        _ln = _ln.strip()
-                        if not _ln:
-                            continue
-                        try:
-                            _pm = _json.loads(_ln)
-                            _pset.add((_pm.get("role"), _pm.get("content")))
-                        except ValueError:
-                            continue
-                if _pset:
-                    _before = len(messages)
-                    messages = [m for m in messages if (m.get("role"), m.get("content")) not in _pset]
-                    if len(messages) != _before:
-                        print(f"[run_task] 已把 {_before - len(messages)} 条排队消息移出本轮（等 drain 注入）", flush=True)
-            except Exception as e:
-                print(f"[run_task] 排队消息对照失败（忽略）: {e}", flush=True)
+            # "本轮之后"的需求：从 messages 滤掉，由 daemon 逐条消费——
+            # 否则模型把多条需求当作一轮合并处理，只答最后一条
+            # （实测：回复"二"永远丢失）。
+            messages = _strip_pending_messages(messages, session_root_path)
             # ② 查重必须扫全列表而非只看末条：运行中排队时末条可能是
             # "下一条排队消息"而非本轮 prompt，只看末条会重复 append
             # （实测 288f3a3a1f41：messages=[u1,u2,u1] 重复）。

@@ -190,11 +190,13 @@ def pending_path(session_root: str | os.PathLike) -> Path:
 
 def enqueue_pending(session_root: str | os.PathLike, content: str,
                     images: list | None = None) -> None:
-    """把运行中用户发来的消息排入队列（当前轮跑完后由前端自动续跑处理）。
+    """把运行中用户发来的消息排入队列（daemon 一轮消费一条）。
 
-    同步写入 conversation.jsonl 历史——否则消息只进 pending 队列、
-    agent 后端能收到（drain 注入）但历史记录文件里没有（实测 bug：
-    追加输入的内容在 data 里为空）。
+    只写 pending 文件，不写对话历史——历史由消费方（daemon 出队该条时）
+    落盘，保证磁盘历史是"处理顺序"（问一条答一条穿插）。此前 enqueue
+    同步写历史，磁盘变成"到达顺序"（乙丙插在甲与甲的回答之间），
+    daemon 轮的上下文末尾是 assistant、没有可答的问题，模型只能回
+    "收到上下文更新"（实测 7ddb68f750e0）。
     """
     path = pending_path(session_root)
     entry = {"role": "user", "content": content}
@@ -203,11 +205,9 @@ def enqueue_pending(session_root: str | os.PathLike, content: str,
     try:
         with open(path, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-        logger.info(f"conversation.enqueue_pending | 已排队用户消息")
+        logger.info("conversation.enqueue_pending | 已排队用户消息")
     except OSError as e:
         logger.error(f"conversation.enqueue_pending 写入失败: {e}")
-    # 同步写入对话历史（幂等：只追加，不重复）
-    append_user(session_root, content, images)
 
 
 def drain_pending(session_root: str | os.PathLike) -> list:
@@ -236,6 +236,44 @@ def drain_pending(session_root: str | os.PathLike) -> list:
     if msgs:
         logger.info(f"conversation.drain_pending | 取出 {len(msgs)} 条排队消息")
     return msgs
+
+
+def drain_pending_one(session_root: str | os.PathLike) -> list:
+    """只出队最早的一条排队消息（其余留在队列，daemon 下一轮继续消费）。
+
+    daemon 每轮只消费一条：严格"问一条、答一条"——此前一次全部 drain，
+    多条排队消息在同一轮注入，模型常合并处理只答最后一条（实测
+    甲/乙/丙三连发，乙被吞）。历史已由 enqueue_pending 同步落盘，
+    这里只需从队列文件移除该条。
+    """
+    path = pending_path(session_root)
+    if not path.exists():
+        return []
+    lines = []
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            lines = [l for l in f.read().splitlines() if l.strip()]
+    except OSError as e:
+        logger.warning(f"conversation.drain_pending_one 读取失败: {e}")
+        return []
+    if not lines:
+        return []
+    first = None
+    try:
+        m = json.loads(lines[0])
+        if isinstance(m, dict) and m.get("role") == "user":
+            first = m
+    except json.JSONDecodeError:
+        pass
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            for l in lines[1:]:
+                f.write(l + "\n")
+    except OSError as e:
+        logger.warning(f"conversation.drain_pending_one 回写失败: {e}")
+    if first:
+        logger.info(f"conversation.drain_pending_one | 出队 1 条（剩余 {len(lines) - 1}）")
+    return [first] if first else []
 
 
 def pending_count(session_root: str | os.PathLike) -> int:

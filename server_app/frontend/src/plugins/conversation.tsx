@@ -255,6 +255,9 @@ function Messages() {
   // chat 模式：重开会话时历史 assistant 气泡与 reply 事件是同一内容
   // （conversation.jsonl 与流式日志各存一份），按前缀匹配去重——
   // 已有气泡的 reply 不再渲染；实时轮次（尚未入历史）照常实时显示。
+  // chat 模式：重开会话时历史 assistant 气泡与 reply 事件是同一内容
+  // （conversation.jsonl 与流式日志各存一份），按前缀匹配去重——
+  // 已有气泡的 reply 不再渲染；实时轮次（尚未入历史）照常实时显示。
   const assistantPrefixes = useMemo(() => {
     const s = new Set<string>()
     if (mode === 'chat') {
@@ -264,6 +267,15 @@ function Messages() {
     }
     return s
   }, [mode, chatMessages])
+
+  // 权威气泡在场（chatMessages 里有 assistant，通常来自磁盘历史加载）时
+  // 流式 reply 组整体隐藏——前缀去重对"暂停续跑重输出/中途改口"等场景
+  // 会失配造成回复重复显示（实测：暂停恢复后同一条回复出现两次）。
+  // 气泡不在（纯实时轮次/历史加载失败）时仍显示 reply 事件作为回复。
+  const hasAssistantBubbles = useMemo(
+    () => chatMessages.some((m) => m.role === 'assistant'),
+    [chatMessages],
+  )
 
   // 连续 reply 事件合并为一个助手气泡：
   // 流式过程中一次回复可能被后端按轮询切片拆成多个 reply 事件，
@@ -290,10 +302,11 @@ function Messages() {
     }
     return out.filter((item) => {
       if (!Array.isArray(item)) return true
+      if (hasAssistantBubbles) return false
       const merged = item.map((e) => e.content).join('\n\n')
       return !assistantPrefixes.has(merged.slice(0, 50))
     })
-  }, [shownEvents, assistantPrefixes])
+  }, [shownEvents, assistantPrefixes, hasAssistantBubbles])
 
   // chat 模式：把“当前轮”的事件插在最后一个 assistant 回复之前，
   // 避免最终回答先于思考/工具过程出现；之前的轮次尽量保持原始顺序。

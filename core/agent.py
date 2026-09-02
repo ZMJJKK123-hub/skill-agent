@@ -1227,6 +1227,11 @@ def _drain_interjections(messages: list) -> None:
     session_root = _current_session_root()
     if not session_root:
         return
+    # run_task（web 网页链路）设 DSH_DEFER_DRAIN=1：排队消息由 daemon
+    # 逐条消费（一轮一条，严格问一条答一条），不在此处中途注入——
+    # 否则与本轮需求合并处理，只答最后一条（实测：乙被吞）
+    if os.environ.get("DSH_DEFER_DRAIN", "") == "1":
+        return
     try:
         from .conversation import drain_pending
         pending = drain_pending(session_root)

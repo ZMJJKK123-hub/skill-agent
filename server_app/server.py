@@ -1040,7 +1040,10 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
                  # "你是一个 MOD 制作器…（C:\路径）…"，写进对话历史会污染
                  # 侧栏标题并泄漏服务器路径；run_task 优先用这条写历史。
                  # 纯图片消息回退"（图片）"，历史里不留空气泡。
-                 "DSH_USER_PROMPT": req.prompt.strip() or ("（图片）" if upload_names else ""),
+                 # resume 除外：带消息的 resume 已把消息 enqueue 进队列
+                 # （由 daemon 消费时落盘），这里再传会被 2.5 早写双写。
+                 "DSH_USER_PROMPT": ("" if req.resume else
+                                     (req.prompt.strip() or ("（图片）" if upload_names else ""))),
                  # 随消息上传的图片（.chat/uploads 文件名 JSON 数组）：
                  # run_task 写历史、agent 模型调用边界展开为 image_url 片段
                  **({"DSH_PROMPT_IMAGES": json.dumps(upload_names, ensure_ascii=False)}

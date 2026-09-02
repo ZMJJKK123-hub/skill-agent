@@ -80,6 +80,20 @@ function setState(patch: Partial<SessionState>) {
   emit()
 }
 
+// 当前活动会话指针（sessionStorage：刷新保留、关标签页即失效）。
+// 此前刷新页面回到空白首页——正在跑的任务仍在后台正常执行，但界面上
+// 完全看不到（运行中刷新是常见操作，实测缺陷）。刷新后据此自动恢复
+// 会话视图，运行状态由轮询自动接管。
+const ACTIVE_SID_KEY = 'modforge_active_sid'
+function _rememberActiveSid(sid: string | null) {
+  try {
+    if (sid) sessionStorage.setItem(ACTIVE_SID_KEY, sid)
+    else sessionStorage.removeItem(ACTIVE_SID_KEY)
+  } catch {
+    /* sessionStorage 不可用时静默 */
+  }
+}
+
 export function useSession(): SessionState {
   return useSyncExternalStore(subscribe, getState)
 }
@@ -175,6 +189,7 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
       )
       sid = session_id
       setState({ sessionId: session_id })
+      _rememberActiveSid(session_id)
     }
     // mod 模式：先准备 mod 工作区（复制模板+源码，幂等）
     if (mode === 'mod') {
@@ -261,14 +276,13 @@ async function _pollOnce(sid: string) {
       pending: st.pending ?? 0,
       phase: st.finished ? 'finished' : st.paused ? 'paused' : 'running',
     })
-    // chat 模式：轮次跑完重载磁盘对话历史（权威穿插顺序）。
+    // chat 模式：排队全部消化完的完成态重载磁盘对话历史（权威穿插顺序）。
     // 此前回复只留在事件流里、渲染在全部用户消息之后——连续多发时界面
-    // 变成"问题一堆、回复一堆"；且排队消息是运行中乐观插入的，本地顺序
-    // 不可靠（u2 会排到 a1 前面），daemon 秒级续跑又让前端错过中间轮的
-    // finished 窗口。磁盘 conversation.jsonl 由 run_task 每轮追加、顺序
-    // 严格 u/a 交替，完成时以它为准覆盖本地状态（mod 模式同款做法）。
-    // 运行中的当前轮仍由事件流实时显示，不受影响。
-    if (st.finished && state.mode === 'chat') {
+    // 变成"问题一堆、回复一堆"。磁盘 conversation.jsonl 按"处理顺序"
+    // 严格 u/a 交替（排队消息消费时才落盘），完成时以它为准覆盖本地。
+    // 排队未消化完（pending>0）不覆盖：磁盘还没写到那些消息，覆盖会把
+    // 本地乐观显示的排队气泡冲掉；等全部跑完再统一加载。
+    if (st.finished && state.mode === 'chat' && (st.pending ?? 0) === 0) {
       void loadConversation(sid)
     }
     // mod 模式：完成时从后端拉对话历史，取最终总结渲染成气泡
@@ -292,7 +306,11 @@ async function _pollOnce(sid: string) {
         void loadHistory()
       } catch (e) {
         if (state.sessionId !== sid) return
-        setState({ phase: 'finished', error: String((e as Error)?.message || e) })
+        const msg = String((e as Error)?.message || e)
+        // daemon 自己 0.5s 就会消费排队消息：这里撞上它刚转 working 的
+        // 409 属正常竞态（任务实际在跑），不算错误
+        if (/409|already running|运行中/i.test(msg)) return
+        setState({ phase: 'finished', error: msg })
       }
     }
     const q = await api.getQuestion(sid)
@@ -334,7 +352,8 @@ function extractFinalReply(logTail: string): string | null {
 }
 
 // 打开历史会话时：加载该会话的对话历史（.chat/conversation.jsonl）+ 恢复模式
-export async function loadConversation(sessionId: string) {
+// 返回是否成功（会话已被删除等场景返回 false，调用方据此回空态）
+export async function loadConversation(sessionId: string): Promise<boolean> {
   try {
     const { messages, mode } = await api.getConversation(sessionId)
     // mod 模式：从历史恢复用户 prompt 气泡——此前 prompts 被清空后无人恢复，
@@ -347,8 +366,10 @@ export async function loadConversation(sessionId: string) {
       mode: mode ?? state.mode,
       prompts: userPrompts.length > 0 ? userPrompts : state.prompts,
     })
+    return true
   } catch {
-    /* 未登录/无历史时忽略 */
+    /* 会话不存在/网络失败 */
+    return false
   }
 }
 
@@ -383,6 +404,7 @@ export function stopPolling() {
 // 新建对话：回到从零生成的空态（不删历史，只清当前状态）
 export async function newConversation() {
   stopPolling()
+  _rememberActiveSid(null)
   setState({
     sessionId: null,
     phase: 'idle',
@@ -411,7 +433,15 @@ export async function newConversation() {
 export async function openHistorySession(id: string) {
   stopPolling()
   setState({ sessionId: id, phase: 'idle', events: [], cursor: null, prompts: [], title: null, error: null, mode: null, chatMessages: [], paused: false, pending: 0, stoppedNotice: false, question: null, questions: null })
-  await loadConversation(id)
+  _rememberActiveSid(id)
+  const ok = await loadConversation(id)
+  if (!ok) {
+    // 会话已不存在（如已在别处删除而列表未刷新）：清指针回空态，
+    // 避免刷新后永远恢复一个 404 会话
+    _rememberActiveSid(null)
+    void newConversation()
+    return
+  }
   // 单次探测状态：若该会话仍在运行则恢复轮询显示进行中
   void poll()
 }
@@ -444,3 +474,13 @@ export async function regenerate() {
 //   }
 // }
 // ============================================================================
+
+// 刷新恢复：模块加载时若本标签页 remembers 一个活动会话，自动恢复其视图
+// （运行中的任务由 poll 探测接管，显示"进行中"；已删除的会话回空态）。
+// 放在文件末尾：openHistorySession 已定义。
+try {
+  const _sid = sessionStorage.getItem(ACTIVE_SID_KEY)
+  if (_sid) void openHistorySession(_sid)
+} catch {
+  /* sessionStorage 不可用时忽略 */
+}
