@@ -51,7 +51,7 @@ export const sidebarPlugin: PluginManifest = {
                   activeWorkspace === null ? 'bg-subtle text-main' : 'text-muted hoverable'
                 }`}
               >
-                💬 {label}
+                {label}
               </button>
             </div>
           )}

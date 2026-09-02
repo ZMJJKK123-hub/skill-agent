@@ -7,7 +7,7 @@ import { composition } from '../composition'
 type SectionKey = 'general' | 'models' | 'vision' | 'plugins' | 'language' | 'appearance' | 'agent'
 
 type Draft = {
-  apiKey: string
+  model: string
   loader: string
   version: string
   sandbox: SandboxMode
@@ -30,15 +30,15 @@ function SettingsPanel() {
 
   // 通用配置草稿：应用前不落库（providers 同样纳入草稿——增删改全部
   // 只改 draft，点"应用"才生效，"取消"整体丢弃，实测缺陷 #8 的修复）
-  const { apiKey, loader, version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey, providers } = useUi()
+  const { model, loader, version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey, providers } = useUi()
   const [draft, setDraft] = useState({
-    apiKey, loader, version, sandbox,
+    model, loader, version, sandbox,
     visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey,
     providers,
   })
   useEffect(() => {
     if (settingsOpen) setDraft({
-      apiKey, loader, version, sandbox,
+      model, loader, version, sandbox,
       visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey,
       providers,
     })
@@ -49,7 +49,7 @@ function SettingsPanel() {
 
   const apply = () => {
     setUi({
-      apiKey: draft.apiKey.trim(),
+      model: draft.model,
       loader: draft.loader,
       version: draft.version,
       sandbox: draft.sandbox,
@@ -147,15 +147,6 @@ function GeneralSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft
           ))}
         </select>
       </Field>
-      <Field label={t('general.apiKey')}>
-        <input
-          type="password"
-          value={draft.apiKey}
-          onChange={(e) => setDraft({ ...draft, apiKey: e.target.value })}
-          placeholder={t('general.apiKeyHint')}
-          className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500"
-        />
-      </Field>
       <Field label={t('general.sandbox')}>
         <select
           value={draft.sandbox}
@@ -185,7 +176,6 @@ function GeneralSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft
           className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500"
         />
       </Field>
-      <p className="text-xs text-faint">{t('general.fallbackHint')}</p>
     </div>
   )
 }
@@ -212,11 +202,37 @@ function ModelsSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft)
       model: form.model.trim(),
       protocol: form.protocol,
     }
-    setDraft({ ...draft, providers: [...providers, p] })
+    // 官方默认移除后 model 无兜底：新增 provider 后若当前没有可用选中模型，
+    // 自动选中新增 provider 的第一个模型（否则下拉停留在"暂无配置"）
+    const nextProviders = [...providers, p]
+    const modelKnown = nextProviders.some((x) =>
+      x.model.split(',').map((s) => s.trim()).includes(draft.model),
+    )
+    setDraft({
+      ...draft,
+      providers: nextProviders,
+      // 当前选中有效则保留；否则（空/失效）自动选中新增 provider 的第一个模型
+      model: modelKnown && draft.model
+        ? draft.model
+        : p.model.split(',').map((s) => s.trim()).filter(Boolean)[0] || '',
+    })
     setForm({ name: '', baseUrl: '', apiKey: '', model: '', protocol: 'openai' })
     setShowForm(false)
   }
-  const remove = (id: string) => setDraft({ ...draft, providers: providers.filter((p) => p.id !== id) })
+  const remove = (id: string) => {
+    const nextProviders = providers.filter((p) => p.id !== id)
+    const modelKnown = nextProviders.some((x) =>
+      x.model.split(',').map((s) => s.trim()).includes(draft.model),
+    )
+    setDraft({
+      ...draft,
+      providers: nextProviders,
+      // 删空/删中所选：回退剩余第一个可用模型，全空则"暂无配置"
+      model: modelKnown ? draft.model : (nextProviders[0]
+        ? nextProviders[0].model.split(',').map((s) => s.trim()).filter(Boolean)[0] || ''
+        : ''),
+    })
+  }
 
   const startEdit = (p: Provider) => {
     setEditId(p.id)
@@ -262,11 +278,6 @@ function ModelsSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft)
   return (
     <div>
       <h2 className="mb-1 text-lg font-semibold">{t('models.title')}</h2>
-      <p className="mb-3 text-xs text-faint">提供方的增删改与模型 ID 管理均为草稿：点右下角「应用」保存，「取消」丢弃全部改动。</p>
-      <div className="mb-2 rounded-md border border-forge-500/40 bg-forge-500/10 px-3 py-2 text-sm">
-        <div className="font-medium text-forge-300">DeepSeek</div>
-        <div className="text-xs text-faint">deepseek-v4-flash / deepseek-v4-pro · 官方 api.deepseek.com</div>
-      </div>
       {providers.length === 0 && <div className="mb-2 px-1 text-xs text-faint">{t('models.empty')}</div>}
       {providers.map((p) =>
         editId === p.id ? (
@@ -549,7 +560,7 @@ function SettingsEntry({ collapsed }: { collapsed?: boolean }) {
       className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hoverable"
       title={t('nav.settings')}
     >
-      <span>⚙️</span>
+      <span>设置</span>
       {!collapsed && <span>{t('nav.settings')}</span>}
     </button>
   )

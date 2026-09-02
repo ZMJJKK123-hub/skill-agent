@@ -9,25 +9,23 @@ export interface Provider {
   protocol: string
 }
 
-// 把「选中的模型」解析成后端实际要用的 (apiKey, baseUrl, model)：
-// 官方模型走 DeepSeek 官方 API；自定义模型匹配到对应 provider 的 key/地址。
-export const OFFICIAL_MODEL = 'deepseek-v4-flash'
-export const OFFICIAL_MODELS = ['deepseek-v4-flash', 'deepseek-v4-pro']
-export const OFFICIAL_BASE_URL = 'https://api.deepseek.com'
-
-export function resolveModelConfig(state: Pick<UiState, 'apiKey' | 'model' | 'providers'>): {
+// v1.0.2：官方模型默认值（deepseek-v4-flash + api.deepseek.com）已移除——
+// 模型/Base URL/API Key 完全由用户在设置里添加提供方，未配置即"暂无配置"。
+export function resolveModelConfig(state: Pick<UiState, 'model' | 'providers'>): {
   apiKey: string
   baseUrl: string
   model: string
 } {
-  const { apiKey, model, providers } = state
-  // 官方模型（flash / pro）都走 DeepSeek 官方 API，用用户自填 key
-  if (OFFICIAL_MODELS.includes(model)) {
-    return { apiKey, baseUrl: OFFICIAL_BASE_URL, model }
-  }
+  const { model, providers } = state
   const p = providers.find((p) => p.model.split(',').map((s) => s.trim()).includes(model))
   if (p) return { apiKey: p.apiKey, baseUrl: p.baseUrl, model }
-  return { apiKey, baseUrl: OFFICIAL_BASE_URL, model: OFFICIAL_MODEL }
+  // 匹配不到（未配置/老数据残留）：返回空三件套，由调用方拦截并提示
+  return { apiKey: '', baseUrl: '', model: '' }
+}
+
+/** 当前是否有可用模型配置（下拉与发送按钮的判定依据） */
+export function hasModelConfig(state: Pick<UiState, 'model' | 'providers'>): boolean {
+  return resolveModelConfig(state).model !== ''
 }
 
 export type Locale = 'zh' | 'en'
@@ -75,7 +73,7 @@ function loadState(): UiState {
     version: '1.21.11',
     locale: 'zh',
     theme: 'dark',
-    model: OFFICIAL_MODEL,
+    model: '',
     sandbox: 'full-access',
     providers: [],
     disabledPlugins: [],
@@ -94,13 +92,13 @@ function loadState(): UiState {
       // 设置插件永远启用：清掉历史上可能被误关的持久化状态（sidebar 同理——
       // 禁用 sidebar 会藏掉设置入口造成自锁，实测缺陷 #9）
       loaded.disabledPlugins = (loaded.disabledPlugins || []).filter((p) => p !== 'modforge-settings' && p !== 'modforge-sidebar')
-      // 模型迁移：持久化的模型既不是官方 id、也不在任何自定义 provider 里
-      // （如已下线的 DeepSeek-V4-Flash-0731）→ 回退官方默认，避免下拉框空值
-      if (loaded.model && !OFFICIAL_MODELS.includes(loaded.model)) {
+      // 模型清洗（v1.0.2）：持久化的模型名必须仍在某个 provider 里才保留；
+      // 官方默认已移除，匹配不到一律回退空（= 暂无配置），不静默指向任何模型
+      if (loaded.model) {
         const known = (loaded.providers || []).some((p) =>
           p.model.split(',').map((s) => s.trim()).includes(loaded.model!),
         )
-        if (!known) loaded.model = OFFICIAL_MODEL
+        if (!known) loaded.model = ''
       }
       // 一次性迁移：识图模式改为默认开启（红宝石剑会话因旧默认 false 导致
       // analyze_image 全部失败、被迫绕远路）。只翻转一次，之后的开关尊重用户选择。

@@ -122,7 +122,7 @@ function GameWindow() {
           running ? 'animate-pulse' : ''
         }`}
       >
-        🎮
+        游戏
       </button>
     )
   }
@@ -138,7 +138,7 @@ function GameWindow() {
         onMouseDown={onHeaderMouseDown}
         className="flex h-9 shrink-0 cursor-move items-center gap-2 border-b border-line px-2 select-none"
       >
-        <span className="text-xs font-medium text-faint">🎮 {t('games.title')}</span>
+        <span className="text-xs font-medium text-faint">{t('games.title')}</span>
         <select
           value={game}
           onChange={(e) => setGame(e.target.value)}

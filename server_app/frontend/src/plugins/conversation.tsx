@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { PluginManifest, SLOTS } from '../shell/registry'
-import { useUi, setUi, resolveModelConfig } from '../lib/store'
+import { useUi, setUi, resolveModelConfig, hasModelConfig } from '../lib/store'
 import { useT } from '../lib/i18n'
 import { useSession, sendPrompt, startPolling, stopPolling, regenerate, answerQuestion, pauseTask, resumeTask } from '../lib/session'
 import { downloadJar, downloadSourceZip } from '../lib/api'
@@ -193,7 +193,7 @@ function EventView({ ev, t }: { ev: EventItem; t: (k: string) => string }) {
 }
 
 function Messages() {
-  const { user, apiKey } = useUi()
+  const { user } = useUi()
   const t = useT()
   const sess = useSession()
   const { phase, prompts, events, elapsed, hasJar, error, mode, chatMessages, stoppedNotice, sessionId, paused } = sess
@@ -292,7 +292,7 @@ function Messages() {
   // 空态判断以"是否有会话"为准：无会话 → 引导页；
   // 有会话（含历史会话，phase=idle + chatMessages 有内容）→ 显示聊天流
   if (!sessionId) {
-    return <EmptyState loggedIn={!!user} configured={!!apiKey} error={sess.phase === 'error' ? error : null} />
+    return <EmptyState error={sess.phase === 'error' ? error : null} />
   }
 
   // ── 统一微信式聊天流：chat 模式显示气泡对话；mod 模式 DSH 风格事件流 ──
@@ -363,16 +363,16 @@ function Messages() {
             title={hasJar ? '' : t('conv.noJar')}
             className="rounded-lg bg-forge-500 px-3 py-1.5 text-sm font-medium text-ink-950 hover:bg-forge-400 disabled:opacity-40"
           >
-            ⬇ {t('conv.downloadJar')}
+            {t('conv.downloadJar')}
           </button>
           <button
             onClick={() => sess.sessionId && downloadSourceZip(sess.sessionId).catch((e) => alert(errMsg(e)))}
             className="hoverable rounded-lg border border-line px-3 py-1.5 text-sm"
           >
-            ⬇ {t('conv.downloadZip')}
+            {t('conv.downloadZip')}
           </button>
           <button onClick={() => regenerate()} className="hoverable rounded-lg border border-line px-3 py-1.5 text-sm">
-            🔄 {t('conv.regenerate')}
+            {t('conv.regenerate')}
           </button>
           {phase === 'finished' &&
             (/(任务异常终止|Traceback \(most recent call last\))/.test(sess.logTail) ? (
@@ -386,7 +386,7 @@ function Messages() {
   )
 }
 
-function EmptyState({ loggedIn, configured, error }: { loggedIn: boolean; configured: boolean; error?: string | null }) {
+function EmptyState({ error }: { error?: string | null }) {
   const t = useT()
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
@@ -407,7 +407,7 @@ function EmptyState({ loggedIn, configured, error }: { loggedIn: boolean; config
       )}
       {/* 作者联系方式：放空态空白处，方便用户咨询 */}
       <div className="mt-6 max-w-sm rounded-xl border border-line bg-panel/60 p-3 text-xs text-muted">
-        <div className="mb-1 font-medium text-forge-300">💬 联系作者</div>
+        <div className="mb-1 font-medium text-forge-300">联系作者</div>
         <div>
           使用遇到问题、想提需求或反馈 bug？加作者微信交流：
           <span
@@ -530,7 +530,7 @@ function QuestionCard() {
 }
 
 function Composer() {
-  const { user, apiKey, model, providers, version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey, settingsOpen } = useUi()
+  const { user, model, providers, version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey, settingsOpen } = useUi()
   const t = useT()
   const sess = useSession()
   const [text, setText] = useState('')
@@ -543,7 +543,7 @@ function Composer() {
   const send = () => {
     const prompt = text.trim()
     if (!prompt) return
-    const r = resolveModelConfig({ apiKey, model, providers })
+    const r = resolveModelConfig({ model, providers })
     const settings = { apiKey: r.apiKey, baseUrl: r.baseUrl, model: r.model, game: 'minecraft', loader: 'forge', version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey }
 
     // /mod 拦截：固定格式触发 mod 制作模式（大小写不敏感——/MOD /Mod 同样生效；
@@ -568,22 +568,17 @@ function Composer() {
 
   const confirmMod = () => {
     if (!modConfirm) return
-    const r = resolveModelConfig({ apiKey, model, providers })
+    const r = resolveModelConfig({ model, providers })
     const settings = { apiKey: r.apiKey, baseUrl: r.baseUrl, model: r.model, game: 'minecraft', loader: 'forge', version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey }
     void sendPrompt(modConfirm, settings, 'mod')
     setModConfirm(null)
     setText('')
   }
 
-  // 可发送 = 已登录且有可用 Key（官方 Key 或自定义 provider）。
-  // 输入框始终可见：未就绪时置灰 + 顶部提示条，而不是整个藏掉
-  // （原来的条件渲染在首访未登录时什么都不显示，用户找不到输入框）。
-  const canChat = !!user && (!!apiKey || providers.length > 0)
-  const notReadyReason = !user
-    ? t('auth.loginFirst')
-    : settingsOpen
-      ? '填好 API Key 后点击右下角「应用」即可生效'
-      : t('auth.needApiKey')
+  // 可发送 = 已配置可用模型（v1.0.2：官方默认已移除，完全由用户提供）。
+  // 未配置时不显示任何提示框——只在发送按钮悬停（title）时给出指引。
+  const canChat = hasModelConfig({ model, providers })
+  const notReadyReason = canChat ? '' : t('conv.noModel')
 
   // 运行中：红方块停止按钮；暂停后：绿箭头继续按钮；空闲：发送按钮
   const actionButton = running ? (
@@ -642,11 +637,7 @@ function Composer() {
           </div>
         </div>
       )}
-      {!canChat && (
-        <div className="mb-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-400">
-          {notReadyReason}
-        </div>
-      )}
+      {/* 未配置时不显示提示框（用户要求）：提示只在发送按钮悬停 title 出现 */}
       <div className="rounded-xl border border-line bg-panel p-3">
         <textarea
           value={text}
@@ -664,26 +655,28 @@ function Composer() {
           }}
           rows={3}
           disabled={!canChat}
-          placeholder={canChat ? t('conv.placeholder') : notReadyReason}
+          placeholder={canChat ? t('conv.placeholder') : t('conv.noModelShort')}
           className="w-full resize-none bg-transparent text-sm outline-none placeholder:text-faint disabled:opacity-60"
         />
           <div className="mt-2 flex items-center gap-2">
             <select
               value={model}
               onChange={(e) => setUi({ model: e.target.value })}
-              className="rounded-md border border-line bg-field px-2 py-1 text-xs text-muted outline-none"
+              disabled={!canChat}
+              title={canChat ? '' : t('conv.noModel')}
+              className="rounded-md border border-line bg-field px-2 py-1 text-xs text-muted outline-none disabled:opacity-50"
             >
-              <optgroup label="DeepSeek">
-                <option value="deepseek-v4-flash">deepseek-v4-flash（官方）</option>
-                <option value="deepseek-v4-pro">deepseek-v4-pro（官方）</option>
-              </optgroup>
-              {providers.map((p) => (
-                <optgroup key={p.id} label={p.name}>
-                  {p.model.split(',').map((m) => m.trim()).filter(Boolean).map((m) => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
-                </optgroup>
-              ))}
+              {canChat ? (
+                providers.map((p) => (
+                  <optgroup key={p.id} label={p.name}>
+                    {p.model.split(',').map((m) => m.trim()).filter(Boolean).map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </optgroup>
+                ))
+              ) : (
+                <option value="">{t('conv.noModelShort')}</option>
+              )}
             </select>
             <div className="flex-1" />
             {running && sess.pending > 0 && (

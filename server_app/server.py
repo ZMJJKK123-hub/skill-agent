@@ -57,7 +57,7 @@ class Session:
 
     def __init__(self, session_id: str, mod_dir: Path, api_key: str, owner: str = "",
                  game: str = "minecraft", loader: str = "", version: str = "",
-                 model: str = "deepseek-v4-flash", base_url: str = "https://api.deepseek.com",
+                 model: str = "", base_url: str = "",
                  sandbox: str = "full-access",
                  vision_enabled: bool = True, vision_api_key: str = "",
                  vision_base_url: str = "", vision_model: str = "",
