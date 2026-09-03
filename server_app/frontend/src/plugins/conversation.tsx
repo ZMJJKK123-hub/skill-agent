@@ -190,6 +190,7 @@ interface ToolEntry {
   result?: string
   status: 'success' | 'failed' | 'running'
   batch: number
+  peer?: string // teammate | subagent：队友/子代理执行，行上标来源
 }
 
 /** 工具调用行：工具名（状态色）+ 参数首行摘要 + 展开箭头；结果收进
@@ -201,6 +202,8 @@ function ToolRow({ entry, delayMs }: { entry: ToolEntry; delayMs: number }) {
     : entry.status === 'failed' ? 'text-red-500'
     : 'text-muted animate-pulse'
   const oneLine = entry.params.replace(/\s+/g, ' ').trim().slice(0, 100)
+  const peerLabel = entry.peer === 'teammate' ? '队友 · '
+    : entry.peer === 'subagent' ? '子代理 · ' : ''
   return (
     <div className="fade-in-up" style={{ animationDelay: `${delayMs}ms` }}>
       <button
@@ -211,6 +214,7 @@ function ToolRow({ entry, delayMs }: { entry: ToolEntry; delayMs: number }) {
         <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor" className={`shrink-0 transition-transform ${open ? 'rotate-90' : ''}`}>
           <path d="M3 1.5L9.5 6L3 10.5V1.5z" />
         </svg>
+        {peerLabel && <span className="shrink-0 text-[11px] opacity-70">{peerLabel}</span>}
         <span className="shrink-0 font-mono">{entry.tool}</span>
         <span className="min-w-0 flex-1 truncate font-mono text-[12px] opacity-60">{oneLine}</span>
         {entry.status === 'running' && <span className="shrink-0 text-[11px] text-faint">运行中</span>}
@@ -246,20 +250,6 @@ function TypingReply({ content }: { content: string }) {
   return <ChatBubble role="assistant" content={shown} />
 }
 
-/** 中间分界线（round / system 事件）：居中显示，不归属任何人 */
-function DividerRow({ ev }: { ev: EventItem }) {
-  const text = ev.type === 'round'
-    ? (ev.content.replace('===', '').trim().slice(0, 30))
-    : ev.content
-  return (
-    <div className="flex items-center gap-2 py-0.5">
-      <div className="h-px flex-1 bg-line" />
-      <span className="text-[10px] text-faint">{text}</span>
-      <div className="h-px flex-1 bg-line" />
-    </div>
-  )
-}
-
 /** 普通日志（todo/background/protocol/worktree/log/system）：左侧小字 */
 function LogRow({ ev }: { ev: EventItem }) {
   return (
@@ -271,19 +261,11 @@ function LogRow({ ev }: { ev: EventItem }) {
   )
 }
 
-/** 用户可见的事件类型白名单：回复直接渲染；思考与工具由聚合逻辑
- *  （thinkingSegs / toolEntries）转成流式思考段和合成工具行。
- *  其余（log/round/system/protocol/worktree/background/todo 等运行日志）
- *  是给开发者看的内部流水，不进用户时间线。 */
-const VISIBLE_EVENT_TYPES = new Set(['reply'])
-
-/** DSH 风格事件渲染器：按类型分派（thinking/tool 由聚合渲染，不在此） */
+/** DSH 风格事件渲染器：按类型分派（thinking/tool/round 由聚合处理不渲染） */
 function EventView({ ev }: { ev: EventItem }) {
   switch (ev.type) {
     case 'reply':
       return <ReplyRow ev={ev} />
-    case 'round':
-      return <DividerRow ev={ev} />
     default:
       return <LogRow ev={ev} />
   }
@@ -395,6 +377,15 @@ function Messages() {
     return () => { document.title = 'MOD Forge' }
   }, [runningForTitle])
 
+  // mod 完成瞬间把总结气泡滚进视口：完成后内容尾随大量过程行，
+  // 视口停在过程区会以为"没结果"（实测：完成后第一眼是空白/工具行）
+  useEffect(() => {
+    if (mode !== 'mod' || phase !== 'finished') return
+    const members = listRef.current?.querySelectorAll('.fade-in-up')
+    const last = members && members.length > 0 ? members[members.length - 1] : null
+    last?.scrollIntoView({ block: 'end' })
+  }, [phase, mode])
+
   // 事件源（含不直接渲染但参与"切断"逻辑的类型）。
   // round 事件作轮次分界：不同轮次的回复必须分成两组，否则两轮回复被拼成
   // supervisor 的动作是内部监管，对用户是噪音，不进时间线。
@@ -447,7 +438,6 @@ function Messages() {
       | { kind: 'think'; key: string; seg: ThinkingSeg }
       | { kind: 'tool'; key: string; entry: ToolEntry; batchIdx: number }
       | { kind: 'reply'; key: string; events: EventItem[] }
-      | { kind: 'divider'; key: string; ev: EventItem }
     const out: Item[] = []
     let curSeg: ThinkingSeg | null = null
     let curReply: EventItem[] | null = null
@@ -475,6 +465,23 @@ function Messages() {
       }
       curReply = null
       if (e.type === 'tool_call') {
+        // 队友/子代理的日志是"参数=… output=…"合在一行（区别于主 agent
+        // 的 [tool]/[tool-result] 成对打印）：拆开后直接视为已完成，
+        // 不拆会让它永远显示"运行中"（实测误导）且摘要混入 output
+        if (e.peer === 'teammate' || e.peer === 'subagent') {
+          const split = e.content.split(' output=')
+          const params = split[0].replace(/^参数=\s*/, '')
+          const result = split.length > 1 ? split.slice(1).join(' output=') : undefined
+          out.push({
+            kind: 'tool', key: e.id,
+            entry: {
+              id: e.id, tool: e.tool ?? 'tool', params,
+              result, status: 'success', batch: e.batch ?? 0, peer: e.peer,
+            },
+            batchIdx: 0,
+          })
+          continue
+        }
         out.push({
           kind: 'tool', key: e.id,
           entry: { id: e.id, tool: e.tool ?? 'tool', params: e.content, status: 'running', batch: e.batch ?? 0 },
@@ -492,10 +499,9 @@ function Messages() {
             break
           }
         }
-      } else if (e.type === 'round') {
-        out.push({ kind: 'divider', key: e.id, ev: e })
       }
-      // 其余类型（log 等）只切断回复组，不产出成员
+      // 其余类型（round 分界/log 等）只切断回复组，不产出成员——
+      // "新一轮"分界线按用户要求移除：时间线只留思考/工具/回复
     }
     // 末段 streaming 判定：倒序找最近的实质动作，尾部噪音日志不算
     let streaming = false
@@ -555,15 +561,21 @@ function Messages() {
   // ── 统一微信式聊天流：chat 模式显示气泡对话；mod 模式 DSH 风格事件流 ──
   return (
     <div ref={listRef} className="mx-auto w-full max-w-4xl space-y-3 p-4 md:p-6">
-      {/* 回到底部浮钮：上滚回看历史时出现（fixed 定位于视口右下） */}
+      {/* 回到底部浮钮：上滚回看历史时出现（fixed 定位于视口右下）。
+          定位到最后一个实质成员（而非容器底）——mod 完成态容器尾部
+          常有大段空隙，贴容器底第一眼是空白而不是总结（实测） */}
       {showBackToBottom && (
         <button
           onClick={() => {
-            const scroller = listRef.current?.closest('.overflow-y-auto') as HTMLElement | null
-            if (scroller) {
-              scroller.scrollTop = scroller.scrollHeight
-              setShowBackToBottom(false)
+            const members = listRef.current?.querySelectorAll('.fade-in-up')
+            const last = members && members.length > 0 ? members[members.length - 1] : null
+            if (last) {
+              last.scrollIntoView({ block: 'end' })
+            } else {
+              const scroller = listRef.current?.closest('.overflow-y-auto') as HTMLElement | null
+              if (scroller) scroller.scrollTop = scroller.scrollHeight
             }
+            setShowBackToBottom(false)
           }}
           className="fixed bottom-28 right-6 z-30 flex items-center gap-1.5 rounded-full border border-line bg-panel px-3 py-1.5 text-xs text-muted shadow-lg hoverable"
         >
@@ -612,8 +624,6 @@ function Messages() {
                 ? <TypingReply key={item.key} content={content} />
                 : <ChatBubble key={item.key} role="assistant" content={content} />
             }
-            case 'divider':
-              return <EventView key={item.key} ev={item.ev} />
           }
         })}
 
