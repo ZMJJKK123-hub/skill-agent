@@ -80,7 +80,7 @@ body {
   overflow-wrap: break-word;
   word-break: break-word;
   font-size: 0.875rem;
-  color: #f3f4f6; /* text-gray-100 */
+  color: var(--text); /* 跟随主题（此前硬编码浅灰，浅色主题下白底白字不可读） */
 }
 .markdown-body > *:first-child { margin-top: 0; }
 .markdown-body > *:last-child { margin-bottom: 0; }
