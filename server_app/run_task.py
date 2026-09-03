@@ -228,7 +228,7 @@ def _run_one_round(messages: list, session_dir: Path,
         # 统一失败标记行：前端据此把会话显示为"运行异常"而不是绿色"完成"
         print(f"[run_task] 任务异常终止: {type(e).__name__}: {e}", flush=True)
         raise
-    print(f"[run_task] 完成，最终回复:\n{final}", flush=True)
+    # （最终回复的 stdout 打印移到历史落盘之后，见下方——防 stdout 冻结）
 
     # 正常完成：清掉断点文件（一轮真正结束，不再需要断点恢复）
     try:
@@ -237,13 +237,31 @@ def _run_one_round(messages: list, session_dir: Path,
     except Exception as e:
         print(f"[run_task] 清断点失败: {e}", flush=True)
 
-    # 把最终回复追加进对话历史（chat 和 mod 模式都写，供历史会话展示）
+    # 把最终回复追加进对话历史（chat 和 mod 模式都写，供历史会话展示）。
+    # 必须在往 stdout 打印最终回复之前——stdout 大段写入偶发冻结
+    # （实测：进程卡死在打印中途 1 小时，历史没落盘、daemon 永远不进
+    #  待机循环）。数据安全优先：先落盘，后打印。
     if mode in ("chat", "mod"):
         try:
             from core.conversation import append_assistant as _append_assistant
             _append_assistant(session_root_path, final or "")
         except Exception as e:
             print(f"[run_task] 保存回复到历史失败: {e}", flush=True)
+
+    # 往 stdout 打印最终回复。这段文本可能很长，且 stdout 写入曾被观测
+    # 到卡死（阻塞在 write 中途、进程假死、日志不再增长）——因此：
+    #   1) 只打印前 600 字（全文已在 conversation.jsonl，前端也从那里取）
+    #   2) 打印本身包 try/except OSError，失败降级为逐行短写
+    header = "[run_task] 完成，最终回复:"
+    preview = (final or "")[:600]
+    try:
+        print(f"{header}\n{preview}", flush=True)
+    except OSError:
+        try:
+            for ln in preview.splitlines()[:10]:
+                print(header, ln[:120], flush=True)
+        except Exception:
+            pass
 
     # 收尾：收集本次运行错误信号 → 去重追加 mod/KNOWN_ISSUES.md
     #    （agent 对 KNOWN_ISSUES.md 只读，新坑统一在这里落账，旧条目永不清除）
