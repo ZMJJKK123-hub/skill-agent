@@ -105,7 +105,73 @@ def _get_vision_client():
     return _vision_client
 
 
-def _focus_minecraft_window():
+# ── 用户焦点保护：抢焦点前记录用户正在用的窗口，用完立刻归还 ──
+# 客户端验证会反复把 MC 窗口置前（截图需要）+ 游戏捕获鼠标，用户的
+# 光标被框在游戏里动弹不得直到验证结束（用户实测反馈）。协议：任何
+# 抢焦点操作前 remember，操作完 restore——MC 失焦即自动释放鼠标捕获。
+_user_fg = {"hwnd": None, "ts": 0.0}
+
+
+def _remember_user_foreground() -> None:
+    """抢焦点前记录用户当前前台窗口（MC 自身与无标题窗口不记）。
+
+    10 秒内的连续抢焦点（同一次验证的连续截图/按键）视为一批，
+    不重复记录——避免第二次抢焦点时把 MC 当成"用户窗口"记下来。
+    """
+    now = time.time()
+    if _user_fg["hwnd"] and now - _user_fg["ts"] < 10:
+        _user_fg["ts"] = now
+        return
+    _user_fg["hwnd"] = None
+    _user_fg["ts"] = now
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+        user32 = ctypes.windll.user32
+        hwnd = user32.GetForegroundWindow()
+        if not hwnd:
+            return
+        length = user32.GetWindowTextLengthW(hwnd)
+        if not length:
+            return
+        buf = ctypes.create_unicode_buffer(length + 1)
+        user32.GetWindowTextW(hwnd, buf, length + 1)
+        if buf.value and "minecraft" not in buf.value.lower():
+            _user_fg["hwnd"] = hwnd
+    except Exception:
+        pass
+
+
+def _restore_user_foreground() -> None:
+    """把焦点还给用户正在用的窗口（ALT 技巧绕过 Windows 前台锁定）。"""
+    hwnd = _user_fg["hwnd"]
+    if not hwnd or time.time() - _user_fg["ts"] > 60:
+        return
+    try:
+        import ctypes
+        user32 = ctypes.windll.user32
+        if not user32.IsWindow(hwnd):
+            return
+        user32.keybd_event(0x12, 0, 0, 0)   # ALT down
+        user32.keybd_event(0x12, 0, 2, 0)   # ALT up
+        user32.ShowWindow(hwnd, 9)          # SW_RESTORE
+        user32.SetForegroundWindow(hwnd)
+    except Exception:
+        pass
+
+
+def focus_game_window(wait: float = 0.3, maximize: bool = False) -> bool:
+    """置前 Minecraft 窗口（按键/输入类工具借用焦点）。返回是否找到窗口。"""
+    return _focus_minecraft_window(wait=wait, maximize=maximize) is not None
+
+
+def restore_user_window() -> None:
+    """借用结束，归还焦点（与 focus_game_window 成对使用）。"""
+    _restore_user_foreground()
+
+
+def _focus_minecraft_window(wait: float = 0.8, maximize: bool = True):
     """把标题含 "Minecraft" 的窗口带到前台，返回其屏幕矩形 (l, t, r, b)。
 
     全屏截图（PIL ImageGrab）抓的是整个桌面——MC 窗口若不在前台，
@@ -113,6 +179,7 @@ def _focus_minecraft_window():
     MC 窗口置前并按其矩形裁剪，才能真正"看到"游戏画面。
     找不到窗口或非 Windows 时返回 None（回退原全屏行为）。
     """
+    _remember_user_foreground()
     if os.name != "nt":
         return None
     try:
@@ -154,8 +221,9 @@ def _focus_minecraft_window():
         ok = user32.SetForegroundWindow(hwnd)
         if not ok:
             logger.warning("SetForegroundWindow 被系统拒绝，截图可能仍是桌面")
-        user32.ShowWindow(hwnd, 3)          # SW_MAXIMIZE：最大化游戏窗口，截图视野完整
-        time.sleep(0.8)  # 等窗口切换 + 渲染一帧
+        if maximize:
+            user32.ShowWindow(hwnd, 3)      # SW_MAXIMIZE：最大化游戏窗口，截图视野完整
+        time.sleep(wait)  # 等窗口切换 + 渲染一帧
         return rect
     except Exception:
         return None
@@ -192,6 +260,9 @@ def run_screenshot(region: dict = None) -> str:
             path = shot_dir / f"shot_{ts}_{counter}.png"
             counter += 1
         img.save(path, "PNG")
+        # 截完立刻把焦点还给用户正在用的窗口——MC 失焦自动暂停并释放
+        # 鼠标捕获，用户的光标只在截图的约 1 秒内被游戏占用
+        _restore_user_foreground()
         return f"Screenshot saved: {path.resolve()}"
     except Exception as e:
         return f"Error: screenshot failed: {e}"

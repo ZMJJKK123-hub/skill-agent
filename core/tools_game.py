@@ -170,9 +170,30 @@ def bridge_command(op: str, index: int = None, value: str = None,
         return f"Error: bridge_command failed: {e}"
 
 
-def press_keys(sequence: list) -> str:
-    """按脚本顺序在焦点窗口模拟按键（代码级 UI 导航，无需截图决策）。
+def _borrow_game_focus():
+    """窗口级输入（keybd_event/SendInput 发给"当前焦点窗口"）前借用焦点：
+    置前 MC 窗口，返回是否成功。焦点归还协议见 tools_vision——
+    平时焦点保持在用户手里（截图/按键只在瞬间借用并立刻归还），
+    不借用的话按键会打进用户正在用的窗口。"""
+    try:
+        from .tools_vision import focus_game_window
+        return focus_game_window(wait=0.25, maximize=False)
+    except Exception:
+        return False
 
+
+def _return_focus():
+    try:
+        from .tools_vision import restore_user_window
+        restore_user_window()
+    except Exception:
+        pass
+
+
+def press_keys(sequence: list) -> str:
+    """按脚本顺序在游戏窗口模拟按键（代码级 UI 导航，无需截图决策）。
+
+    整个序列借用一次游戏焦点、结束后归还（避免逐键反复抢还抖动）。
     sequence 每项：
       - 单键名（同 press_key 规则）：tab / enter / esc / e / t ...
       - "wait:500"   等待 500ms（切屏/加载时用）
@@ -180,6 +201,7 @@ def press_keys(sequence: list) -> str:
     返回逐步执行日志；任一步失败即中止并返回已执行步骤。
     """
     steps = []
+    focused = _borrow_game_focus()
     try:
         for i, item in enumerate(sequence):
             s = str(item).strip()
@@ -190,20 +212,28 @@ def press_keys(sequence: list) -> str:
                 steps.append(f"{i + 1}. wait {ms}ms")
             elif low.startswith("type:"):
                 text = s.split(":", 1)[1]
-                r = type_text(text)
+                r = type_text(text, _focus_managed=True)
                 steps.append(f"{i + 1}. type '{text}' -> {r}")
                 time.sleep(0.15)
             else:
-                steps.append(f"{i + 1}. press {s} -> {press_key(s)}")
+                steps.append(f"{i + 1}. press {s} -> {press_key(s, _focus_managed=True)}")
                 time.sleep(0.15)
         return "Executed:\n" + "\n".join(steps)
     except Exception as e:
         return (f"Error: press_keys failed at step {len(steps) + 1}: {e}\n"
                 "Executed:\n" + "\n".join(steps))
+    finally:
+        if focused:
+            _return_focus()
 
 
-def press_key(key: str) -> str:
-    """Press and release a single key (Windows SendInput via keybd_event)."""
+def press_key(key: str, _focus_managed: bool = False) -> str:
+    """Press and release a single key (Windows SendInput via keybd_event).
+
+    _focus_managed=True 时认为调用方（press_keys）已借用游戏焦点，
+    不再自行借还；单独调用时自借自还。
+    """
+    focused = False if _focus_managed else _borrow_game_focus()
     try:
         vk = _vk_code(key)
         user32 = ctypes.windll.user32
@@ -213,10 +243,17 @@ def press_key(key: str) -> str:
         return f"Pressed {key}"
     except Exception as e:
         return f"Error: press_key failed: {e}"
+    finally:
+        if focused:
+            _return_focus()
 
 
-def type_text(text: str) -> str:
-    """Type Unicode text into the focused window (Windows SendInput)."""
+def type_text(text: str, _focus_managed: bool = False) -> str:
+    """Type Unicode text into the game window (Windows SendInput).
+
+    _focus_managed=True 时认为调用方（press_keys）已借用游戏焦点。
+    """
+    focused = False if _focus_managed else _borrow_game_focus()
     try:
         user32 = ctypes.windll.user32
 
@@ -253,6 +290,9 @@ def type_text(text: str) -> str:
         return f"Typed {len(text)} characters"
     except Exception as e:
         return f"Error: type_text failed: {e}"
+    finally:
+        if focused:
+            _return_focus()
 
 
 def game_input(action: str, key: str = None, text: str = None) -> str:
