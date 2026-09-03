@@ -285,6 +285,12 @@ async function _pollOnce(sid: string) {
       pending: st.pending ?? 0,
       phase: st.finished ? 'finished' : st.paused ? 'paused' : 'running',
     })
+    // 任务完成：刷新侧栏列表——server 端标题在任务运行期间才生成/落盘，
+    // 创建瞬间的首次 loadHistory 拿不到（显示"新对话"占位且不再更新，
+    // 实测缺陷：chat 会话完成后侧栏无法按标题点击定位）
+    if (st.finished) {
+      void loadHistory()
+    }
     // chat 模式：排队全部消化完的完成态重载磁盘对话历史（权威穿插顺序）。
     // 此前回复只留在事件流里、渲染在全部用户消息之后——连续多发时界面
     // 变成"问题一堆、回复一堆"。磁盘 conversation.jsonl 按"处理顺序"
