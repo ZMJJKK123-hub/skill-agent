@@ -78,6 +78,11 @@ export const sidebarPlugin: PluginManifest = {
         } catch {
           /* 后端失败也刷新列表，保持与磁盘一致 */
         }
+        // 删除的是当前正在查看的会话 → 回到空态。此前视图仍停留在
+        // 已删除会话上，此时发消息必报 "Session not found"（实测缺陷）
+        if (sess.sessionId === id) {
+          await newConversation()
+        }
         setConfirmId(null)
         await loadHistory()
       }
