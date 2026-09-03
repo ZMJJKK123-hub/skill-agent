@@ -1,0 +1,81 @@
+C:\Users\59639\Desktop\skill-agent\server_app\server.py:1723: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+INFO:     Started server process [50520]
+INFO:     Waiting for application startup.
+[server] 启动完成：恢复 1 个历史会话
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:58611 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /?bust=1788347141187 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /assets/index-BPcRWFF5.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58695 - "GET /assets/index-DjxJqh9q.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58695 - "GET /api/conversation?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58695 - "GET /api/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58695 - "GET /api/events?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58695 - "GET /api/status?session_id=000b55a518d3&api_key=48cffb742cc84a88a53cbb9cb10c0788.jH9wLDZZXS8YcNSZ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/question?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58695 - "GET /api/conversation?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58695 - "POST /api/task HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58695 - "GET /api/events?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/status?session_id=000b55a518d3&api_key=48cffb742cc84a88a53cbb9cb10c0788.jH9wLDZZXS8YcNSZ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/question?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/events?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/status?session_id=000b55a518d3&api_key=48cffb742cc84a88a53cbb9cb10c0788.jH9wLDZZXS8YcNSZ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/question?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/events?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/status?session_id=000b55a518d3&api_key=48cffb742cc84a88a53cbb9cb10c0788.jH9wLDZZXS8YcNSZ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/question?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/events?session_id=000b55a518d3&cursor=%7B%22run%22%3A1009%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/status?session_id=000b55a518d3&api_key=48cffb742cc84a88a53cbb9cb10c0788.jH9wLDZZXS8YcNSZ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/question?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/events?session_id=000b55a518d3&cursor=%7B%22run%22%3A1009%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/status?session_id=000b55a518d3&api_key=48cffb742cc84a88a53cbb9cb10c0788.jH9wLDZZXS8YcNSZ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/question?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/events?session_id=000b55a518d3&cursor=%7B%22run%22%3A2315%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/status?session_id=000b55a518d3&api_key=48cffb742cc84a88a53cbb9cb10c0788.jH9wLDZZXS8YcNSZ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/question?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/events?session_id=000b55a518d3&cursor=%7B%22run%22%3A3730%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/status?session_id=000b55a518d3&api_key=48cffb742cc84a88a53cbb9cb10c0788.jH9wLDZZXS8YcNSZ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/question?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/events?session_id=000b55a518d3&cursor=%7B%22run%22%3A4699%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/status?session_id=000b55a518d3&api_key=48cffb742cc84a88a53cbb9cb10c0788.jH9wLDZZXS8YcNSZ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/question?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/events?session_id=000b55a518d3&cursor=%7B%22run%22%3A5991%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/status?session_id=000b55a518d3&api_key=48cffb742cc84a88a53cbb9cb10c0788.jH9wLDZZXS8YcNSZ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/question?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/events?session_id=000b55a518d3&cursor=%7B%22run%22%3A7089%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/status?session_id=000b55a518d3&api_key=48cffb742cc84a88a53cbb9cb10c0788.jH9wLDZZXS8YcNSZ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/question?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/events?session_id=000b55a518d3&cursor=%7B%22run%22%3A8503%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/status?session_id=000b55a518d3&api_key=48cffb742cc84a88a53cbb9cb10c0788.jH9wLDZZXS8YcNSZ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/question?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/events?session_id=000b55a518d3&cursor=%7B%22run%22%3A9719%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/status?session_id=000b55a518d3&api_key=48cffb742cc84a88a53cbb9cb10c0788.jH9wLDZZXS8YcNSZ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/question?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/events?session_id=000b55a518d3&cursor=%7B%22run%22%3A13919%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/status?session_id=000b55a518d3&api_key=48cffb742cc84a88a53cbb9cb10c0788.jH9wLDZZXS8YcNSZ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/question?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/events?session_id=000b55a518d3&cursor=%7B%22run%22%3A16709%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/status?session_id=000b55a518d3&api_key=48cffb742cc84a88a53cbb9cb10c0788.jH9wLDZZXS8YcNSZ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/question?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/events?session_id=000b55a518d3&cursor=%7B%22run%22%3A16765%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/status?session_id=000b55a518d3&api_key=48cffb742cc84a88a53cbb9cb10c0788.jH9wLDZZXS8YcNSZ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/question?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/events?session_id=000b55a518d3&cursor=%7B%22run%22%3A18036%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/status?session_id=000b55a518d3&api_key=48cffb742cc84a88a53cbb9cb10c0788.jH9wLDZZXS8YcNSZ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/question?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/events?session_id=000b55a518d3&cursor=%7B%22run%22%3A19257%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/status?session_id=000b55a518d3&api_key=48cffb742cc84a88a53cbb9cb10c0788.jH9wLDZZXS8YcNSZ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/question?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/events?session_id=000b55a518d3&cursor=%7B%22run%22%3A20178%2C%22agent%22%3A0%7D HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/status?session_id=000b55a518d3&api_key=48cffb742cc84a88a53cbb9cb10c0788.jH9wLDZZXS8YcNSZ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56320 - "GET /api/question?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54574 - "GET /api/conversation?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56635 - "DELETE /api/session?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56635 - "GET /api/sessions HTTP/1.1" 200 OK

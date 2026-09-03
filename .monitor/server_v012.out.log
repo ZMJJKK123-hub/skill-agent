@@ -1,0 +1,27 @@
+C:\Users\59639\Desktop\skill-agent\server_app\server.py:1718: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+INFO:     Started server process [12976]
+INFO:     Waiting for application startup.
+[server] 启动完成：恢复 1 个历史会话
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:59035 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53278 - "GET /?bust=1788347141187 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53278 - "GET /assets/index-B41RRCMV.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52222 - "GET /assets/index-DjxJqh9q.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53278 - "GET /api/conversation?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53278 - "GET /api/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53278 - "GET /api/events?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53278 - "GET /api/status?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52222 - "GET /api/question?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53278 - "GET /api/conversation?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53278 - "POST /api/task HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:58646 - "GET /api/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58636 - "GET /api/status?session_id=000b55a518d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57730 - "POST /api/task HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:54026 - "POST /api/task HTTP/1.1" 400 Bad Request

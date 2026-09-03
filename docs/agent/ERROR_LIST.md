@@ -1227,3 +1227,20 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **Auto-recorded:** Variants can be generated using `BlockStateProvider#getVariantBuilder`. Each variant specifies a list of [properties] (`PartialBlockstate`) which when matches a `BlockState` in a level, will display a model chosen from t
 - **Auto-recorded:** `mods.toml` is broken into three parts: the non-mod-specific properties, which are linked to the mod file; the mod properties, with a section for each mod; and the dependency configurations, with a section for each mod's
 - **Auto-recorded:** GatherDataEvent not found in mc_java_sources glob — maybe path differs (net/minecraftforge/client/event? or net/minecraftforge/data/event?). Let me search for it. Actually for chapter 9 (datagen), I could avoid deep data
+
+## 2026-09-03 Auto-recorded from runtime
+
+- **Auto-recorded:** C:\Users\59639\Desktop\skill-agent\docs\agent\ERROR_LIST.md:51: - Fix: use `parse_gametest_results` to see failures, then `read_game_test_log` / `tail_log` for the full exception.
+- **Auto-recorded:** C:\Users\59639\Desktop\skill-agent\docs\agent\ERROR_LIST.md:55: `java.lang.module.ResolutionException: Module coppersword contains package com.coppersword, module test exports package com.coppersword to coppersword`
+- **Auto-recorded:** [25] tool len=1437 | C:\Users\59639\Desktop\skill-agent\docs\agent\ERROR_LIST.md:51: - Fix: use `parse_gametest_results` to see failures, then `read_game_test_log` / `tail_log` for the full exception
+
+## 2026-09-03 Auto-recorded from runtime
+
+- **Auto-recorded:** From structure placement to result: place the test instance block, force-load the area, clear all entities in the structure bounds, place the structure in strict mode, wrap it in barriers (unless sky_access), clear sched
+
+## 2026-09-03 Auto-recorded from runtime
+
+- **Auto-recorded:** Error: 抓取失败: Client error '404 Not Found' for url 'https://minecraft.wiki/w/Java_Edition_1.22'
+- **Auto-recorded:** Error: 抓取失败: Client error '404 Not Found' for url 'https://minecraft.wiki/w/Java_Edition_1.21.12'
+- **Auto-recorded:** [18] tool len=183 | Error: 抓取失败: Client error '404 Not Found' for url 'https://minecraft.wiki/w/Java_Edition_1.22'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/
+- **Auto-recorded:** [19] tool len=186 | Error: 抓取失败: Client error '404 Not Found' for url 'https://minecraft.wiki/w/Java_Edition_1.21.12'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Stat
