@@ -527,29 +527,80 @@ function Messages() {
         batchCount.set(b, n + 1)
       }
     }
-    // 回复组去重：权威气泡在场时隐藏全部；否则按前缀匹配滤掉已入历史的
-    return out.filter((it) => {
-      if (it.kind !== 'reply') return true
-      if (hasAssistantBubbles) return false
+    // 回复组去重改打标（不删除成员）：磁盘 assistant 气泡在场时 reply 组
+    // 隐藏（内容相同），否则按前缀匹配滤掉已入历史的。保留成员本身是为
+    // 了"按轮交织"渲染——reply 组是轮次分界锚点，删了就无法把各轮的
+    // 思考/工具归位到各自消息旁（实测缺陷：多轮对话思考全部堆在最后
+    // 一条消息后）。
+    return out.map((it) => {
+      if (it.kind !== 'reply') return it
       const merged = it.events.map((e) => e.content).join('\n\n')
-      return !assistantPrefixes.has(merged.slice(0, 50))
+      const hidden = hasAssistantBubbles || assistantPrefixes.has(merged.slice(0, 50))
+      return { ...it, hidden }
     })
   }, [shownEvents, assistantPrefixes, hasAssistantBubbles])
 
-  // chat 模式：把“当前轮”的事件插在最后一个 assistant 回复之前，
-  // 避免最终回答先于思考/工具过程出现；之前的轮次尽量保持原始顺序。
-  let lastAssistantIdx = -1
-  chatMessages.forEach((m, i) => {
-    if (m.role === 'assistant') lastAssistantIdx = i
-  })
-  // 如果最后一条 assistant 后面还有消息（通常是新一轮的 user prompt），
-  // 说明最后一条 assistant 不是“当前轮最终回答”，不应挪到事件流后面；
-  // 此时整段历史按原顺序渲染，当前轮回复由事件流显示。
-  const hasTrailingMessages = lastAssistantIdx >= 0 && lastAssistantIdx < chatMessages.length - 1
-  const beforeLastAssistant =
-    lastAssistantIdx < 0 || hasTrailingMessages ? chatMessages : chatMessages.slice(0, lastAssistantIdx)
-  const lastAssistant =
-    lastAssistantIdx < 0 || hasTrailingMessages ? [] : chatMessages.slice(lastAssistantIdx)
+  // ── chat 模式按轮交织 ──
+  // 时间线里的 reply 组按序对应磁盘 assistant 消息（run_task 每轮一对）。
+  // 第 i 个 reply 组之前的思考/工具成员归属第 i 轮，渲染在该轮 assistant
+  // 气泡之前。此前结构是"全部历史气泡 → 整块时间线 → 最后回复"，
+  // 多轮对话时第 1 轮的思考被挤到最后一条消息后（实测缺陷）。
+  // 尾部（磁盘还没写到的当前轮）成员照常追加在末尾，实时体验不变。
+  const roundsView = useMemo(() => {
+    type View =
+      | { kind: 'bubble'; key: string; msg: typeof chatMessages[number] }
+      | { kind: 'item'; key: string; item: typeof timeline[number] }
+    const view: View[] = []
+    const replyGroups = timeline.filter((it) => it.kind === 'reply') as
+      Array<{ kind: 'reply'; key: string; events: EventItem[]; hidden: boolean }>
+    const diskAssistants = chatMessages.filter((m) => m.role === 'assistant')
+    const n = Math.min(replyGroups.length, diskAssistants.length)
+    if (n === 0) return null // 无法对齐（纯实时轮/历史加载失败）→ 调用方回退整体渲染
+
+    // timeline 成员按 reply 组切段：seg[i] = 第 i 个 reply 组之前的过程成员
+    const segs: Array<Array<typeof timeline[number]>> = []
+    let cur: Array<typeof timeline[number]> = []
+    for (const it of timeline) {
+      if (it.kind === 'reply') {
+        segs.push(cur)
+        cur = []
+      } else {
+        cur.push(it)
+      }
+    }
+    const tailMembers = cur // 最后一个 reply 组之后的成员（当前轮进行中）
+
+    // 逐条磁盘消息交织：assistant(第 i 条) 前插入第 i 轮过程成员
+    let assistantSeen = 0
+    let msgIdx = 0
+    for (const m of chatMessages) {
+      if (m.role === 'assistant') {
+        const i = assistantSeen
+        if (i < n) {
+          for (const it of segs[i] ?? []) {
+            view.push({ kind: 'item', key: it.key, item: it })
+          }
+        }
+        assistantSeen++
+      }
+      view.push({ kind: 'bubble', key: `m${msgIdx}`, msg: m })
+      msgIdx++
+    }
+    // 尾部：第 n 个 reply 组之后的过程成员（当前轮思考/工具）
+    const tail: Array<typeof timeline[number]> = []
+    let rs = 0
+    for (const it of timeline) {
+      if (it.kind === 'reply') { rs++; continue }
+      if (rs >= n) tail.push(it)
+    }
+    for (const it of tail) view.push({ kind: 'item', key: 't' + it.key, item: it })
+    // 尾部多余的 reply 组（当前轮流式回复，running 时打字机显示）
+    replyGroups.forEach((g, gi) => {
+      if (gi >= n) view.push({ kind: 'item', key: 'g' + g.key, item: g })
+    })
+    return view
+  }, [chatMessages, timeline])
+
   const running = phase === 'running' || phase === 'creating'
 
   // 空态判断以"是否有会话"为准：无会话 → 引导页；
@@ -587,10 +638,45 @@ function Messages() {
         </button>
       )}
       <div className="space-y-3">
-        {/* chat 模式：历史消息（保持原始顺序，最后一个 assistant 留到事件流之后） */}
-        {mode === 'chat' && beforeLastAssistant.map((m, i) => (
-          <ChatBubble key={i} role={m.role === 'user' ? 'user' : 'assistant'} content={m.content} images={m.images} sessionId={sessionId} />
-        ))}
+        {/* chat 模式：按轮交织——每轮的思考/工具紧跟该轮消息旁。
+            对齐失败（纯实时首轮/历史加载失败）回退"历史气泡+整块时间线"。 */}
+        {mode === 'chat' && roundsView && roundsView.map((v) => {
+          if (v.kind === 'bubble') {
+            const m = v.msg
+            return <ChatBubble key={v.key} role={m.role === 'user' ? 'user' : 'assistant'} content={m.content} images={m.images} sessionId={sessionId} />
+          }
+          const item = v.item
+          if (item.kind === 'reply' && (item as { hidden?: boolean }).hidden) return null
+          if (item.kind === 'think') return <ThinkingSegRow key={v.key} seg={item.seg} />
+          if (item.kind === 'tool') return <ToolRow key={v.key} entry={item.entry} delayMs={Math.min(item.batchIdx, 5) * 70} />
+          if (item.kind === 'reply') {
+            const content = item.events.map((e) => e.content).join('\n\n')
+            const isLast = v.key.startsWith('g')
+            return isLast && running
+              ? <TypingReply key={v.key} content={content} />
+              : <ChatBubble key={v.key} role="assistant" content={content} />
+          }
+          return null
+        })}
+
+        {/* chat 回退路径（对齐失败）：历史气泡 + 整块时间线（旧行为保底） */}
+        {mode === 'chat' && !roundsView && (
+          <>
+            {chatMessages.map((m, i) => (
+              <ChatBubble key={i} role={m.role === 'user' ? 'user' : 'assistant'} content={m.content} images={m.images} sessionId={sessionId} />
+            ))}
+            {timeline.map((item) => {
+              if (item.kind === 'reply') {
+                if ((item as { hidden?: boolean }).hidden) return null
+                const content = item.events.map((e) => e.content).join('\n\n')
+                return <ChatBubble key={item.key} role="assistant" content={content} />
+              }
+              if (item.kind === 'think') return <ThinkingSegRow key={item.key} seg={item.seg} />
+              if (item.kind === 'tool') return <ToolRow key={item.key} entry={item.entry} delayMs={Math.min(item.batchIdx, 5) * 70} />
+              return null
+            })}
+          </>
+        )}
 
         {/* mod 模式：用户消息气泡（含上传图片）——与 chat 同源 chatMessages。
             此前用 prompts 纯文本渲染，历史图片无法回显；prompts 数组仍保留
@@ -608,29 +694,18 @@ function Messages() {
           </div>
         )}
 
-        {/* 时间线：思考段（思考中展开+打字机，完成收一行）/ 工具行（状态色+ */}
-        {/* 参数摘要+箭头展开）/ 回复气泡 / 轮次分界，按真实发生顺序交织 */}
-        {timeline.map((item, idx) => {
-          switch (item.kind) {
-            case 'think':
-              return <ThinkingSegRow key={item.key} seg={item.seg} />
-            case 'tool':
-              return <ToolRow key={item.key} entry={item.entry} delayMs={Math.min(item.batchIdx, 5) * 70} />
-            case 'reply': {
-              const content = item.events.map((e) => e.content).join('\n\n')
-              // 运行中且是时间线末尾的回复组 = 当前活跃回复 → 打字机逐字输出
-              const isActive = running && idx === timeline.length - 1
-              return isActive
-                ? <TypingReply key={item.key} content={content} />
-                : <ChatBubble key={item.key} role="assistant" content={content} />
-            }
+        {/* 时间线（mod 模式 / 回退之外的通用流）：chat 交织与回退已含全部
+            成员，这里只服务 mod 模式的事件流 */}
+        {mode === 'mod' && timeline.map((item) => {
+          if (item.kind === 'reply') {
+            if ((item as { hidden?: boolean }).hidden) return null
+            const content = item.events.map((e) => e.content).join('\n\n')
+            return <ChatBubble key={item.key} role="assistant" content={content} />
           }
+          if (item.kind === 'think') return <ThinkingSegRow key={item.key} seg={item.seg} />
+          if (item.kind === 'tool') return <ToolRow key={item.key} entry={item.entry} delayMs={Math.min(item.batchIdx, 5) * 70} />
+          return null
         })}
-
-        {/* chat 模式：当前轮最终回答放在事件流之后 */}
-        {mode === 'chat' && lastAssistant.map((m, i) => (
-          <ChatBubble key={i} role={m.role === 'user' ? 'user' : 'assistant'} content={m.content} images={m.images} sessionId={sessionId} />
-        ))}
 
         {/* mod 模式：完成后渲染最终总结气泡（conversation.jsonl 的最后一条 assistant）。
             此前 mod 模式只渲染事件流，完成时界面没有任何回复（718d315bec0b 实测：
