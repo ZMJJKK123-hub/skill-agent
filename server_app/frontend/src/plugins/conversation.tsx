@@ -1218,15 +1218,15 @@ function Composer() {
             // 输入法组合中的 Enter 是"选候选词"，不是发送——此前未检查
             // isComposing，中文用户每次选词都会误发（实测缺陷）
             if (e.nativeEvent.isComposing) return
-            // 命令面板打开时：↑↓ 移动高亮，Enter/Tab 选中，Esc 关闭
+            // 命令面板打开时：↑↓/Tab 移动高亮，Enter 选中，Esc 关闭
             if (cmdOpen && cmdFiltered.length > 0) {
-              if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+              if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Tab') {
                 e.preventDefault()
-                const dir = e.key === 'ArrowDown' ? 1 : -1
+                const dir = e.key === 'ArrowUp' ? -1 : 1
                 setCmdIndex((i) => (i + dir + cmdFiltered.length) % cmdFiltered.length)
                 return
               }
-              if (e.key === 'Tab' || e.key === 'Enter') {
+              if (e.key === 'Enter') {
                 e.preventDefault()
                 applyCommand(cmdFiltered[cmdIndex].cmd)
                 return
