@@ -986,6 +986,31 @@ function Composer() {
   // 拖拽图片进输入区（第三条上传路径：点选/粘贴/拖拽）
   const [dragOver, setDragOver] = useState(false)
 
+  // ── "/" 命令面板：输入以 / 开头时弹出，列出 /mod 与 /chat ──
+  const SLASH_COMMANDS = [
+    { cmd: '/mod', desc: '进入 MOD 制作模式：发送需求后开始构建' },
+    { cmd: '/chat', desc: '切换到对话模式：MOD 会话中回到纯聊天（默认）' },
+  ]
+  const [cmdOpen, setCmdOpen] = useState(false)
+  const [cmdIndex, setCmdIndex] = useState(0) // 键盘高亮
+  const cmdFiltered = SLASH_COMMANDS.filter((c) => c.cmd.startsWith(text.trim()))
+  // 面板开合由输入事件直接控制（textarea onChange → onTextInput），
+  // 不放 effect：applyCommand 选中后 setText('/mod ') 仍以 '/' 开头，
+  // effect 会用 trim 前缀匹配重新弹开面板（实测：选中后关不上）
+  const onTextInput = (v: string) => {
+    setText(v)
+    const matches = SLASH_COMMANDS.filter((c) => c.cmd.startsWith(v.trim()))
+    setCmdOpen(v.startsWith('/') && matches.length > 0)
+    setCmdIndex(0)
+  }
+
+  const applyCommand = (cmd: string) => {
+    setText(cmd + ' ')
+    setCmdOpen(false)
+    setCmdIndex(0)
+    ;(document.querySelector('main textarea') as HTMLTextAreaElement | null)?.focus()
+  }
+
   const addImageFiles = async (files: File[]) => {
     const pics = files.filter((f) => f.type.startsWith('image/'))
     if (pics.length === 0) return
@@ -1126,7 +1151,7 @@ function Composer() {
       )}
       {/* 未配置时不显示提示框（用户要求）：提示只在发送按钮悬停 title 出现 */}
       <div
-        className={`rounded-xl border bg-panel p-3 transition-colors ${dragOver ? 'border-forge-500' : 'border-line'}`}
+        className={`relative rounded-xl border bg-panel p-3 transition-colors ${dragOver ? 'border-forge-500' : 'border-line'}`}
         onDragOver={(e) => {
           e.preventDefault()
           setDragOver(true)
@@ -1139,6 +1164,27 @@ function Composer() {
           if (files.length > 0) void addImageFiles(files)
         }}
       >
+        {/* "/" 命令面板：输入 / 时弹出（↑↓ 选择，Enter/Tab 确认） */}
+        {cmdOpen && (
+          <div className="absolute bottom-full left-0 right-0 z-30 mb-2 overflow-hidden rounded-xl border border-line bg-panel shadow-lg">
+            <div className="border-b border-line px-3 py-1.5 text-[10px] text-faint">命令</div>
+            {cmdFiltered.map((c, i) => (
+              <button
+                key={c.cmd}
+                // onMouseDown 先于 blur 触发，保证点击能选中
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  applyCommand(c.cmd)
+                }}
+                onMouseEnter={() => setCmdIndex(i)}
+                className={`flex w-full items-baseline gap-2 px-3 py-2 text-left text-[13px] transition ${i === cmdIndex ? 'bg-subtle' : ''}`}
+              >
+                <span className="shrink-0 font-mono font-medium text-forge-400">{c.cmd}</span>
+                <span className="min-w-0 flex-1 truncate text-muted">{c.desc}</span>
+              </button>
+            ))}
+          </div>
+        )}
         {/* 待上传图片缩略图（选择/粘贴/拖拽后、发送前）+ 数量计数 */}
         {images.length > 0 && (
           <div className="mb-2 flex flex-wrap items-start gap-2">
@@ -1159,7 +1205,7 @@ function Composer() {
         )}
         <textarea
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => onTextInput(e.target.value)}
           onPaste={(e) => {
             // 粘贴图片：剪贴板里有图片文件时直接加入待上传列表
             const files = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith('image/'))
@@ -1172,6 +1218,25 @@ function Composer() {
             // 输入法组合中的 Enter 是"选候选词"，不是发送——此前未检查
             // isComposing，中文用户每次选词都会误发（实测缺陷）
             if (e.nativeEvent.isComposing) return
+            // 命令面板打开时：↑↓ 移动高亮，Enter/Tab 选中，Esc 关闭
+            if (cmdOpen && cmdFiltered.length > 0) {
+              if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault()
+                const dir = e.key === 'ArrowDown' ? 1 : -1
+                setCmdIndex((i) => (i + dir + cmdFiltered.length) % cmdFiltered.length)
+                return
+              }
+              if (e.key === 'Tab' || e.key === 'Enter') {
+                e.preventDefault()
+                applyCommand(cmdFiltered[cmdIndex].cmd)
+                return
+              }
+              if (e.key === 'Escape') {
+                e.preventDefault()
+                setCmdOpen(false)
+                return
+              }
+            }
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault()
               if (running || paused) {

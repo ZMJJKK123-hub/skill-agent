@@ -84,7 +84,7 @@ const zh: Record<string, string> = {
 
   'conv.title': '开始生成你的 Minecraft MOD',
   'conv.desc': '直接输入需求开始对话；想做 MOD 时，在消息开头输入 /mod 并跟上需求描述。',
-  'conv.placeholder': '输入 /mod 进入 MOD 制造模式，不输入则是普通 agent 模式',
+  'conv.placeholder': '默认对话模式，直接输入需求即可；输入 / 切换 MOD 制作或对话',
   'conv.send': '发送',
   'conv.generating': '生成中…',
   'conv.section': '生成',
@@ -202,7 +202,7 @@ const en: Record<string, string> = {
 
   'conv.title': 'Generate your Minecraft MOD',
   'conv.desc': 'Type any request to start chatting; to build a MOD, start your message with /mod followed by your idea.',
-  'conv.placeholder': 'Type /mod to enter MOD mode, otherwise normal agent mode',
+  'conv.placeholder': 'Chat mode by default — just type. Press / to pick /mod (build) or /chat.',
   'conv.send': 'Send',
   'conv.generating': 'Generating…',
   'conv.section': 'Generate',
