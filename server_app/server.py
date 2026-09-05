@@ -233,6 +233,7 @@ class TaskRequest(BaseModel):
     auto_mode: Optional[bool] = None       # 可选：覆盖会话全自动模式开关
     search_api_key: Optional[str] = None   # 可选：覆盖会话搜索 API Key
     images: list = []  # 随消息上传的图片（data URL，≤4 张；落盘 .chat/uploads 后传给 agent）
+    force_mode: bool = False  # 显式模式覆盖（前端 /chat 拦截用）：不沿用会话记忆的 mod
 
 
 class AuthRequest(BaseModel):
@@ -957,11 +958,27 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
                 sess.mode = persisted
         except OSError:
             pass
-    if req.prompt.strip().lower().startswith("/mod"):
+    if req.prompt.strip().lower().startswith("/chat"):
+        # /chat 显式切回对话模式（与 /mod 对称）：mod 会话不必新开就能回
+        # 纯聊天。裸 "/chat" 只切模式不启动任务；带内容则内容照常发送。
+        sess.mode = "chat"
+        mode = "chat"
+        stripped = req.prompt.strip()[len("/chat"):].strip()
+        if not stripped:
+            try:
+                mode_file.write_text("chat", encoding="utf-8")
+            except OSError:
+                pass
+            return {"session_id": sess.id, "status": "mode-switched", "mode": "chat"}
+        req.prompt = stripped
+    elif req.prompt.strip().lower().startswith("/mod"):
         mode = "mod"
         sess.mode = "mod"
-    elif sess.mode == "mod" and mode == "chat" and (sess.mod_dir.exists() and any(sess.mod_dir.iterdir())):
-        # 会话是 mod 会话且工作区在 → 沿用 mod（裸消息默认迭代修改）
+    elif sess.mode == "mod" and mode == "chat" and not req.force_mode \
+            and (sess.mod_dir.exists() and any(sess.mod_dir.iterdir())):
+        # 会话是 mod 会话且工作区在 → 沿用 mod（裸消息默认迭代修改）。
+        # force_mode=True 是前端 /chat 拦截的显式信号：尊重请求的 chat，
+        # 不沿用（否则 /chat 切换会被这里吞掉）
         mode = "mod"
     try:
         mode_file.write_text(mode, encoding="utf-8")

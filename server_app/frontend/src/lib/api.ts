@@ -172,6 +172,7 @@ export function startTask(
   autoMode?: boolean,
   searchApiKey?: string,
   images?: string[],
+  forceMode?: boolean,
 ) {
   const body: Record<string, unknown> = { session_id: sessionId, prompt, mode, resume, model, base_url: baseUrl }
   if (apiKey) body.api_key = apiKey
@@ -183,6 +184,8 @@ export function startTask(
   if (searchApiKey !== undefined) body.search_api_key = searchApiKey
   // 用户上传的图片（data URL，最多 4 张）：后端落盘 .chat/uploads 后传给 agent
   if (images && images.length > 0) body.images = images
+  // 显式模式覆盖（/chat 命令）：server 不沿用会话记忆的 mod 模式
+  if (forceMode) body.force_mode = true
   return api<{ session_id: string; status: string; mode: string; resume?: boolean }>('/api/task', {
     method: 'POST',
     body: JSON.stringify(body),

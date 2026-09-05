@@ -112,14 +112,15 @@ export async function loadHistory() {
 // 发起对话 → 建新工作区文件夹 → 启动生成 → 开始轮询
 // mode: 'chat'（通用对话，不复制模板）| 'mod'（MOD 制作，需先 prepareModWorkspace）
 // images: 用户随消息上传的图片（data URL），后端落盘后随消息传给视觉模型
-export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'chat' | 'mod' = 'chat', images: string[] = []) {
+// forceMode: 显式模式覆盖（/chat 命令）——server 端不沿用会话记忆的 mod
+export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'chat' | 'mod' = 'chat', images: string[] = [], forceMode = false) {
   // 运行中（creating/running）：消息排队（后端 pending），当前轮结束后自动续跑
   if (state.phase === 'creating' || state.phase === 'running') {
     if (state.sessionId) {
       try {
         await api.startTask(state.sessionId, prompt, mode, false, settings.apiKey, settings.model, settings.baseUrl,
           settings.visionEnabled, settings.visionApiKey, settings.visionBaseUrl, settings.visionModel,
-          settings.autoMode, settings.searchApiKey, images)
+          settings.autoMode, settings.searchApiKey, images, forceMode)
         // 本地乐观显示排队消息：chat 模式走 chatMessages 气泡；
         // mod 模式只渲染 prompts，也要 push 进去（否则插话后界面无反馈）
         setState({
@@ -140,15 +141,18 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
     try {
       // 暂停后发送 = 恢复 + 强注入。mod 模式也要把新消息加入 prompts，
       // 否则用户消息不会显示在左侧（mod 模式只渲染 prompts）。
-      const prompts = state.mode === 'mod' ? [...state.prompts, prompt] : state.prompts
+      const prompts = state.mode === 'mod' && !forceMode ? [...state.prompts, prompt] : state.prompts
       setState({
         phase: 'running', paused: false, stoppedNotice: false,
         chatMessages: [...state.chatMessages, { role: 'user', content: prompt, ...(images.length ? { images } : {}) }],
         prompts,
       })
-      await api.startTask(state.sessionId, prompt, state.mode ?? 'chat', true, settings.apiKey, settings.model, settings.baseUrl,
+      // /chat（forceMode）：以 chat 恢复运行——模式切换即生效（mode.txt
+      // 已在 server 端被 /chat 分支更新；这里不能沿用 state.mode=mod）
+      const resumeMode = forceMode ? mode : (state.mode ?? 'chat')
+      await api.startTask(state.sessionId, prompt, resumeMode, true, settings.apiKey, settings.model, settings.baseUrl,
         settings.visionEnabled, settings.visionApiKey, settings.visionBaseUrl, settings.visionModel,
-        settings.autoMode, settings.searchApiKey, images)
+        settings.autoMode, settings.searchApiKey, images, forceMode)
       void poll()
       startPolling(2000)
     } catch (e) {
@@ -208,7 +212,7 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
     setState({ prompts, phase: 'running', title, chatMessages })
     await api.startTask(sid, prompt, mode, false, settings.apiKey, settings.model, settings.baseUrl,
       settings.visionEnabled, settings.visionApiKey, settings.visionBaseUrl, settings.visionModel,
-      settings.autoMode, settings.searchApiKey, images)
+      settings.autoMode, settings.searchApiKey, images, forceMode)
     void poll()
     void loadHistory()
   } catch (e) {

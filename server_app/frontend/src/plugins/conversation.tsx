@@ -389,12 +389,16 @@ function Messages() {
   // 事件源（含不直接渲染但参与"切断"逻辑的类型）。
   // round 事件作轮次分界：不同轮次的回复必须分成两组，否则两轮回复被拼成
   // supervisor 的动作是内部监管，对用户是噪音，不进时间线。
-  // 截断按"实质事件"（非思考增量）计 500 条：一轮流式思考可产生数千条
-  // thinking_delta，按总条数截断会被 delta 占满名额、把工具/回复挤出
-  // 时间线（实测：2515 条 delta 占满 800 名额，11 个工具全部消失）。
-  // delta 随所在段保留，聚合后体积很小。
+  // source=agent 的 tool_call 也不进：agent.log 的"工具调用:"记录与
+  // run.log 的 [tool]/[tool-result] 完全重复且没有结果事件——mod 会话
+  // 下（agent.log 在 mod/ 内会被解析）多出一倍无结果调用，前端全部
+  // 显示"运行中"闪烁并干扰就近配对（实测 46:23，用户看到工具全卡进行中）
   const shownEvents = useMemo(() => {
-    const kept = events.filter((e) => e.peer !== 'supervisor')
+    const kept = events.filter((e) =>
+      e.peer !== 'supervisor' && !(e.source === 'agent' && e.type === 'tool_call'))
+    // 截断按"实质事件"（非思考增量）计 500 条：一轮流式思考可产生数千条
+    // thinking_delta，按总条数截断会被 delta 占满名额、把工具/回复挤出
+    // 时间线；delta 随所在段保留，聚合后体积很小
     let count = 0
     let start = 0
     for (let i = kept.length - 1; i >= 0; i--) {
@@ -532,8 +536,19 @@ function Messages() {
     // 了"按轮交织"渲染——reply 组是轮次分界锚点，删了就无法把各轮的
     // 思考/工具归位到各自消息旁（实测缺陷：多轮对话思考全部堆在最后
     // 一条消息后）。
+    // 最后一个 reply 组（= 当前流式轮）永不隐藏：此前 hasAssistantBubbles
+    // 把它一起藏掉，多轮会话第 2 轮起运行中界面无任何流式内容——思考
+    // 收起后到本轮结束一片空白，用户感觉"没有流式"（实测观感缺陷）。
+    const lastReplyKey = (() => {
+      for (let i = out.length - 1; i >= 0; i--) {
+        const it = out[i]
+        if (it.kind === 'reply') return it.key
+      }
+      return null
+    })()
     return out.map((it) => {
       if (it.kind !== 'reply') return it
+      if (it.key === lastReplyKey) return { ...it, hidden: false }
       const merged = it.events.map((e) => e.content).join('\n\n')
       const hidden = hasAssistantBubbles || assistantPrefixes.has(merged.slice(0, 50))
       return { ...it, hidden }
@@ -545,7 +560,11 @@ function Messages() {
   // 第 i 个 reply 组之前的思考/工具成员归属第 i 轮，渲染在该轮 assistant
   // 气泡之前。此前结构是"全部历史气泡 → 整块时间线 → 最后回复"，
   // 多轮对话时第 1 轮的思考被挤到最后一条消息后（实测缺陷）。
-  // 尾部（磁盘还没写到的当前轮）成员照常追加在末尾，实时体验不变。
+  // 对齐失败（纯实时首轮/磁盘未落盘）也构造同构视图（气泡在前+时间线
+  // 在后）而非另一棵渲染树——此前运行中/完成后在两棵树间整体切换，
+  // 完成瞬间全量重挂载：思考段从页尾"跳"到对应轮位置（用户实测：
+  // 思考显示一段后突然消失、回复直接蹦出）。同构 + 稳定 key 后切换
+  // 只是位置变化，组件状态（展开/打字机）不丢。
   const roundsView = useMemo(() => {
     type View =
       | { kind: 'bubble'; key: string; msg: typeof chatMessages[number] }
@@ -555,7 +574,12 @@ function Messages() {
       Array<{ kind: 'reply'; key: string; events: EventItem[]; hidden: boolean }>
     const diskAssistants = chatMessages.filter((m) => m.role === 'assistant')
     const n = Math.min(replyGroups.length, diskAssistants.length)
-    if (n === 0) return null // 无法对齐（纯实时轮/历史加载失败）→ 调用方回退整体渲染
+    if (n === 0) {
+      // 对齐失败：等价旧行为（历史气泡 + 整块时间线），但走同一棵渲染树
+      chatMessages.forEach((m, i) => view.push({ kind: 'bubble', key: `m${i}`, msg: m }))
+      timeline.forEach((it) => view.push({ kind: 'item', key: it.key, item: it }))
+      return view
+    }
 
     // timeline 成员按 reply 组切段：seg[i] = 第 i 个 reply 组之前的过程成员
     const segs: Array<Array<typeof timeline[number]>> = []
@@ -568,7 +592,6 @@ function Messages() {
         cur.push(it)
       }
     }
-    const tailMembers = cur // 最后一个 reply 组之后的成员（当前轮进行中）
 
     // 逐条磁盘消息交织：assistant(第 i 条) 前插入第 i 轮过程成员
     let assistantSeen = 0
@@ -586,17 +609,16 @@ function Messages() {
       view.push({ kind: 'bubble', key: `m${msgIdx}`, msg: m })
       msgIdx++
     }
-    // 尾部：第 n 个 reply 组之后的过程成员（当前轮思考/工具）
-    const tail: Array<typeof timeline[number]> = []
+    // 尾部：第 n 个 reply 组之后的过程成员（当前轮思考/工具）+ 多余的
+    // reply 组（当前流式回复）。key 不加前缀：与对齐后同成员的 key 一致，
+    // 完成瞬间从"尾部"挪到"对应轮"时组件不重挂载
     let rs = 0
     for (const it of timeline) {
       if (it.kind === 'reply') { rs++; continue }
-      if (rs >= n) tail.push(it)
+      if (rs >= n) view.push({ kind: 'item', key: it.key, item: it })
     }
-    for (const it of tail) view.push({ kind: 'item', key: 't' + it.key, item: it })
-    // 尾部多余的 reply 组（当前轮流式回复，running 时打字机显示）
     replyGroups.forEach((g, gi) => {
-      if (gi >= n) view.push({ kind: 'item', key: 'g' + g.key, item: g })
+      if (gi >= n) view.push({ kind: 'item', key: g.key, item: g })
     })
     return view
   }, [chatMessages, timeline])
@@ -638,45 +660,28 @@ function Messages() {
         </button>
       )}
       <div className="space-y-3">
-        {/* chat 模式：按轮交织——每轮的思考/工具紧跟该轮消息旁。
-            对齐失败（纯实时首轮/历史加载失败）回退"历史气泡+整块时间线"。 */}
-        {mode === 'chat' && roundsView && roundsView.map((v) => {
+        {/* chat 模式：统一交织视图（对齐成功按轮归位；失败时气泡在前+时间线
+            在后，同构渲染树——两态切换不重挂载，思考段/展开状态不丢） */}
+        {mode === 'chat' && roundsView.map((v) => {
           if (v.kind === 'bubble') {
             const m = v.msg
             return <ChatBubble key={v.key} role={m.role === 'user' ? 'user' : 'assistant'} content={m.content} images={m.images} sessionId={sessionId} />
           }
           const item = v.item
-          if (item.kind === 'reply' && (item as { hidden?: boolean }).hidden) return null
+          if (item.kind === 'reply') {
+            // 运行中显示流式打字机；完成后该轮已落盘成历史气泡，前缀
+            // 命中即隐藏（防止与磁盘气泡重复显示）
+            if ((item as { hidden?: boolean }).hidden) return null
+            const merged = item.events.map((e) => e.content).join('\n\n')
+            if (!running && assistantPrefixes.has(merged.slice(0, 50))) return null
+            return running
+              ? <TypingReply key={v.key} content={merged} />
+              : <ChatBubble key={v.key} role="assistant" content={merged} />
+          }
           if (item.kind === 'think') return <ThinkingSegRow key={v.key} seg={item.seg} />
           if (item.kind === 'tool') return <ToolRow key={v.key} entry={item.entry} delayMs={Math.min(item.batchIdx, 5) * 70} />
-          if (item.kind === 'reply') {
-            const content = item.events.map((e) => e.content).join('\n\n')
-            const isLast = v.key.startsWith('g')
-            return isLast && running
-              ? <TypingReply key={v.key} content={content} />
-              : <ChatBubble key={v.key} role="assistant" content={content} />
-          }
           return null
         })}
-
-        {/* chat 回退路径（对齐失败）：历史气泡 + 整块时间线（旧行为保底） */}
-        {mode === 'chat' && !roundsView && (
-          <>
-            {chatMessages.map((m, i) => (
-              <ChatBubble key={i} role={m.role === 'user' ? 'user' : 'assistant'} content={m.content} images={m.images} sessionId={sessionId} />
-            ))}
-            {timeline.map((item) => {
-              if (item.kind === 'reply') {
-                if ((item as { hidden?: boolean }).hidden) return null
-                const content = item.events.map((e) => e.content).join('\n\n')
-                return <ChatBubble key={item.key} role="assistant" content={content} />
-              }
-              if (item.kind === 'think') return <ThinkingSegRow key={item.key} seg={item.seg} />
-              if (item.kind === 'tool') return <ToolRow key={item.key} entry={item.entry} delayMs={Math.min(item.batchIdx, 5) * 70} />
-              return null
-            })}
-          </>
-        )}
 
         {/* mod 模式：用户消息气泡（含上传图片）——与 chat 同源 chatMessages。
             此前用 prompts 纯文本渲染，历史图片无法回显；prompts 数组仍保留
@@ -764,14 +769,17 @@ function EmptyState({ error }: { error?: string | null }) {
   // 快捷示例：点击填入输入框（经自定义事件，Composer 监听后 setText + 聚焦）。
   // i18n 里这三个键早就存在但从未渲染——用户第一眼就有可点的示例。
   const quickPicks = [t('conv.quickSword'), t('conv.quickFood'), t('conv.quickBlock')]
+  // 错峰入场：logo → 标题 → 描述 → chips → 联系卡依次淡入（用户要求
+  // "新对话要有刷新感"——此前所有元素同时出现，切换很生硬）
+  const step = (i: number) => ({ animationDelay: `${i * 90}ms` })
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-forge-500 text-3xl font-bold text-ink-950">
+      <div style={step(0)} className="fade-in-up flex h-14 w-14 items-center justify-center rounded-2xl bg-forge-500 text-3xl font-bold text-ink-950">
         M
       </div>
-      <div className="text-lg font-semibold">{t('conv.title')}</div>
-      <div className="max-w-md text-sm text-muted">{t('conv.desc')}</div>
-      <div className="mt-2 flex max-w-lg flex-wrap justify-center gap-2">
+      <div style={step(1)} className="fade-in-up text-lg font-semibold">{t('conv.title')}</div>
+      <div style={step(2)} className="fade-in-up max-w-md text-sm text-muted">{t('conv.desc')}</div>
+      <div style={step(3)} className="fade-in-up mt-2 flex max-w-lg flex-wrap justify-center gap-2">
         {quickPicks.map((q) => (
           <button
             key={q}
@@ -793,7 +801,7 @@ function EmptyState({ error }: { error?: string | null }) {
         </div>
       )}
       {/* 作者联系方式：放空态空白处，方便用户咨询 */}
-      <div className="mt-6 max-w-sm rounded-xl border border-line bg-panel/60 p-3 text-xs text-muted">
+      <div style={step(4)} className="fade-in-up mt-6 max-w-sm rounded-xl border border-line bg-panel/60 p-3 text-xs text-muted">
         <div className="mb-1 font-medium text-forge-300">联系作者</div>
         <div>
           使用遇到问题、想提需求或反馈 bug？加作者微信交流：
@@ -1000,6 +1008,26 @@ function Composer() {
     if (!prompt && images.length === 0) return
     const r = resolveModelConfig({ model, providers })
     const settings = { apiKey: r.apiKey, baseUrl: r.baseUrl, model: r.model, game: 'minecraft', loader: 'forge', version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey }
+
+    // /chat 拦截：显式切回对话模式（与 /mod 对称）——mod 会话内想回到纯
+    // 聊天时使用，无需新开会话。带内容则以 chat 模式发送（force_mode 让
+    // server 不沿用会话记忆的 mod）；裸命令提示用法。
+    if (/^\/chat(\s|$)/i.test(prompt)) {
+      const chatPrompt = prompt.slice(5).trim()
+      if (!chatPrompt) {
+        alert('用法：/chat <内容> —— 切换到对话模式并发送。MOD 会话中用它可退出制作模式回到纯聊天。')
+        return
+      }
+      if (running) {
+        alert('当前任务运行中，请等本轮完成后再用 /chat 切换模式。')
+        return
+      }
+      setUi({ toast: '已切换到对话模式' })
+      void sendPrompt(chatPrompt, settings, 'chat', images, true)
+      setText('')
+      setImages([])
+      return
+    }
 
     // /mod 拦截：固定格式触发 mod 制作模式（大小写不敏感——/MOD /Mod 同样生效；
     // 此前只认小写，大写会静默按 chat 发出烧 token，实测 bug #10）
