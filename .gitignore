@@ -57,3 +57,5 @@ run_harness_final.py
 run_test_harness.py
 run_test_harness_v2.py
 prompt_*.txt
+# 服务器运行日志：访问日志含 api_key= 查询参数，绝不能入库
+.monitor/
