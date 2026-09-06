@@ -59,15 +59,17 @@ def _parse_run_block(text: str) -> list[dict]:
     skip_final_reply = False
     reply_buf: list[str] = []
     pending_blanks = 0
+    last_reply_json = False  # 上一个 [reply] 行是否 JSON 编码（新格式）
 
     def _flush_reply() -> None:
-        nonlocal seq, pending_blanks
+        nonlocal seq, pending_blanks, last_reply_json
         if not reply_buf:
             pending_blanks = 0
             return
         joined = "".join(reply_buf).strip()
         reply_buf.clear()
         pending_blanks = 0
+        last_reply_json = False
         if joined:
             events.append(_ev("reply", joined, seq)); seq += 1
 
@@ -80,6 +82,19 @@ def _parse_run_block(text: str) -> list[dict]:
         if not stripped:
             if reply_buf:
                 pending_blanks += 1
+            i += 1
+            continue
+
+        # 旧格式回补：JSON 编码上线前，delta 内嵌换行会打出无 [reply] 前缀
+        # 的裸行（如 markdown 的 "##"、"**加粗"）。回复聚合中遇到不以 "["
+        # 开头的裸行视为回复续行（流式期间 stdout 只有本进程打印，真正的
+        # 事件行都带 "[" 前缀）——否则一条回复被拆成多个事件，完成后尾部
+        # 片段与磁盘历史前缀失配、残留成重复气泡（实测）。
+        # 换行数 = 上一 [reply] 行自身行尾 1 个 + 中间空行 pending_blanks 个。
+        if reply_buf and not stripped.startswith("["):
+            reply_buf.append("\n" * (1 + pending_blanks))
+            pending_blanks = 0
+            reply_buf.append(line)
             i += 1
             continue
 
@@ -131,21 +146,34 @@ def _parse_run_block(text: str) -> list[dict]:
         # ── 新结构化工具日志（core/agent.py 主 agent 输出，DSH 风格渲染用）──
         elif stripped.startswith("[reply]"):
             # 流式回复增量（每个 token 一行）：连续行聚合，遇其他行收尾。
-            # print(f"[reply] {delta.content}") 固定带一个分隔空格，去掉它。
-            # 空 token = 换行 token（delta 只有 \n 时打出 "[reply] "）。
+            # 新格式 JSON 编码（agent.py json.dumps，内嵌换行不破坏行结构）；
+            # 旧格式裸文本兼容（空 token = 换行 token，delta 只有 \n 时
+            # 打出 "[reply] "）。print 固定带一个分隔空格，去掉它。
             if pending_blanks > 0:
-                reply_buf.append("\n" * pending_blanks)
+                # 旧格式：空行 = 回复内换行。上一 [reply] 行是 JSON 编码时，
+                # 空行只是 print 自带行尾，丢弃（否则换行重复计数）
+                if not last_reply_json:
+                    reply_buf.append("\n" * pending_blanks)
                 pending_blanks = 0
             # 必须用原始 line（而非 stripped）取内容：stripped 会去掉行尾空格，
             # 导致纯空格 token（如 "[reply]  "）被误判成换行 token。
             after_raw = line[line.index("[reply]") + len("[reply]"):]
             if after_raw.startswith(" "):
                 after_raw = after_raw[1:]
-            # 空 token（[reply] 后只有一个分隔空格）= 换行 token。
-            # 不在这里追加：print 自带的换行会在文件里形成后续空行，
-            # 由 pending_blanks 统一换算成正确数量的 \n，避免重复计数。
-            if after_raw != "":
-                reply_buf.append(after_raw)
+            if after_raw == "":
+                # 空token（旧格式换行 token）：不追加，print 自带换行形成
+                # 后续空行，由 pending_blanks 统一换算成正确数量的 \n
+                last_reply_json = False
+            else:
+                try:
+                    frag = json.loads(after_raw)
+                    last_reply_json = isinstance(frag, str)
+                    if not isinstance(frag, str):
+                        frag = after_raw
+                except ValueError:
+                    frag = after_raw
+                    last_reply_json = False
+                reply_buf.append(frag)
             i += 1
             continue
         elif stripped.startswith("[tool-result]"):

@@ -1244,3 +1244,18 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **Auto-recorded:** Error: 抓取失败: Client error '404 Not Found' for url 'https://minecraft.wiki/w/Java_Edition_1.21.12'
 - **Auto-recorded:** [18] tool len=183 | Error: 抓取失败: Client error '404 Not Found' for url 'https://minecraft.wiki/w/Java_Edition_1.22'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/
 - **Auto-recorded:** [19] tool len=186 | Error: 抓取失败: Client error '404 Not Found' for url 'https://minecraft.wiki/w/Java_Edition_1.21.12'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Stat
+
+## 2026-09-06 Auto-recorded from runtime
+
+- **Auto-recorded:** - `META-INF/mods.toml` dependency blocks MUST use `mandatory=true` (boolean); `type="required"` makes Forge treat the
+- **Auto-recorded:** jar as an invalid mod.
+- **Auto-recorded:** apply the known fix directly. Only if not found, use `search_api` with the exact symbol (default searches
+- **Auto-recorded:** - pack.mcmeta: keep the template's `min_format`/`max_format` form; do not replace with only `supported_formats`, otherwise the mod resource pack metadata is rejected with a WARN/ERROR.
+- **Auto-recorded:** [思考+] " as an invalid mod.\" H"
+- **Auto-recorded:** [思考+] " must use `mandatory=true"
+- **Auto-recorded:** [reply] "必须用 mandatory=true"
+- **Auto-recorded:** [reply] "craft\"\nmandatory=true\n"
+
+## 2026-09-06 Auto-recorded from runtime
+
+- **Auto-recorded:** - Forge version facts violated - hard to verify without reading docs; the mod guide mentions things like mods.toml `type="required"` → `mandatory=true`, `getModEventBus()` → `FMLJavaModLoadingContext.get().getModBusGroup

@@ -1,0 +1,38 @@
+C:\Users\59639\Desktop\skill-agent\server_app\server.py:1805: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+INFO:     Started server process [4128]
+INFO:     Waiting for application startup.
+[server] 启动完成：恢复 1 个历史会话
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:62354 - "GET /?bust=1788347141187 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62354 - "GET /assets/index-CW4P4pti.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:61770 - "GET /assets/index-BGeRUK86.css HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:61770 - "GET /api/conversation?session_id=1e1b540ece82 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61770 - "GET /api/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61770 - "GET /api/events?session_id=1e1b540ece82 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61770 - "GET /api/status?session_id=1e1b540ece82&api_key=sk-lpMVlNoQ9gNSjhYNgb3U9U3yZlUHWfFowMiInckBQPvrMWJ76i6tE6rd4cL7EvPq HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62354 - "GET /api/question?session_id=1e1b540ece82 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61770 - "GET /api/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61770 - "GET /api/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61770 - "POST /api/session/mod?session_id=1e1b540ece82 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61770 - "POST /api/task HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61770 - "GET /api/events?session_id=1e1b540ece82 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62354 - "GET /api/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62354 - "GET /api/status?session_id=1e1b540ece82&api_key=sk-lpMVlNoQ9gNSjhYNgb3U9U3yZlUHWfFowMiInckBQPvrMWJ76i6tE6rd4cL7EvPq HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65264 - "GET /api/question?session_id=1e1b540ece82 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62354 - "GET /api/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61770 - "GET /api/conversation?session_id=1e1b540ece82 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62354 - "GET /api/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59827 - "POST /api/task HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55468 - "GET /api/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59827 - "GET /api/events?session_id=1e1b540ece82 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59827 - "GET /api/status?session_id=1e1b540ece82&api_key=sk-lpMVlNoQ9gNSjhYNgb3U9U3yZlUHWfFowMiInckBQPvrMWJ76i6tE6rd4cL7EvPq HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54370 - "GET /api/question?session_id=1e1b540ece82 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59827 - "GET /api/sessions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55468 - "GET /api/conversation?session_id=1e1b540ece82 HTTP/1.1" 200 OK

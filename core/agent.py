@@ -323,8 +323,12 @@ def agent_loop(messages: list) -> str:
                             pass
                 if getattr(delta, "content", None):
                     content_parts.append(delta.content)
-                    # 过程可见：回复增量实时落盘（run.log → /api/events）
-                    print(f"[reply] {delta.content}", flush=True)
+                    # 过程可见：回复增量实时落盘（run.log → /api/events）。
+                    # JSON 编码（同上 [思考+]）：delta 内嵌换行会打出无前缀的
+                    # 裸行，log_events 按"非 [reply] 行"切断回复——markdown
+                    # 标题/加粗续行把一条回复拆成多个事件，前端分成多个
+                    # 气泡且完成后残留重复片段（实测）
+                    print(f"[reply] {json.dumps(delta.content, ensure_ascii=False)}", flush=True)
                 if getattr(delta, "tool_calls", None):
                     for tc in delta.tool_calls:
                         entry = tool_call_deltas.setdefault(tc.index, {"id": "", "name": "", "args": ""})

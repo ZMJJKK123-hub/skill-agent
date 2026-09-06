@@ -404,24 +404,24 @@ function Messages() {
     for (let i = kept.length - 1; i >= 0; i--) {
       if (kept[i].type !== 'thinking_delta') {
         count++
-        if (count > 500) { start = i + 1; break }
+        if (count > 1500) { start = i + 1; break }
       }
     }
     return kept.slice(start)
   }, [events])
 
-  // chat 模式：重开会话时历史 assistant 气泡与 reply 事件是同一内容
-  // （conversation.jsonl 与流式日志各存一份），按前缀匹配去重——
-  // 已有气泡的 reply 不再渲染；实时轮次（尚未入历史）照常实时显示。
+  // 历史 assistant 气泡与 reply 事件是同一内容（conversation.jsonl 与流式
+  // 日志各存一份），按前缀匹配去重——已有气泡的 reply 不再渲染；实时轮次
+  // （尚未入历史）照常实时显示。两种模式都需要：chat 用于交织视图隐藏
+  // 重复组，mod 用于 modTailStart 增量起点（此前误加了 chat 限制，mod 模式
+  // 集合恒空 → 增量从 0 渲染整条时间线，与磁盘气泡成对重复）。
   const assistantPrefixes = useMemo(() => {
     const s = new Set<string>()
-    if (mode === 'chat') {
-      chatMessages.forEach((m) => {
-        if (m.role === 'assistant' && m.content) s.add(m.content.slice(0, 50))
-      })
-    }
+    chatMessages.forEach((m) => {
+      if (m.role === 'assistant' && m.content) s.add(m.content.slice(0, 50))
+    })
     return s
-  }, [mode, chatMessages])
+  }, [chatMessages])
 
   // 权威气泡在场（chatMessages 里有 assistant，通常来自磁盘历史加载）时
   // 流式 reply 组整体隐藏——前缀去重对"暂停续跑重输出/中途改口"等场景
@@ -546,14 +546,29 @@ function Messages() {
       }
       return null
     })()
+    // hidden 只承载 chat 语义（磁盘气泡已渲染该回复→隐藏重复组）；
+    // mod 模式的回复显示语义不同（mod 不渲染磁盘 assistant 气泡，时间线
+    // reply 组是唯一展示），在渲染处按模式单独判定
     return out.map((it) => {
       if (it.kind !== 'reply') return it
       if (it.key === lastReplyKey) return { ...it, hidden: false }
       const merged = it.events.map((e) => e.content).join('\n\n')
-      const hidden = hasAssistantBubbles || assistantPrefixes.has(merged.slice(0, 50))
+      const hidden = mode === 'chat' && (hasAssistantBubbles || assistantPrefixes.has(merged.slice(0, 50)))
       return { ...it, hidden }
     })
-  }, [shownEvents, assistantPrefixes, hasAssistantBubbles])
+  }, [shownEvents, assistantPrefixes, hasAssistantBubbles, mode])
+
+  // mod 模式增量起点：最后一个"前缀已匹配磁盘历史"的 reply 组之后。
+  // 这些成员尚未落盘（当前轮思考/工具/流式回复），是 mod 时间线的增量
+  const modTailStart = useMemo(() => {
+    let lastMatched = -1
+    timeline.forEach((it, i) => {
+      if (it.kind !== 'reply') return
+      const merged = it.events.map((e) => e.content).join('\n\n')
+      if (assistantPrefixes.has(merged.slice(0, 50))) lastMatched = i
+    })
+    return lastMatched + 1
+  }, [timeline, assistantPrefixes])
 
   // ── chat 模式按轮交织 ──
   // 时间线里的 reply 组按序对应磁盘 assistant 消息（run_task 每轮一对）。
@@ -683,12 +698,28 @@ function Messages() {
           return null
         })}
 
-        {/* mod 模式：用户消息气泡（含上传图片）——与 chat 同源 chatMessages。
-            此前用 prompts 纯文本渲染，历史图片无法回显；prompts 数组仍保留
-            供排队等内部逻辑使用。 */}
-        {mode === 'mod' && chatMessages.filter((m) => m.role === 'user').map((m, i) => (
-          <ChatBubble key={`mu-${i}`} role="user" content={m.content} images={m.images} sessionId={sessionId} />
+        {/* mod 模式：磁盘历史全量气泡（user+assistant 交替，与 chat 一致）
+            + 时间线增量。此前 mod 只渲染 user 气泡、assistant 回复全靠时间
+            线事件——事件被日志截断/重启清空后，历史回复就从界面消失（用户
+            实测：第 1 轮回复不见了）。磁盘 conversation.jsonl 是权威历史。 */}
+        {mode === 'mod' && chatMessages.map((m, i) => (
+          <ChatBubble key={`md-${i}`} role={m.role === 'user' ? 'user' : 'assistant'} content={m.content} images={m.images} sessionId={sessionId} />
         ))}
+
+        {/* mod 模式：时间线增量（当前轮思考/工具/流式回复）。
+            lastMatchedPrefix 之后的事件 = 尚未落盘的当前轮过程 */}
+        {mode === 'mod' && timeline.map((item, idx) => {
+          if (idx < modTailStart) return null
+          if (item.kind === 'reply') {
+            if ((item as { hidden?: boolean }).hidden) return null
+            const content = item.events.map((e) => e.content).join('\n\n')
+            if (!running && assistantPrefixes.has(content.slice(0, 50))) return null
+            return <ChatBubble key={item.key} role="assistant" content={content} />
+          }
+          if (item.kind === 'think') return <ThinkingSegRow key={item.key} seg={item.seg} />
+          if (item.kind === 'tool') return <ToolRow key={item.key} entry={item.entry} delayMs={Math.min(item.batchIdx, 5) * 70} />
+          return null
+        })}
 
         {/* 运行中提示（所有模式）：只显示状态 + 本地 1s 秒数，具体步骤看下方事件流 */}
         {running && (
@@ -699,28 +730,7 @@ function Messages() {
           </div>
         )}
 
-        {/* 时间线（mod 模式 / 回退之外的通用流）：chat 交织与回退已含全部
-            成员，这里只服务 mod 模式的事件流 */}
-        {mode === 'mod' && timeline.map((item) => {
-          if (item.kind === 'reply') {
-            if ((item as { hidden?: boolean }).hidden) return null
-            const content = item.events.map((e) => e.content).join('\n\n')
-            return <ChatBubble key={item.key} role="assistant" content={content} />
-          }
-          if (item.kind === 'think') return <ThinkingSegRow key={item.key} seg={item.seg} />
-          if (item.kind === 'tool') return <ToolRow key={item.key} entry={item.entry} delayMs={Math.min(item.batchIdx, 5) * 70} />
-          return null
-        })}
-
-        {/* mod 模式：完成后渲染最终总结气泡（conversation.jsonl 的最后一条 assistant）。
-            此前 mod 模式只渲染事件流，完成时界面没有任何回复（718d315bec0b 实测：
-            显示"完成 ✓"却没有说明文字）。 */}
-        {mode === 'mod' && (phase === 'finished' || paused) && (() => {
-          const lastA = [...chatMessages].reverse().find((m) => m.role === 'assistant' && m.content)
-          return lastA ? <ChatBubble role="assistant" content={lastA.content} /> : null
-        })()}
-
-        {/* 已暂停：横线提示"您已终止该对话" */}
+        {/* 已暂停：横线提示（新措辞见 i18n conv.stopped） */}
         {stoppedNotice && phase !== 'running' && (
           <div className="flex items-center gap-2 py-1 text-xs text-faint">
             <div className="h-px flex-1 bg-line" />

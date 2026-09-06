@@ -88,6 +88,7 @@ class Session:
         self.log_path = mod_dir.parent / "run.log"
         self.event_cursor = None  # 事件流游标（由 /api/events 维护）
         self.daemon_prev_state: Optional[str] = None  # daemon 状态机记忆（waiting/working/None）
+        self.daemon_mode: Optional[str] = None  # 当前 daemon 进程 spawn 时的模式（chat/mod）
 
 
 # 会话表：新会话进内存；服务启动时从磁盘恢复历史会话（供下载/预览/事件）
@@ -589,6 +590,14 @@ def _session_stats(sess: Session) -> dict:
             from core.conversation import pending_count
             if pending_count(sess.mod_dir.parent) > 0:
                 daemon_idle = False
+                # 用户已发新消息、daemon 最长 0.5s 后才消费（state 尚为
+                # waiting）：此窗口内 running=True 但下方 waiting→working
+                # 的重置条件不触发，elapsed 按上一轮 started_at 起算——
+                # 先跳旧秒数、等 daemon 转正才归零（实测：第 2 轮先显示
+                # 12s 再归 0）。这里提前视同新轮开始重置计时。
+                if sess.daemon_prev_state == "waiting":
+                    sess.finished_at = None
+                    sess.started_at = time.time()
         except Exception:
             pass
 
@@ -998,14 +1007,30 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
             #      会以 resume=True 重入；daemon 自己能消费 pending，直接确认即可。
             # 其他进程存活时的 resume（如运行中）维持原 409 防御。
             raise HTTPException(409, "Task already running；请先暂停再继续")
-        try:
-            if req.prompt.strip() or upload_names:
-                from core.conversation import enqueue_pending
-                enqueue_pending(sess.mod_dir.parent, req.prompt.strip() or "（图片）",
-                                images=upload_names)
-        except Exception:
-            raise HTTPException(500, "排队消息写入失败")
-        return {"session_id": sess.id, "status": "queued", "mode": mode}
+        # 模式切换：daemon 的模式在 spawn 时固化（cwd / 工具集 / 系统提示词
+        # 都按当时的 DSH_MODE 选定），沿用旧进程会让 /mod、/chat 切换失效——
+        # 消息被旧模式 daemon 消费，回复仍是旧模式（实测 1e1b540ece82：chat
+        # 会话里 /mod 后依旧答"只读咨询模式"）。空闲时杀旧 daemon 落到下方
+        # respawn，本次消息作为新模式的首轮直接跑；运行中则照常排队，由
+        # daemon_loop 在本轮结束时按 mode.txt 自杀退出 + 自动续跑重拉。
+        if (daemon_st == "waiting" and sess.daemon_mode
+                and sess.daemon_mode != mode
+                and (req.prompt.strip() or upload_names)):
+            try:
+                sess.proc.kill()
+                sess.proc.wait(timeout=5)
+            except Exception:
+                pass
+            sess.proc = None
+        else:
+            try:
+                if req.prompt.strip() or upload_names:
+                    from core.conversation import enqueue_pending
+                    enqueue_pending(sess.mod_dir.parent, req.prompt.strip() or "（图片）",
+                                    images=upload_names)
+            except Exception:
+                raise HTTPException(500, "排队消息写入失败")
+            return {"session_id": sess.id, "status": "queued", "mode": mode}
 
     # ── 恢复模式：从断点继续（暂停后点继续按钮）──
     if req.resume:
@@ -1077,7 +1102,12 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
             [sys.executable, str(RUN_TASK),
              str(work_dir), sess.api_key],
             cwd=str(BASE_DIR),
-            stdout=open(sess.log_path, "w", encoding="utf-8"),
+            # 追加而非截断：暂停恢复 / 模式切换（chat→mod 需重拉 daemon）/
+            # daemon 空闲超时都会重新 spawn，"w" 会把之前轮次的思考/工具/
+            # 回复事件整体抹掉——前端游标偏移失效，界面过程记录瞬间消失
+            # （实测：/mod 切换后上一轮思考流式全没了）。会话重置接口仍
+            # 显式清空 run.log，不受影响。
+            stdout=open(sess.log_path, "a", encoding="utf-8"),
             stderr=subprocess.STDOUT,
             env={**os.environ,
                  # 显式注入用户的 API Key + 阻止 .env 加载：
@@ -1130,6 +1160,7 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
     sess.finished_at = None
     sess.result = None
     sess.event_cursor = None
+    sess.daemon_mode = mode  # 模式切换判定用（reuse 分支据此决定是否重拉 daemon）
     # 注意：prompt 临时文件由 run_task.py 读取后自行删除。
     # 这里绝不能提前 unlink——Windows 上子进程启动有延迟，
     # 立即删除会导致 run_task 读取失败（实测：agent 直接退出，

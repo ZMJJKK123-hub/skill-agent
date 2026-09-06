@@ -398,6 +398,21 @@ def daemon_loop(session_dir: Path, session_root_path: Path, mode: str) -> None:
                     return
                 continue
 
+            # 模式切换退出：排队消息可能是 /mod、/chat 切到另一模式后入队的，
+            # 而本进程的模式（cwd/工具/系统提示词）在 spawn 时固化。mode.txt
+            # 与本进程不一致时不能按旧模式消费——直接退出（不 drain，消息
+            # 留在队列），前端自动续跑会按 mode.txt 重拉新模式的 daemon。
+            try:
+                _cur_mode = (session_root_path / "mode.txt").read_text(
+                    encoding="utf-8").strip()
+            except OSError:
+                _cur_mode = mode
+            if _cur_mode in ("chat", "mod") and _cur_mode != mode:
+                print(f"[run_task] 检测到模式切换（{mode}→{_cur_mode}），daemon 退出待重拉",
+                      flush=True)
+                _set_state("waiting")
+                return
+
             # 有排队消息：每轮只消费最早的一条。出队后立刻写进对话历史
             # （enqueue 不再同步落盘）——磁盘历史保持"处理顺序"：
             # [u甲,a甲,乙,...]，模型本轮末尾是待答的 user，而不是上一轮
@@ -518,6 +533,20 @@ def main() -> int:
     session_dir.mkdir(parents=True, exist_ok=True)
     os.chdir(str(session_dir))
     print(f"[run_task] 模式={mode} | 工作目录 => {session_dir}", flush=True)
+
+    # 1.5 进程启动即写 pid + working 状态：首轮（含 7-8s import + 整个
+    # agent 循环）在 daemon_loop 之前运行，期间 state 文件若还是上一个
+    # daemon 遗留的 "waiting"，server 会把"首轮进行中"误判成空闲——
+    # /mod、/chat 模式切换的 kill 分支据此杀掉正在跑的首轮，回复流了
+    # 却没落盘（实测 1e1b540ece82："在吗？"轮回复丢失）。daemon_loop
+    # 进入后会按实际状态重写（首轮结束 → waiting）。
+    try:
+        _chat_dir = session_root_path / ".chat"
+        _chat_dir.mkdir(parents=True, exist_ok=True)
+        (_chat_dir / "daemon.pid").write_text(str(os.getpid()), encoding="utf-8")
+        (_chat_dir / "daemon.state").write_text("working", encoding="utf-8")
+    except OSError:
+        pass
 
     # 2. 注入用户自己的 API Key（只在用户自己机器/会话里生效，不落盘）
     #    同时声明「不加载仓库 .env」：8000 网页版用户完全自备 Key/模型/地址，

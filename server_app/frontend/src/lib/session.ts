@@ -143,7 +143,7 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
       // 否则用户消息不会显示在左侧（mod 模式只渲染 prompts）。
       const prompts = state.mode === 'mod' && !forceMode ? [...state.prompts, prompt] : state.prompts
       setState({
-        phase: 'running', paused: false, stoppedNotice: false,
+        phase: 'running', paused: false, stoppedNotice: false, elapsed: null,
         chatMessages: [...state.chatMessages, { role: 'user', content: prompt, ...(images.length ? { images } : {}) }],
         prompts,
       })
@@ -237,7 +237,8 @@ export async function pauseTask() {
 export async function resumeTask() {
   const sid = state.sessionId
   if (!sid) return
-  setState({ phase: 'running', paused: false, stoppedNotice: false })
+  // elapsed 归零：恢复 = 新一轮计时，残留上一轮秒数会先跳旧值再被轮询归零
+  setState({ phase: 'running', paused: false, stoppedNotice: false, elapsed: null })
   try {
     await api.startTask(sid, '', state.mode ?? 'chat', true)
     void poll()
@@ -321,7 +322,8 @@ async function _pollOnce(sid: string) {
         await api.startTask(sid, '', state.mode ?? 'chat', true)
         if (state.sessionId !== sid) return
         const prompts = [...state.prompts, `（自动续跑：处理 ${st.pending} 条排队消息）`]
-        setState({ prompts, phase: 'running', pending: 0 })
+        // elapsed 归零：续跑是新一轮，避免先显示上一轮的秒数再突然归零
+        setState({ prompts, phase: 'running', pending: 0, elapsed: null })
         void loadHistory()
       } catch (e) {
         if (state.sessionId !== sid) return
@@ -451,7 +453,7 @@ export async function newConversation() {
 // 会覆盖新会话的显示（实测：记录消失/屏幕空白/状态打架）。
 export async function openHistorySession(id: string) {
   stopPolling()
-  setState({ sessionId: id, phase: 'idle', events: [], cursor: null, prompts: [], title: null, error: null, mode: null, chatMessages: [], paused: false, pending: 0, stoppedNotice: false, question: null, questions: null })
+  setState({ sessionId: id, phase: 'idle', events: [], cursor: null, prompts: [], title: null, error: null, mode: null, chatMessages: [], paused: false, pending: 0, stoppedNotice: false, question: null, questions: null, elapsed: null })
   _rememberActiveSid(id)
   const ok = await loadConversation(id)
   if (!ok) {
