@@ -186,10 +186,10 @@ function GeneralSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft
 function ModelsSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft) => void }) {
   const t = useT()
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ name: '', baseUrl: '', apiKey: '', model: '', protocol: 'openai' })
+  const [form, setForm] = useState({ name: '', baseUrl: '', apiKey: '', model: '', protocol: 'openai', supportsVision: false })
   // 编辑态：editId = 正在编辑的 provider；模型 ID 以 chip 形式逐个增删
   const [editId, setEditId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState({ name: '', baseUrl: '', apiKey: '' })
+  const [editForm, setEditForm] = useState({ name: '', baseUrl: '', apiKey: '', supportsVision: false })
   const [newModel, setNewModel] = useState('')
 
   const providers = draft.providers
@@ -204,6 +204,7 @@ function ModelsSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft)
       apiKey: form.apiKey.trim(),
       model: form.model.trim(),
       protocol: form.protocol,
+      supportsVision: form.supportsVision,
     }
     // 官方默认移除后 model 无兜底：新增 provider 后若当前没有可用选中模型，
     // 自动选中新增 provider 的第一个模型（否则下拉停留在"暂无配置"）
@@ -219,7 +220,7 @@ function ModelsSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft)
         ? draft.model
         : p.model.split(',').map((s) => s.trim()).filter(Boolean)[0] || '',
     })
-    setForm({ name: '', baseUrl: '', apiKey: '', model: '', protocol: 'openai' })
+    setForm({ name: '', baseUrl: '', apiKey: '', model: '', protocol: 'openai', supportsVision: false })
     setShowForm(false)
   }
   const remove = (id: string) => {
@@ -239,7 +240,7 @@ function ModelsSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft)
 
   const startEdit = (p: Provider) => {
     setEditId(p.id)
-    setEditForm({ name: p.name, baseUrl: p.baseUrl, apiKey: p.apiKey })
+    setEditForm({ name: p.name, baseUrl: p.baseUrl, apiKey: p.apiKey, supportsVision: !!p.supportsVision })
     setNewModel('')
   }
   const applyEdit = () => {
@@ -247,7 +248,7 @@ function ModelsSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft)
     setDraft({
       ...draft,
       providers: providers.map((p) =>
-        p.id === editId ? { ...p, name: editForm.name.trim(), baseUrl: editForm.baseUrl.trim(), apiKey: editForm.apiKey.trim() } : p,
+        p.id === editId ? { ...p, name: editForm.name.trim(), baseUrl: editForm.baseUrl.trim(), apiKey: editForm.apiKey.trim(), supportsVision: editForm.supportsVision } : p,
       ),
     })
     setEditId(null)
@@ -289,6 +290,16 @@ function ModelsSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft)
             <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} placeholder={t('models.name')} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500" />
             <input value={editForm.baseUrl} onChange={(e) => setEditForm({ ...editForm, baseUrl: e.target.value })} placeholder={t('models.baseUrl')} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500" />
             <input value={editForm.apiKey} onChange={(e) => setEditForm({ ...editForm, apiKey: e.target.value })} type="password" placeholder={t('models.apiKey')} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500" />
+            <label className="flex items-center gap-2 text-xs text-muted">
+              <button
+                type="button"
+                onClick={() => setEditForm({ ...editForm, supportsVision: !editForm.supportsVision })}
+                className={`relative h-5 w-9 rounded-full transition ${editForm.supportsVision ? 'bg-forge-500' : 'bg-slate-600'}`}
+              >
+                <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition ${editForm.supportsVision ? 'left-[18px]' : 'left-0.5'}`} />
+              </button>
+              模型支持图片输入（开启后主模型直接用于视觉识别，无需单独配视觉 API）
+            </label>
             <div>
               <div className="mb-1 text-xs text-faint">模型 ID（点 ✕ 移除；至少保留一个）</div>
               <div className="flex flex-wrap gap-1.5">
@@ -331,7 +342,12 @@ function ModelsSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft)
         ) : (
           <div key={p.id} className="mb-2 flex items-center justify-between rounded-md border border-line px-3 py-2 text-sm">
             <div className="min-w-0">
-              <div className="font-medium">{p.name}</div>
+              <div className="font-medium">
+                {p.name}
+                {p.supportsVision && (
+                  <span className="ml-1.5 rounded border border-forge-500/40 bg-forge-500/10 px-1 py-px text-[10px] text-forge-300">视觉</span>
+                )}
+              </div>
               <div className="truncate text-xs text-faint">{modelsOf(p).join(' / ')}</div>
             </div>
             <div className="flex shrink-0 gap-1">
@@ -358,6 +374,16 @@ function ModelsSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft)
           <input value={form.baseUrl} onChange={(e) => setForm({ ...form, baseUrl: e.target.value })} placeholder={t('models.baseUrl')} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none" />
           <input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder={t('models.model') + '（可逗号分隔多个，保存后可在编辑里逐个增删）'} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none" />
           <input value={form.apiKey} onChange={(e) => setForm({ ...form, apiKey: e.target.value })} type="password" placeholder={t('models.apiKey')} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none" />
+          <label className="flex items-center gap-2 text-xs text-muted">
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, supportsVision: !form.supportsVision })}
+              className={`relative h-5 w-9 rounded-full transition ${form.supportsVision ? 'bg-forge-500' : 'bg-slate-600'}`}
+            >
+              <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition ${form.supportsVision ? 'left-[18px]' : 'left-0.5'}`} />
+            </button>
+            模型支持图片输入（开启后主模型直接用于视觉识别，无需单独配视觉 API）
+          </label>
           <div className="flex gap-2">
             <button onClick={save} className="rounded-md bg-forge-500 px-3 py-1.5 text-sm font-medium text-ink-950 hover:bg-forge-400">
               {t('models.save')}

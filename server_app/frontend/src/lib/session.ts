@@ -142,14 +142,17 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
       // 暂停后发送 = 恢复 + 强注入。mod 模式也要把新消息加入 prompts，
       // 否则用户消息不会显示在左侧（mod 模式只渲染 prompts）。
       const prompts = state.mode === 'mod' && !forceMode ? [...state.prompts, prompt] : state.prompts
-      setState({
-        phase: 'running', paused: false, stoppedNotice: false, elapsed: null,
-        chatMessages: [...state.chatMessages, { role: 'user', content: prompt, ...(images.length ? { images } : {}) }],
-        prompts,
-      })
       // /chat（forceMode）：以 chat 恢复运行——模式切换即生效（mode.txt
       // 已在 server 端被 /chat 分支更新；这里不能沿用 state.mode=mod）
       const resumeMode = forceMode ? mode : (state.mode ?? 'chat')
+      setState({
+        phase: 'running', paused: false, stoppedNotice: false, elapsed: null,
+        // 关键修复：暂停后 /chat 切回 chat 时必须同步更新本地 mode，
+        // 否则 UI 仍按 mod 时间线渲染，也不会在完成后正确拉取 chat 历史
+        mode: resumeMode,
+        chatMessages: [...state.chatMessages, { role: 'user', content: prompt, ...(images.length ? { images } : {}) }],
+        prompts,
+      })
       await api.startTask(state.sessionId, prompt, resumeMode, true, settings.apiKey, settings.model, settings.baseUrl,
         settings.visionEnabled, settings.visionApiKey, settings.visionBaseUrl, settings.visionModel,
         settings.autoMode, settings.searchApiKey, images, forceMode)

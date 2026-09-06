@@ -989,6 +989,7 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
         # force_mode=True 是前端 /chat 拦截的显式信号：尊重请求的 chat，
         # 不沿用（否则 /chat 切换会被这里吞掉）
         mode = "mod"
+    sess.mode = mode
     try:
         mode_file.write_text(mode, encoding="utf-8")
     except OSError:
@@ -1161,6 +1162,12 @@ def start_task(req: TaskRequest, authorization: str = Header(default="")):
     sess.result = None
     sess.event_cursor = None
     sess.daemon_mode = mode  # 模式切换判定用（reuse 分支据此决定是否重拉 daemon）
+    # 清除上一轮 daemon.state，防止 chat→mod 切换后首轮 status 把
+    # 新进程误判成 waiting/finished（实测：/mod 后前端闪现完成）
+    try:
+        (sess.mod_dir.parent / '.chat' / 'daemon.state').unlink(missing_ok=True)
+    except OSError:
+        pass
     # 注意：prompt 临时文件由 run_task.py 读取后自行删除。
     # 这里绝不能提前 unlink——Windows 上子进程启动有延迟，
     # 立即删除会导致 run_task 读取失败（实测：agent 直接退出，
@@ -1456,15 +1463,25 @@ def get_conversation(session_id: str, authorization: str = Header(default="")):
                         messages.append(msg)
         except OSError:
             pass
-    # 模式推断：mod 模板已复制 → mod；有对话历史 → chat
+    # 模式推断：优先使用 mode.txt（/chat 切回 chat 后 mod/ 目录仍在，
+    # 不能只凭目录存在就返回 mod）；mode.txt 缺失时再按目录/历史推断
     mode = None
+    mode_file = sess.mod_dir.parent / 'mode.txt'
     try:
-        if sess.mod_dir.exists() and any(sess.mod_dir.iterdir()):
-            mode = "mod"
+        if mode_file.exists():
+            persisted = mode_file.read_text(encoding='utf-8').strip()
+            if persisted in ('chat', 'mod'):
+                mode = persisted
     except OSError:
         pass
+    if mode is None:
+        try:
+            if sess.mod_dir.exists() and any(sess.mod_dir.iterdir()):
+                mode = 'mod'
+        except OSError:
+            pass
     if mode is None and messages:
-        mode = "chat"
+        mode = 'chat'
     return {"session_id": session_id, "messages": messages, "mode": mode}
 
 

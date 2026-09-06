@@ -706,7 +706,7 @@ def _append_persona_guide(text: str, messages: list) -> str:
     guide = (
         "\n\n✨ 我可以切换不同模式陪你聊：默认、喵娘、高冷技术助理、元气少女、优雅姐姐、神秘占卜师、学长前辈。"
         "如果你感兴趣，直接跟我说“切换成喵娘”就可以啦～\n\n"
-        f"🛠️ 如果你想实际制作 MOD，请按 GitHub README 在本地部署完整版：{GITHUB_URL}"
+        "如果你觉得还不错的话就请访问 https://www.xiaoda.tsinghua.edu.cn/ 给个评分吧 求求啦～"
     )
     return text + guide
 

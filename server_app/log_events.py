@@ -44,22 +44,24 @@ def _split_tag(line: str) -> tuple[str, str]:
     return line[len("["):end], line[end:]
 
 
-def _parse_run_block(text: str) -> list[dict]:
+def _parse_run_block(text: str, pending: dict | None = None, flush_at_eof: bool = True) -> tuple[list[dict], dict | None]:
     """把 run.log 的一段新增文本解析为事件列表。
 
     行级识别 + [todo] 块处理（todo 块 = 一行 [todo] 后跟若干缩进行）。
     [reply] 流式增量（每 token 一行）聚合为一个 reply 事件：
     - print 固定输出 "[reply] {delta}"，去掉该固定分隔空格后原样保留 token；
     - 连续 [reply] 之间的空行视为回复内换行（不再把段落拆成多个 reply 事件）。
+    - 增量读取时（flush_at_eof=False）若文本尾部仍是未结束的回复，不立即 flush，
+      而是把 reply_buf 作为 pending 返回，交给下一次 poll 续接，避免一条回复被拆成多个事件。
     """
     events: list[dict] = []
     lines = text.splitlines()
     i = 0
     seq = 0
     skip_final_reply = False
-    reply_buf: list[str] = []
-    pending_blanks = 0
-    last_reply_json = False  # 上一个 [reply] 行是否 JSON 编码（新格式）
+    reply_buf: list[str] = list((pending or {}).get("reply_buf", []))
+    pending_blanks = int((pending or {}).get("pending_blanks", 0))
+    last_reply_json = bool((pending or {}).get("last_reply_json", False))  # 上一个 [reply] 行是否 JSON 编码（新格式）
 
     def _flush_reply() -> None:
         nonlocal seq, pending_blanks, last_reply_json
@@ -225,9 +227,19 @@ def _parse_run_block(text: str) -> list[dict]:
             events.append(_ev("log", stripped, seq)); seq += 1
         i += 1
 
-    # 段末残留的流式回复（chunk 正好在回复中间被切开）
-    _flush_reply()
-    return events
+    # 段末残留的流式回复：
+    # - 全量读取（flush_at_eof=True）时直接 flush，保证完整回复能出事件；
+    # - 增量读取时先缓存，交给下一次 poll 续接，避免一条回复被拆成多个事件。
+    if flush_at_eof:
+        _flush_reply()
+        return events, None
+    if reply_buf:
+        return events, {
+            "reply_buf": reply_buf,
+            "pending_blanks": pending_blanks,
+            "last_reply_json": last_reply_json,
+        }
+    return events, None
 
 
 # ---------- agent.log 事件解析 ----------
@@ -282,6 +294,10 @@ def _parse_agent_block(text: str) -> list[dict]:
 
 _ID_COUNTER = itertools.count(1)
 
+# 增量轮询时，如果 run.log 尾部停在一条未结束的 [reply] 流中间，
+# 把已解析的回复片段暂存到这里，等下一次 poll 拿到后续字节后合并成一条完整 reply。
+_PENDING_RUN_REPLY: dict[str, dict] = {}
+
 
 def build_event_stream(session_dir: Path, cursor: Optional[dict] = None) -> dict:
     """读取两条日志的新增内容，合并为事件列表。
@@ -297,19 +313,37 @@ def build_event_stream(session_dir: Path, cursor: Optional[dict] = None) -> dict
 
     events: list[dict] = []
     next_cursor = {"run": run_off, "agent": agent_off}
+    run_key = str(session_dir)
+
+    # 全量读取时清掉历史 pending，从头部完整解析
+    if cursor is None:
+        _PENDING_RUN_REPLY.pop(run_key, None)
+    pending_run_reply = _PENDING_RUN_REPLY.get(run_key)
 
     if run_log.exists():
         size = run_log.stat().st_size
         if size < run_off:
             run_off = 0  # 文件被截断/重建，游标重置
+            _PENDING_RUN_REPLY.pop(run_key, None)
+            pending_run_reply = None
         if size > run_off:
             with open(run_log, "r", encoding="utf-8", errors="replace") as f:
                 f.seek(run_off)
                 chunk = f.read(size - run_off)
             next_cursor["run"] = size
-            events.extend(_parse_run_block(chunk))
+            incremental = cursor is not None
+            evs, new_pending = _parse_run_block(chunk, pending_run_reply, flush_at_eof=not incremental)
+            events.extend(evs)
+            if incremental:
+                if new_pending is None:
+                    _PENDING_RUN_REPLY.pop(run_key, None)
+                else:
+                    _PENDING_RUN_REPLY[run_key] = new_pending
+            else:
+                _PENDING_RUN_REPLY.pop(run_key, None)
     else:
         next_cursor["run"] = 0
+        _PENDING_RUN_REPLY.pop(run_key, None)
 
     if agent_log.exists():
         size = agent_log.stat().st_size

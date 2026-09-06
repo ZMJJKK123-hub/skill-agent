@@ -629,12 +629,15 @@ function Messages() {
     // 完成瞬间从"尾部"挪到"对应轮"时组件不重挂载
     let rs = 0
     for (const it of timeline) {
-      if (it.kind === 'reply') { rs++; continue }
-      if (rs >= n) view.push({ kind: 'item', key: it.key, item: it })
+      if (it.kind === 'reply') {
+        // 保持原始时间线顺序：reply 不能统一挪到尾部，
+        // 否则后面的思考/工具会排到它上面（实测 UI bug）
+        if (rs >= n) view.push({ kind: 'item', key: it.key, item: it })
+        rs++
+      } else if (rs >= n) {
+        view.push({ kind: 'item', key: it.key, item: it })
+      }
     }
-    replyGroups.forEach((g, gi) => {
-      if (gi >= n) view.push({ kind: 'item', key: g.key, item: g })
-    })
     return view
   }, [chatMessages, timeline])
 
@@ -723,10 +726,16 @@ function Messages() {
 
         {/* 运行中提示（所有模式）：只显示状态 + 本地 1s 秒数，具体步骤看下方事件流 */}
         {running && (
-          <div className="text-xs text-faint">
-            {phase === 'creating'
-              ? '正在准备工作区…'
-              : `${t('conv.running')}${displayElapsed != null ? ` · ${displayElapsed}s` : ''}…`}
+          <div className="flex items-center gap-1.5 text-xs text-faint">
+            <svg className="h-3.5 w-3.5 animate-spin text-forge-400" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            <span>
+              {phase === 'creating'
+                ? '正在准备工作区…'
+                : `${t('conv.running')}${displayElapsed != null ? ` · ${displayElapsed}s` : ''}…`}
+            </span>
           </div>
         )}
 
@@ -764,9 +773,15 @@ function Messages() {
           </button>
           {phase === 'finished' &&
             (/(任务异常终止|Traceback \(most recent call last\))/.test(sess.logTail) ? (
-              <span className="text-xs text-red-400">✗ {t('conv.crashed')}</span>
+              <span className="flex items-center gap-1.5 rounded-full border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-xs text-red-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                ✗ {t('conv.crashed')}
+              </span>
             ) : (
-              <span className="text-xs text-emerald-400">{t('conv.done')}</span>
+              <span className="flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                ✓ {t('conv.done')}
+              </span>
             ))}
         </div>
       )}
@@ -1042,7 +1057,15 @@ function Composer() {
     const prompt = text.trim()
     if (!prompt && images.length === 0) return
     const r = resolveModelConfig({ model, providers })
-    const settings = { apiKey: r.apiKey, baseUrl: r.baseUrl, model: r.model, game: 'minecraft', loader: 'forge', version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey }
+    const settings = {
+      apiKey: r.apiKey, baseUrl: r.baseUrl, model: r.model, game: 'minecraft', loader: 'forge', version, sandbox,
+      // 主模型支持图片输入时，直接用主模型作为视觉模型，不再强制要求单独视觉 API
+      visionEnabled: visionEnabled || r.supportsVision,
+      visionApiKey: r.supportsVision ? (visionApiKey || r.apiKey) : visionApiKey,
+      visionBaseUrl: r.supportsVision ? (visionBaseUrl || r.baseUrl) : visionBaseUrl,
+      visionModel: r.supportsVision ? (visionModel || r.model) : visionModel,
+      autoMode, searchApiKey,
+    }
 
     // /chat 拦截：显式切回对话模式（与 /mod 对称）——mod 会话内想回到纯
     // 聊天时使用，无需新开会话。带内容则以 chat 模式发送（force_mode 让
@@ -1089,7 +1112,14 @@ function Composer() {
   const confirmMod = () => {
     if (!modConfirm) return
     const r = resolveModelConfig({ model, providers })
-    const settings = { apiKey: r.apiKey, baseUrl: r.baseUrl, model: r.model, game: 'minecraft', loader: 'forge', version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey }
+    const settings = {
+      apiKey: r.apiKey, baseUrl: r.baseUrl, model: r.model, game: 'minecraft', loader: 'forge', version, sandbox,
+      visionEnabled: visionEnabled || r.supportsVision,
+      visionApiKey: r.supportsVision ? (visionApiKey || r.apiKey) : visionApiKey,
+      visionBaseUrl: r.supportsVision ? (visionBaseUrl || r.baseUrl) : visionBaseUrl,
+      visionModel: r.supportsVision ? (visionModel || r.model) : visionModel,
+      autoMode, searchApiKey,
+    }
     void sendPrompt(modConfirm, settings, 'mod', modImages)
     setModConfirm(null)
     setModImages([])

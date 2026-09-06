@@ -7,6 +7,9 @@ export interface Provider {
   apiKey: string
   model: string
   protocol: string
+  // 该模型是否直接支持图片输入：开启后主模型即用于视觉识别，
+  // 不需要再单独配置视觉 API（visionApiKey / visionBaseUrl / visionModel）。
+  supportsVision: boolean
 }
 
 // v1.0.2：官方模型默认值（deepseek-v4-flash + api.deepseek.com）已移除——
@@ -15,12 +18,13 @@ export function resolveModelConfig(state: Pick<UiState, 'model' | 'providers'>):
   apiKey: string
   baseUrl: string
   model: string
+  supportsVision: boolean
 } {
   const { model, providers } = state
   const p = providers.find((p) => p.model.split(',').map((s) => s.trim()).includes(model))
-  if (p) return { apiKey: p.apiKey, baseUrl: p.baseUrl, model }
+  if (p) return { apiKey: p.apiKey, baseUrl: p.baseUrl, model, supportsVision: !!p.supportsVision }
   // 匹配不到（未配置/老数据残留）：返回空三件套，由调用方拦截并提示
-  return { apiKey: '', baseUrl: '', model: '' }
+  return { apiKey: '', baseUrl: '', model: '', supportsVision: false }
 }
 
 /** 当前是否有可用模型配置（下拉与发送按钮的判定依据） */
@@ -89,6 +93,12 @@ function loadState(): UiState {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const loaded = { ...base, ...(JSON.parse(raw) as Partial<UiState>) }
+      // 旧数据没有 supportsVision 字段时，按常见视觉模型名给一个合理默认值；
+      // 用户仍可在设置里手动调整。
+      loaded.providers = (loaded.providers || []).map((p) => ({
+        ...p,
+        supportsVision: p.supportsVision ?? /deepseek-v4-flash|glm-4v|glm-4\.6v|vision|vl/i.test(p.model || ''),
+      }))
       // 设置插件永远启用：清掉历史上可能被误关的持久化状态（sidebar 同理——
       // 禁用 sidebar 会藏掉设置入口造成自锁，实测缺陷 #9）
       loaded.disabledPlugins = (loaded.disabledPlugins || []).filter((p) => p !== 'modforge-settings' && p !== 'modforge-sidebar')

@@ -13,8 +13,21 @@ function GeneratePanel() {
       <div className="space-y-2 text-sm text-muted">
         <div className="flex justify-between">
           <span>{t('nav.sessions')}</span>
-          <span className={phase === 'running' ? 'text-forge-400' : phase === 'finished' ? 'text-emerald-400' : 'text-faint'}>
-            {phase === 'running' ? t('conv.running') : phase === 'finished' ? t('conv.done') : '—'}
+          <span className={`flex items-center gap-1.5 ${phase === 'running' ? 'text-forge-400' : phase === 'finished' ? 'text-emerald-400' : 'text-faint'}`}>
+            {phase === 'running' ? (
+              <>
+                <svg className="h-3 w-3 animate-spin text-forge-400" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                {t('conv.running')}
+              </>
+            ) : phase === 'finished' ? (
+              <>
+                <span className={`h-1.5 w-1.5 rounded-full ${/任务异常终止|Traceback \(most recent call last\)/.test(sess.logTail) ? 'bg-red-500' : 'bg-emerald-500'}`} />
+                {t('conv.done')}
+              </>
+            ) : '—'}
           </span>
         </div>
         <div className="flex justify-between">
