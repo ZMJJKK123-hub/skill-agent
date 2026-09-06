@@ -112,7 +112,8 @@ if you have a question about an API, load_skill or read_file mc_java_sources to 
 """
 
 # chat 只读模式的"去哪做 MOD"引导按接入方区分（同一个 SYSTEM_CHAT 服务两种部署）：
-# - 外部平台接入（默认，如智小搭 8001 只读通道）：引导用户去完整网页版（首条回复带链接）。
+# - 外部平台接入（默认，如智小搭 8001 只读通道）：公网网页版已停用，引导用户
+#   去 GitHub 下载本仓库自行部署（clone + 启动.bat，README 有三步快速开始）。
 # - 本网站接入（server.py 注入 DSH_WEB_CHAT=1）：网站本身就有完整能力，
 #   引导用户直接输入 /mod <想法> 进入 MOD 制造模式——绝不要再把用户往外站导。
 _WEB_CHAT_HINT = (
@@ -121,8 +122,12 @@ _WEB_CHAT_HINT = (
     "  this chat to switch into full MOD-making mode — do NOT redirect them to any external site."
 )
 _EXTERNAL_CHAT_HINT = (
-    "- You CANNOT build, compile, or create files. If the user wants to actually build a MOD project,\n"
-    "  tell them to use the full web version (they will see a link in the first reply)."
+    "- You CANNOT build, compile, or create files in this consultation mode. If the user wants\n"
+    "  to actually build a MOD project, tell them to download and run the tool locally from\n"
+    "  GitHub: https://github.com/ZMJJKK123-hub/skill-agent — `git clone` the repo, run\n"
+    "  `server_app\\启动.bat`, open http://127.0.0.1:8000 and type `/mod <their idea>`\n"
+    "  (full quick-start guide is in the repo README). There is NO public web version —\n"
+    "  never promise or mention a web link."
 )
 if os.environ.get("DSH_WEB_CHAT", "") == "1":
     SYSTEM_CHAT = SYSTEM_CHAT.replace("@@MOD_MODE_HINT@@", _WEB_CHAT_HINT)

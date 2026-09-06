@@ -1259,3 +1259,20 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 ## 2026-09-06 Auto-recorded from runtime
 
 - **Auto-recorded:** - Forge version facts violated - hard to verify without reading docs; the mod guide mentions things like mods.toml `type="required"` → `mandatory=true`, `getModEventBus()` → `FMLJavaModLoadingContext.get().getModBusGroup
+
+## 2026-09-06 Auto-recorded from runtime
+
+- **Auto-recorded:** docs/agent/ERROR_LIST.md:151: - Symptom: `cannot find symbol Items in DeferredRegister`
+- **Auto-recorded:** docs/agent/ERROR_LIST.md:1122: - **[webserv_rubysword] `NEW_ERROR: 注册方块时 RegisterEvent 抛 "Block id not set" NullPointerException | 1.21.11 Block 注册必须显式 setId | Block.Properties.create() 后链式 .setId(ResourceLocation)（Item 
+- **Auto-recorded:** docs/agent/ERROR_LIST.md:1204: - **Auto-recorded:** So the user's bug: they have (per old 1.20.x convention) `"block.<modid>.<name>"` in `zh_cn.json`, but the BlockItem's actual translation key is `item.<modid>.<name>` →
+- **Auto-recorded:** [tool] edit_file {"path": "src/main/resources/META-INF/mods.toml", "old_text": "[[mods]]\nmodId=\"examplemod\"\nversion=\"1.0.0\"\ndisplayName=\"Example Mod\"\n#updateJSONURL=\"https://example.com/updates.json\" #optiona
+- **Auto-recorded:** [思考+] " 'BUILD FAILED')"
+- **Auto-recorded:** [思考+] " / \"BUILD FAILED"
+- **Auto-recorded:** except Exception as e:
+- **Auto-recorded:** [tool] write_file {"content": "import json, os, struct\n\nMOD = r'C:\\Users\\59639\\Desktop\\skill-agent\\data\\sessions\\7e475d51cf6b\\mod'\n\ndef rel(p):\n return os.path.relpath(p, MOD)\n\n# 1) all JSON parse\nerrors 
+
+## 2026-09-06 Auto-recorded from runtime
+
+- **Auto-recorded:** docs/agent/ERROR_LIST.md:158: - Root cause: `META-INF/mods.toml` uses `type="required"` for dependencies; Forge expects `mandatory=true`
+- **Auto-recorded:** [reply] " mandatory=true "
+- **Auto-recorded:** [reply] "\"\n mandatory=true\n "
