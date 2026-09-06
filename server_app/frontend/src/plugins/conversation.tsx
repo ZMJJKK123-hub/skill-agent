@@ -588,6 +588,10 @@ function Messages() {
     const replyGroups = timeline.filter((it) => it.kind === 'reply') as
       Array<{ kind: 'reply'; key: string; events: EventItem[]; hidden: boolean }>
     const diskAssistants = chatMessages.filter((m) => m.role === 'assistant')
+    // 有时 run.log 里会有中间态 reply，但 conversation.jsonl 只保留最终回复。
+    // 如果 reply 组比磁盘 assistant 多，多出来的视为“最终回复之前的过程性回复”，
+    // 全部放到最终回复之前，避免最终回复后面又冒出一串工具/思考（像“中断”）。
+    const extra = Math.max(0, replyGroups.length - diskAssistants.length)
     const n = Math.min(replyGroups.length, diskAssistants.length)
     if (n === 0) {
       // 对齐失败：等价旧行为（历史气泡 + 整块时间线），但走同一棵渲染树
@@ -608,14 +612,29 @@ function Messages() {
       }
     }
 
-    // 逐条磁盘消息交织：assistant(第 i 条) 前插入第 i 轮过程成员
+    // 多余的过程性 reply（不在磁盘历史里）先整体放到最前面，
+    // 让最终回复保持在所有过程之后。
+    if (extra > 0) {
+      let rs = 0
+      for (const it of timeline) {
+        if (it.kind === 'reply') {
+          if (rs < extra) view.push({ kind: 'item', key: it.key, item: it })
+          rs++
+        } else if (rs < extra) {
+          view.push({ kind: 'item', key: it.key, item: it })
+        }
+      }
+    }
+
+    // 逐条磁盘消息交织：assistant(第 i 条) 前插入第 (extra+i) 轮过程成员
     let assistantSeen = 0
     let msgIdx = 0
     for (const m of chatMessages) {
       if (m.role === 'assistant') {
         const i = assistantSeen
-        if (i < n) {
-          for (const it of segs[i] ?? []) {
+        const segIdx = extra + i
+        if (segIdx < segs.length) {
+          for (const it of segs[segIdx] ?? []) {
             view.push({ kind: 'item', key: it.key, item: it })
           }
         }
@@ -624,17 +643,14 @@ function Messages() {
       view.push({ kind: 'bubble', key: `m${msgIdx}`, msg: m })
       msgIdx++
     }
-    // 尾部：第 n 个 reply 组之后的过程成员（当前轮思考/工具）+ 多余的
-    // reply 组（当前流式回复）。key 不加前缀：与对齐后同成员的 key 一致，
-    // 完成瞬间从"尾部"挪到"对应轮"时组件不重挂载
+    // 尾部：只保留真正在最后一个已对齐 reply 组之后的成员（当前流式回复）
+    const alignedEnd = extra + n
     let rs = 0
     for (const it of timeline) {
       if (it.kind === 'reply') {
-        // 保持原始时间线顺序：reply 不能统一挪到尾部，
-        // 否则后面的思考/工具会排到它上面（实测 UI bug）
-        if (rs >= n) view.push({ kind: 'item', key: it.key, item: it })
+        if (rs >= alignedEnd) view.push({ kind: 'item', key: it.key, item: it })
         rs++
-      } else if (rs >= n) {
+      } else if (rs >= alignedEnd) {
         view.push({ kind: 'item', key: it.key, item: it })
       }
     }
