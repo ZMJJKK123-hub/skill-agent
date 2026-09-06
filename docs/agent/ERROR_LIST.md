@@ -1276,3 +1276,55 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **Auto-recorded:** docs/agent/ERROR_LIST.md:158: - Root cause: `META-INF/mods.toml` uses `type="required"` for dependencies; Forge expects `mandatory=true`
 - **Auto-recorded:** [reply] " mandatory=true "
 - **Auto-recorded:** [reply] "\"\n mandatory=true\n "
+
+## 2026-09-06 Auto-recorded from runtime
+
+- **Auto-recorded:** docs/agent/ERROR_LIST.md:1265: - **Auto-recorded:** docs/agent/ERROR_LIST.md:151: - Symptom: `cannot find symbol Items in DeferredRegister`
+- **Auto-recorded:** docs/agent/ERROR_LIST.md:675: - **`GameTestHolder` is GONE in BOTH packages** (`net.minecraftforge.gametest` and `net.minecraft.gametest.framework` both "cannot find symbol").
+- **Auto-recorded:** [思考+] " mandatory=true\n versionRange"
+- **Auto-recorded:** [思考+] "minecraft\"\n mandatory=true"
+- **Auto-recorded:** [tool] write_file {"path": "src/main/resources/META-INF/mods.toml", "content": "# See https://docs.minecraftforge.net/en/1.21.x/gettingstarted/modfiles/#modstoml\n# There are lots of things you can do with the mods.toml,
+- **Auto-recorded:** Error/exception lines: 0
+- **Auto-recorded:** Analysis: Error: analyze_image failed: Error code: 401 - {'error': {'code': '1000', 'message': '身份验证失败。'}}
+- **Auto-recorded:** [98] tool len=250 | Screenshot after 12s: Screenshot saved: C:\Users\59639\Desktop\skill-agent\data\sessions\b4bd510250b5\mod\.screenshots\shot_20260906_193549.png\nAnalysis: Error: analyze_image faile
+- **Auto-recorded:** [97] tool len=250 | Screenshot after 12s: Screenshot saved: C:\Users\59639\Desktop\skill-agent\data\sessions\b4bd510250b5\mod\.screenshots\shot_20260906_193549.png\nAnalysis: Error: analyze_image faile
+- **Auto-recorded:** [96] tool len=250 | Screenshot after 12s: Screenshot saved: C:\Users\59639\Desktop\skill-agent\data\sessions\b4bd510250b5\mod\.screenshots\shot_20260906_193549.png\nAnalysis: Error: analyze_image faile
+
+## 2026-09-06 Auto-recorded from runtime
+
+- **Auto-recorded:** [95] tool len=250 | Screenshot after 12s: Screenshot saved: C:\Users\59639\Desktop\skill-agent\data\sessions\b4bd510250b5\mod\.screenshots\shot_20260906_193549.png\nAnalysis: Error: analyze_image faile
+- **Auto-recorded:** - [96] Screenshot after 12s; Analysis: Error: analyze_image failed...
+- **Auto-recorded:** {"id": "1788694811636-f046a4", "op": "click", "ok": false, "error": "java.lang.RuntimeException: java.lang.NullPointerException: Cannot invoke \"com.google.gson.JsonElement.getAsInt()\" because the return value of \"com.
+- **Auto-recorded:** [149] tool len=266 | {"id": "1788694811636-f046a4", "op": "click", "ok": false, "error": "java.lang.RuntimeException: java.lang.NullPointerException: Cannot invoke \"com.google.gson.JsonElement.getAsIn
+- **Auto-recorded:** src/main/java/com/agentbridge/AgentBridge.java:158: private void doOp(JsonObject cmd, String op, JsonObject out) throws Exception {
+- **Auto-recorded:** src/main/java/com/agentbridge/AgentBridge.java:204: if (player == null) throw new IllegalStateException("not in world");
+- **Auto-recorded:** [思考+] " says file not found. Perhaps"
+- **Auto-recorded:** [思考+] " for \"Exception"
+- **Auto-recorded:** [tool] bash cd /d C:\Users\59639\Desktop\skill-agent\data\sessions\b4bd510250b5\mod && findstr /n /i "OutOfMemory OOM fatal Exception in thread crash" run\mc-client.log | more +0 & echo ====TAIL==== & powershell -Command
+- **Auto-recorded:** [思考+] "exception lines, no crash"
+
+## 2026-09-06 Auto-recorded from runtime
+
+- **Auto-recorded:** [思考+] "mod not found in"
+- **Auto-recorded:** docs/agent/ERROR_LIST.md:261: - Fix for 1.21.11 Forge: keep the template `min_format`/`max_format` form. Using `pack_format` + `supported_formats`
+- **Auto-recorded:** [tool] write_file {"path": "src/main/resources/META-INF/mods.toml", "content": "modLoader=\"javafml\"\nloaderVersion=\"[61,)\"\nlicense=\"All Rights Reserved\"\n\n[[mods]]\nmodId=\"ats\"\nversion=\"1.0.0\"\ndisplayName=\
+- **Auto-recorded:** Error: GameTest log not found: C:\Users\59639\Desktop\skill-agent\data\sessions\dfcd7940623a\run\logs\latest.log
+- **Auto-recorded:** {"success": false, "exit_code": -1, "summary": "TestGameTestServer FAILED", "error_details": {"type": "compile_error", "message": "BUILD FAILED", "file_location": ""}, "raw_logs_snippet": ""}
+- **Auto-recorded:** [83] tool len=191 | {"success": false, "exit_code": -1, "summary": "TestGameTestServer FAILED", "error_details": {"type": "compile_error", "message": "BUILD FAILED", "file_location": ""}, "raw_logs_sn
+- **Auto-recorded:** [思考+] " BUILD FAILED ("
+- **Auto-recorded:** [tool] bash cd /d C:\Users\59639\Desktop\skill-agent\data\sessions\dfcd7940623a\mod && start /b cmd /c "call gradlew.bat runTestGameTestServer --console=plain > build\gametest_run.log 2>&1" && for /l %%i in (1,1,30) do @
+- **Auto-recorded:** [思考+] " BUILD FAILED with"
+- **Auto-recorded:** [思考+] " \"BUILD FAILED compile"
+
+## 2026-09-06 Auto-recorded from runtime
+
+- **Auto-recorded:** [思考+] " log not found\" earlier"
+- **Auto-recorded:** [95] tool len=191 | {"success": false, "exit_code": -1, "summary": "TestGameTestServer FAILED", "error_details": {"type": "compile_error", "message": "BUILD FAILED", "file_location": ""}, "raw_logs_sn
+- **Auto-recorded:** [思考+] " as BUILD FAILED? or"
+- **Auto-recorded:** agent.log:279: 2026-09-06 23:44:47,454 [INFO] 工具调用: run_test_gametest | 参数={} | output={"success": false, "exit_code": -1, "summary": "TestGameTestServer FAILED", "error_details": {"type": "compile_error", "message": "BU
+- **Auto-recorded:** agent.log:286: run_test_gametest says BUILD FAILED (compile_error) but raw logs empty. Weird since gradlew build succeeded. Maybe run_test_gametest runs `gradle runTestGameTestServer` with system `gradle` (not wrapper) —
+- **Auto-recorded:** 84: "- RESOURCES (1.21.11): every item/block item needs assets/<modid>/items/<name>.json; model/texture refs are namespaced WITHOUT .json/.png; recipes use string ingredients + result {id,count}; lang item.<modid>.<name>
+- **Auto-recorded:** [思考+] "BUILD FAILED\" with"
+- **Auto-recorded:** return ("compile_error", m.group(1) if m else "BUILD FAILED", lm.group(1) if lm else "")
+- **Auto-recorded:** [思考+] " = \"BUILD FAILED"
+- **Auto-recorded:** [思考+] " → \"BUILD FAILED"

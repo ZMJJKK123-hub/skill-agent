@@ -396,15 +396,18 @@ function Messages() {
   const shownEvents = useMemo(() => {
     const kept = events.filter((e) =>
       e.peer !== 'supervisor' && !(e.source === 'agent' && e.type === 'tool_call'))
-    // 截断按"实质事件"（非思考增量）计 500 条：一轮流式思考可产生数千条
+    // 截断按"实质事件"（非思考增量）计 20000 条：一轮流式思考可产生数千条
     // thinking_delta，按总条数截断会被 delta 占满名额、把工具/回复挤出
-    // 时间线；delta 随所在段保留，聚合后体积很小
+    // 时间线；delta 随所在段保留，聚合后体积很小。事件本身已在 store 里
+    // （轮询增量追加），这里只是聚合门槛，抬高无内存代价——完整 mod 会话
+    // （构建+GameTest+客户端验证）实测 1.8 万事件，20000 让全程可见；
+    // 仅超长会话保尾部（早期轮次过程被裁，前缀匹配自然兜底）
     let count = 0
     let start = 0
     for (let i = kept.length - 1; i >= 0; i--) {
       if (kept[i].type !== 'thinking_delta') {
         count++
-        if (count > 1500) { start = i + 1; break }
+        if (count > 20000) { start = i + 1; break }
       }
     }
     return kept.slice(start)
@@ -578,26 +581,35 @@ function Messages() {
     const replyGroups = timeline.filter((it) => it.kind === 'reply') as
       Array<{ kind: 'reply'; key: string; events: EventItem[]; hidden: boolean }>
     const diskAssistants = chatMessages.filter((m) => m.role === 'assistant')
-    // 回复组比磁盘 assistant 多的两种来源：
-    // ① 已结束会话：模型交错输出（回复中途又思考/调工具再续写）把一轮
-    //   回复拆成多组，磁盘只保留最终全文——多出的组是"中途回复"，
-    //   应归到所属轮的最终回复之前；
-    // ② 运行中：最后一组是当前流式轮（尚未落盘），不参与对齐。
-    // 此前把多出组之前的过程整体前置到所有磁盘消息之前，把该轮的用户
-    // 气泡压进了过程中间（实测"做一个攻击力很高的剑"会话：提问排在
-    // 第 30 位、夹在 29 个思考/工具行后面）。
-    const lastIsStreaming = (phase === 'running' || phase === 'creating') && replyGroups.length > 0
-    const alignable = replyGroups.length - (lastIsStreaming ? 1 : 0)
-    const extra = Math.max(0, alignable - diskAssistants.length)
-    const n = Math.min(alignable, diskAssistants.length)
-    if (n === 0) {
-      // 对齐失败：等价旧行为（历史气泡 + 整块时间线），但走同一棵渲染树
-      chatMessages.forEach((m, i) => view.push({ kind: 'bubble', key: `m${i}`, msg: m }))
-      timeline.forEach((it) => view.push({ kind: 'item', key: it.key, item: it }))
-      return view
+
+    // ── 前缀匹配对齐 ──
+    // 磁盘 assistant 是该轮全程累积文本，必以本轮首个回复组的内容开头 →
+    // "assistant.startsWith(组前缀)" 命中即归属该轮。此前按"多出的组
+    // 都在末尾"做数量偏移对齐（segs[extra+i]），但模型交错输出会把中途
+    // 回复组留在任意位置，数量一乱就张冠李戴：把后轮的过程挂到前轮的
+    // 回复前（实测 b4bd510250b5：mod 构建过程插进 chat 轮次之间；
+    // 同一份数据在流式组出现/消失时对齐结果来回跳，证明计数不可靠）。
+    // 匹配不到的组两种归宿：中途回复（吸收为下一个匹配组所在轮的
+    // 过程段，组本身不渲染——其内容已包含在该轮磁盘全文里）；当前
+    // 流式轮（尚未落盘，整体落尾部，组渲染为打字机）。单调游标 k
+    // 保证组与 assistant 按出现顺序一一对应。
+    const assign: number[] = replyGroups.map(() => -1)
+    {
+      let k = 0
+      for (let j = 0; j < replyGroups.length; j++) {
+        const p = replyGroups[j].events.map((e) => e.content).join('\n\n').slice(0, 50)
+        if (!p) continue
+        // 局部指针搜索：未命中不动 k（中途回复组不能把后续 assistant
+        // 烧掉——否则下一组永远匹配不上，全部落尾部）
+        for (let t = k; t < diskAssistants.length; t++) {
+          const a = diskAssistants[t].content
+          if (a.startsWith(p) || p.startsWith(a.slice(0, 50))) { assign[j] = t; k = t + 1; break }
+        }
+      }
     }
 
-    // timeline 成员按 reply 组切段：seg[i] = 第 i 个 reply 组之前的过程成员
+    // timeline 按 reply 组切段：seg[j] = 第 j 组之前的过程成员；
+    // tailMembers = 最后一组之后的成员（当前流式轮的后续过程）
     const segs: Array<Array<typeof timeline[number]>> = []
     let cur: Array<typeof timeline[number]> = []
     for (const it of timeline) {
@@ -608,55 +620,43 @@ function Messages() {
         cur.push(it)
       }
     }
+    const tailMembers = cur
 
-    // 多余的过程性 reply 之前的过程段：插到最后一条对齐 assistant 的过程
-    // 段之前（即它所属轮的用户气泡之后）。中途回复组本身不渲染——
-    // run_task 落盘的是该轮全程累积文本，中途组内容是它的子集，渲染必
-    // 重复（此前靠前缀匹配碰运气隐藏，不稳定）
-    const pushExtra = () => {
-      let rs = 0
-      for (const it of timeline) {
-        if (it.kind === 'reply') {
-          rs++
-        } else if (rs < extra) {
-          view.push({ kind: 'item', key: it.key, item: it })
-        }
-      }
-    }
-
-    // 逐条磁盘消息交织：assistant(第 i 条) 前插入第 (extra+i) 轮过程成员
-    let assistantSeen = 0
+    // 逐条磁盘消息交织：assistant(第 ai 条) 前插入它所属轮的过程段——
+    // 从上一个已消费组 +1 到本组（含中途回复组的段）全部过程成员
+    let lastConsumed = -1
+    let ai = 0
     let msgIdx = 0
     for (const m of chatMessages) {
       if (m.role === 'assistant') {
-        const i = assistantSeen
-        if (i < n) {
-          if (i === n - 1 && extra > 0) pushExtra()
-          const segIdx = extra + i
-          if (segIdx < segs.length) {
-            for (const it of segs[segIdx] ?? []) {
+        const j0 = assign.indexOf(ai)
+        if (j0 !== -1) {
+          for (let j = lastConsumed + 1; j <= j0; j++) {
+            for (const it of segs[j] ?? []) {
               view.push({ kind: 'item', key: it.key, item: it })
             }
           }
+          lastConsumed = j0
         }
-        assistantSeen++
+        ai++
       }
       view.push({ kind: 'bubble', key: `m${msgIdx}`, msg: m })
       msgIdx++
     }
-    // 尾部：只保留真正在最后一个已对齐 reply 组之后的成员（当前流式回复）
-    const alignedEnd = extra + n
-    let rs = 0
-    for (const it of timeline) {
-      if (it.kind === 'reply') {
-        if (rs >= alignedEnd) view.push({ kind: 'item', key: it.key, item: it })
-        rs++
-      } else if (rs >= alignedEnd) {
+    // 尾部：未匹配的组按原序补各自过程段 + 组本身（当前流式轮；渲染层
+    // 按 hidden/前缀决定显示），最后是末尾段。无磁盘 assistant 的纯实时
+    // 首轮也走这条路（气泡在前 + 过程在后，与旧回退分支同构）
+    for (let j = lastConsumed + 1; j < replyGroups.length; j++) {
+      for (const it of segs[j] ?? []) {
         view.push({ kind: 'item', key: it.key, item: it })
       }
+      view.push({ kind: 'item', key: replyGroups[j].key, item: replyGroups[j] })
+    }
+    for (const it of tailMembers) {
+      view.push({ kind: 'item', key: it.key, item: it })
     }
     return view
-  }, [chatMessages, timeline, phase])
+  }, [chatMessages, timeline])
 
   const running = phase === 'running' || phase === 'creating'
 
@@ -746,8 +746,11 @@ function Messages() {
         {error && <div className="text-sm text-red-400">{errMsg(error)}</div>}
       </div>
 
-      {/* mod 模式：下载/重新生成按钮 —— 运行中隐藏，暂停/完成后显示 */}
-      {mode === 'mod' && (paused || phase === 'finished') && (
+      {/* 下载/重新生成按钮 —— 运行中隐藏，暂停/完成后显示。
+          条件取 mode==='mod' || hasJar：会话构建过 MOD 后用 /chat 切回
+          对话模式，产物（jar/源码）仍在——按钮不能跟着模式消失，否则
+          用户切个模式就再也找不到下载入口（实测 dfcd7940623a） */}
+      {(mode === 'mod' || hasJar) && (paused || phase === 'finished') && (
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <button
             onClick={() => sess.sessionId && downloadJar(sess.sessionId).catch((e) => alert(errMsg(e)))}
