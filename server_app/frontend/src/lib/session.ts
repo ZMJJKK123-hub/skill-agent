@@ -40,6 +40,7 @@ export interface SessionState {
   chatMessages: { role: string; content: string; images?: string[] }[]  // 聊天气泡历史（chat 模式；images=上传图片，本地为 data URL、历史加载为文件名）
   paused: boolean            // 已暂停（可继续）
   pending: number            // 运行中排队消息数（>0 时当前轮结束后自动续跑）
+  lastSendAt: number | null  // 最近一次本地发送时间（抑制发送瞬间的"排队"闪烁）
   stoppedNotice: boolean     // 是否显示"您已终止该对话"横线
 }
 
@@ -61,6 +62,7 @@ let state: SessionState = {
   chatMessages: [],
   paused: false,
   pending: 0,
+  lastSendAt: null,
   stoppedNotice: false,
 }
 
@@ -127,6 +129,7 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
           prompts: [...state.prompts, prompt],
           chatMessages: [...state.chatMessages, { role: 'user', content: prompt, ...(images.length ? { images } : {}) }],
           pending: state.pending + 1,
+          lastSendAt: Date.now(),
         })
       } catch (e) {
         setState({ error: String((e as Error)?.message || e) })
@@ -146,7 +149,7 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
       // 已在 server 端被 /chat 分支更新；这里不能沿用 state.mode=mod）
       const resumeMode = forceMode ? mode : (state.mode ?? 'chat')
       setState({
-        phase: 'running', paused: false, stoppedNotice: false, elapsed: null,
+        phase: 'running', paused: false, stoppedNotice: false, elapsed: null, lastSendAt: Date.now(),
         // 关键修复：暂停后 /chat 切回 chat 时必须同步更新本地 mode，
         // 否则 UI 仍按 mod 时间线渲染，也不会在完成后正确拉取 chat 历史
         mode: resumeMode,
@@ -163,17 +166,23 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
     }
     return
   }
+  // 事件流只在开全新会话时清空：已有会话发下一轮时保留——事件 id 稳定，
+  // 思考行/工具行组件不重挂载，用户手动展开的状态不丢（此前每轮发送都
+  // 清空重拉，全量事件 id 变化导致所有时间线组件重挂载，实测发下一轮后
+  // 手动展开的思考行全部重新折叠）。新轮事件由 daemon 追加到 run.log，
+  // 游标从上次位置继续，正好衔接。
+  const freshSession = !state.sessionId
   setState({
     phase: 'creating',
     error: null,
-    events: [],
-    cursor: null,
+    ...(freshSession ? { events: [], cursor: null } : {}),
     hasJar: false,
     elapsed: null,
     logTail: '',
     mode,
     paused: false,
     stoppedNotice: false,
+    lastSendAt: Date.now(),
   })
   try {
     // 若已有会话（如导入文件夹后），复用；否则建新会话（从零生成）

@@ -412,9 +412,8 @@ function Messages() {
 
   // 历史 assistant 气泡与 reply 事件是同一内容（conversation.jsonl 与流式
   // 日志各存一份），按前缀匹配去重——已有气泡的 reply 不再渲染；实时轮次
-  // （尚未入历史）照常实时显示。两种模式都需要：chat 用于交织视图隐藏
-  // 重复组，mod 用于 modTailStart 增量起点（此前误加了 chat 限制，mod 模式
-  // 集合恒空 → 增量从 0 渲染整条时间线，与磁盘气泡成对重复）。
+  // （尚未入历史）照常实时显示。chat/mod 两模式共用：交织视图的 reply 组
+  // 隐藏与完成态去重都依赖它（此前误加了 chat 限制，mod 模式集合恒空）。
   const assistantPrefixes = useMemo(() => {
     const s = new Set<string>()
     chatMessages.forEach((m) => {
@@ -546,35 +545,26 @@ function Messages() {
       }
       return null
     })()
-    // hidden 只承载 chat 语义（磁盘气泡已渲染该回复→隐藏重复组）；
-    // mod 模式的回复显示语义不同（mod 不渲染磁盘 assistant 气泡，时间线
-    // reply 组是唯一展示），在渲染处按模式单独判定
+    // hidden 判定（chat/mod 统一语义）：磁盘 assistant 气泡已渲染该回复
+    // 内容时 reply 组隐藏（同内容重复）。最后一个组例外：运行中它是当前
+    // 流式轮（打字机展示），异常终止未落盘时也保持可见。
     return out.map((it) => {
       if (it.kind !== 'reply') return it
       if (it.key === lastReplyKey) return { ...it, hidden: false }
       const merged = it.events.map((e) => e.content).join('\n\n')
-      const hidden = mode === 'chat' && (hasAssistantBubbles || assistantPrefixes.has(merged.slice(0, 50)))
+      const hidden = hasAssistantBubbles || assistantPrefixes.has(merged.slice(0, 50))
       return { ...it, hidden }
     })
-  }, [shownEvents, assistantPrefixes, hasAssistantBubbles, mode])
+  }, [shownEvents, assistantPrefixes, hasAssistantBubbles])
 
-  // mod 模式增量起点：最后一个"前缀已匹配磁盘历史"的 reply 组之后。
-  // 这些成员尚未落盘（当前轮思考/工具/流式回复），是 mod 时间线的增量
-  const modTailStart = useMemo(() => {
-    let lastMatched = -1
-    timeline.forEach((it, i) => {
-      if (it.kind !== 'reply') return
-      const merged = it.events.map((e) => e.content).join('\n\n')
-      if (assistantPrefixes.has(merged.slice(0, 50))) lastMatched = i
-    })
-    return lastMatched + 1
-  }, [timeline, assistantPrefixes])
-
-  // ── chat 模式按轮交织 ──
+  // ── 按轮交织（chat 与 mod 共用同一视图）──
   // 时间线里的 reply 组按序对应磁盘 assistant 消息（run_task 每轮一对）。
   // 第 i 个 reply 组之前的思考/工具成员归属第 i 轮，渲染在该轮 assistant
   // 气泡之前。此前结构是"全部历史气泡 → 整块时间线 → 最后回复"，
   // 多轮对话时第 1 轮的思考被挤到最后一条消息后（实测缺陷）。
+  // mod 模式此前另走"磁盘气泡 + modTailStart 增量"渲染——已完成的 mod
+  // 会话全部回复组都能对齐磁盘，增量起点=末尾，几十个思考/工具行一行
+  // 不显示（实测 jar 会话只剩 4 个气泡），统一到本视图后按轮归位。
   // 对齐失败（纯实时首轮/磁盘未落盘）也构造同构视图（气泡在前+时间线
   // 在后）而非另一棵渲染树——此前运行中/完成后在两棵树间整体切换，
   // 完成瞬间全量重挂载：思考段从页尾"跳"到对应轮位置（用户实测：
@@ -588,11 +578,18 @@ function Messages() {
     const replyGroups = timeline.filter((it) => it.kind === 'reply') as
       Array<{ kind: 'reply'; key: string; events: EventItem[]; hidden: boolean }>
     const diskAssistants = chatMessages.filter((m) => m.role === 'assistant')
-    // 有时 run.log 里会有中间态 reply，但 conversation.jsonl 只保留最终回复。
-    // 如果 reply 组比磁盘 assistant 多，多出来的视为“最终回复之前的过程性回复”，
-    // 全部放到最终回复之前，避免最终回复后面又冒出一串工具/思考（像“中断”）。
-    const extra = Math.max(0, replyGroups.length - diskAssistants.length)
-    const n = Math.min(replyGroups.length, diskAssistants.length)
+    // 回复组比磁盘 assistant 多的两种来源：
+    // ① 已结束会话：模型交错输出（回复中途又思考/调工具再续写）把一轮
+    //   回复拆成多组，磁盘只保留最终全文——多出的组是"中途回复"，
+    //   应归到所属轮的最终回复之前；
+    // ② 运行中：最后一组是当前流式轮（尚未落盘），不参与对齐。
+    // 此前把多出组之前的过程整体前置到所有磁盘消息之前，把该轮的用户
+    // 气泡压进了过程中间（实测"做一个攻击力很高的剑"会话：提问排在
+    // 第 30 位、夹在 29 个思考/工具行后面）。
+    const lastIsStreaming = (phase === 'running' || phase === 'creating') && replyGroups.length > 0
+    const alignable = replyGroups.length - (lastIsStreaming ? 1 : 0)
+    const extra = Math.max(0, alignable - diskAssistants.length)
+    const n = Math.min(alignable, diskAssistants.length)
     if (n === 0) {
       // 对齐失败：等价旧行为（历史气泡 + 整块时间线），但走同一棵渲染树
       chatMessages.forEach((m, i) => view.push({ kind: 'bubble', key: `m${i}`, msg: m }))
@@ -612,13 +609,14 @@ function Messages() {
       }
     }
 
-    // 多余的过程性 reply（不在磁盘历史里）先整体放到最前面，
-    // 让最终回复保持在所有过程之后。
-    if (extra > 0) {
+    // 多余的过程性 reply 之前的过程段：插到最后一条对齐 assistant 的过程
+    // 段之前（即它所属轮的用户气泡之后）。中途回复组本身不渲染——
+    // run_task 落盘的是该轮全程累积文本，中途组内容是它的子集，渲染必
+    // 重复（此前靠前缀匹配碰运气隐藏，不稳定）
+    const pushExtra = () => {
       let rs = 0
       for (const it of timeline) {
         if (it.kind === 'reply') {
-          if (rs < extra) view.push({ kind: 'item', key: it.key, item: it })
           rs++
         } else if (rs < extra) {
           view.push({ kind: 'item', key: it.key, item: it })
@@ -632,10 +630,13 @@ function Messages() {
     for (const m of chatMessages) {
       if (m.role === 'assistant') {
         const i = assistantSeen
-        const segIdx = extra + i
-        if (segIdx < segs.length) {
-          for (const it of segs[segIdx] ?? []) {
-            view.push({ kind: 'item', key: it.key, item: it })
+        if (i < n) {
+          if (i === n - 1 && extra > 0) pushExtra()
+          const segIdx = extra + i
+          if (segIdx < segs.length) {
+            for (const it of segs[segIdx] ?? []) {
+              view.push({ kind: 'item', key: it.key, item: it })
+            }
           }
         }
         assistantSeen++
@@ -655,7 +656,7 @@ function Messages() {
       }
     }
     return view
-  }, [chatMessages, timeline])
+  }, [chatMessages, timeline, phase])
 
   const running = phase === 'running' || phase === 'creating'
 
@@ -694,9 +695,10 @@ function Messages() {
         </button>
       )}
       <div className="space-y-3">
-        {/* chat 模式：统一交织视图（对齐成功按轮归位；失败时气泡在前+时间线
-            在后，同构渲染树——两态切换不重挂载，思考段/展开状态不丢） */}
-        {mode === 'chat' && roundsView.map((v) => {
+        {/* 统一交织视图（chat/mod 同构）：对齐成功按轮归位 [用户气泡 →
+            该轮思考/工具 → 回复气泡]；失败时气泡在前+时间线在后，同一棵
+            渲染树——两态切换不重挂载，思考段/展开状态不丢 */}
+        {roundsView.map((v) => {
           if (v.kind === 'bubble') {
             const m = v.msg
             return <ChatBubble key={v.key} role={m.role === 'user' ? 'user' : 'assistant'} content={m.content} images={m.images} sessionId={sessionId} />
@@ -714,29 +716,6 @@ function Messages() {
           }
           if (item.kind === 'think') return <ThinkingSegRow key={v.key} seg={item.seg} />
           if (item.kind === 'tool') return <ToolRow key={v.key} entry={item.entry} delayMs={Math.min(item.batchIdx, 5) * 70} />
-          return null
-        })}
-
-        {/* mod 模式：磁盘历史全量气泡（user+assistant 交替，与 chat 一致）
-            + 时间线增量。此前 mod 只渲染 user 气泡、assistant 回复全靠时间
-            线事件——事件被日志截断/重启清空后，历史回复就从界面消失（用户
-            实测：第 1 轮回复不见了）。磁盘 conversation.jsonl 是权威历史。 */}
-        {mode === 'mod' && chatMessages.map((m, i) => (
-          <ChatBubble key={`md-${i}`} role={m.role === 'user' ? 'user' : 'assistant'} content={m.content} images={m.images} sessionId={sessionId} />
-        ))}
-
-        {/* mod 模式：时间线增量（当前轮思考/工具/流式回复）。
-            lastMatchedPrefix 之后的事件 = 尚未落盘的当前轮过程 */}
-        {mode === 'mod' && timeline.map((item, idx) => {
-          if (idx < modTailStart) return null
-          if (item.kind === 'reply') {
-            if ((item as { hidden?: boolean }).hidden) return null
-            const content = item.events.map((e) => e.content).join('\n\n')
-            if (!running && assistantPrefixes.has(content.slice(0, 50))) return null
-            return <ChatBubble key={item.key} role="assistant" content={content} />
-          }
-          if (item.kind === 'think') return <ThinkingSegRow key={item.key} seg={item.seg} />
-          if (item.kind === 'tool') return <ToolRow key={item.key} entry={item.entry} delayMs={Math.min(item.batchIdx, 5) * 70} />
           return null
         })}
 
@@ -1351,7 +1330,10 @@ function Composer() {
               )}
             </select>
             <div className="flex-1" />
-            {running && sess.pending > 0 && (
+            {/* 发送后 3.5s 内不显示排队徽标：空闲时发送的消息会被 daemon
+                在 ≤0.5s 内消费，此前轮询先拍到 pending=1 就闪一下"1 条排队"；
+                真正排在运行轮后面的消息（持续 pending）照常显示 */}
+            {running && sess.pending > 0 && Date.now() - (sess.lastSendAt ?? 0) > 3500 && (
               <span className="text-xs text-faint">{sess.pending} 条排队…</span>
             )}
             {actionButton}
