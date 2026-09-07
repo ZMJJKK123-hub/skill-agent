@@ -8,8 +8,8 @@ version = "0.1.0"
 description = "12课 Agent 引擎（core）+ MOD 制作器网站（server_app）"
 requires-python = ">=3.10"
 
-[tool.setuptools]
-packages = ["core"]
+[tool.setuptools.packages.find]
+include = ["core*"]
 
 [tool.setuptools.package-data]
-core = ["skills/*/SKILL.md"]
+core = ["skills/*/SKILL.md", "infrastructure/tools/*.md"]
