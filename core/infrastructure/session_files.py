@@ -194,3 +194,7 @@ class FileSessionStore(SessionStore):
     def pending_count(self) -> int:
         """返回队列剩余条数（server 判断是否自动续跑）。"""
         return len(self._read_jsonl(self.chat / "pending.jsonl"))
+
+    def pending_entries(self) -> list[dict]:
+        """返回队列全部原始条目（不消费；daemon 组装上下文时过滤用）。"""
+        return self._read_jsonl(self.chat / "pending.jsonl")
