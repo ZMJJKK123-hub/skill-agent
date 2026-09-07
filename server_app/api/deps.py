@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from fastapi import Header, HTTPException
 
-from services.session_manager import Session, get_session, sessions
+from services.session_manager import Session, sessions
 
 
 def auth_username(authorization: str = Header(default="")) -> str:
@@ -32,13 +32,3 @@ def owned_session(session_id: str, username: str) -> Session:
     return sess
 
 
-def get_session_or_404(session_id: str) -> Session:
-    """输入：会话 ID。返回：会话（不校验归属；管理类接口用）。
-
-    Raises:
-        HTTPException: 404。
-    """
-    try:
-        return get_session(session_id)
-    except KeyError:
-        raise HTTPException(404, f"Session {session_id} not found") from None

@@ -36,7 +36,6 @@ def detect_environment() -> str:
 
     # Gradle wrapper
     has_gradlew = (base / "gradlew.bat").exists() or (base / "gradlew").exists()
-    has_gradle = (base / "gradle").exists() or (base / "build.gradle").exists()
     lines.append(f"Gradle wrapper: {'yes' if has_gradlew else 'no'} | build.gradle: {'yes' if (base / 'build.gradle').exists() else 'no'}")
 
     # Mod loader / mod id

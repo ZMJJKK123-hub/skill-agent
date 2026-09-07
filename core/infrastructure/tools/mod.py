@@ -12,16 +12,6 @@ from .runtime import worktree_manager
 _GT_BASE = None
 
 
-def _gt_base():
-    global _GT_BASE
-    if _GT_BASE is None:
-        import core.config as _c
-        _GT_BASE = worktree_manager.resolve_dir() if worktree_manager else str(_c.WORKDIR)
-    return _GT_BASE
-
-# ========== Forge Mod 生成工具（MC 26.x / Forge 65.x，2026-08） ==========
-# 纯模板生成：输入参数 → 生成文件内容 → 用 run_write 写入当前 mod 工作目录。
-# 所有 handler 都是工具函数增量，不依赖也不修改 agent 主循环。
 
 def _build_source_zip() -> str:
     """源码 zip 预生成：在 agent 收尾阶段把当前 mod 工程打包为 mod.zip。

@@ -9,7 +9,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from core.domain.messages import UserMessage
 from core.domain.session import Mode

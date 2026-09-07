@@ -94,29 +94,6 @@ async function api<T = unknown>(path: string, options: RequestInit = {}): Promis
 }
 
 // ── 认证 ──
-export function register(username: string, password: string) {
-  return api<{ username: string; token: string }>('/api/register', {
-    method: 'POST',
-    body: JSON.stringify({ username, password }),
-  })
-}
-
-export function login(username: string, password: string) {
-  return api<{ username: string; token: string }>('/api/login', {
-    method: 'POST',
-    body: JSON.stringify({ username, password }),
-  })
-}
-
-export function me() {
-  return api<{ username: string }>('/api/me')
-}
-
-export function logout() {
-  return api('/api/logout', { method: 'POST' })
-}
-
-// ── 会话 / 任务 ──
 export function createSession(
   apiKey: string,
   game: string,

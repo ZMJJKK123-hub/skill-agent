@@ -14,7 +14,7 @@ from pathlib import Path
 from ...domain.messages import Message
 from ...infrastructure.logging_.logger import get_logger
 from ..compaction import estimate_tokens
-from ..session_log import (SessionLog, persist, repair_missing_tool_results,
+from ..session_log import (SessionLog, persist, repair_missing_tool_results, 
                            restore, sync_messages)
 from .deps import LoopDeps
 from .exits import finish_forced, no_tool_exit

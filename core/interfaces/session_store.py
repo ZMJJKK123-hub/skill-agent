@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Optional, Protocol, runtime_checkable
 
-from ..domain.messages import AssistantMessage, Message, UserMessage
+from ..domain.messages import Message, UserMessage
 
 
 @runtime_checkable

@@ -7,7 +7,7 @@ infrastructure/config.py 读取环境变量时出现一次。
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 
 

@@ -6,8 +6,7 @@ import re
 from pathlib import Path
 
 from ... import config
-from ...config import logger, safe_path
-from ...skillcheck import any_loaded
+from ...config import safe_path
 from .runtime import worktree_manager
 from .shell import _sandbox_mode
 
@@ -31,15 +30,6 @@ def run_read(path: str, limit: int = None, offset: int = 0) -> str:
         return "\n".join(lines)[:120000]
     except Exception as e:
         return f"Error: {e}"
-
-def _is_mod_file(path: str) -> bool:
-    """判断路径是否属 MOD 工程文件（需先 load_skill 才能写）。
-    覆盖 src/main、src/test、Gradle 构建脚本、mods.toml 元数据等。"""
-    p = path.replace("\\", "/").strip("/")
-    frags = ("src/main", "src/test", "src/api/java",
-             "build.gradle", "settings.gradle", "gradle.properties",
-             "mods.toml", "neoforge.mods.toml", "META-INF/mods.toml")
-    return any(f in p for f in frags)
 
 
 def _is_mc_java_sources(fp: Path) -> bool:

@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """Vision mode: screenshot + analyze_image implementations (moved from core/tools.py)."""
-import base64
-import io
 import os
 import time
 from pathlib import Path

@@ -14,7 +14,7 @@ DSH 参照：
 """
 
 import threading
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Set
 
 

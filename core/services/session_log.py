@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
 
-from ..domain.messages import (AssistantMessage, Message, ToolResultMessage,
+from ..domain.messages import (AssistantMessage, Message, ToolResultMessage, 
                                UserMessage, transport_messages, typed_messages)
 from ..infrastructure.logging_.logger import get_logger
 

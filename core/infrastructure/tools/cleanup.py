@@ -5,7 +5,6 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from ...config import logger
 from .runtime import worktree_manager
 
 

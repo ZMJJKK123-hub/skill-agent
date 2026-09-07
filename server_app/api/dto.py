@@ -48,13 +48,6 @@ class TaskRequest(BaseModel):
     force_mode: bool = False       # 显式模式覆盖（前端 /chat 拦截用）
 
 
-class AuthRequest(BaseModel):
-    """登录/注册请求（登录已废弃，接口冻结保留）。"""
-
-    username: str
-    password: str
-
-
 class AnswerRequest(BaseModel):
     """回答 agent 提问（多题 answers 数组 / 单题 answer 兼容）。"""
 

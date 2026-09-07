@@ -7,7 +7,7 @@ LoopDeps 是 runner 及各子服务的唯一入口对象（构造注入，Rule 2
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Optional
 
 from ...domain.session import SessionContext

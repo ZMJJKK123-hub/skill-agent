@@ -11,54 +11,19 @@ import json
 
 from fastapi import APIRouter, Header, HTTPException
 
-import auth_store  # 历史存取（文件存储；账号部分冻结保留）
+from infrastructure import history_store
 from infrastructure.process_governor import is_safe_session_id
 from services.session_manager import (SESSIONS_DIR, purge_session_for_user)
 from services.stats import session_title
 from .deps import auth_username, owned_session
-from .dto import AuthRequest, HistoryBatchDelete, HistoryEntry
+from .dto import HistoryBatchDelete, HistoryEntry
 
 router = APIRouter(prefix="/api", tags=["history"])
 
 
-@router.post("/register")
-def register(req: AuthRequest):
-    """注册（冻结保留；成功即发 token 免二次登录）。"""
-    try:
-        auth_store.register(req.username, req.password)
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-    return {"username": req.username.strip(),
-            "token": auth_store.create_token(req.username.strip())}
-
-
-@router.post("/login")
-def login(req: AuthRequest):
-    """登录（冻结保留；校验密码发 token）。"""
-    user = auth_store.check_credentials(req.username, req.password)
-    if not user:
-        raise HTTPException(401, "用户名或密码错误")
-    return {"username": user["username"],
-            "token": auth_store.create_token(user["username"])}
-
-
-@router.get("/me")
-def me(authorization: str = Header(default="")):
-    """当前用户（前端启动时免登检查）。"""
-    return {"username": auth_username(authorization)}
-
-
-@router.post("/logout")
-def logout(authorization: str = Header(default="")):
-    """注销（吊销 token；冻结保留）。"""
-    token = authorization[len("Bearer "):].strip() if authorization.startswith("Bearer ") else ""
-    auth_store.revoke_token(token)
-    return {"ok": True}
-
-
 def _history_with_jar(username: str) -> list:
     """给历史条目注入 has_jar（磁盘检测 dist/*.jar）。"""
-    history = auth_store.load_history(username)
+    history = history_store.load_history(username)
     for h in history:
         h["has_jar"] = False
         sid = h.get("sessionId")
@@ -81,7 +46,7 @@ def get_history(authorization: str = Header(default="")):
 def put_history(entry: HistoryEntry, authorization: str = Header(default="")):
     """按 session_id 去重合并一条历史记录。"""
     username = auth_username(authorization)
-    history = auth_store.upsert_history(username, entry.model_dump())
+    history = history_store.upsert_history(username, entry.model_dump())
     return {"history": history}
 
 
@@ -92,7 +57,7 @@ def delete_history(session_id: str = "", authorization: str = Header(default="")
     if session_id:
         if not is_safe_session_id(session_id):
             raise HTTPException(400, "非法 session_id")
-        auth_store.remove_history(username, session_id)
+        history_store.remove_history(username, session_id)
         purge_session_for_user(session_id, username, safe_id=True)
         return {"history": _history_with_jar(username)}
     # 全部删除：owner.txt 是侧栏事实来源，按 owner 扫描逐个清理
@@ -107,7 +72,7 @@ def delete_history(session_id: str = "", authorization: str = Header(default="")
             except OSError:
                 continue
             purge_session_for_user(child.name, username, safe_id=True)
-    auth_store.clear_history(username)
+    history_store.clear_history(username)
     return {"history": []}
 
 
@@ -119,7 +84,7 @@ def delete_history_batch(req: HistoryBatchDelete,
     for sid in req.session_ids:
         if not is_safe_session_id(sid):
             raise HTTPException(400, "非法 session_id")
-        auth_store.remove_history(username, sid)
+        history_store.remove_history(username, sid)
         purge_session_for_user(sid, username, safe_id=True)
     return {"history": _history_with_jar(username)}
 

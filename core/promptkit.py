@@ -14,7 +14,7 @@ DSH 参照：packages/core/system-prompt —— PromptSection{name, order, text,
 """
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Union
 
 # {{name}} —— name 限定小写字母开头 [a-z][a-z0-9_]*，与 DSH 一致

@@ -10,7 +10,7 @@ from __future__ import annotations
 import traceback
 from pathlib import Path
 
-from core.domain.messages import Message, UserMessage
+from core.domain.messages import Message
 from core.infrastructure.logging_.logger import get_logger
 from core.infrastructure.session_files import FileSessionStore
 from core.interfaces.event_writer import EventWriter

@@ -3,7 +3,6 @@
 import os
 import tarfile
 import zipfile
-from pathlib import Path
 
 from ...config import safe_path
 from .runtime import worktree_manager

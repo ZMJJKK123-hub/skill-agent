@@ -11,7 +11,7 @@ import json
 from dataclasses import dataclass
 from typing import Optional
 
-from ...domain.messages import AssistantMessage, Message, ToolResultMessage
+from ...domain.messages import AssistantMessage, ToolResultMessage
 from ...infrastructure.logging_.logger import get_logger
 from ...infrastructure.spill import maybe_spill
 from .deps import LoopDeps

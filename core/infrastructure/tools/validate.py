@@ -5,7 +5,6 @@ import os
 import re
 from pathlib import Path
 
-from ...config import logger
 from .runtime import worktree_manager
 
 _RESOURCE_ROOT_NAMES = ("assets", "data")
@@ -94,7 +93,6 @@ def _validate_json_file(base: Path, rel: Path, modid: str, errors: list, warning
     if err:
         errors.append(f"{rel}: invalid JSON -> {err}")
         return
-    rel_str = rel.as_posix()
     parts = rel.parts
 
     # Item model definition: assets/<modid>/items/<name>.json

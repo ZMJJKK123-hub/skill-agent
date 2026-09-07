@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 from typing import Optional
 
-from ..domain.messages import (AssistantMessage, Message, UserMessage,
+from ..domain.messages import (AssistantMessage, Message, UserMessage, 
                                transport_messages, typed_messages)
 from ..interfaces.session_store import SessionStore
 from .logging_.logger import get_logger

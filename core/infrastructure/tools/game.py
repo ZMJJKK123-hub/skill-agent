@@ -5,11 +5,9 @@ import os
 import re
 import socket
 import struct
-import subprocess
 import time
 from pathlib import Path
 
-from ...config import logger
 from .runtime import worktree_manager
 from .vision import run_analyze_image, run_screenshot
 
@@ -136,7 +134,6 @@ def bridge_command(op: str, index: int = None, value: str = None,
             _json.dumps(payload, ensure_ascii=False), encoding="utf-8")
 
         deadline = time.time() + timeout
-        shot_path = None
         while time.time() < deadline:
             time.sleep(0.2)
             try:

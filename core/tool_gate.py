@@ -6,7 +6,6 @@ Phase 2 (testing/verification): after activate_test_mode() is called, all tools
 are visible for the remainder of the session and the extended prompt guide is
 injected by rebuilding config.SYSTEM.
 """
-import os
 
 # Tools available without calling activate_test_mode.
 BASE_TOOL_NAMES = {

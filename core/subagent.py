@@ -5,7 +5,7 @@ import time
 from .config import client, MODEL, SUBAGENT_SYSTEM, MAX_SUBAGENT_TURNS, logger, MODE
 from .infrastructure.tools import (
     maybe_inject_skill_catalog, tool_registry, bg_manager)
-from .skillcheck import init_per_loop, run_loop_check, move_skills_to_end
+from .skillcheck import run_loop_check, move_skills_to_end
 
 IS_MOD_MODE = MODE == "mod"
 
@@ -191,7 +191,3 @@ def run_subagent_async(prompt: str, *, persona=None, tools=None) -> str:
             f"如需等待结果，请继续工作并在后续轮次查看后台通知。）")
 
 
-def running_async_count() -> int:
-    """当前运行中的异步子代理数量（供退出守卫/调试使用）。"""
-    with _running_lock:
-        return len(_running)

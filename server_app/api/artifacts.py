@@ -10,7 +10,6 @@ from fastapi.responses import Response
 import log_events  # 事件流/文件树解析（纯函数模块，server_app 同级）
 from services.packaging import build_source_zip, find_built_jar
 from services.session_manager import TEMPLATES_DIR
-from services.templates import PROJECT_ROOT
 from .deps import auth_username, owned_session
 
 router = APIRouter(prefix="/api", tags=["artifacts"])
