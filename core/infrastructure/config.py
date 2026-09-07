@@ -38,6 +38,8 @@ class ModelSettings:
     model: str = "GLM-4.5-Flash"
     timeout_s: float = 600.0
     session_header_id: str = ""
+    context_window: int = 0        # 上下文窗口 token 数；0 = 按模型名映射/默认 1M
+    max_output_tokens: int = 8000  # 单轮模型请求的 max_tokens
 
 
 @dataclass(frozen=True)
@@ -138,6 +140,8 @@ class Settings:
                 base_url=g.get("DSH_BASE_URL", "https://api.deepseek.com"),
                 model=g.get("DSH_MODEL", "GLM-4.5-Flash"),
                 session_header_id=g.get("DSH_SESSION_ROOT", ""),
+                context_window=int(g.get("DSH_CONTEXT_WINDOW", "0")),
+                max_output_tokens=int(g.get("DSH_MAX_OUTPUT_TOKENS", "8000")),
             ),
             vision=VisionSettings(
                 enabled=g.get("DSH_VISION_ENABLED", "1") == "1",

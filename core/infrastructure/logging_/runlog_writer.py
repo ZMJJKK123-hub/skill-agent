@@ -79,6 +79,10 @@ class RunlogEventWriter(EventWriter):
         """写系统提示行（构建进度/收尾信息等）。"""
         self._emit(f"[run_task] {text}")
 
+    def debug_line(self, text: str) -> None:
+        """原样写一行调试输出（[round] 快照等）。"""
+        self._emit(text)
+
 
 class MemoryEventWriter(EventWriter):
     """捕获全部事件到内存列表的测试替身（断言协议行用）。
@@ -120,6 +124,10 @@ class MemoryEventWriter(EventWriter):
     def notice(self, text: str) -> None:
         """输入：提示文本。返回：无。职责：按协议格式记录。"""
         self._emit(f"[run_task] {text}")
+
+    def debug_line(self, text: str) -> None:
+        """输入：任意调试行。返回：无。职责：原样记录。"""
+        self._emit(text)
 
     @property
     def text(self) -> str:

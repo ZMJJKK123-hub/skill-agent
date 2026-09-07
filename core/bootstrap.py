@@ -1,0 +1,260 @@
+# -*- coding: utf-8 -*-
+"""组装根（composition root）：Settings → AgentEngine 的唯一装配点。
+
+按 Rule 2.2（依赖注入）：全引擎的 concrete 实例只在此处创建；
+业务层只见 interfaces。对旧模块（core.tools 等）的适配器全部
+惰性导入——单测注入 Fake 时不触发任何旧代码/SDK 副作用。
+"""
+from __future__ import annotations
+
+import os
+import subprocess
+from pathlib import Path
+from typing import Callable, Optional
+
+from .domain.messages import Message, transport_messages, typed_messages
+from .domain.session import Mode, SessionContext
+from .infrastructure.autowrite import write_skeleton, write_starter
+from .infrastructure.config import Settings
+from .infrastructure.logging_.logger import get_logger
+from .infrastructure.logging_.runlog_writer import RunlogEventWriter
+from .infrastructure.openai_client import OpenAIModelClient
+from .infrastructure.session_files import FileSessionStore
+from .interfaces.event_writer import EventWriter
+from .interfaces.model_client import ModelClient
+from .interfaces.tool_registry import ToolRegistry
+from .services.compaction import CompactionService
+from .services.loop.deps import (LoopDeps, NullBackground, NullProtocol,
+                                 NullStore, NullSupervisor, NullTeammates)
+from .services.loop.ports import (BackgroundPort, ProtocolPort, SupervisorPort,
+                                  TeammatesPort)
+from .services.loop.runner import AgentLoopEngine
+from .services.session_log import SessionLog
+
+logger = get_logger("bootstrap")
+
+
+# ---------- 旧模块适配器（P2b 工具包迁移后收编） ----------
+
+def _legacy_tools() -> ToolRegistry:
+    """输入：无。返回：旧 core.tools 的注册表（含 task handler 接线）。
+
+    旧 tools.py 的 handler 注册为惰性查找（TOOL_HANDLERS.get(name)），
+    因此这里补接 task → 子代理派发即可生效。
+    """
+    from . import tools as legacy_tools          # 触发 82 工具注册（副作用模块）
+    from .subagent import run_subagent_async     # 子代理派发（task 工具 handler）
+
+    legacy_tools.TOOL_HANDLERS["task"] = lambda **kw: run_subagent_async(
+        kw["prompt"], persona=kw.get("persona"))
+    return legacy_tools.tool_registry
+
+
+def _legacy_system_provider() -> Callable[[], str]:
+    """输入：无。返回：动态读取旧 config.SYSTEM 的提供器（解锁后重建生效）。"""
+    def provider() -> str:
+        from . import config as legacy_config
+        return legacy_config.SYSTEM
+    return provider
+
+
+def _legacy_tools_provider() -> Callable[[], list[dict]]:
+    """输入：无。返回：阶段门控后的工具 schema 提供器（chat 白名单/解锁全量）。"""
+    def provider() -> list[dict]:
+        from .tool_gate import leader_tools
+        return leader_tools()
+    return provider
+
+
+class _LegacySupervisor(SupervisorPort):
+    """监管线程适配器（mod 模式）。"""
+
+    def start(self) -> None:
+        """启动旧监管单例。"""
+        from .supervisor import supervisor_manager
+        supervisor_manager.start()
+
+    def stop(self) -> None:
+        """停止旧监管单例。"""
+        from .supervisor import supervisor_manager
+        supervisor_manager.stop()
+
+    def drain_advice(self) -> list[dict]:
+        """排空监管信箱。"""
+        from .supervisor import supervisor_manager
+        return supervisor_manager.drain_advice()
+
+    def notify_round(self) -> None:
+        """轮次计数（每 5 轮触发监管分析）。"""
+        from .supervisor import supervisor_manager
+        supervisor_manager.notify_round()
+
+
+class _LegacyTeammates(TeammatesPort):
+    """队友系统适配器（leader 视角）。"""
+
+    def read_leader_inbox(self) -> list[dict]:
+        """排空 leader 收件箱。"""
+        from .tools_team import teammate_manager
+        return teammate_manager.bus.read_inbox("leader")
+
+    def working_names(self) -> list[str]:
+        """返回仍在 working 的队友名。"""
+        from .tools_team import teammate_manager
+        return [name for name, cfg in teammate_manager.team.items()
+                if cfg.status == "working"]
+
+
+class _LegacyBackground(BackgroundPort):
+    """后台任务通知适配器。"""
+
+    def drain_notifications(self) -> list:
+        """排空后台通知。"""
+        from .tools_background import bg_manager
+        return bg_manager.drain_notifications()
+
+    def format_results(self, notifications: list) -> str:
+        """渲染 <background-results> 注入文本。"""
+        from .tools_background import format_background_results
+        return format_background_results(notifications)
+
+
+class _LegacyProtocol(ProtocolPort):
+    """团队协议注入适配器（typed↔transport 往返调用旧 inject_pending_requests）。"""
+
+    def inject_pending(self, agent_id: str, messages: list[Message]) -> None:
+        """输入：身份 + 当前消息列表。返回：无。职责：原地注入协议块。"""
+        from .protocol import inject_pending_requests
+        dicts = transport_messages(messages)
+        inject_pending_requests(dicts, agent_id)
+        messages[:] = typed_messages(dicts)
+
+
+def _legacy_skill_catalog_injector(messages: list[Message]) -> None:
+    """技能目录 digest 注入适配器（digest 变化才追加；原地往返）。"""
+    from .tools_skills import maybe_inject_skill_catalog
+    dicts = transport_messages(messages)
+    maybe_inject_skill_catalog(dicts)
+    messages[:] = typed_messages(dicts)
+
+
+def _legacy_runtime_snapshot() -> Callable[[], str]:
+    """构造 pre-step 运行时快照提供器（todo 进度 + 任务板）。"""
+    def snapshot() -> str:
+        from .tools_tasks import task_manager, todo_manager
+        parts = []
+        if todo_manager.todos:
+            parts.append("Todo progress:\n" + todo_manager.render())
+        tasks = task_manager.list_tasks()
+        if tasks:
+            parts.append("Task board:\n" + "\n".join(
+                f"- #{t.get('id')} [{t.get('status', '?')}] "
+                f"{str(t.get('subject', ''))[:80]}" for t in tasks))
+        return "\n\n".join(parts)
+    return snapshot
+
+
+def _workspace_ensurer(settings: Settings) -> Callable[[], None]:
+    """构造工作区自愈闭包（mc_java_sources / docs/agent 的 junction 补建）。"""
+    allowed = (settings.mode == Mode.MOD
+               or settings.workspace.allow_mc_sources_in_chat)
+    repo_root = Path(__file__).resolve().parent
+
+    def ensure() -> None:
+        if not allowed:
+            return
+        _ensure_junction(repo_root / "mc_java_sources_1.21.11",
+                         Path.cwd() / "mc_java_sources")
+        _ensure_junction(repo_root / "docs" / "agent",
+                         Path.cwd() / "docs" / "agent")
+    return ensure
+
+
+def _ensure_junction(source: Path, target: Path) -> None:
+    """输入：源目录 + 目标链接路径。返回：无。职责：缺失时补建目录链接。"""
+    if target.exists() or not source.is_dir():
+        return
+    try:
+        if os.name == "nt":
+            subprocess.run(["cmd", "/c", "mklink", "/J", str(target), str(source)],
+                           check=True, capture_output=True)
+        else:
+            target.symlink_to(source, target_is_directory=True)
+        logger.info("已补建 junction %s -> %s", target, source)
+    except (OSError, subprocess.CalledProcessError) as e:
+        logger.warning("补建 junction 失败 %s: %s", target, e)
+
+
+def _legacy_jar_builder() -> Callable[[], str]:
+    """输入：无。返回：jar 构建闭包（收尾/兜底自动构建）。"""
+    def build() -> str:
+        from .tools import _forge_build_jar
+        return _forge_build_jar({})
+    return build
+
+
+def _legacy_zip_builder() -> Callable[[], str]:
+    """输入：无。返回：源码 zip 预生成闭包。"""
+    def build() -> str:
+        from .tools import _build_source_zip
+        return _build_source_zip()
+    return build
+
+
+# ---------- 组装 ----------
+
+def build_engine(
+    settings: Optional[Settings] = None,
+    *,
+    client: Optional[ModelClient] = None,
+    registry: Optional[ToolRegistry] = None,
+    writer: Optional[EventWriter] = None,
+    session_log: Optional[SessionLog] = None,
+    use_legacy: bool = True,
+) -> AgentLoopEngine:
+    """构建 AgentLoopEngine（生产默认接旧工具栈；测试注入 Fake）。
+
+    Args:
+        settings: 配置（None = 从环境读取）。
+        client / registry / writer / session_log: 覆盖注入（测试用）。
+        use_legacy: False 时不触碰旧模块（纯 Fake 组装，测试隔离）。
+    Returns:
+        装配完成的引擎实例。
+    """
+    settings = settings or Settings.from_env()
+    ctx = SessionContext(session_root=settings.session_root,
+                         mode=settings.mode, sandbox=settings.sandbox)
+    client = client or OpenAIModelClient(settings.model, settings.session_root)
+    writer = writer or RunlogEventWriter()
+    session_log = session_log or SessionLog()
+    store = (FileSessionStore(settings.session_root)
+             if settings.session_root else NullStore())
+    system_provider = _legacy_system_provider() if use_legacy else (lambda: "")
+    compaction = CompactionService(client, system_provider, settings.model)
+    if use_legacy:
+        registry = registry or _legacy_tools()
+        supervisor: SupervisorPort = _LegacySupervisor()
+        teammates: TeammatesPort = _LegacyTeammates()
+        background: BackgroundPort = _LegacyBackground()
+        protocol: ProtocolPort = _LegacyProtocol()
+        skill_catalog = _legacy_skill_catalog_injector
+        runtime_snapshot = _legacy_runtime_snapshot()
+    else:
+        supervisor, teammates, background = (NullSupervisor(), NullTeammates(),
+                                             NullBackground())
+        protocol, skill_catalog = NullProtocol(), (lambda _: None)
+        runtime_snapshot = lambda: ""
+    deps = LoopDeps(
+        ctx=ctx, settings=settings, client=client, store=store, writer=writer,
+        registry=registry, compaction=compaction,
+        system_provider=system_provider,
+        tools_provider=_legacy_tools_provider() if use_legacy else (lambda: []),
+        supervisor=supervisor, teammates=teammates, background=background,
+        protocol=protocol, skill_catalog_injector=skill_catalog,
+        workspace_ensurer=_workspace_ensurer(settings),
+        auto_starter=write_starter, auto_skeleton=write_skeleton,
+        jar_builder=_legacy_jar_builder() if use_legacy else (lambda: "skip"),
+        zip_builder=_legacy_zip_builder() if use_legacy else (lambda: "skip"),
+        session_log=session_log, runtime_snapshot=runtime_snapshot,
+    )
+    return AgentLoopEngine(deps)
