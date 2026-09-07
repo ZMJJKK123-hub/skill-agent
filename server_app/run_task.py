@@ -312,6 +312,22 @@ def _strip_pending_messages(messages: list, session_root) -> list:
     return messages
 
 
+def _notify_round_error(session_root_path, e: Exception) -> None:
+    """轮次崩溃时向对话历史追加一条用户可见的错误回复。
+
+    此前轮次异常只打 traceback 进 run.log：用户消息已入历史却永远没有
+    回复，界面显示"完成"但消息被静默吞掉（实测伪 key 401：hi 发出后
+    无任何反馈）。落一条 assistant 错误回复，u/a 交替不破，前端按普通
+    气泡渲染，失败原因直达用户。
+    """
+    text = f"⚠️ 本轮调用失败：{str(e)[:300]}\n\n请检查模型配置 / API Key / 网络后重试；若持续失败可在设置里更换模型提供方。"
+    try:
+        from core.conversation import append_assistant
+        append_assistant(session_root_path, text)
+    except Exception as e2:
+        print(f"[run_task] 错误回复写入历史失败: {e2}", flush=True)
+
+
 def daemon_loop(session_dir: Path, session_root_path: Path, mode: str) -> None:
     """chat / mod 模式常驻循环（M-opt1：消除每轮冷启动）。
 
@@ -453,6 +469,7 @@ def daemon_loop(session_dir: Path, session_root_path: Path, mode: str) -> None:
                 import traceback
                 print(f"[run_task] daemon 轮异常（继续等待）: {e}", flush=True)
                 traceback.print_exc()
+                _notify_round_error(session_root_path, e)
                 _set_state("waiting")
                 continue
 
@@ -661,8 +678,16 @@ def main() -> int:
                 messages.append({"role": "user", "content": task_prompt,
                                  **({"images": prompt_images} if prompt_images else {})})
 
-    # 5. 跑完整 agent 循环（首轮）
-    _run_one_round(messages, session_dir, session_root_path, mode)
+    # 5. 跑完整 agent 循环（首轮）。异常兜底：上游 401/网络错误等会让
+    # agent_loop 直接抛——此前进程带着 traceback 退出，用户消息已入历史
+    # 却永远没有回复、界面无任何提示（实测伪 key 测试：消息被静默吞掉）。
+    # 这里向历史追加一条用户可见的错误回复，保持 u/a 交替并让失败可见。
+    try:
+        _run_one_round(messages, session_dir, session_root_path, mode)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        _notify_round_error(session_root_path, e)
 
     # 6. chat / mod 模式都常驻：首轮与 resume 恢复后都进入 daemon 循环，
     #    第二轮起零冷启动（openai SDK / 技能扫描只在首轮支付一次）。

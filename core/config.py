@@ -284,10 +284,19 @@ _http_client = _httpx.Client(
     verify=False,           # 跳过 CA 证书库加载（省 3-4s）
     timeout=600.0,          # 长超时：MOD 制作任务单轮可能很久
 )
+# Zen（opencode.ai Console Go）自 2026-09 起要求每个会话携带稳定的
+# x-opencode-session 请求头（用于路由与提示词缓存），缺失时 deepseek-v4-flash
+# 直接 400 MissingSessionID（实测：上一刻还能用，端点上线校验后全挂）。
+# openai SDK 的 default_headers 随每个请求发送；非 Zen 端点忽略未知头，无副作用。
+# ID 用每会话稳定的 uuid5（DSH_SESSION_ROOT 相同 → 重连/重启复用同一 ID，
+# 提示词缓存收益最大化）；无会话根的部署回退进程内一次性随机 ID。
+import uuid as _uuid
+_session_seed = os.environ.get("DSH_SESSION_ROOT") or _uuid.uuid4().hex
 client = OpenAI(
     api_key=os.environ.get("DEEPSEEK_API_KEY", ""),
     base_url=os.environ.get("DSH_BASE_URL", "https://api.deepseek.com"),
     http_client=_http_client,
+    default_headers={"x-opencode-session": _uuid.uuid5(_uuid.NAMESPACE_URL, _session_seed).hex},
 )
 
 # 会话级沙箱模式：full-access | workspace-write | read-only（由 server 注入 DSH_SANDBOX_MODE）

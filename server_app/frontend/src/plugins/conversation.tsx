@@ -1073,7 +1073,13 @@ function Composer() {
     if (encoded.length > 0) setImages((prev) => [...prev, ...encoded])
   }
 
+  // 发送重入防护：双击/回车+点击在 50ms 内连发时，第一次 send 尚未把
+  // phase 切到 running（startTask 网络往返中），第二次点击会走同一条
+  // 路径把同一条消息再发一遍（实测：双击发送出现两个相同气泡+重复排队）。
+  // 发送在途（直到 startTask resolve / 排队确认）期间忽略后续触发。
+  const sendingRef = useRef(false)
   const send = () => {
+    if (sendingRef.current) return
     const prompt = text.trim()
     if (!prompt && images.length === 0) return
     const r = resolveModelConfig({ model, providers })
@@ -1101,7 +1107,8 @@ function Composer() {
         return
       }
       setUi({ toast: '已切换到对话模式' })
-      void sendPrompt(chatPrompt, settings, 'chat', images, true)
+      sendingRef.current = true
+      void sendPrompt(chatPrompt, settings, 'chat', images, true).finally(() => { sendingRef.current = false })
       setText('')
       setImages([])
       return
@@ -1124,13 +1131,15 @@ function Composer() {
     // 完成后的迭代需求会被降级成只读咨询（P1 实测缺陷：daemon 以 chat 重启
     // 后整个会话锁死只读）。新建/纯 chat 会话仍是 chat；server 端还有
     // mode.txt 记忆 + /mod 前缀强制双保险。
-    void sendPrompt(prompt, settings, sess.mode === 'mod' ? 'mod' : 'chat', images)
+    sendingRef.current = true
+    void sendPrompt(prompt, settings, sess.mode === 'mod' ? 'mod' : 'chat', images).finally(() => { sendingRef.current = false })
     setText('')
     setImages([])
   }
 
   const confirmMod = () => {
-    if (!modConfirm) return
+    if (!modConfirm || sendingRef.current) return
+    sendingRef.current = true
     const r = resolveModelConfig({ model, providers })
     const settings = {
       apiKey: r.apiKey, baseUrl: r.baseUrl, model: r.model, game: 'minecraft', loader: 'forge', version, sandbox,
@@ -1140,7 +1149,7 @@ function Composer() {
       visionModel: r.supportsVision ? (visionModel || r.model) : visionModel,
       autoMode, searchApiKey,
     }
-    void sendPrompt(modConfirm, settings, 'mod', modImages)
+    void sendPrompt(modConfirm, settings, 'mod', modImages).finally(() => { sendingRef.current = false })
     setModConfirm(null)
     setModImages([])
     setText('')
