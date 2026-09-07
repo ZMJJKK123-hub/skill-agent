@@ -1328,3 +1328,9 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **Auto-recorded:** return ("compile_error", m.group(1) if m else "BUILD FAILED", lm.group(1) if lm else "")
 - **Auto-recorded:** [思考+] " = \"BUILD FAILED"
 - **Auto-recorded:** [思考+] " → \"BUILD FAILED"
+
+## 2026-09-07 Auto-recorded from runtime
+
+- **Auto-recorded:** [思考+] " uncaught exception on"
+- **Auto-recorded:** [reply] " no exception"
+- **Auto-recorded:** [185] assistant tool_calls=1 len=197 | No crash report and no exception — the client died silently around my bridge click attempts. I'll retry once, driving the bridge purely through the file protocol (bypassing the fla
