@@ -99,10 +99,6 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
       setState({ sessionId: session_id })
       rememberActiveSid(session_id)
     }
-    // mod 模式：先准备 mod 工作区（复制模板+源码，幂等）
-    if (mode === 'mod') {
-      await api.prepareModWorkspace(sid)
-    }
     const prompts = [...state.prompts, prompt]
     // 标题：已有优先，否则首条输入截断；纯图片消息固定占位
     const titleText = prompt.trim() || '图片消息'
@@ -112,7 +108,13 @@ export async function sendPrompt(prompt: string, settings: GenSettings, mode: 'c
       ...state.chatMessages,
       { role: 'user' as const, content: prompt, ...(images.length ? { images } : {}) },
     ]
+    // 先上屏用户气泡与 running 态，再复制模板：prepareModWorkspace 耗时数秒，
+    // 若等它完成才切 phase，确认条关闭后会短暂回退空态首页
     setState({ prompts, phase: 'running', title, chatMessages })
+    // mod 模式：准备 mod 工作区（复制模板+源码，幂等）
+    if (mode === 'mod') {
+      await api.prepareModWorkspace(sid)
+    }
     await api.startTask(sid, prompt, mode, false, settings.apiKey, settings.model, settings.baseUrl,
       settings.visionEnabled, settings.visionApiKey, settings.visionBaseUrl, settings.visionModel,
       settings.autoMode, settings.searchApiKey, images, forceMode)

@@ -46,7 +46,7 @@ class BackgroundManager:
             return "Error: Dangerous command blocked"
 
         # 沙箱：与 run_bash 保持一致，禁止越出工作区/read-only 写操作
-        from .tools_shell import _escapes_workspace, _is_mutating, _sandbox_mode
+        from .shell import _escapes_workspace, _is_mutating, _sandbox_mode
         mode = _sandbox_mode()
         if mode != "full-access":
             if _escapes_workspace(command):
@@ -92,7 +92,7 @@ class BackgroundManager:
             result = (out or "").strip()[:50000] or "(no output)"
             status = "completed"
         except subprocess.TimeoutExpired:
-            from .process_manager import kill_pid
+            from ...process_manager import kill_pid
             kill_pid(proc.pid)
             try:
                 proc.communicate(timeout=5)

@@ -4,7 +4,7 @@
 
 def _worktree_remove(kw: dict) -> str:
     """第 12 课：拆除 worktree 的工具封装。"""
-    from .tools_runtime import worktree_manager
+    from .runtime import worktree_manager
     worktree_manager.worktree_remove(
         kw["task_id"],
         complete_task=kw.get("complete_task", True),

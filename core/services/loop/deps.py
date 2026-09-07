@@ -20,7 +20,7 @@ from ..compaction import CompactionService
 from .ports import BackgroundPort, ProtocolPort, SupervisorPort, TeammatesPort
 
 if TYPE_CHECKING:  # 仅类型标注用，避免运行期导入循环
-    from ...session_log import SessionLog
+    from ..session_log import SessionLog
 
 
 @dataclass

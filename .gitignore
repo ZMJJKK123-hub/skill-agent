@@ -24,7 +24,9 @@ run_harness.py
 .supervisor/
 .zcode/
 /src/
-tools/
+# 根目录手动工具集（mod_readmes 等）；必须锚定，否则误伤
+# core/infrastructure/tools/ 包（曾致 22 个工具模块未入库）
+/tools/
 
 # ---- 运行时日志 ----
 server_out*.log

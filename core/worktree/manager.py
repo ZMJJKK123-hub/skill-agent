@@ -296,7 +296,7 @@ class WorktreeManager:
         try:
             out, _ = proc.communicate(timeout=120)
         except subprocess.TimeoutExpired:
-            from .process_manager import kill_pid
+            from ..process_manager import kill_pid
             kill_pid(proc.pid)
             try:
                 proc.communicate(timeout=5)

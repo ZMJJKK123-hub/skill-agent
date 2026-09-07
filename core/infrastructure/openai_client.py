@@ -104,6 +104,36 @@ class OpenAIModelClient:
         logger.info("image parts: 已展开带附件的 user 消息（多模态输入）")
         return out
 
+    # ---------- 出站清洗 ----------
+
+    @staticmethod
+    def _sanitize_tool_args(sdk_messages: list[dict]) -> list[dict]:
+        """输入：SDK 消息列表。返回：同列表（原地清洗）。
+
+        职责：把 assistant.tool_calls[].function.arguments 里的非法 JSON
+        替换为 "{}"。流式截断可能留下残缺参数（真实案例：Zen 端点 400
+        "Assistant tool call function.arguments must be valid JSON"——
+        上游严格校验历史消息，智谱端宽松故旧版未暴露）。只清洗出站副本，
+        不改动会话存储；工具执行侧的容错会向模型说明参数无效。
+        Globals Used: 无（纯函数）。
+        """
+        import json as _json
+        for m in sdk_messages:
+            if m.get("role") != "assistant":
+                continue
+            for tc in m.get("tool_calls") or []:
+                fn = tc.get("function") or {}
+                args = fn.get("arguments")
+                if args is None:
+                    continue
+                try:
+                    _json.loads(args)
+                except (ValueError, TypeError):
+                    logger.warning("清洗非法 tool_call 参数（流式截断残片） | tool=%s",
+                                   fn.get("name"))
+                    fn["arguments"] = "{}"
+        return sdk_messages
+
     # ---------- 流式 ----------
 
     def stream_chat(self, system: str, messages: list[Message],
@@ -118,8 +148,9 @@ class OpenAIModelClient:
         """
         request = {
             "model": self._model,
-            "messages": [{"role": "system", "content": system}]
-                       + self._expand_for_sdk(messages),
+            "messages": self._sanitize_tool_args(
+                [{"role": "system", "content": system}]
+                + self._expand_for_sdk(messages)),
             "tools": tools,
             "max_tokens": max_tokens,
             "stream": True,
@@ -174,8 +205,9 @@ class OpenAIModelClient:
         try:
             resp = self._client.chat.completions.create(
                 model=self._model,
-                messages=[{"role": "system", "content": system}]
-                         + self._expand_for_sdk(messages),
+                messages=self._sanitize_tool_args(
+                    [{"role": "system", "content": system}]
+                    + self._expand_for_sdk(messages)),
                 max_tokens=max_tokens,
             )
             return resp.choices[0].message.content or ""

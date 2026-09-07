@@ -52,7 +52,7 @@ def run_bash(command: str) -> str:
         if mode == "read-only" and _is_mutating(command):
             return "Error: read-only 模式禁止修改性操作（del/rd/mkdir/copy/重定向/安装等）"
     # 第 12 课：cwd 跟随线程 session 基座（worktree_use 后落在 worktree 内）
-    from .tools_runtime import worktree_manager
+    from .runtime import worktree_manager
     base = worktree_manager.resolve_dir() if worktree_manager else os.getcwd()
     proc = subprocess.Popen(
         command, shell=True, cwd=base,
@@ -63,7 +63,7 @@ def run_bash(command: str) -> str:
     try:
         out, _ = proc.communicate(timeout=30)
     except subprocess.TimeoutExpired:
-        from .process_manager import kill_pid
+        from ...process_manager import kill_pid
         kill_pid(proc.pid)
         try:
             out, _ = proc.communicate(timeout=5)
