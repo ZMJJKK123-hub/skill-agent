@@ -23,7 +23,7 @@ run_harness.py
 .chat/
 .supervisor/
 .zcode/
-src/
+/src/
 tools/
 
 # ---- 运行时日志 ----

@@ -1,6 +1,6 @@
 import { PluginManifest } from './shell/registry'
 import { sidebarPlugin } from './plugins/sidebar'
-import { conversationPlugin } from './plugins/conversation'
+import { conversationPlugin } from './plugins/conversation/index'
 import { settingsPlugin } from './plugins/settings'
 import { workspacePlugin } from './plugins/workspace'
 import { generatePlugin } from './plugins/generate'
