@@ -49,3 +49,7 @@ class EventWriter(Protocol):
     def notice(self, text: str) -> None:
         """写入系统提示行（构建进度/收尾信息等用户可见状态）。"""
         ...
+
+    def debug_line(self, text: str) -> None:
+        """原样写入一行调试输出（[round] 快照等；格式由调用方决定）。"""
+        ...

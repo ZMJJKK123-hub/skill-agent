@@ -72,6 +72,10 @@ class SessionStore(Protocol):
         """出队最早一条插话（空列表表示无）；剩余留在队列。"""
         ...
 
+    def drain_pending_all(self) -> list[UserMessage]:
+        """一次性出队全部插话并清空队列（非 daemon 直跑模式的中途注入用）。"""
+        ...
+
     def pending_count(self) -> int:
         """返回队列剩余条数（server 判断是否自动续跑）。"""
         ...
