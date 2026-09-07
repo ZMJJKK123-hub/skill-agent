@@ -6,8 +6,8 @@ import os
 import time
 from pathlib import Path
 
-from .config import logger, safe_path
-from .tools_runtime import worktree_manager
+from ...config import logger, safe_path
+from .runtime import worktree_manager
 
 # ---------- 识图模式：截图 + 图片识别 ----------
 # 视觉 API 使用独立 OpenAI 兼容客户端（DSH_VISION_*），与主模型 client 分离：

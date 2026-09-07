@@ -18,7 +18,7 @@ import uuid
 from pathlib import Path
 
 from .config import client, MODEL, SUPERVISOR_SYSTEM, SUPERVISOR_MAX_TURNS, logger
-from .tools import tool_registry, task_manager
+from .infrastructure.tools import tool_registry, task_manager
 from .subagent import extract_text
 
 

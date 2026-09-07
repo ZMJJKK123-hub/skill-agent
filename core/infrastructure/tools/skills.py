@@ -8,8 +8,8 @@ from pathlib import Path
 
 import yaml
 
-from .config import logger
-from .skillcheck import record_load
+from ...config import logger
+from ...skillcheck import record_load
 
 # ---------- SkillLoader（第 5 课：两层知识注入；M2：多源分层 + 正文现读）----------
 # M2 对齐 DSH skill 注册表设计：

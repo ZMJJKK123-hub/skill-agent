@@ -44,7 +44,8 @@ for d in (queue_dir, results_dir, reasoning_dir):
 IDLE_TIMEOUT = float(os.environ.get("DSH_DAEMON_IDLE_TIMEOUT", "600"))
 last_activity = time.time()
 
-from core.agent import agent_loop, set_reasoning_sink  # noqa: E402
+from core.services.loop import run_agent_loop as agent_loop  # noqa: E402
+from core.services.loop.model_call import set_reasoning_sink  # noqa: E402
 
 
 def _write_json(path: Path, data: dict) -> None:

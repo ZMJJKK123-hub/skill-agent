@@ -4,11 +4,11 @@ import os
 import re
 from pathlib import Path
 
-from .gradletools import GRADLE_TOOLS
-from .tools_gametest import parse_gametest_results
-from .tools_mod import _forge_build_jar
-from .tools_runtime import worktree_manager
-from .tools_validate import validate_resources
+from ...gradletools import GRADLE_TOOLS
+from .gametest import parse_gametest_results
+from .mod import _forge_build_jar
+from .runtime import worktree_manager
+from .validate import validate_resources
 
 
 def _base_dir():

@@ -4,8 +4,8 @@ import os
 import re
 import subprocess
 
-from . import config
-from .config import logger
+from ... import config
+from ...config import logger
 
 _MUTATING_TOKENS = [
     "del ", "rd ", "rmdir", "mkdir", "copy ", "xcopy", "move ", "ren ", "rename ",

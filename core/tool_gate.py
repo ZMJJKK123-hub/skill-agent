@@ -85,7 +85,7 @@ def is_unlocked() -> bool:
 
 def get_gated_tool_names():
     """Return currently hidden tool names (all registrations minus base)."""
-    from .tools import tool_registry
+    from .infrastructure.tools import tool_registry
     all_names = set(tool_registry.names())
     return sorted(all_names - BASE_TOOL_NAMES)
 
@@ -120,7 +120,7 @@ def unlock_test_mode() -> str:
 
 def leader_tools():
     """Return the OpenAI tools schema list for the main agent based on unlock state."""
-    from .tools import tool_registry
+    from .infrastructure.tools import tool_registry
     if _is_chat_mode():
         return tool_registry.schemas(include=CHAT_TOOL_NAMES, exclude=_LEADER_EXCLUDED)
     if TEST_MODE_UNLOCKED:

@@ -189,7 +189,7 @@ def _safe_input_name(filename: str, fallback_ext: str = "") -> str:
 def _download_remote_file(url: str, filename: str, inputs_dir: Path) -> tuple[str, bool]:
     """下载清小搭 OSS 上的文件/图片 URL 到工作区 inputs/，返回 (相对路径, 是否成功)。"""
     try:
-        from core.tools_web import _is_ssrf_blocked
+        from core.infrastructure.tools.web import _is_ssrf_blocked
         if _is_ssrf_blocked(url):
             return "下载被 SSRF 防护拦截（不允许访问内网/私网地址）", False
         inputs_dir.mkdir(parents=True, exist_ok=True)

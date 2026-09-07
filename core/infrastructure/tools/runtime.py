@@ -4,12 +4,12 @@
 This module owns the cross-module wiring that used to live at the bottom of
 core/tools.py: WorktreeManager instantiation and TeamCoordinator wiring.
 """
-from . import config
-from .config import logger
-from .protocol import coordinator
-from .tools_tasks import task_manager
-from .tools_team import teammate_manager
-from .worktree import WorktreeManager
+from ... import config
+from ...config import logger
+from ...protocol import coordinator
+from .tasks import task_manager
+from .team import teammate_manager
+from ...worktree import WorktreeManager
 
 # ---------- 第 12 课接线：WorktreeManager 注入（打破循环依赖） ----------
 # worktree.py 不 import tools.py（TaskManager 由构造参数注入），因此可以在这里

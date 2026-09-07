@@ -4,8 +4,8 @@ import json
 import time
 from pathlib import Path
 
-from . import config
-from .config import logger
+from ... import config
+from ...config import logger
 
 def run_ask_user(questions, options: list = None) -> str:
     """向用户提出一个或多个问题并阻塞等待回答（文件 IPC：写 question.json，轮询 answer.json）。

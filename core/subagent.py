@@ -3,7 +3,8 @@ import threading
 import time
 
 from .config import client, MODEL, SUBAGENT_SYSTEM, MAX_SUBAGENT_TURNS, logger, MODE
-from .tools import maybe_inject_skill_catalog, tool_registry, bg_manager
+from .infrastructure.tools import (
+    maybe_inject_skill_catalog, tool_registry, bg_manager)
 from .skillcheck import init_per_loop, run_loop_check, move_skills_to_end
 
 IS_MOD_MODE = MODE == "mod"

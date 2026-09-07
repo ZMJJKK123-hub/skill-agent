@@ -5,9 +5,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-from .config import logger, safe_path
-from .gradletools import GRADLE_TOOLS as _GT
-from .tools_runtime import worktree_manager
+from ...config import logger, safe_path
+from ...gradletools import GRADLE_TOOLS as _GT
+from .runtime import worktree_manager
 
 _GT_BASE = None
 

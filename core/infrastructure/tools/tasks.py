@@ -4,7 +4,7 @@ import json
 import os
 import threading
 
-from .config import logger
+from ...config import logger
 
 # ---------- TodoManager（叠加的规划系统，不改动 Agent Loop 核心）----------
 # 持久化：进程重启后恢复 todo（用户中断 / MOD 自我循环结束后继续对话也能记住进度）。

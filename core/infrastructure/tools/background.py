@@ -8,8 +8,8 @@ import time
 from dataclasses import dataclass
 from typing import Optional
 
-from .config import logger
-from .tools_runtime import worktree_manager
+from ...config import logger
+from .runtime import worktree_manager
 
 # ---------- BackgroundManager（第 8 课：异步后台执行 + 通知队列）----------
 @dataclass

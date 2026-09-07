@@ -5,8 +5,8 @@ import re
 import subprocess
 from pathlib import Path
 
-from .tools_runtime import worktree_manager
-from .tools_validate import _find_modid
+from .runtime import worktree_manager
+from .validate import _find_modid
 
 
 def _base_dir() -> str:

@@ -6,11 +6,11 @@ import socket
 import time
 from pathlib import Path
 
-from . import process_manager as pm
-from .config import logger
-from .gradletools import start_gradle_task
-from .tools_game import send_game_command
-from .tools_runtime import worktree_manager
+from ... import process_manager as pm
+from ...config import logger
+from ...gradletools import start_gradle_task
+from .game import send_game_command
+from .runtime import worktree_manager
 
 
 def _base_dir():

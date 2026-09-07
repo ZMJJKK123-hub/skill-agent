@@ -42,7 +42,7 @@ def _legacy_tools() -> ToolRegistry:
     旧 tools.py 的 handler 注册为惰性查找（TOOL_HANDLERS.get(name)），
     因此这里补接 task → 子代理派发即可生效。
     """
-    from . import tools as legacy_tools          # 触发 82 工具注册（副作用模块）
+    from .infrastructure import tools as legacy_tools  # 触发 85 工具注册（副作用包）
     from .subagent import run_subagent_async     # 子代理派发（task 工具 handler）
 
     legacy_tools.TOOL_HANDLERS["task"] = lambda **kw: run_subagent_async(
@@ -95,12 +95,12 @@ class _LegacyTeammates(TeammatesPort):
 
     def read_leader_inbox(self) -> list[dict]:
         """排空 leader 收件箱。"""
-        from .tools_team import teammate_manager
+        from .infrastructure.tools.team import teammate_manager
         return teammate_manager.bus.read_inbox("leader")
 
     def working_names(self) -> list[str]:
         """返回仍在 working 的队友名。"""
-        from .tools_team import teammate_manager
+        from .infrastructure.tools.team import teammate_manager
         return [name for name, cfg in teammate_manager.team.items()
                 if cfg.status == "working"]
 
@@ -110,12 +110,12 @@ class _LegacyBackground(BackgroundPort):
 
     def drain_notifications(self) -> list:
         """排空后台通知。"""
-        from .tools_background import bg_manager
+        from .infrastructure.tools.background import bg_manager
         return bg_manager.drain_notifications()
 
     def format_results(self, notifications: list) -> str:
         """渲染 <background-results> 注入文本。"""
-        from .tools_background import format_background_results
+        from .infrastructure.tools.background import format_background_results
         return format_background_results(notifications)
 
 
@@ -132,7 +132,7 @@ class _LegacyProtocol(ProtocolPort):
 
 def _legacy_skill_catalog_injector(messages: list[Message]) -> None:
     """技能目录 digest 注入适配器（digest 变化才追加；原地往返）。"""
-    from .tools_skills import maybe_inject_skill_catalog
+    from .infrastructure.tools.skills import maybe_inject_skill_catalog
     dicts = transport_messages(messages)
     maybe_inject_skill_catalog(dicts)
     messages[:] = typed_messages(dicts)
@@ -141,7 +141,7 @@ def _legacy_skill_catalog_injector(messages: list[Message]) -> None:
 def _legacy_runtime_snapshot() -> Callable[[], str]:
     """构造 pre-step 运行时快照提供器（todo 进度 + 任务板）。"""
     def snapshot() -> str:
-        from .tools_tasks import task_manager, todo_manager
+        from .infrastructure.tools.tasks import task_manager, todo_manager
         parts = []
         if todo_manager.todos:
             parts.append("Todo progress:\n" + todo_manager.render())
@@ -188,7 +188,7 @@ def _ensure_junction(source: Path, target: Path) -> None:
 def _legacy_jar_builder() -> Callable[[], str]:
     """输入：无。返回：jar 构建闭包（收尾/兜底自动构建）。"""
     def build() -> str:
-        from .tools import _forge_build_jar
+        from .infrastructure.tools import _forge_build_jar
         return _forge_build_jar({})
     return build
 
@@ -196,7 +196,7 @@ def _legacy_jar_builder() -> Callable[[], str]:
 def _legacy_zip_builder() -> Callable[[], str]:
     """输入：无。返回：源码 zip 预生成闭包。"""
     def build() -> str:
-        from .tools import _build_source_zip
+        from .infrastructure.tools import _build_source_zip
         return _build_source_zip()
     return build
 

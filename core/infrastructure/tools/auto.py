@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Auto-mode runtime toggle."""
-from . import config
+from ... import config
 
 
 def set_auto_mode(enabled: bool) -> str:

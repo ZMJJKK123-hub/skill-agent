@@ -7,11 +7,11 @@ import threading
 import time
 from dataclasses import dataclass
 
-from . import config
-from .config import logger
-from .protocol import coordinator, inject_pending_requests, parse_protocol_flag
-from .skillcheck import move_skills_to_end, run_loop_check
-from .tools_tasks import task_manager
+from ... import config
+from ...config import logger
+from ...protocol import coordinator, inject_pending_requests, parse_protocol_flag
+from ...skillcheck import move_skills_to_end, run_loop_check
+from .tasks import task_manager
 
 def _is_safe_agent_name(name: str) -> bool:
     return bool(name and re.fullmatch(r"[A-Za-z0-9_-]{1,64}", name))
