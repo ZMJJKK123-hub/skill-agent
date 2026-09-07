@@ -2,7 +2,7 @@
 目录隔离硬规则: main 仅业务代码(禁@GameTest); test 唯一测试位置; 自测核心=runTestGameTestServer。
 统一返回 {"success","exit_code","summary","error_details","raw_logs_snippet"}。
 """
-import json, os, re, subprocess
+import os, re, subprocess
 from pathlib import Path
 
 from . import process_manager as pm

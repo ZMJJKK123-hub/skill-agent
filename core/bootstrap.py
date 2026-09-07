@@ -201,6 +201,27 @@ def _legacy_zip_builder() -> Callable[[], str]:
     return build
 
 
+
+def _assemble_ports(use_legacy: bool) -> dict:
+    """输入：是否接旧工具栈。返回：五个外围端口的装配字典（Rule 2.2 DI）。"""
+    if use_legacy:
+        return {
+            "supervisor": _LegacySupervisor(),
+            "teammates": _LegacyTeammates(),
+            "background": _LegacyBackground(),
+            "protocol": _LegacyProtocol(),
+            "skill_catalog": _legacy_skill_catalog_injector,
+            "runtime_snapshot": _legacy_runtime_snapshot(),
+        }
+    return {
+        "supervisor": NullSupervisor(),
+        "teammates": NullTeammates(),
+        "background": NullBackground(),
+        "protocol": NullProtocol(),
+        "skill_catalog": (lambda _: None),
+        "runtime_snapshot": (lambda: ""),
+    }
+
 # ---------- 组装 ----------
 
 def build_engine(
@@ -233,28 +254,20 @@ def build_engine(
     compaction = CompactionService(client, system_provider, settings.model)
     if use_legacy:
         registry = registry or _legacy_tools()
-        supervisor: SupervisorPort = _LegacySupervisor()
-        teammates: TeammatesPort = _LegacyTeammates()
-        background: BackgroundPort = _LegacyBackground()
-        protocol: ProtocolPort = _LegacyProtocol()
-        skill_catalog = _legacy_skill_catalog_injector
-        runtime_snapshot = _legacy_runtime_snapshot()
-    else:
-        supervisor, teammates, background = (NullSupervisor(), NullTeammates(),
-                                             NullBackground())
-        protocol, skill_catalog = NullProtocol(), (lambda _: None)
-        runtime_snapshot = lambda: ""
+    ports = _assemble_ports(use_legacy)
     deps = LoopDeps(
         ctx=ctx, settings=settings, client=client, store=store, writer=writer,
         registry=registry, compaction=compaction,
         system_provider=system_provider,
         tools_provider=_legacy_tools_provider() if use_legacy else (lambda: []),
-        supervisor=supervisor, teammates=teammates, background=background,
-        protocol=protocol, skill_catalog_injector=skill_catalog,
+        supervisor=ports["supervisor"], teammates=ports["teammates"],
+        background=ports["background"], protocol=ports["protocol"],
+        skill_catalog_injector=ports["skill_catalog"],
         workspace_ensurer=_workspace_ensurer(settings),
         auto_starter=write_starter, auto_skeleton=write_skeleton,
-        jar_builder=_legacy_jar_builder() if use_legacy else (lambda: "skip"),
-        zip_builder=_legacy_zip_builder() if use_legacy else (lambda: "skip"),
-        session_log=session_log, runtime_snapshot=runtime_snapshot,
+        jar_builder=(_legacy_jar_builder() if use_legacy else (lambda: "skip")),
+        zip_builder=(_legacy_zip_builder() if use_legacy else (lambda: "skip")),
+        session_log=session_log,
+        runtime_snapshot=ports["runtime_snapshot"],
     )
     return AgentLoopEngine(deps)

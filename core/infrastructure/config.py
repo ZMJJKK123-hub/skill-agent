@@ -128,6 +128,7 @@ class Settings:
         """
         g = env if env is not None else dict(os.environ)
         sandbox_raw = g.get("DSH_SANDBOX_MODE", SandboxMode.FULL_ACCESS.value)
+        groups = _env_groups(g)
         return cls(
             mode=Mode.parse(g.get("DSH_MODE")),
             sandbox=SandboxMode(sandbox_raw),
@@ -135,40 +136,49 @@ class Settings:
             web_chat=g.get("DSH_WEB_CHAT", "") == "1",
             auto_mode=g.get("DSH_AUTO_MODE", "0") == "1",
             daemon_idle_timeout_s=float(g.get("DSH_DAEMON_IDLE_TIMEOUT", "600")),
-            model=ModelSettings(
-                api_key=g.get("DEEPSEEK_API_KEY", ""),
-                base_url=g.get("DSH_BASE_URL", "https://api.deepseek.com"),
-                model=g.get("DSH_MODEL", "GLM-4.5-Flash"),
-                session_header_id=g.get("DSH_SESSION_ROOT", ""),
-                context_window=int(g.get("DSH_CONTEXT_WINDOW", "0")),
-                max_output_tokens=int(g.get("DSH_MAX_OUTPUT_TOKENS", "8000")),
-            ),
-            vision=VisionSettings(
-                enabled=g.get("DSH_VISION_ENABLED", "1") == "1",
-                api_key=g.get("DSH_VISION_API_KEY", ""),
-                base_url=g.get("DSH_VISION_BASE_URL", ""),
-                model=g.get("DSH_VISION_MODEL", ""),
-            ),
-            loop=LoopSettings(
-                max_tool_rounds=int(g.get("DSH_MAX_TOOL_ROUNDS", "200")),
-                max_total_rounds=int(g.get("DSH_MAX_TOTAL_ROUNDS", "300")),
-                completion_grace_rounds=int(g.get("DSH_COMPLETION_GRACE_ROUNDS", "25")),
-                defer_drain=g.get("DSH_DEFER_DRAIN", "") == "1",
-            ),
-            workspace=WorkspaceSettings(
-                skills_dir=g.get("DSH_SKILLS_DIR", "core/skills"),
-                custom_skill_dirs=g.get("DSH_CUSTOM_SKILL_DIRS", ""),
-                skill_catalog_disabled=g.get("DSH_SKILL_CATALOG_DISABLED", "") == "1",
-                disable_client_tools=g.get("DSH_DISABLE_CLIENT_TOOLS", "") == "1",
-                allow_mc_sources_in_chat=g.get("DSH_ALLOW_MC_SOURCES", "") == "1",
-                mc_background=g.get("DSH_MC_BACKGROUND", "1") == "1",
-            ),
-            game=GameSettings(
-                rcon_port=int(g.get("DSH_RCON_PORT", "25575")),
-                rcon_password=g.get("DSH_RCON_PASSWORD", ""),
-            ),
-            search=SearchSettings(
-                tavily_api_key=g.get("DSH_TAVILY_API_KEY", ""),
-                search_api_key=g.get("DSH_SEARCH_API_KEY", ""),
-            ),
+            model=_env_model(g),
+            vision=groups["vision"], loop=groups["loop"],
+            workspace=groups["workspace"], game=groups["game"],
+            search=groups["search"],
         )
+
+
+def _env_model(g: dict) -> ModelSettings:
+    """输入：环境变量表。返回：主模型配置组。"""
+    return ModelSettings(
+        api_key=g.get("DEEPSEEK_API_KEY", ""),
+        base_url=g.get("DSH_BASE_URL", "https://api.deepseek.com"),
+        model=g.get("DSH_MODEL", "GLM-4.5-Flash"),
+        session_header_id=g.get("DSH_SESSION_ROOT", ""),
+        context_window=int(g.get("DSH_CONTEXT_WINDOW", "0")),
+        max_output_tokens=int(g.get("DSH_MAX_OUTPUT_TOKENS", "8000")),
+    )
+
+
+def _env_groups(g: dict) -> dict:
+    """输入：环境变量表。返回：vision/loop/workspace/game/search 五个分组。"""
+    return {
+        "vision": VisionSettings(
+            enabled=g.get("DSH_VISION_ENABLED", "1") == "1",
+            api_key=g.get("DSH_VISION_API_KEY", ""),
+            base_url=g.get("DSH_VISION_BASE_URL", ""),
+            model=g.get("DSH_VISION_MODEL", "")),
+        "loop": LoopSettings(
+            max_tool_rounds=int(g.get("DSH_MAX_TOOL_ROUNDS", "200")),
+            max_total_rounds=int(g.get("DSH_MAX_TOTAL_ROUNDS", "300")),
+            completion_grace_rounds=int(g.get("DSH_COMPLETION_GRACE_ROUNDS", "25")),
+            defer_drain=g.get("DSH_DEFER_DRAIN", "") == "1"),
+        "workspace": WorkspaceSettings(
+            skills_dir=g.get("DSH_SKILLS_DIR", "core/skills"),
+            custom_skill_dirs=g.get("DSH_CUSTOM_SKILL_DIRS", ""),
+            skill_catalog_disabled=g.get("DSH_SKILL_CATALOG_DISABLED", "") == "1",
+            disable_client_tools=g.get("DSH_DISABLE_CLIENT_TOOLS", "") == "1",
+            allow_mc_sources_in_chat=g.get("DSH_ALLOW_MC_SOURCES", "") == "1",
+            mc_background=g.get("DSH_MC_BACKGROUND", "1") == "1"),
+        "game": GameSettings(
+            rcon_port=int(g.get("DSH_RCON_PORT", "25575")),
+            rcon_password=g.get("DSH_RCON_PASSWORD", "")),
+        "search": SearchSettings(
+            tavily_api_key=g.get("DSH_TAVILY_API_KEY", ""),
+            search_api_key=g.get("DSH_SEARCH_API_KEY", "")),
+    }

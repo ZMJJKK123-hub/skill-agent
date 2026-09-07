@@ -1,34 +1,7 @@
-"""s12 — Worktree + Task Isolation：终极隔离
-
-双平面架构（控制面与执行面分离）：
-  控制面  .tasks/     任务状态 + 事件流（调度与审计）
-  执行面  .worktrees/ git worktree 独立工作目录（并行干活）
-
-双状态机（各自独立生命周期，通过绑定关系联动）：
-  Task       pending → in_progress → completed（s07 沿用，绑定 worktree 时联动推进）
-  Worktree   absent  → active        → removed / kept（新增）
-
-绑定联动：
-  worktree_create(task_id)                 → 创建目录 + 注册 + Task→in_progress
-  worktree_remove(task_id, complete_task=True)
-                                           → Task→completed + 拆目录 + 注销 + 清分支（可选 merge 回主分支）
-
-线程隔离（s12 对 s9-11 并发队友的关键适配）：
-  worktree_use 用 threading.local 存 session 基座——每个 teammate 线程
-  各有自己的工作目录，Leader / 队友 / 队友之间互不覆盖。
-  这正是第 12 课的核心：文件系统级隔离，杜绝共享目录静默覆盖。
-
-崩溃恢复：
-  .tasks/events.jsonl 记录每个操作的 before/after 事件对。重启时交叉比对
-  事件流 + 注册表(index.json) + 磁盘实际状态，重建现场：
-    - 事件流有 before 无 after → 半完成操作 → 回滚
-    - 注册表有但磁盘无 → 孤儿记录 → 清理
-    - 磁盘有但注册表无 → 孤儿目录 → 标记
-
-设计约束：本模块不 import tools.py（TaskManager 由构造参数注入），
-因此 can 被 tools.py 直接 import，无循环依赖。
+# -*- coding: utf-8 -*-
+"""WorktreeManager：git worktree 隔离 + Task 双状态机联动 + 崩溃恢复。
+由 worktree.py 原样迁出。
 """
-
 import json
 import logging
 import subprocess
@@ -36,12 +9,6 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-logging.basicConfig(
-    filename="agent.log",
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    encoding="utf-8",
-)
 logger = logging.getLogger("agent")
 
 
