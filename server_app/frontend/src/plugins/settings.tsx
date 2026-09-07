@@ -18,6 +18,8 @@ type Draft = {
   autoMode: boolean
   searchApiKey: string
   providers: Provider[]
+  theme: ThemePref
+  locale: 'zh' | 'en'
 }
 
 const VERSIONS = ['1.21.11', '1.21.10', '1.21.9']
@@ -29,12 +31,15 @@ function SettingsPanel() {
   const [section, setSection] = useState<SectionKey>('general')
 
   // 通用配置草稿：应用前不落库（providers 同样纳入草稿——增删改全部
-  // 只改 draft，点"应用"才生效，"取消"整体丢弃，实测缺陷 #8 的修复）
-  const { model, loader, version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey, providers } = useUi()
+  // 只改 draft，点"应用"才生效，"取消"整体丢弃，实测缺陷 #8 的修复）。
+  // theme/locale 同样纳入草稿：此前点选项直接 setUi 写全局，"取消"后
+  // 主题/语言已是新值（实测：点浅色→取消，界面仍是浅色）
+  const { model, loader, version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey, providers, theme, locale } = useUi()
   const [draft, setDraft] = useState({
     model, loader, version, sandbox,
     visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey,
     providers,
+    theme, locale,
   })
   useEffect(() => {
     if (settingsOpen) {
@@ -44,6 +49,7 @@ function SettingsPanel() {
         model, loader, version, sandbox,
         visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey,
         providers,
+        theme, locale,
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -64,6 +70,8 @@ function SettingsPanel() {
       autoMode: draft.autoMode,
       searchApiKey: draft.searchApiKey.trim(),
       providers: draft.providers,
+      theme: draft.theme,
+      locale: draft.locale,
       settingsOpen: false,
     })
   }
@@ -162,14 +170,14 @@ function GeneralSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft
           <option value="read-only">{t('general.sandbox.readonly')}</option>
         </select>
       </Field>
-      <Field label="全自动模式">
+      <Field label={t('general.autoMode')}>
         <button
           onClick={() => setDraft({ ...draft, autoMode: !draft.autoMode })}
           className={`relative h-6 w-11 rounded-full transition ${draft.autoMode ? 'bg-forge-500' : 'bg-slate-600'}`}
         >
           <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${draft.autoMode ? 'left-[22px]' : 'left-0.5'}`} />
         </button>
-        <p className="mt-1 text-xs text-faint">开启后 agent 不再阻塞等待提问，会用合理默认值继续。</p>
+        <p className="mt-1 text-xs text-faint">{t('general.autoModeDesc')}</p>
       </Field>
       <Field label="Tavily Search API Key">
         <input
@@ -495,9 +503,8 @@ function AgentSection() {
   )
 }
 
-function LanguageSection() {
+function LanguageSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft) => void }) {
   const t = useT()
-  const { locale } = useUi()
   return (
     <div>
       <h2 className="mb-3 text-lg font-semibold">{t('language.title')}</h2>
@@ -505,8 +512,8 @@ function LanguageSection() {
         {(['zh', 'en'] as const).map((id) => (
           <button
             key={id}
-            onClick={() => setUi({ locale: id })}
-            className={`block w-full rounded-md border px-3 py-2 text-left text-sm ${locale === id ? 'border-forge-500/40 bg-forge-500/10 text-forge-300' : 'border-line text-muted hoverable'}`}
+            onClick={() => setDraft({ ...draft, locale: id })}
+            className={`block w-full rounded-md border px-3 py-2 text-left text-sm ${draft.locale === id ? 'border-forge-500/40 bg-forge-500/10 text-forge-300' : 'border-line text-muted hoverable'}`}
           >
             {id === 'zh' ? t('language.zh') : t('language.en')}
           </button>
@@ -516,9 +523,8 @@ function LanguageSection() {
   )
 }
 
-function AppearanceSection() {
+function AppearanceSection({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft) => void }) {
   const t = useT()
-  const { theme } = useUi()
   const options: { id: ThemePref; label: string }[] = [
     { id: 'light', label: t('appearance.light') },
     { id: 'dark', label: t('appearance.dark') },
@@ -531,8 +537,8 @@ function AppearanceSection() {
         {options.map((o) => (
           <button
             key={o.id}
-            onClick={() => setUi({ theme: o.id })}
-            className={`flex-1 rounded-md border px-3 py-2 text-sm ${theme === o.id ? 'border-forge-500/40 bg-forge-500/10 text-forge-300' : 'border-line text-muted hoverable'}`}
+            onClick={() => setDraft({ ...draft, theme: o.id })}
+            className={`flex-1 rounded-md border px-3 py-2 text-sm ${draft.theme === o.id ? 'border-forge-500/40 bg-forge-500/10 text-forge-300' : 'border-line text-muted hoverable'}`}
           >
             {o.label}
           </button>
@@ -563,9 +569,9 @@ function SectionContent({
     case 'agent':
       return <AgentSection />
     case 'language':
-      return <LanguageSection />
+      return <LanguageSection draft={draft} setDraft={setDraft} />
     case 'appearance':
-      return <AppearanceSection />
+      return <AppearanceSection draft={draft} setDraft={setDraft} />
   }
 }
 

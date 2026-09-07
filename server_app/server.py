@@ -739,6 +739,20 @@ def prepare_mod_session(
         pass
     if not already:
         _copy_template(sess.game, sess.mod_dir, sess.loader, sess.version)
+
+    # 独立 git 仓库：mod/ 位于主仓库内部，agent 的 git_commit/snapshot 检查点
+    # 若无本地 .git，git 会向上命中主仓库 .git——检查点把整个主仓库的未提交
+    # 改动一起提交（实测 juice 会话检查点 d7683fc9 扫走了仓库根的源码改动）。
+    # 工作区准备后立即 git init，此后所有检查点都落在 mod/.git。
+    if not already and not (sess.mod_dir / ".git").exists():
+        try:
+            subprocess.run(
+                ["git", "init"],
+                cwd=str(sess.mod_dir),
+                capture_output=True, text=True, timeout=30,
+            )
+        except Exception:
+            pass  # git 不可用不影响工作区准备，仅检查点会向上命中主仓库
     return {"session_id": sess.id, "mod_ready": True, "already": already}
 
 

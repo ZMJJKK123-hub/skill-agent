@@ -275,7 +275,7 @@ function Messages() {
   const { user } = useUi()
   const t = useT()
   const sess = useSession()
-  const { phase, events, elapsed, hasJar, error, mode, chatMessages, stoppedNotice, sessionId, paused } = sess
+  const { phase, events, elapsed, hasJar, error, mode, chatMessages, stoppedNotice, sessionId, paused, pending: sessPending } = sess
   const [displayElapsed, setDisplayElapsed] = useState<number | null>(null)
 
   useEffect(() => {
@@ -333,6 +333,20 @@ function Messages() {
     }
     r.scroller.addEventListener('scroll', onScroll, { passive: true })
     return () => r.scroller.removeEventListener('scroll', onScroll)
+  }, [sessionId])
+  // 事件兜底：部分嵌入环境（WebView/触摸滚动）scroll 事件不派发——位置
+  // 变了但监听器不触发，上滚回看时"回到底部"浮钮永不出现。低频轮询同步
+  // 位置状态（同值 setState React 自动跳过渲染，开销可忽略）
+  useEffect(() => {
+    if (!sessionId) return
+    const timer = window.setInterval(() => {
+      const m = measure()
+      if (!m) return
+      wasAtBottomRef.current = m.atBottom
+      lastScrollTopRef.current = m.scroller.scrollTop
+      setShowBackToBottom(!m.atBottom && m.overflow > 100)
+    }, 800)
+    return () => window.clearInterval(timer)
   }, [sessionId])
   // 新会话：强制贴底起步
   useEffect(() => {
@@ -550,15 +564,19 @@ function Messages() {
     })()
     // hidden 判定（chat/mod 统一语义）：磁盘 assistant 气泡已渲染该回复
     // 内容时 reply 组隐藏（同内容重复）。最后一个组例外：运行中它是当前
-    // 流式轮（打字机展示），异常终止未落盘时也保持可见。
+    // 流式轮（打字机展示），异常终止未落盘时也保持可见——例外仅限
+    // pending=0 时：用户排队了新消息而 daemon 尚未消费的窗口里，"最后一个
+    // 组"仍是上一轮已落盘的回复，豁免会让它以打字机形态在队尾重放一两秒
+    // （实测：连发消息瞬间同一条回复出现两次）
+    const exemptLast = !(sessPending > 0)
     return out.map((it) => {
       if (it.kind !== 'reply') return it
-      if (it.key === lastReplyKey) return { ...it, hidden: false }
+      if (it.key === lastReplyKey && exemptLast) return { ...it, hidden: false }
       const merged = it.events.map((e) => e.content).join('\n\n')
       const hidden = hasAssistantBubbles || assistantPrefixes.has(merged.slice(0, 50))
       return { ...it, hidden }
     })
-  }, [shownEvents, assistantPrefixes, hasAssistantBubbles])
+  }, [shownEvents, assistantPrefixes, hasAssistantBubbles, sessPending])
 
   // ── 按轮交织（chat 与 mod 共用同一视图）──
   // 时间线里的 reply 组按序对应磁盘 assistant 消息（run_task 每轮一对）。
@@ -679,10 +697,14 @@ function Messages() {
             const last = members && members.length > 0 ? members[members.length - 1] : null
             if (last) {
               last.scrollIntoView({ block: 'end' })
-            } else {
-              const scroller = listRef.current?.closest('.overflow-y-auto') as HTMLElement | null
-              if (scroller) scroller.scrollTop = scroller.scrollHeight
             }
+            // 再贴一次容器绝对底：scrollIntoView 定位到成员尾后视口可能残留
+            // 60-80px（子像素取整），超过 atBottom 阈值会让轮询/滚动监听
+            // 下一拍又把浮钮亮回来（实测：点击回底后按钮不消失）
+            const scroller = listRef.current?.closest('.overflow-y-auto') as HTMLElement | null
+            if (scroller) scroller.scrollTop = scroller.scrollHeight
+            wasAtBottomRef.current = true
+            lastScrollTopRef.current = scroller ? scroller.scrollTop : lastScrollTopRef.current
             setShowBackToBottom(false)
           }}
           className="fixed bottom-28 right-6 z-30 flex items-center gap-1.5 rounded-full border border-line bg-panel px-3 py-1.5 text-xs text-muted shadow-lg hoverable"
@@ -825,12 +847,12 @@ function EmptyState({ error }: { error?: string | null }) {
       )}
       {/* 作者联系方式：放空态空白处，方便用户咨询 */}
       <div style={step(4)} className="fade-in-up mt-6 max-w-sm rounded-xl border border-line bg-panel/60 p-3 text-xs text-muted">
-        <div className="mb-1 font-medium text-forge-300">联系作者</div>
+        <div className="mb-1 font-medium text-forge-300">{t('contact.title')}</div>
         <div>
-          使用遇到问题、想提需求或反馈 bug？加作者微信交流：
+          {t('contact.desc')}
           <span
             className="cursor-pointer select-all rounded bg-field px-1.5 py-0.5 font-mono text-forge-300"
-            title="点击全选复制"
+            title={t('contact.copyTitle')}
             onClick={(e) => {
               const range = document.createRange()
               range.selectNodeContents(e.currentTarget)
@@ -1287,7 +1309,7 @@ function Composer() {
           }}
           rows={3}
           disabled={!canChat}
-          placeholder={canChat ? t('conv.placeholder') : t('conv.configureFirst')}
+          placeholder={canChat ? (sess.mode === 'mod' ? t('conv.placeholderMod') : t('conv.placeholder')) : t('conv.configureFirst')}
           className="w-full resize-none bg-transparent text-sm outline-none placeholder:text-faint disabled:opacity-60"
         />
           <div className="mt-2 flex items-center gap-2">

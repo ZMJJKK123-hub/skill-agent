@@ -41,7 +41,7 @@ export function AppShell() {
             sidebarWide ? 'w-64' : 'w-14'
           } flex shrink-0 flex-col border-r border-line transition-all duration-200`}
         >
-          <div className="flex h-12 items-center gap-2 border-b border-line px-2">
+          <div className="flex h-12 items-center gap-2 overflow-hidden border-b border-line px-2">
             <SlotView name={SLOTS.sidebarLogo} props={{ collapsed }} />
           </div>
           <div className="flex-1 overflow-y-auto">

@@ -9,9 +9,10 @@ export const sidebarPlugin: PluginManifest = {
   id: 'modforge-sidebar',
   name: '侧栏',
   apply(ctx) {
-    // 顶栏 logo（占位）
+    // 顶栏 logo（占位）。折叠时容器裁剪 + 居中：即使 props 传播存在时序
+    // 差异导致文字短暂渲染，也不会溢出 56px 窄条压到主区的 ☰（实测重叠）
     ctx.slots.inject(SLOTS.sidebarLogo, 'logo', (props: any) => (
-      <div className="flex items-center gap-2">
+      <div className={`flex w-full items-center overflow-hidden ${props?.collapsed ? 'justify-center' : 'gap-2'}`}>
         <div className="flex h-7 w-7 items-center justify-center rounded bg-forge-500 text-sm font-bold text-ink-950">
           M
         </div>
