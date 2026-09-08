@@ -1364,3 +1364,7 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **Auto-recorded:** The error "'function' object has no attribute 'fnmatch'" was a single failed tool call, then agent recovered. Per rule 5, a single failed attempt is not an issue.
 - **Auto-recorded:** Source zip not found (may not have been pre-generated).
 - **Auto-recorded:** - No repeated build/test failures (build failed once then succeeded after fix).
+
+## 2026-09-08 Auto-recorded from runtime
+
+- **Auto-recorded:** [思考+] " RuntimeException"

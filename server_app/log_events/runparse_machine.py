@@ -23,7 +23,10 @@ class _RunParser:
     def __init__(self, pending: dict | None):
         self.events: list[dict] = []
         self.seq = 0
-        self.skip_final_reply = False
+        # skip_final 跨批续接：批边界停在「最终回复」正文中间时，
+        # 跳过状态若丢失，正文裸行会被当作旧格式回补拼进上一条回复
+        # （实测：运行中气泡内容整段重复两遍，全量重放又正常）。
+        self.skip_final_reply = bool((pending or {}).get("skip_final", False))
         self.reply_buf: list[str] = list((pending or {}).get("reply_buf", []))
         self.pending_blanks = int((pending or {}).get("pending_blanks", 0))
         self.last_reply_json = bool((pending or {}).get("last_reply_json", False))
@@ -207,12 +210,17 @@ class _RunParser:
         return 1
 
     def to_pending(self) -> dict | None:
-        """段末残留的流式回复 → 下一次 poll 续接的 pending（无残留 None）。"""
-        if self.reply_buf:
+        """段末残留状态 → 下一次 poll 续接的 pending（无残留 None）。
+
+        除流式回复缓冲外，skip_final（最终回复跳过）也必须续接：
+        「[run_task] …最终回复:」标记与正文常跨 poll 批到达。
+        """
+        if self.reply_buf or self.skip_final_reply:
             return {
                 "reply_buf": self.reply_buf,
                 "pending_blanks": self.pending_blanks,
                 "last_reply_json": self.last_reply_json,
+                "skip_final": self.skip_final_reply,
             }
         return None
 
