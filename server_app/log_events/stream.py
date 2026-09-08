@@ -20,6 +20,58 @@ _ID_COUNTER = itertools.count(1)
 _PENDING_RUN_REPLY: dict[str, dict] = {}
 
 
+
+def _read_run_events(run_log: Path, run_off: int, session_key: str,
+                     pending_run_reply: dict | None,
+                     flush_at_eof: bool) -> tuple[list[dict], int, dict | None]:
+    """读取 run.log 新增段并解析（游标重置/pending 续接都在内）。
+
+    Args:
+        run_log: run.log 路径。
+        run_off: 当前字节游标。
+        session_key: pending 字典的会话键。
+        pending_run_reply: 上次增量未完回复（None=无）。
+        flush_at_eof: 全量读取 True（段末强制收尾回复）。
+    Returns:
+        (事件列表, 新游标, 新 pending)。
+    """
+    events: list[dict] = []
+    size = run_log.stat().st_size
+    if size < run_off:
+        run_off = 0  # 文件被截断/重建，游标重置
+        _PENDING_RUN_REPLY.pop(session_key, None)
+        pending_run_reply = None
+    if size > run_off:
+        with open(run_log, "r", encoding="utf-8", errors="replace") as f:
+            f.seek(run_off)
+            chunk = f.read(size - run_off)
+        evs, new_pending = _parse_run_block(chunk, pending_run_reply,
+                                            flush_at_eof=flush_at_eof)
+        events.extend(evs)
+        return events, size, new_pending
+    return events, run_off, pending_run_reply
+
+
+def _read_agent_events(agent_log: Path, agent_off: int) -> tuple[list[dict], int]:
+    """读取 agent.log 新增段并解析（截断重置游标）。
+
+    Args:
+        agent_log: mod/agent.log 路径。
+        agent_off: 当前字节游标。
+    Returns:
+        (事件列表, 新游标)。
+    """
+    size = agent_log.stat().st_size
+    if size < agent_off:
+        agent_off = 0  # 文件被截断/重建，游标重置
+    if size > agent_off:
+        with open(agent_log, "r", encoding="utf-8", errors="replace") as f:
+            f.seek(agent_off)
+            chunk = f.read(size - agent_off)
+        return _parse_agent_block(chunk), size
+    return [], agent_off
+
+
 def build_event_stream(session_dir: Path, cursor: Optional[dict] = None) -> dict:
     """读取两条日志的新增内容，合并为事件列表。
 
@@ -42,40 +94,22 @@ def build_event_stream(session_dir: Path, cursor: Optional[dict] = None) -> dict
     pending_run_reply = _PENDING_RUN_REPLY.get(run_key)
 
     if run_log.exists():
-        size = run_log.stat().st_size
-        if size < run_off:
-            run_off = 0  # 文件被截断/重建，游标重置
+        evs, new_off, new_pending = _read_run_events(
+            run_log, run_off, run_key, pending_run_reply, flush_at_eof=cursor is None)
+        next_cursor["run"] = new_off
+        events.extend(evs)
+        if new_pending is None:
             _PENDING_RUN_REPLY.pop(run_key, None)
-            pending_run_reply = None
-        if size > run_off:
-            with open(run_log, "r", encoding="utf-8", errors="replace") as f:
-                f.seek(run_off)
-                chunk = f.read(size - run_off)
-            next_cursor["run"] = size
-            incremental = cursor is not None
-            evs, new_pending = _parse_run_block(chunk, pending_run_reply, flush_at_eof=not incremental)
-            events.extend(evs)
-            if incremental:
-                if new_pending is None:
-                    _PENDING_RUN_REPLY.pop(run_key, None)
-                else:
-                    _PENDING_RUN_REPLY[run_key] = new_pending
-            else:
-                _PENDING_RUN_REPLY.pop(run_key, None)
+        else:
+            _PENDING_RUN_REPLY[run_key] = new_pending
     else:
         next_cursor["run"] = 0
         _PENDING_RUN_REPLY.pop(run_key, None)
 
     if agent_log.exists():
-        size = agent_log.stat().st_size
-        if size < agent_off:
-            agent_off = 0  # 文件被截断/重建，游标重置
-        if size > agent_off:
-            with open(agent_log, "r", encoding="utf-8", errors="replace") as f:
-                f.seek(agent_off)
-                chunk = f.read(size - agent_off)
-            next_cursor["agent"] = size
-            events.extend(_parse_agent_block(chunk))
+        evs, new_off = _read_agent_events(agent_log, agent_off)
+        next_cursor["agent"] = new_off
+        events.extend(evs)
     else:
         next_cursor["agent"] = 0
 

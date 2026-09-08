@@ -152,31 +152,15 @@ def main() -> int:
     store = FileSessionStore(str(session_root))
     writer = RunlogEventWriter()
 
-    session_dir.mkdir(parents=True, exist_ok=True)
-    os.chdir(str(session_dir))  # cwd 决定引擎工作区
-    writer.notice(f"模式={mode} | 工作目录 => {session_dir}")
-
-    # 启动即写 pid + working：首轮进行中不能被 server 误判成空闲
-    #（模式切换 kill 分支据此避免杀掉正在跑的首轮，实测 1e1b540ece82）
-    DaemonFiles(session_root).write_pid_and_working()
-
-    # 用户自备 Key；禁载仓库 .env（owner 密钥不得进入用户进程）
-    os.environ["DSH_NO_ENV_FILE"] = "1"
-    os.environ["DEEPSEEK_API_KEY"] = api_key
-
+    _prepare_workspace(session_dir, session_root, mode, writer)
+    _prepare_credentials(api_key)
     _early_write_user_prompt(store, mode,
                              os.environ.get("DSH_USER_PROMPT", "") or task_prompt,
                              _parse_prompt_images(),
                              is_resume=os.environ.get("DSH_RESUME", "") == "1")
-
-    try:  # 重导入在此刻（cwd 已切好）；禁止轮中途 drain（daemon 逐条消费）
-        os.environ["DSH_DEFER_DRAIN"] = "1"
-        settings = Settings.from_env()
-        engine = build_engine(settings)
-    except Exception as e:
-        logger.warning(f"[run_task] 引擎构建失败: {e}")
+    engine, settings = _build_engine_or_exit()
+    if engine is None:
         return 1
-
     messages = _assemble_first_round(store, task_prompt, _parse_prompt_images())
     if messages is None:
         return 1
@@ -189,6 +173,39 @@ def main() -> int:
     daemon_loop(engine, store, writer, session_dir, session_root, mode,
                 settings.daemon_idle_timeout_s, PROJECT_ROOT)
     return 0
+
+
+def _prepare_workspace(session_dir: Path, session_root: Path, mode: str,
+                       writer: EventWriter) -> None:
+    """输入：会话目录与模式。返回：无。职责：建目录、切 cwd、写 pid+working。
+
+    启动即写 pid + working：首轮进行中不能被 server 误判成空闲
+    （模式切换 kill 分支据此避免杀掉正在跑的首轮，实测 1e1b540ece82）。
+    """
+    session_dir.mkdir(parents=True, exist_ok=True)
+    os.chdir(str(session_dir))  # cwd 决定引擎工作区
+    writer.notice(f"模式={mode} | 工作目录 => {session_dir}")
+    DaemonFiles(session_root).write_pid_and_working()
+
+
+def _prepare_credentials(api_key: str) -> None:
+    """输入：用户 Key。返回：无。职责：注入环境（禁载仓库 .env，owner 密钥隔离）。"""
+    os.environ["DSH_NO_ENV_FILE"] = "1"
+    os.environ["DEEPSEEK_API_KEY"] = api_key
+
+
+def _build_engine_or_exit():
+    """输入：无。返回：(engine, settings) 或 (None, None)。
+
+    职责：重导入在此刻（cwd 已切好）；禁止轮中途 drain（daemon 逐条消费）。
+    """
+    try:
+        os.environ["DSH_DEFER_DRAIN"] = "1"
+        settings = Settings.from_env()
+        return build_engine(settings), settings
+    except Exception as e:
+        logger.warning(f"[run_task] 引擎构建失败: {e}")
+        return None, None
 
 
 if __name__ == "__main__":

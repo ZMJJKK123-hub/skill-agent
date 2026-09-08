@@ -170,32 +170,38 @@ def run_search_api(symbol: str, path: str = "mc_java_sources", max_results: int 
         return f"Error: {e}"
 
 
+def _grep_sandbox_ok(root: Path, base: Path) -> bool:
+    """输入：目标路径 + 工作区根。返回：是否允许搜索。
+
+    职责：非 full-access 禁止越出工作区；只读参考树
+    （mc_java_sources / docs/agent）例外。
+    """
+    if _sandbox_mode() == "full-access" or str(root).startswith(str(base)):
+        return True
+    repo_root = Path(__file__).resolve().parent.parent
+    allowed_refs = [
+        (repo_root / "mc_java_sources_1.21.11").resolve(),
+        (repo_root / "mc_java_sources_26.2").resolve(),
+        (repo_root / "docs" / "agent").resolve(),
+    ]
+    return any(ref.exists() and str(root).startswith(str(ref))
+               for ref in allowed_refs)
+
+
 def run_grep(pattern: str, path: str = ".", glob_filter: str = None,
              max_results: int = 50, context_lines: int = 0) -> str:
     """正则搜索文件内容，返回 '相对路径:行号: 行内容'（跳过运行时目录）。
 
     context_lines>0 时每个匹配附带前后 context_lines 行，方便确认签名/上下文。
+    Calls: _grep_sandbox_ok。
     """
     try:
         base = Path(_search_base()).resolve()
         root = (base / path).resolve() if not Path(path).is_absolute() else Path(path).resolve()
         # 源码树重映射：工作区无 mc_java_sources（chat 会话）时落到仓库根参考树
         root = _remap_mc_sources(root)
-        # 沙箱：非 full-access 禁止搜工作区之外；但只读参考树 mc_java_sources / docs/agent 例外
-        if _sandbox_mode() != "full-access" and not str(root).startswith(str(base)):
-            repo_root = Path(__file__).resolve().parent.parent
-            allowed_refs = [
-                (repo_root / "mc_java_sources_1.21.11").resolve(),
-                (repo_root / "mc_java_sources_26.2").resolve(),
-                (repo_root / "docs" / "agent").resolve(),
-            ]
-            allowed = False
-            for ref in allowed_refs:
-                if ref.exists() and str(root).startswith(str(ref)):
-                    allowed = True
-                    break
-            if not allowed:
-                return "Error: grep 路径越出工作区"
+        if not _grep_sandbox_ok(root, base):
+            return "Error: grep 路径越出工作区"
         try:
             rx = re.compile(pattern)
         except re.error as e:

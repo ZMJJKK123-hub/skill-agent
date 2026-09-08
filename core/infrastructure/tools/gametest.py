@@ -25,8 +25,90 @@ def _tail(path: Path, max_chars: int = 400_000) -> str:
         return f"(log read failed: {e})"
 
 
+def _classify_log_lines(log_lines: list) -> tuple[list, list, list]:
+    """输入：日志行列表。返回：(passed, failed, errors) 三组行。
+
+    职责：按关键词分类 + 结构化 PASSED!/FAILED! 行优先覆盖。
+    """
+    passed, failed, errors = [], [], []
+    for line in log_lines:
+        low = line.lower()
+        if re.search(r"\b(passed|pass)\b", low) and re.search(r"\b(test|gametest)\b", low):
+            passed.append(line.strip())
+        elif re.search(r"\b(failed|fail)\b", low) and re.search(r"\b(test|gametest)\b", low):
+            failed.append(line.strip())
+        elif re.search(r"\b(error|exception|fatal)\b", low):
+            errors.append(line.strip())
+    # 结构化行（"Test #N: ... PASSED!"）优先于关键词模糊匹配
+    structured_pass = [l for l in log_lines if "PASSED!" in l or "PASSED" in l]
+    structured_fail = [l for l in log_lines if "FAILED!" in l or "FAILED" in l]
+    if structured_pass:
+        passed = structured_pass
+    if structured_fail:
+        failed = structured_fail
+    return passed, failed, errors
+
+
+def _render_gametest_summary(path, log_lines, passed, failed, errors) -> str:
+    """输入：路径与三组分类行。返回：渲染好的汇总文本（含 RESULT 判定）。
+
+    判定规则：只有失败条目才 FAIL；passed 与 error 并存按 PASS 算
+    （数据包解析 ERROR 噪音不掩盖绿灯，红宝石剑会话实测误报）。
+    """
+    out = [
+        f"GameTest log: {path}",
+        f"Tail lines scanned: {len(log_lines)}",
+        f"Passed entries: {len(passed)}",
+        f"Failed entries: {len(failed)}",
+        f"Error/exception lines: {len(errors)}",
+    ]
+    for title, group in (("FAILED TESTS:", failed),
+                         ("PASSED TESTS (last 20):", passed),
+                         ("ERROR/EXCEPTION LINES (last 20):", errors)):
+        if group:
+            out.append("")
+            out.append(title)
+            for l in group[-20:]:
+                out.append(f"  - {l[:300]}")
+    if failed:
+        verdict = "FAIL"
+    elif passed:
+        verdict = "PASS"
+    elif errors:
+        verdict = "FAIL"
+    else:
+        verdict = "UNKNOWN (no clear pass/fail markers found; check full log)"
+    out += ["", f"RESULT: {verdict}"]
+    return "\n".join(out)
+
+
 def parse_gametest_results(lines: int = 200, log_path: str = None) -> str:
-    """Parse the tail of the GameTest log and return a concise pass/fail summary."""
+    """Parse the tail of the GameTest log and return a concise pass/fail summary.
+
+    Calls: _classify_log_lines / _render_gametest_summary。
+    """
+    base = _base_dir()
+    base_resolved = Path(base).resolve()
+    path = Path(log_path) if log_path else Path(base) / DEFAULT_LOG
+    if not path.is_absolute():
+        path = Path(base) / path
+    if not path.resolve().is_relative_to(base_resolved):
+        return f"Error: log_path 越出工作区: {path}"
+    if not path.exists():
+        return f"Error: GameTest log not found: {path}"
+
+    text = _tail(path)
+    log_lines = text.splitlines()[-max(1, min(int(lines), 2000)):]
+
+    passed, failed, errors = _classify_log_lines(log_lines)
+    return _render_gametest_summary(path, log_lines, passed, failed, errors)
+
+
+def parse_gametest_results(lines: int = 200, log_path: str = None) -> str:
+    """Parse the tail of the GameTest log and return a concise pass/fail summary.
+
+    Calls: _classify_log_lines / _render_gametest_summary。
+    """
     base = _base_dir()
     base_resolved = Path(base).resolve()
     path = Path(log_path) if log_path else Path(base) / DEFAULT_LOG

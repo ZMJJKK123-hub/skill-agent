@@ -94,6 +94,38 @@ def _stop_game_processes(session_dir: Path, note: str) -> None:
         logger.warning("游戏进程收尾清理失败: %s", e)
 
 
+def _run_pending_round(engine: AgentLoopEngine, store: FileSessionStore,
+                       writer: EventWriter, session_dir: Path,
+                       project_root: Path, files: DaemonFiles) -> None:
+    """消费一条排队消息并执行一轮（异常转通知，结束回 waiting）。
+
+    Args:
+        engine/store/writer: 引擎三元组。
+        session_dir: 会话工作目录。
+        project_root: 仓库根。
+        files: daemon 状态文件组。
+    """
+    if not _consume_one(store):
+        files.set_state("waiting")
+        return
+    messages = _assemble_round_context(store)
+    if messages is None:
+        files.set_state("waiting")
+        return
+    try:
+        run_one_round(engine, messages, session_dir, store,
+                      writer, project_root)
+    except Exception as e:
+        writer.notice(f"daemon 轮异常（继续等待）: {e}")
+        print_round_trace(e)
+        notify_round_error(store, e)
+        files.set_state("waiting")
+        return
+    if store.pending_count() == 0:  # 有排队则保留进程（下轮即用）
+        _stop_game_processes(session_dir, "")
+    files.set_state("waiting")
+
+
 def daemon_loop(engine: AgentLoopEngine, store: FileSessionStore,
                 writer: EventWriter, session_dir: Path,
                 session_root: Path, mode: str,
@@ -129,25 +161,8 @@ def daemon_loop(engine: AgentLoopEngine, store: FileSessionStore,
                 return
             last_activity = time.time()
             files.set_state("working")
-            if not _consume_one(store):
-                files.set_state("waiting")
-                continue
-            messages = _assemble_round_context(store)
-            if messages is None:
-                files.set_state("waiting")
-                continue
-            try:
-                run_one_round(engine, messages, session_dir, store,
-                              writer, project_root)
-            except Exception as e:
-                writer.notice(f"daemon 轮异常（继续等待）: {e}")
-                print_round_trace(e)
-                notify_round_error(store, e)
-                files.set_state("waiting")
-                continue
-            if store.pending_count() == 0:  # 有排队则保留进程（下轮即用）
-                _stop_game_processes(session_dir, "")
-            files.set_state("waiting")
+            _run_pending_round(engine, store, writer, session_dir,
+                               project_root, files)
     except KeyboardInterrupt:
         # server 被 Ctrl+C 停止时中断广播到同控制台 daemon → 优雅退出
         writer.notice("daemon stopped (interrupt)")

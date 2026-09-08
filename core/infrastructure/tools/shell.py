@@ -27,30 +27,45 @@ def _escapes_workspace(command: str) -> bool:
     return bool(re.search(r"\b(?:cd|pushd)\s+[\"\']?(?:\.\.|[/\\]|[a-z]:)", command.lower()))
 
 
-def run_bash(command: str) -> str:
-    """执行命令并返回 stdout/stderr，含基本安全防护（Windows）。
+#: 危险命令黑名单（taskkill /im 会误杀 Agent 自身进程树）
+_DANGEROUS = [
+    "format",
+    "diskpart", "reg delete", "shutdown",
+    "taskkill /f /im python.exe",
+    "taskkill /f /im node.exe",
+    "taskkill /f /im cmd.exe",
+]
 
-    用 Popen + 手动 taskkill /f /t /pid 杀进程树，避免 subprocess.run 在
-    shell=True 下 timeout 死锁（cmd.exe 被杀但孙子进程 node.exe 持有管道
-    导致 communicate 永不返回）。
+
+def _guard_bash_command(command: str) -> str | None:
+    """输入：命令串。返回：拒绝原因（None=放行）。
+
+    职责：危险命令黑名单 + 沙箱路径/read-only 加固。
+    Globals Used: _DANGEROUS。
     """
-    dangerous = [
-        "format",
-        "diskpart", "reg delete", "shutdown",
-        # 致命：taskkill /im 会杀掉 Agent 自身进程（python.exe）
-        "taskkill /f /im python.exe",
-        "taskkill /f /im node.exe",
-        "taskkill /f /im cmd.exe",
-    ]
-    if any(d in command.lower() for d in dangerous):
+    if any(d in command.lower() for d in _DANGEROUS):
         return "Error: Dangerous command blocked"
-    # 沙箱：路径级加固（full-access 不限制）
     mode = _sandbox_mode()
     if mode != "full-access":
         if _escapes_workspace(command):
             return "Error: 沙箱模式禁止越出工作区（cd .. / cd 绝对路径）"
         if mode == "read-only" and _is_mutating(command):
             return "Error: read-only 模式禁止修改性操作（del/rd/mkdir/copy/重定向/安装等）"
+    return None
+
+
+def run_bash(command: str) -> str:
+    """执行命令并返回 stdout/stderr，含基本安全防护（Windows）。
+
+    用 Popen + 手动 taskkill /f /t /pid 杀进程树，避免 subprocess.run 在
+    shell=True 下 timeout 死锁（cmd.exe 被杀但孙子进程 node.exe 持有管道
+    导致 communicate 永不返回）。
+    Globals Used: 无。
+    Calls: _guard_bash_command。
+    """
+    blocked = _guard_bash_command(command)
+    if blocked:
+        return blocked
     # 第 12 课：cwd 跟随线程 session 基座（worktree_use 后落在 worktree 内）
     from .runtime import worktree_manager
     base = worktree_manager.resolve_dir() if worktree_manager else os.getcwd()

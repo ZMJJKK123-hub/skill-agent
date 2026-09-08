@@ -26,34 +26,12 @@ DEBUG_DIR = Path(__file__).resolve().parent.parent / "debug"
 ORPHAN_CLEANUP_INTERVAL_S = 30 * 60
 
 
-def create_app() -> FastAPI:
-    """构建 FastAPI 应用（路由 + 兜底 + 静态托管 + startup 钩子）。
+def _mount_debug_routes(app: FastAPI) -> None:
+    """输入：应用实例。返回：无。职责：挂载 /debug 维护页路由组。
 
-    Globals Used: 无（WEB_DIR/DEBUG_DIR 为本模块常量）。
-    Returns:
-        可直接交给 uvicorn 的应用实例。
+    含入口页、静态文件（双保险防路径穿越）。
+    Globals Used: DEBUG_DIR。
     """
-    app = FastAPI(title="MOD Agent 制作器", version="0.2.0")
-    for router in (sessions.router, tasks.router, artifacts.router,
-                   history.router):
-        app.include_router(router)
-
-    @app.get("/api/health")
-    def health():
-        """debug 页面探活。"""
-        return {"status": "ok", "service": "skill-agent web", "port": 8000}
-
-    @app.get("/")
-    def index():
-        """首页（no-cache 防旧 bundle；缺失时兜底 debug 维护页）。"""
-        index_file = WEB_DIR / "index.html"
-        if index_file.exists():
-            return FileResponse(str(index_file), headers={"Cache-Control": "no-cache"})
-        debug_idx = DEBUG_DIR / "index.html"
-        if debug_idx.exists():
-            return FileResponse(str(debug_idx), headers={"Cache-Control": "no-cache"})
-        return {"error": "index.html not found", "web_dir": str(WEB_DIR)}
-
     @app.get("/debug")
     @app.get("/debug/")
     async def debug_page():
@@ -71,6 +49,45 @@ def create_app() -> FastAPI:
         if not f.is_relative_to(root) or not f.is_file():
             raise HTTPException(404, "Not found")
         return FileResponse(str(f), headers={"Cache-Control": "no-cache"})
+
+
+def _mount_index_route(app: FastAPI) -> None:
+    """输入：应用实例。返回：无。职责：挂载 / 首页与 /api/health。
+
+    首页 no-cache 防旧 bundle；缺失时兜底 debug 维护页。
+    Globals Used: WEB_DIR/DEBUG_DIR。
+    """
+    @app.get("/api/health")
+    def health():
+        """debug 页面探活。"""
+        return {"status": "ok", "service": "skill-agent web", "port": 8000}
+
+    @app.get("/")
+    def index():
+        """首页（no-cache 防旧 bundle；缺失时兜底 debug 维护页）。"""
+        index_file = WEB_DIR / "index.html"
+        if index_file.exists():
+            return FileResponse(str(index_file), headers={"Cache-Control": "no-cache"})
+        debug_idx = DEBUG_DIR / "index.html"
+        if debug_idx.exists():
+            return FileResponse(str(debug_idx), headers={"Cache-Control": "no-cache"})
+        return {"error": "index.html not found", "web_dir": str(WEB_DIR)}
+
+
+def create_app() -> FastAPI:
+    """构建 FastAPI 应用（路由 + 兜底 + 静态托管 + startup 钩子）。
+
+    Globals Used: 无（WEB_DIR/DEBUG_DIR 为本模块常量）。
+    Returns:
+        可直接交给 uvicorn 的应用实例。
+    """
+    app = FastAPI(title="MOD Agent 制作器", version="0.2.0")
+    for router in (sessions.router, tasks.router, artifacts.router,
+                   history.router):
+        app.include_router(router)
+
+    _mount_index_route(app)
+    _mount_debug_routes(app)
 
     @app.exception_handler(StarletteHTTPException)
     async def fallback_404_to_debug(request: Request,
