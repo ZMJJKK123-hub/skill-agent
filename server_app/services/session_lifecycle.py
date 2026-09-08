@@ -13,7 +13,8 @@ from pathlib import Path
 from infrastructure.process_governor import (kill_session_game_processes,
                                               purge_session_dir)
 from infrastructure.session_disk import SessionDisk
-from .session_manager import SESSIONS_DIR, Session, get_session, sessions
+from .session_manager import (ORPHAN_TTL_S, SESSIONS_DIR, Session,  # 孤儿判定阈值与注册表
+                                get_session, logger, sessions)  # logger 部分初始化时已定义（L26 早于尾部再导出）
 
 def purge_session(sess: Session) -> None:
     """彻底清理会话：kill 子进程 + 杀游戏/Gradle 进程 + 删目录 + 移除记录。"""

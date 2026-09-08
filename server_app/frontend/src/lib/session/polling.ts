@@ -49,6 +49,7 @@ async function _pollOnce(sid: string) {
       paused: st.paused,
       pending: st.pending ?? 0,
       phase: st.finished ? 'finished' : st.paused ? 'paused' : 'running',
+      crashed: !!st.crashed,
     })
     // 任务完成：刷新侧栏（标题在运行期间才落盘，创建瞬间的首次拉取拿不到）
     if (st.finished) {

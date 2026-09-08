@@ -154,6 +154,17 @@ export function Messages() {
         )}
 
         {error && <div className="text-sm text-red-400">{errMsg(error)}</div>}
+
+        {/* 崩溃标记：服务端 crashed 旗标或日志尾部 traceback——chat 会话
+            没有 mod 按钮组，必须独立渲染，否则异常退出被静默吞掉 */}
+        {phase === 'finished' &&
+          (sess.crashed ||
+            /(任务异常终止|Traceback \(most recent call last\))/.test(sess.logTail)) && (
+          <div className="flex items-center gap-1.5 py-1 text-xs text-red-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+            ✗ {t('conv.crashed')}
+          </div>
+        )}
       </div>
 
       {/* 下载/重新生成按钮：条件取 mode==='mod' || hasJar（/chat 切回后

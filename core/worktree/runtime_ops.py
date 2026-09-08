@@ -6,7 +6,9 @@
 生命周期：WorktreeManager(manager.py) 继承组合；单例构建在
 infrastructure/tools/runtime.py。
 """
+import json
 import subprocess
+from pathlib import Path  # 命令/路径类型
 
 from ..config import logger
 

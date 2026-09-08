@@ -5,8 +5,11 @@
 焦点借用由 input 的 _borrow_game_focus 提供。
 生命周期：handlers 注册为 verify_visual_loop 工具。
 """
-from ..vision import run_analyze_image  # 视觉分析（tools.vision 包）
+import time  # 重试间隔节流
+
+from ..vision import run_analyze_image, run_screenshot  # 视觉分析与截图（tools.vision 包）
 from .input import _borrow_game_focus  # 截图前焦点借用
+from .rcon import send_game_command  # RCON 游戏内指令通道
 
 def verify_visual_loop(prompt: str, max_attempts: int = 3, interval: int = 5,
                        command: str = None, rcon_password: str = None,

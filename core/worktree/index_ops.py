@@ -6,6 +6,7 @@
 生命周期：WorktreeManager(manager.py) 继承组合。
 """
 import json
+from datetime import datetime, timezone  # 注册时间戳
 from pathlib import Path  # 索引/注册路径类型
 from ..config import logger
 

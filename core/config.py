@@ -110,4 +110,5 @@ def safe_path(p: str, base: str | None = None) -> Path:
 from .prompts import (SYSTEM, CHAT_TOOL_GUIDE, SUBAGENT_SYSTEM,  # noqa: E402,F401
                       SUPERVISOR_SYSTEM, TEAMMATE_SYSTEM_PREFIX,
                       build_system_prompt, MAX_SUBAGENT_TURNS,
-                      SUPERVISOR_MAX_TURNS)
+                      SUPERVISOR_MAX_TURNS, prompt_assembler)
+from .promptkit import PromptSection  # noqa: E402,F401 — handlers 注册 section 用

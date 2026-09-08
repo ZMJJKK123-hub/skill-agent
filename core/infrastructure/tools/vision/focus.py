@@ -9,6 +9,7 @@ from ....config import logger
 
 
 def _remember_user_foreground() -> None:
+    from . import _user_fg  # 延迟导入：vision 包组合本模块，避免环
     """抢焦点前记录用户当前前台窗口（MC 自身与无标题窗口不记）。
 
     10 秒内的连续抢焦点（同一次验证的连续截图/按键）视为一批，
@@ -40,6 +41,7 @@ def _remember_user_foreground() -> None:
 
 
 def _restore_user_foreground() -> None:
+    from . import _user_fg  # 延迟导入：同上
     """把焦点还给用户正在用的窗口（ALT 技巧绕过 Windows 前台锁定）。"""
     hwnd = _user_fg["hwnd"]
     if not hwnd or time.time() - _user_fg["ts"] > 60:
@@ -96,6 +98,7 @@ def _focus_minecraft_window(wait: float = 0.8, maximize: bool = True):
     MC 窗口置前并按其矩形裁剪，才能真正"看到"游戏画面。
     找不到窗口或非 Windows 时返回 None（回退原全屏行为）。
     """
+    from . import _user_fg  # 延迟导入：同上
     _remember_user_foreground()
     if os.name != "nt":
         return None

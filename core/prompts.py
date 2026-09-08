@@ -6,8 +6,9 @@ section 组装器接线、子代理/监管/队友系统提示词与轮次上限�
 生命周期：config 尾部再导出（全库 from .config import SYSTEM 等零改动）。
 """
 import os
+from pathlib import Path  # build_system_prompt 内的路径判断
 
-from .config import MODE  # persona 选择依据（config 尾部才导入本模块，MODE 已定义）
+from .config import MODE, MODEL  # persona 选择依据与模型名  # persona 选择依据（config 尾部才导入本模块，MODE 已定义）
 
 
 SYSTEM_MOD = r"""You are a game MOD (Minecraft / Forge 1.21.11) development agent. Build complete, runnable, verified MOD projects.

@@ -16,6 +16,10 @@ import logging  # 子进程入口诊断日志（stdout=run.log，见下方 _log 
 import os
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING  # 仅类型检查期导入（运行期不抢跑 sys.path 注入）
+
+if TYPE_CHECKING:
+    from core.interfaces.event_writer import EventWriter  # _prepare_workspace 标注
 
 # 入口诊断通道：本进程 stdout 由 server 重定向追加进 run.log，
 # 用纯消息格式（%(message)s）保证落盘文本与旧 print 完全一致。
@@ -127,8 +131,6 @@ def _assemble_first_round(store, task_prompt: str,
 
 def main() -> int:
     """进程入口：装配 → 首轮 → daemon 常驻。Returns: 进程退出码。"""
-    from core.bootstrap import build_engine
-    from core.infrastructure.config import Settings
     from core.infrastructure.logging_.runlog_writer import RunlogEventWriter
     from core.infrastructure.session_files import FileSessionStore
     from services.daemon_runner import DaemonFiles, daemon_loop
@@ -173,6 +175,10 @@ def main() -> int:
 
 def _run_first_round_safely(engine, messages, session_dir, store, writer) -> None:
     """执行首轮（异常转通知与栈打印，不阻断 daemon 常驻）。"""
+    from services.round_runner import (notify_round_error,  # 首轮执行三件套（延迟导入同 main 时序）
+                                        print_round_trace,
+                                        run_one_round)
+
     try:
         run_one_round(engine, messages, session_dir, store, writer, PROJECT_ROOT)
     except Exception as e:
@@ -181,12 +187,14 @@ def _run_first_round_safely(engine, messages, session_dir, store, writer) -> Non
 
 
 def _prepare_workspace(session_dir: Path, session_root: Path, mode: str,
-                       writer: EventWriter) -> None:
+                       writer: "EventWriter") -> None:
     """输入：会话目录与模式。返回：无。职责：建目录、切 cwd、写 pid+working。
 
     启动即写 pid + working：首轮进行中不能被 server 误判成空闲
     （模式切换 kill 分支据此避免杀掉正在跑的首轮，实测 1e1b540ece82）。
     """
+    # 延迟导入：模块级导入时仓库根尚未进 sys.path（下方 main 才注入），且需保持 cwd 已切好的时序
+    from services.daemon_runner import DaemonFiles
     session_dir.mkdir(parents=True, exist_ok=True)
     os.chdir(str(session_dir))  # cwd 决定引擎工作区
     writer.notice(f"模式={mode} | 工作目录 => {session_dir}")
@@ -204,11 +212,18 @@ def _build_engine_or_exit():
 
     职责：重导入在此刻（cwd 已切好）；禁止轮中途 drain（daemon 逐条消费）。
     """
+    from core.bootstrap import build_engine  # 延迟导入：构建必须发生在 cwd 切换后
+    from core.infrastructure.config import Settings  # 同上：from_env 读工作区相关环境
+
     try:
         os.environ["DSH_DEFER_DRAIN"] = "1"
         settings = Settings.from_env()
         return build_engine(settings), settings
     except Exception as e:
+        # 全栈落 run.log：前端以 Traceback 兜底判崩溃（服务重启后内存
+        # proc 丢失，crashed 旗标不可用时仍能显示异常终止标记）
+        from services.round_runner import print_round_trace
+        print_round_trace(e)
         logger.warning(f"[run_task] 引擎构建失败: {e}")
         return None, None
 

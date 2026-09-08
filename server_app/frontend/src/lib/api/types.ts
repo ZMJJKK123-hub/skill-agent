@@ -17,6 +17,7 @@ export interface SessionStats {
 
 export interface StatusResponse extends SessionStats {
   log_tail: string
+  crashed?: boolean  // 子进程异常退出（服务端 _crashed 判定）
   paused?: boolean
   pending?: number
 }

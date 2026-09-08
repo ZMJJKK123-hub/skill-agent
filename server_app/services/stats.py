@@ -97,7 +97,25 @@ def session_stats(sess: Session) -> dict:
             "finished": finished, "started_at": sess.started_at,
             "finished_at": sess.finished_at, "elapsed": elapsed,
             "file_count": file_count, "total_bytes": total_bytes,
-            "has_jar": _has_jar(sess.mod_dir)}
+            "has_jar": _has_jar(sess.mod_dir),
+            "crashed": _crashed(sess, proc_alive)}
+
+
+def _crashed(sess: Session, proc_alive: bool) -> bool:
+    """输入：会话 + 进程存活态。返回：子进程是否异常退出。
+
+    判定：进程已退出且退出码非 0，同时 daemon.state 仍停在 working
+    （正常路径退出前会写回 waiting）——首轮前崩溃（如引擎构建失败）
+    即此形态。前端据此显示"运行异常终止"，不再静默吞掉。
+    Args:
+        sess: 目标会话（读 proc.returncode）。
+        proc_alive: 进程是否仍在运行。
+    """
+    if proc_alive or sess.proc is None:
+        return False
+    returncode = sess.proc.returncode
+    daemon_st = daemon_state(sess)
+    return returncode not in (0, None) and daemon_st == "working"
 
 
 def _elapsed(sess: Session, running: bool, finished: bool) -> Optional[int]:

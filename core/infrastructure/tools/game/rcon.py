@@ -2,6 +2,7 @@
 """RCON 底座：Socket RCON 协议 + send_game_command。
 由 game.py 原样迁出。
 """
+import os  # 环境变量与进程级路径操作
 import socket
 import struct
 import time

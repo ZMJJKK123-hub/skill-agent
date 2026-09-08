@@ -45,6 +45,7 @@ export interface SessionState {
   pending: number            // 运行中排队消息数（>0 自动续跑）
   lastSendAt: number | null  // 最近一次本地发送时间（抑制"排队"闪烁）
   stoppedNotice: boolean     // 是否显示"您已终止该对话"横线
+  crashed: boolean            // 子进程异常退出（chat 会话也要显示终止标记）
 }
 
 /** 初始空态 */
@@ -68,6 +69,7 @@ export function initialState(): SessionState {
     paused: false,
     pending: 0,
     lastSendAt: null,
+    crashed: false,
     stoppedNotice: false,
   }
 }

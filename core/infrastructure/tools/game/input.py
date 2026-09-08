@@ -9,6 +9,8 @@ import re
 import time
 from pathlib import Path
 
+from .rcon import _VK_MAP  # 键名→虚拟键码表（rcon 域持有）
+
 from ....config import logger
 from ..runtime import worktree_manager
 from ..vision import run_analyze_image, run_screenshot

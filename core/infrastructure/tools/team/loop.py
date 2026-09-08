@@ -6,7 +6,13 @@
 编排函数（2026-09-08 用户确认豁免 40 行硬限）。
 生命周期：TeammateManager(manager.py) 继承组合。
 """
+import json  # 协议消息参数解析
+import time  # 轮询/退避节流
+
+from .... import config  # 全局配置（AUTO_MODE 等运行时读取）
 from ....config import logger  # 统一日志（子循环内的 SDK/工具导入为函数级局部导入）
+from ....protocol import coordinator, inject_pending_requests, parse_protocol_flag  # 团队协议
+from ....skillcheck import move_skills_to_end, run_loop_check  # 技能尾部化与循环检查
 
 
 class TeammateLoopMixin:
@@ -164,6 +170,7 @@ class TeammateLoopMixin:
         message = None
         for turn in range(MAX_SUBAGENT_TURNS):
             # ── 第 11 课：身份重注入（Context Compact 后消息列表骤降时触发）──
+            from .manager import maybe_reinject_identity  # 延迟导入：manager 组合本模块，调用时已初始化
             sub_messages = maybe_reinject_identity(agent_id, system, sub_messages)
 
             # ── 第 10 课：每轮开始注入协议请求（计划审批结果 / 关机请求）──

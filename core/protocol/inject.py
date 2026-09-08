@@ -3,7 +3,8 @@
 由 protocol.py 原样迁出。
 """
 from ..config import logger
-from .coordinator import coordinator
+from .coordinator import PROTOCOL_FLAG, coordinator  # 协议旗标与协调器
+from .tracker import RequestStatus  # 请求状态枚举
 
 
 # ---------- 协议消息与上下文注入 ----------

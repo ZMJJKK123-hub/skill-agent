@@ -5,6 +5,9 @@
 均带焦点保护（_focus_managed 由组合调用方管理）。
 生命周期：handlers 注册与 game_input 分发调用。
 """
+import ctypes  # Windows 键码发送（user32.keybd_event）
+import time  # 按键间隔节流
+
 from ....config import logger  # 统一日志
 from .input import _borrow_game_focus, _return_focus, _vk_code  # 焦点保护与键码表
 

@@ -9,6 +9,7 @@ import json  # daemon 推理/结果文件解析
 import logging  # 降级记录
 import time  # 轮询节流
 
+from attachments import collect_attachments  # 附件收集（结束时构造 x_soda）
 from daemon_api import (_DAEMONS, append_conversation,
                         ensure_session_daemon, session_workdir,
                         submit_daemon_request)

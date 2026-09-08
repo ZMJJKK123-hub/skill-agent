@@ -7,8 +7,10 @@ latest.log 尾读；全部带路径沙箱与超时治理。
 """
 import os
 import subprocess
+from pathlib import Path  # 日志路径类型
 
 from ...config import logger, safe_path
+from .mod import GAME_TEST_TIMEOUT  # GameTest 超时常量（build 域持有）
 from .runtime import worktree_manager
 
 #: GameTest 运行日志相对路径（与 build.gradle workingDir=run 一致）

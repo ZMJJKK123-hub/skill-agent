@@ -4,6 +4,8 @@
 """
 import re
 
+from .runparse import _ev  # 事件构造原语（run.log 与 agent.log 事件同构）
+
 
 # ---------- agent.log 事件解析 ----------
 

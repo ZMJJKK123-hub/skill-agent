@@ -4,7 +4,9 @@
 类职责：digest 计算 / 历史比对 / 目录消息渲染 / 变化才追加注入。
 生命周期：loop 的 skill_catalog 注入器每轮调用。
 """
-import hashlib
+import hashlib as _hashlib  # digest 计算（原名迁出）
+import json  # 目录条目序列化
+import re  # 消息块解析
 
 from ...config import logger
 from .skills import skill_loader  # 单例在 skills 中部已定义（尾部才导入本模块）

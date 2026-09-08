@@ -5,6 +5,7 @@
 import json
 import os
 import threading
+import time  # 信箱时间戳
 from pathlib import Path
 
 from ....config import logger
@@ -45,6 +46,7 @@ class MessageBus:
 
     def send(self, from_name: str, to_name: str, content: str):
         """往目标队友的收件箱追加一条消息。"""
+        from .manager import _is_safe_agent_name  # 延迟导入：manager 组合链下游，调用时已就绪
         if not _is_safe_agent_name(to_name):
             logger.warning(f"MessageBus.send | 非法 to_name={to_name!r}，已忽略")
             return
