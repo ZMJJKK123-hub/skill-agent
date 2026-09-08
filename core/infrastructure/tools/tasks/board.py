@@ -7,10 +7,12 @@ import os
 import threading
 
 from ....config import logger
+from . import board_store  # 文件存储基座（拆分模块）
+from .board_queries import TaskQueriesMixin  # 查询/渲染域（拆分模块）
 
 
 # ---------- TaskManager（第 7 课：文件级持久化的任务图 DAG）----------
-class TaskManager:
+class TaskManager(TaskQueriesMixin):
     """文件即数据库的任务管理系统。
 
     每个任务存为一个独立 JSON 文件（.tasks/task_N.json），含 5 个字段：
@@ -31,43 +33,19 @@ class TaskManager:
         )
 
     def _task_path(self, task_id: int) -> str:
-        return os.path.join(self.task_dir, f"task_{task_id}.json")
+        return board_store._task_path(self.task_dir, task_id)
 
     def _read_task(self, task_id: int) -> dict | None:
-        path = self._task_path(task_id)
-        if not os.path.exists(path):
-            return None
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        return board_store._read_task(self.task_dir, task_id)
 
     def _write_task(self, task: dict):
-        path = self._task_path(task["id"])
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(task, f, indent=2, ensure_ascii=False)
+        board_store._write_task(self.task_dir, task)
 
     def _compute_next_id(self) -> int:
-        existing = self._all_task_ids()
-        return max(existing, default=0) + 1
+        return board_store._compute_next_id(self.task_dir)
 
     def _all_task_ids(self) -> list[int]:
-        # Bug A 修复：Agent 收尾阶段可能用 bash 物理删除 .tasks 目录
-        # （任务清理指令里就要求删掉 .tasks）。目录不存在时按"空任务列表"
-        # 处理，避免 all_completed() 在 os.listdir() 处抛 FileNotFoundError
-        # 导致主循环收尾崩溃。
-        if not os.path.isdir(self.task_dir):
-            logger.info(
-                f"TaskManager._all_task_ids | 目录 {self.task_dir} 不存在，"
-                f"按空任务列表处理"
-            )
-            return []
-        ids = []
-        for fname in os.listdir(self.task_dir):
-            if fname.startswith("task_") and fname.endswith(".json"):
-                try:
-                    ids.append(int(fname[5:-5]))
-                except ValueError:
-                    continue
-        return sorted(ids)
+        return board_store._all_task_ids(self.task_dir)
 
     def create(self, subject: str, blocked_by: list[int] | None = None) -> dict:
         """创建一个新任务，可选指定依赖。校验依赖任务必须存在。"""
@@ -146,60 +124,6 @@ class TaskManager:
                 )
         if not cleared:
             logger.info(f"  → 无下游任务需要解锁")
-
-    def list_tasks(self, status_filter: str | None = None) -> list[dict]:
-        """列出所有任务，可按状态过滤。"""
-        tasks = []
-        for tid in self._all_task_ids():
-            task = self._read_task(tid)
-            if task and (status_filter is None or task["status"] == status_filter):
-                tasks.append(task)
-        logger.info(
-            f"TaskManager.list_tasks | filter={status_filter} | 返回 {len(tasks)} 个任务"
-        )
-        return tasks
-
-    def get_task(self, task_id: int) -> dict:
-        """获取单个任务的详情。"""
-        task = self._read_task(task_id)
-        if task is None:
-            error_msg = f"Task {task_id} not found"
-            logger.warning(f"TaskManager.get_task 失败: {error_msg}")
-            return {"error": error_msg}
-        logger.info(f"TaskManager.get_task | task_id={task_id} | 返回 task")
-        return task
-
-    def get_actionable(self) -> list[dict]:
-        """获取所有可以立即执行的任务（pending + blockedBy 为空）。"""
-        return [
-            t for t in self.list_tasks()
-            if t["status"] == "pending" and not t["blockedBy"]
-        ]
-
-    def unclaimed_actionable(self) -> list[dict]:
-        """第 11 课：扫描看板，返回可认领任务（pending + 无 owner + 未被阻塞）。
-
-        is_blocked 检查 blockedBy 依赖——任一依赖未完成则任务不可拿。
-        """
-        result = []
-        for t in self.list_tasks():
-            if t["status"] != "pending":
-                continue
-            if t.get("owner") is not None:
-                continue
-            if self._is_blocked(t):
-                continue
-            result.append(t)
-        logger.info(f"TaskManager.unclaimed_actionable | 返回 {len(result)} 个可认领任务")
-        return result
-
-    def _is_blocked(self, task: dict) -> bool:
-        """判断任务是否被未完成的依赖阻塞（第 11 课 is_blocked）。"""
-        for dep_id in task.get("blockedBy", []):
-            dep = self._read_task(dep_id)
-            if dep is not None and dep["status"] != "completed":
-                return True
-        return False
 
     def claim(self, task_id: int, agent_id: str) -> bool:
         """第 11 课：原子认领任务。
