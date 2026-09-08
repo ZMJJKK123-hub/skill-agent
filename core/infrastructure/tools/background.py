@@ -10,6 +10,8 @@ from typing import Optional
 
 from ...config import logger
 from .runtime import worktree_manager
+from ...config import logger  # 统一日志：降级路径记录
+from ...config import logger  # 统一日志：降级路径记录
 
 # ---------- BackgroundManager（第 8 课：异步后台执行 + 通知队列）----------
 @dataclass
@@ -96,8 +98,8 @@ class BackgroundManager:
             kill_pid(proc.pid)
             try:
                 proc.communicate(timeout=5)
-            except:
-                pass
+            except Exception as e:  # noqa: BLE001
+                logger.debug("超时 kill 后回收输出失败（降级忽略） | %s", e)
             result = "Error: Background task timed out (600s)"
             status = "failed"
         except Exception as e:

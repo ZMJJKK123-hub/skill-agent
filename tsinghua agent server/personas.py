@@ -2,6 +2,9 @@
 """人格系统：提示词表 / 会话人格持久化 / 切换命令解析（由 main.py 迁出）。"""
 import os
 from pathlib import Path
+import logging  # 统一日志：降级路径记录
+
+logger = logging.getLogger("tsinghua.personas")
 
 PERSONA_PROMPTS = {
     "default": "你是默认的普通 AI 助手，语气自然、专业、温和，不刻意扮演任何特定角色。",
@@ -48,8 +51,8 @@ def resolve_persona_key(session_id: str, workdir) -> str:
             key = pfile.read_text(encoding="utf-8").strip().lower()
             if key in PERSONA_PROMPTS:
                 return key
-        except OSError:
-            pass
+        except OSError as e:
+            logger.debug("resolve_persona_key 降级忽略 | %s", e)
     return os.environ.get("DSH_PERSONA", "").strip().lower()
 
 

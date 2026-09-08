@@ -8,6 +8,7 @@ from pathlib import Path
 from ...config import logger, safe_path
 from ...gradletools import GRADLE_TOOLS as _GT
 from .runtime import worktree_manager
+from ...config import logger  # 统一日志：降级路径记录
 
 _GT_BASE = None
 
@@ -84,8 +85,8 @@ def _forge_build_jar(kw: dict) -> str:
     except subprocess.TimeoutExpired:
         try:
             subprocess.run(f"taskkill /f /t /pid {proc.pid}", shell=True, capture_output=True)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("_forge_build_jar 降级忽略 | %s", e)
         return f"[build] Gradle 构建超时（>900s）。\n日志尾部:\n{(out or '')[-3000:]}"
 
     ok = proc.returncode == 0
@@ -208,12 +209,12 @@ def _run_game_test_server(kw: dict) -> str:
     except subprocess.TimeoutExpired:
         try:
             subprocess.run(f"taskkill /f /t /pid {proc.pid}", shell=True, capture_output=True)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("_run_game_test_server 降级忽略 | %s", e)
         try:
             proc.communicate(timeout=5)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("_run_game_test_server 降级忽略 | %s", e)
         return (
             f"[gametest] runGameTestServer 超时（>{GAME_TEST_TIMEOUT}s），进程已终止。\n"
             f"注意：GameTestServer 运行完测试后可能不会自动退出（若有测试通过则等待全部完成）。\n"

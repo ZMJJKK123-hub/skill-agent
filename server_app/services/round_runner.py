@@ -66,8 +66,8 @@ def _print_final_preview(writer: EventWriter, final: str) -> None:
         try:
             for ln in preview.splitlines()[:10]:
                 writer.notice(ln[:120])
-        except OSError:
-            pass
+        except OSError as e:
+            logger.debug("_print_final_preview 降级忽略 | %s", e)
 
 
 def strip_pending_messages(messages: list[Message],

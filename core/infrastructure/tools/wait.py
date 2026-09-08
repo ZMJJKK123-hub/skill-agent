@@ -9,6 +9,7 @@ from pathlib import Path
 
 from ... import process_manager as pm
 from .runtime import worktree_manager
+from ...config import logger  # 统一日志：降级路径记录
 
 
 def _base_dir():
@@ -68,16 +69,16 @@ def wait_for_mc_ready(handle="mc-server", pattern=r"Done \(", timeout=120,
                 txt = Path(info["log_path"]).read_text(encoding="utf-8", errors="replace")
                 if rx.search(txt):
                     return f"[wait_for_mc_ready] '{handle}' READY (matched {pattern!r})"
-            except OSError:
-                pass
+            except OSError as e:
+                logger.warning("wait_for_mc_ready 降级忽略 | %s", e)
         if check_port:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(0.5)
             try:
                 if s.connect_ex(("127.0.0.1", int(port))) == 0:
                     return f"[wait_for_mc_ready] port {port} open"
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("wait_for_mc_ready 降级忽略 | %s", e)
             finally:
                 s.close()
         time.sleep(1)

@@ -11,6 +11,7 @@ from ...config import logger
 from ...gradletools import start_gradle_task
 from .game import send_game_command
 from .runtime import worktree_manager
+from ...config import logger  # 统一日志：降级路径记录
 
 
 def _base_dir():
@@ -99,8 +100,8 @@ def _hide_minecraft_windows():
                     user32.SetWindowPos(hwnd, 1, 0, 0, 0, 0,
                                         0x0001 | 0x0002 | 0x0010 | 0x0400)  # HWND_BOTTOM
                     moved.append(title)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("_cb 降级忽略 | %s", e)
             return True
 
         user32.EnumWindows(_cb, 0)
@@ -182,8 +183,8 @@ def mc_status(handle=None):
         try:
             if s.connect_ex(("127.0.0.1", port)) == 0:
                 lines.append(f"  port {port} ({name}): OPEN")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("mc_status 降级忽略 | %s", e)
         finally:
             s.close()
     # Tail latest relevant logs for readiness hints
@@ -198,8 +199,8 @@ def mc_status(handle=None):
                 tail = txt.strip().splitlines()[-5:]
                 if tail:
                     hints.append(f"{handle_hint} tail: {' | '.join(t[-1] for t in tail)}")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("mc_status 降级忽略 | %s", e)
     if hints:
         lines.append("  " + "\n  ".join(hints))
     return "\n".join(lines)

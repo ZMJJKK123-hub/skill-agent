@@ -6,6 +6,7 @@ import subprocess
 from pathlib import Path
 
 from .runtime import worktree_manager
+from ...config import logger  # 统一日志：降级路径记录
 
 
 def _base_dir() -> str:
@@ -18,8 +19,8 @@ def _rmtree(path: Path) -> None:
         return
     try:
         shutil.rmtree(path, ignore_errors=True)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("_rmtree 降级忽略 | %s", e)
     if path.exists():
         full = "\\\\?\\" + str(path.resolve())
         subprocess.run(f'cmd /c rd /s /q "{full}"', shell=True, capture_output=True)
@@ -60,8 +61,8 @@ def cleanup_workspace(mode: str = "cache") -> str:
                 try:
                     p.unlink()
                     removed.append(str(p.relative_to(base)))
-                except OSError:
-                    pass
+                except OSError as e:
+                    logger.warning("cleanup_workspace 降级忽略 | %s", e)
 
     if not removed:
         return "Nothing to clean."

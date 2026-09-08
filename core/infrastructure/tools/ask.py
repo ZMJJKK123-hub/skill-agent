@@ -6,6 +6,7 @@ from pathlib import Path
 
 from ... import config
 from ...config import logger
+from ...config import logger  # 统一日志：降级路径记录
 
 def run_ask_user(questions, options: list = None) -> str:
     """向用户提出一个或多个问题并阻塞等待回答（文件 IPC：写 question.json，轮询 answer.json）。
@@ -67,13 +68,13 @@ def run_ask_user(questions, options: list = None) -> str:
                     continue
                 try:
                     apath.unlink()
-                except OSError:
-                    pass
+                except OSError as e:
+                    logger.warning("run_ask_user 降级忽略 | %s", e)
                 if qpath.exists():
                     try:
                         qpath.unlink()
-                    except OSError:
-                        pass
+                    except OSError as e:
+                        logger.warning("run_ask_user 降级忽略 | %s", e)
                 # 结构化多答案：{answers: [{question, answer}, ...]}
                 raw_answers = data.get("answers")
                 if isinstance(raw_answers, list):
@@ -99,7 +100,7 @@ def run_ask_user(questions, options: list = None) -> str:
     if qpath.exists():
         try:
             qpath.unlink()
-        except OSError:
-            pass
+        except OSError as e:
+            logger.warning("run_ask_user 降级忽略 | %s", e)
     return "(用户未回答，已超时)"
 

@@ -35,8 +35,8 @@ def _remember_user_foreground() -> None:
         user32.GetWindowTextW(hwnd, buf, length + 1)
         if buf.value and "minecraft" not in buf.value.lower():
             _user_fg["hwnd"] = hwnd
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("_remember_user_foreground 降级忽略 | %s", e)
 
 
 def _restore_user_foreground() -> None:
@@ -53,8 +53,8 @@ def _restore_user_foreground() -> None:
         user32.keybd_event(0x12, 0, 2, 0)   # ALT up
         user32.ShowWindow(hwnd, 9)          # SW_RESTORE
         user32.SetForegroundWindow(hwnd)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("_restore_user_foreground 降级忽略 | %s", e)
 
 
 def focus_game_window(wait: float = 0.3, maximize: bool = False) -> bool:
@@ -100,8 +100,8 @@ def _focus_minecraft_window(wait: float = 0.8, maximize: bool = True):
                     if user32.GetWindowRect(hwnd, ctypes.byref(rect)):
                         if (rect.right - rect.left) > 200 and (rect.bottom - rect.top) > 150:
                             found.append((hwnd, (rect.left, rect.top, rect.right, rect.bottom)))
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("_cb 降级忽略 | %s", e)
             return True
 
         user32.EnumWindows(_cb, 0)

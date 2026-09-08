@@ -8,6 +8,7 @@ import threading
 from pathlib import Path
 
 from ....config import logger
+from ....config import logger  # 统一日志：降级路径记录
 
 
 # ---------- MessageBus（第 9 课：JSONL 收件箱，drain-on-read）----------
@@ -105,7 +106,7 @@ class MessageBus:
                     try:
                         with open(path, "w", encoding="utf-8") as f:
                             pass  # truncate to empty
-                    except OSError:
-                        pass
+                    except OSError as e:
+                        logger.debug("clear_all 降级忽略 | %s", e)
         logger.info(f"MessageBus.clear_all | 已清空 {self.inbox_dir} 下所有收件箱文件")
 

@@ -301,7 +301,7 @@ class WorktreeManager:
             try:
                 proc.communicate(timeout=5)
             except subprocess.TimeoutExpired:
-                pass
+                logger.warning(f"kill 后 5s 仍未退出（放弃回收） | pid={proc.pid}")
             return "Error: run_in_worktree timeout (120s), process tree killed"
         out = (out or "").strip()
         logger.info(

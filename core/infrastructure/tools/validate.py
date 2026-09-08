@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 
 from .runtime import worktree_manager
+from ...config import logger  # 统一日志：降级路径记录
 
 _RESOURCE_ROOT_NAMES = ("assets", "data")
 
@@ -31,8 +32,8 @@ def _find_modid(base: str) -> str | None:
                 m = re.search(r'modId\s*=\s*"([^"]+)"', text)
                 if m:
                     return m.group(1).strip()
-            except OSError:
-                pass
+            except OSError as e:
+                logger.warning("_find_modid 降级忽略 | %s", e)
     # Fallback: search Java files for @Mod("...")
     java_root = Path(base) / "src" / "main" / "java"
     if java_root.is_dir():

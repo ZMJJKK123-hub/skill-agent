@@ -62,8 +62,8 @@ class SessionDisk:
             f = self.root / "owner.txt"
             if f.exists():
                 return f.read_text(encoding="utf-8").strip()
-        except OSError:
-            pass
+        except OSError as e:
+            logger.debug("read_owner 降级忽略 | %s", e)
         return ""
 
     def write_owner(self, username: str) -> None:

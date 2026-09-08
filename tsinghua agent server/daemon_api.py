@@ -14,6 +14,9 @@ from config_env import WORKSPACE
 from attachments import collect_attachments
 from normalize import is_mod_request, last_user_content
 from replies import append_service_notice, append_persona_guide, append_web_hint
+import logging  # 统一日志：降级路径记录
+
+logger = logging.getLogger("tsinghua.daemon")
 
 
 # 每个会话的常驻 daemon 子进程注册表
@@ -26,8 +29,8 @@ def cleanup_daemons() -> None:
     for proc in list(_DAEMONS.values()):
         try:
             proc.terminate()
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as e:  # noqa: BLE001
+            logger.debug("daemon 终止失败（退出清理，降级忽略） | %s", e)
     _DAEMONS.clear()
 
 
@@ -56,8 +59,8 @@ def append_conversation(session_id: str, messages, final_text: str) -> None:
             with conv_file.open("a", encoding="utf-8") as f:
                 for e in entries:
                     f.write(json.dumps(e, ensure_ascii=False) + chr(10))
-    except Exception:
-        pass  # 会话历史是旁路数据，失败不阻断响应
+    except Exception as e:
+        logger.warning("append_conversation 降级忽略 | %s", e)
 
 
 def session_workdir(session_id: str) -> Path:
@@ -95,8 +98,8 @@ def ensure_session_daemon(session_root: Path) -> None:
                 with open(log_path, "r", encoding="utf-8", errors="replace") as f:
                     _lines = f.read().splitlines()
                 tail = " | ".join(_lines[-3:])
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as e:  # noqa: BLE001
+                logger.debug("daemon 日志尾部读取失败（降级忽略） | %s", e)
             raise RuntimeError("AI 服务初始化失败：" + (tail if tail else "daemon 进程异常退出"))
 
 
@@ -117,8 +120,8 @@ def wait_daemon_result(session_root: Path, rid: str, timeout: int = 900) -> dict
             data = json.loads(rfile.read_text(encoding="utf-8-sig"))
             try:
                 rfile.unlink()
-            except OSError:
-                pass
+            except OSError as e:
+                logger.warning("wait_daemon_result 降级忽略 | %s", e)
             return data
         if proc is not None and proc.poll() is not None and not rfile.exists():
             raise RuntimeError("AI 服务进程已退出，请检查服务配置")
@@ -142,14 +145,14 @@ def collect_daemon_reasoning(session_root: Path, rid: str) -> str:
             t = obj.get("text")
             if t:
                 parts.append(t)
-    except OSError:
-        pass
+    except OSError as e:
+        logger.debug("collect_daemon_reasoning 降级忽略 | %s", e)
     finally:
         try:
             if rfile.exists():
                 rfile.unlink()
-        except OSError:
-            pass
+        except OSError as e:
+            logger.warning("collect_daemon_reasoning 降级忽略 | %s", e)
     return "".join(parts)
 
 

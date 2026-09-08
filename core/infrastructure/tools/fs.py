@@ -9,6 +9,8 @@ from ... import config
 from ...config import safe_path
 from .runtime import worktree_manager
 from .shell import _sandbox_mode
+from ...config import logger  # 统一日志：降级路径记录
+from ...config import logger  # 统一日志：降级路径记录
 
 
 def run_read(path: str, limit: int = None, offset: int = 0) -> str:
@@ -46,8 +48,8 @@ def _is_mc_java_sources(fp: Path) -> bool:
         docs_agent = (repo_root / "docs" / "agent").resolve()
         if docs_agent.exists() and resolved.is_relative_to(docs_agent):
             return True
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001
+        logger.debug("路径判定失败按可写处理（降级忽略） | %s", e)
     return False
 
 

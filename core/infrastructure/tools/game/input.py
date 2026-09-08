@@ -13,6 +13,7 @@ from ....config import logger
 from ..runtime import worktree_manager
 from ..vision import run_analyze_image, run_screenshot
 from .rcon import _base_dir
+from ....config import logger  # 统一日志：降级路径记录
 
 
 def _vk_code(key: str) -> int:
@@ -121,8 +122,8 @@ def _return_focus():
     try:
         from ..vision import restore_user_window
         restore_user_window()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("_return_focus 降级忽略 | %s", e)
 
 
 def press_keys(sequence: list) -> str:
@@ -262,8 +263,8 @@ def wait_for_log(pattern: str, timeout: int = 60, log_path: str = None) -> str:
                 text = path.read_text(encoding="utf-8", errors="replace")
                 if rx.search(text):
                     return f"Found pattern '{pattern}' in {path}"
-        except OSError:
-            pass
+        except OSError as e:
+            logger.warning("wait_for_log 降级忽略 | %s", e)
         time.sleep(1)
     return f"Timeout waiting for pattern '{pattern}' in {path}"
 

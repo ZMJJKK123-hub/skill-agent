@@ -8,6 +8,8 @@ import time
 from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
+import logging
+
 from config_env import VALID_KEY
 from daemon_api import (_DAEMONS, append_conversation,
                         collect_attachments, ensure_session_daemon,
@@ -20,6 +22,8 @@ from personas import (PERSONA_DISPLAY, resolve_persona_key, set_persona,
                       session_persona_command)
 from replies import (INVALID_JSON_MESSAGES, append_persona_guide,
                      friendly_agent_error)
+
+log = logging.getLogger("tsinghua.chat")  # 统一日志：降级路径记录
 
 router = APIRouter()
 
@@ -238,8 +242,8 @@ def stream_agent(messages: list, session_id: str, base_url: str):
                         except Exception:  # noqa: BLE001
                             continue
                     last_idx = len(lines)
-                except OSError:
-                    pass
+                except OSError as e:
+                    log.debug("推理文件轮询读取失败（降级忽略） | %s", e)
             if result_file.exists():
                 data = json.loads(result_file.read_text(encoding="utf-8-sig"))
                 if data.get("error"):
@@ -269,8 +273,8 @@ def stream_agent(messages: list, session_id: str, base_url: str):
             try:
                 if p.exists():
                     p.unlink()
-            except OSError:
-                pass
+            except OSError as e:
+                log.debug("清理 daemon 临时文件失败（降级忽略） | %s", p.name)
 
     step = 8
     for i in range(0, len(final or ""), step):

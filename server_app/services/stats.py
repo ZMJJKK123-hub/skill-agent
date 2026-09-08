@@ -143,6 +143,6 @@ def session_title(session_dir: Path) -> str:
                 text = str(msg.get("content", "")).strip()
                 if text:
                     return text if len(text) <= 24 else text[:24] + "…"
-    except OSError:
-        pass
+    except OSError as e:
+        logger.debug("session_title 降级忽略 | %s", e)
     return session_dir.name[:8]

@@ -17,6 +17,7 @@ from services.session_manager import (SESSIONS_DIR, purge_session_for_user)
 from services.stats import session_title
 from .deps import auth_username, owned_session
 from .dto import HistoryBatchDelete, HistoryEntry
+from core.config import logger  # 统一日志：降级路径记录
 
 router = APIRouter(prefix="/api", tags=["history"])
 
@@ -109,8 +110,8 @@ def list_sessions(authorization: str = Header(default="")):
             try:
                 date = datetime.datetime.fromtimestamp(
                     child.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
-            except OSError:
-                pass
+            except OSError as e:
+                logger.debug("list_sessions 降级忽略 | %s", e)
             out.append({"sessionId": child.name, "owner": owner,
                         "has_jar": dist.is_dir() and any(dist.glob("*.jar")),
                         "date": date, "title": session_title(child)})
@@ -135,8 +136,8 @@ def conversation(session_id: str, authorization: str = Header(default="")):
                     continue
                 if isinstance(msg, dict) and msg.get("role") in ("user", "assistant"):
                     messages.append(msg)
-        except OSError:
-            pass
+        except OSError as e:
+            logger.debug("conversation 降级忽略 | %s", e)
     from infrastructure.session_disk import SessionDisk
     mode = SessionDisk(sess.mod_dir.parent).read_mode()
     if mode is None:  # mode.txt 缺失时按目录/历史推断

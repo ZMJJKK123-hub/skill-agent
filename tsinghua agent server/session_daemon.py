@@ -46,13 +46,16 @@ last_activity = time.time()
 
 from core.services.loop import run_agent_loop as agent_loop  # noqa: E402
 from core.services.loop.model_call import set_reasoning_sink  # noqa: E402
+import logging  # 统一日志：降级路径记录
+
+logger = logging.getLogger("tsinghua.session_daemon")
 
 
 def _write_json(path: Path, data: dict) -> None:
     try:
         path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("_write_json 降级忽略 | %s", e)
 
 
 def _process_request(req_path: Path) -> None:
@@ -64,15 +67,15 @@ def _process_request(req_path: Path) -> None:
     # 清空旧的推理文件
     try:
         reasoning_file.write_text("", encoding="utf-8")
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("_process_request 降级忽略 | %s", e)
 
     def _sink(text: str) -> None:
         try:
             with reasoning_file.open("a", encoding="utf-8") as f:
                 f.write(json.dumps({"text": text}, ensure_ascii=False) + "\n")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("_sink 降级忽略 | %s", e)
 
     try:
         messages = json.loads(req_path.read_text(encoding="utf-8-sig"))
@@ -86,8 +89,8 @@ def _process_request(req_path: Path) -> None:
         set_reasoning_sink(None)
         try:
             req_path.unlink()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("_process_request 降级忽略 | %s", e)
 
 
 def main() -> None:

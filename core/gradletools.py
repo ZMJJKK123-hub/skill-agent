@@ -5,6 +5,8 @@
 import os, re, subprocess
 from pathlib import Path
 
+from .config import logger  # 统一日志：进程清理降级记录
+
 from . import process_manager as pm
 
 
@@ -37,13 +39,13 @@ def _run_gradle(task, timeout, base):
                 subprocess.run(f"taskkill /f /t /pid {p.pid}", shell=True, capture_output=True)
             else:
                 os.killpg(os.getpgid(p.pid), 9)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"强制终止构建进程失败（降级忽略） | pid={p.pid} | {e}")
         try:
             more, _ = p.communicate(timeout=5)
             out += more or ""
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"kill 后回收残余输出失败（降级忽略） | {e}")
         return {"exit_code": -1, "raw": out + "\n[TIMEOUT]",
                 "tail": out[-4000:]}
     txt = out or ""
@@ -83,7 +85,7 @@ def _kill_workspace_clients(base: str) -> None:
     if os.name != "nt":
         return
     try:
-        import subprocess as _sp
+        import subprocess as _sp  # 局部引入：仅 Windows 清理路径需要
         marker = os.path.abspath(base).replace("\\", "\\\\").lower()
         q = (f"Get-CimInstance Win32_Process -Filter \"Name='java.exe'\" | "
              f"Where-Object {{ $_.CommandLine -match 'run(Client|TestClient)' -and "
@@ -91,8 +93,8 @@ def _kill_workspace_clients(base: str) -> None:
              f"ForEach-Object {{ Stop-Process -Id $_.ProcessId -Force }}")
         _sp.run(["powershell", "-NoProfile", "-Command", q],
                 capture_output=True, timeout=20)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"PowerShell 清理残留 java 进程失败 | {e}")
 
 
 def _gradle_cmd(task, base):

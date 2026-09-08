@@ -11,6 +11,8 @@ import subprocess
 import time
 from pathlib import Path
 
+from .config import logger  # 统一日志：进程清单读写降级记录
+
 _PROCESSES = {}  # handle -> {"proc": Popen, "kind": str, "base": str, "log_path": Path, "started_at": float}
 _MANIFEST = ".agent_processes.json"
 
@@ -57,8 +59,8 @@ def _load_manifest(base: str):
         p = _manifest_path(base)
         if p.exists():
             return json.loads(p.read_text(encoding="utf-8"))
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"进程清单读取失败（按空清单处理） | {e}")
     return {}
 
 
@@ -77,8 +79,8 @@ def _save_manifest(base: str):
         p = _manifest_path(base)
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"进程清单写入失败（重启后状态丢失） | {e}")
 
 
 def register(handle: str, proc, kind: str, base: str, log_path: Path):
@@ -175,8 +177,8 @@ def stop(handle: str, force: bool = True, base: str = None) -> dict:
                 proc.terminate()
         try:
             proc.wait(timeout=15)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"等待进程退出超时（降级忽略） | pid={proc.pid} | {e}")
         _PROCESSES.pop(handle, None)
         _save_manifest(info["base"])
         result.update({"ok": True, "message": f"Stopped '{handle}' (pid={pid})"})

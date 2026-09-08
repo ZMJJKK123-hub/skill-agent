@@ -15,6 +15,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from core.config import logger  # 统一日志：降级路径记录
 
 # 仓库根入 sys.path（core 包与服务子包可导入，与 cwd 无关）
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -29,8 +30,8 @@ def _reconfigure_stdout() -> None:
         try:
             sys.stdout.reconfigure(line_buffering=True, write_through=True,
                                    encoding="utf-8", errors="replace")
-        except (AttributeError, ValueError, OSError):
-            pass
+        except (AttributeError, ValueError, OSError) as e:
+            logger.warning("_reconfigure_stdout 降级忽略 | %s", e)
 
 
 def _load_prompt(argv: list[str]) -> "tuple[str | None, str]":
@@ -41,8 +42,8 @@ def _load_prompt(argv: list[str]) -> "tuple[str | None, str]":
             text = Path(prompt_file).read_text(encoding="utf-8")
             try:
                 Path(prompt_file).unlink()  # 读完即删（server 不再管）
-            except OSError:
-                pass
+            except OSError as e:
+                logger.warning("_load_prompt 降级忽略 | %s", e)
             return text, ""
         except OSError as e:
             return None, f"读取提示词文件失败: {e}"

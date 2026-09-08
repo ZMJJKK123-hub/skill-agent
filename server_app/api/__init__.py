@@ -16,6 +16,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from services.session_manager import cleanup_orphan_sessions, restore_sessions
 from . import artifacts, history, sessions, tasks
+from core.config import logger  # 统一日志：降级路径记录
 
 #: 前端静态产物与 debug 游乐场目录。
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
@@ -109,7 +110,7 @@ def _register_startup_hooks(app: FastAPI) -> None:
                 time.sleep(ORPHAN_CLEANUP_INTERVAL_S)
                 try:
                     cleanup_orphan_sessions()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("_orphan_cleanup_loop 降级忽略 | %s", e)
 
         threading.Thread(target=_orphan_cleanup_loop, daemon=True).start()

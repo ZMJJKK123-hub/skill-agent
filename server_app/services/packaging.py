@@ -66,8 +66,8 @@ def _write_zip_atomic(zip_path: Path, mod_dir: Path) -> None:
     except Exception:
         try:
             tmp_path.unlink(missing_ok=True)
-        except OSError:
-            pass
+        except OSError as e:
+            logger.warning("_write_zip_atomic 降级忽略 | %s", e)
         raise
 
 

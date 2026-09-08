@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from core.config import logger  # 统一日志：降级路径记录
 
 #: 项目 data 目录（server_app 的上上级）。
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
@@ -25,8 +26,8 @@ def _load_json(path: Path, default):
     try:
         if path.exists():
             return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        pass
+    except (OSError, json.JSONDecodeError) as e:
+        logger.debug("_load_json 降级忽略 | %s", e)
     return default
 
 

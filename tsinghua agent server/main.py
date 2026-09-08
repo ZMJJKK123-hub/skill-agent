@@ -27,6 +27,9 @@ from chat_endpoint import router as chat_router
 from chat_endpoint import check_auth
 from config_env import WORKSPACE
 from daemon_api import _DAEMONS
+import logging  # 统一日志：降级路径记录
+
+logger = logging.getLogger("tsinghua.main")
 
 app = FastAPI(
     title="Tsinghua Agent Server",
@@ -41,8 +44,8 @@ def _cleanup_daemons() -> None:
     for proc in list(_DAEMONS.values()):
         try:
             proc.terminate()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("_cleanup_daemons 降级忽略 | %s", e)
     _DAEMONS.clear()
 
 

@@ -9,6 +9,9 @@
 import os
 import sys
 from pathlib import Path
+import logging  # 统一日志：降级路径记录
+
+logger = logging.getLogger("tsinghua.config")
 
 #: 项目根 = 本目录的上上级
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -36,8 +39,8 @@ os.environ.setdefault("DSH_SESSION_ROOT", str(SERVICE_DIR / ".runtime"))
 try:
     from dotenv import load_dotenv
     load_dotenv(PROJECT_ROOT / ".env", override=True)
-except Exception:
-    pass
+except Exception as e:
+    logger.debug("module 降级忽略 | %s", e)
 
 #: 本服务的接入密钥（清小搭填的 credential；默认值仅本地测试用）
 VALID_KEY = os.environ.get("TSINGHUA_API_KEY", "sk-test-123")

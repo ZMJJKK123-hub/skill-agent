@@ -47,8 +47,8 @@ def kill_stale_daemon(session_dir: Path) -> None:
         return
     try:
         os.kill(pid, 15)  # Windows 上 SIGTERM 即强制终止
-    except OSError:
-        pass
+    except OSError as e:
+        logger.warning("kill_stale_daemon 降级忽略 | %s", e)
     try:
         pid_file.unlink(missing_ok=True)
     except OSError as e:
@@ -64,8 +64,8 @@ def _taskkill_tree(pid: int) -> None:
     else:
         try:
             os.kill(pid, 9)
-        except OSError:
-            pass
+        except OSError as e:
+            logger.warning("_taskkill_tree 降级忽略 | %s", e)
 
 
 def kill_session_game_processes(session_root: Path) -> None:

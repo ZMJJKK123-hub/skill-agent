@@ -11,6 +11,7 @@ import log_events  # 事件流/文件树解析（纯函数模块，server_app �
 from services.packaging import build_source_zip, find_built_jar
 from services.session_manager import TEMPLATES_DIR
 from .deps import auth_username, owned_session
+from core.config import logger  # 统一日志：降级路径记录
 
 router = APIRouter(prefix="/api", tags=["artifacts"])
 
@@ -52,8 +53,8 @@ def list_games():
                         first = readme.read_text(encoding="utf-8").strip().splitlines()
                         if first:
                             desc = first[0].lstrip("# ").strip()
-                    except OSError:
-                        pass
+                    except OSError as e:
+                        logger.debug("list_games 降级忽略 | %s", e)
                 games.append({"id": p.name, "name": p.name, "description": desc})
     if not games:
         games = [{"id": "minecraft", "name": "minecraft", "description": ""}]

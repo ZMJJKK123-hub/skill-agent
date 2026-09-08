@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .runtime import worktree_manager
 from .validate import _find_modid
+from ...config import logger  # 统一日志：降级路径记录
 
 
 def _base_dir() -> str:
@@ -60,8 +61,8 @@ def detect_environment() -> str:
                 m2 = re.search(r"minecraft\s*=\s*['\"]([^'\"]+)['\"]", text)
                 if m2:
                     version = m2.group(1)
-        except OSError:
-            pass
+        except OSError as e:
+            logger.warning("detect_environment 降级忽略 | %s", e)
     lines.append(f"MC/Forge version: {version}")
 
     # Source layout
