@@ -44,6 +44,14 @@ export const en: Record<string, string> = {
   'plugins.title': 'Plugins',
   'plugins.enabled': 'Enabled',
   'plugins.disabled': 'Disabled',
+  'plugins.alwaysOn': 'Always on',
+  'plugins.modforge-sidebar': 'Sidebar',
+  'plugins.modforge-conversation': 'Conversation',
+  'plugins.modforge-settings': 'Settings',
+  'plugins.modforge-generate': 'Monitor',
+  'plugins.modforge-games': 'Mini Game',
+
+  'app.versionTag': 'V0.1.0 Preview',
 
   'agent.title': 'Agent Preset',
   'agent.standard': 'Standard',

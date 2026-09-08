@@ -2,7 +2,7 @@
  * 其余分区：视觉 API / 插件开关 / Agent / 语言 / 外观
  * （由 settings.tsx 原样迁出，开关用公共 Toggle 等价替换）。
  */
-import { useT } from '../../../lib/i18n'
+import { useT, type TKey } from '../../../lib/i18n'
 import { setUi, useUi } from '../../../lib/store'
 import { composition } from '../../../composition'
 import { Field, Toggle } from '../ui'
@@ -64,10 +64,10 @@ export function PluginsSection() {
         return (
           <div key={p.id} className="mb-2 flex items-center justify-between rounded-md border border-line px-3 py-2 text-sm">
             <span>
-              {p.name} <span className="text-faint">({p.id})</span>
+              {t(('plugins.' + p.id) as TKey)} <span className="text-faint">({p.id})</span>
             </span>
             {locked ? (
-              <span className="text-xs text-faint">始终启用</span>
+              <span className="text-xs text-faint">{t('plugins.alwaysOn')}</span>
             ) : (
               <Toggle size="sm" on={!disabled} onClick={() => toggle(p.id)} />
             )}

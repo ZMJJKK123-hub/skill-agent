@@ -118,6 +118,24 @@ body {
   background: transparent; border: none; padding: 0;
   font-size: 0.8em; color: #e2e8f0;
 }
+/* 浅色主题：代码块/行内码/引用从暗色硬编码切到浅色等价配色
+   （此前 pre 深底 + code 浅字叠白底，对比度 ~1.9:1 不可读） */
+[data-theme='light'] .markdown-body code {
+  background: rgba(15, 23, 42, 0.06);
+  border-color: rgba(15, 23, 42, 0.1);
+  color: #92640a;
+}
+[data-theme='light'] .markdown-body pre {
+  background: rgba(15, 23, 42, 0.045);
+  border-color: rgba(15, 23, 42, 0.12);
+}
+[data-theme='light'] .markdown-body pre code {
+  color: #1e293b;
+}
+[data-theme='light'] .markdown-body blockquote {
+  color: #475569;
+  border-left-color: rgba(15, 23, 42, 0.25);
+}
 .markdown-body blockquote {
   margin: 0.75em 0;
   border-left: 3px solid rgba(200, 180, 150, 0.3);
@@ -156,4 +174,16 @@ body {
 .markdown-body pre:hover .md-copy { opacity: 1; }
 .md-copy:hover { color: var(--text); }
 .md-copy-done { color: #10b981; }
+
+/* ── 版本徽章：双色适配（dark: 变体在本应用不可用——主题走 data-theme 切换）── */
+.badge-version {
+  color: #7dd3fc;
+  background: rgba(125, 211, 252, 0.1);
+  border: 1px solid rgba(125, 211, 252, 0.5);
+}
+[data-theme='light'] .badge-version {
+  color: #0369a1;
+  background: rgba(2, 132, 199, 0.08);
+  border-color: rgba(2, 132, 199, 0.35);
+}
 

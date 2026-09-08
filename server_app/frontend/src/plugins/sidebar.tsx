@@ -11,7 +11,9 @@ export const sidebarPlugin: PluginManifest = {
   apply(ctx) {
     // 顶栏 logo（占位）。折叠时容器裁剪 + 居中：即使 props 传播存在时序
     // 差异导致文字短暂渲染，也不会溢出 56px 窄条压到主区的 ☰（实测重叠）
-    ctx.slots.inject(SLOTS.sidebarLogo, 'logo', (props: any) => (
+    ctx.slots.inject(SLOTS.sidebarLogo, 'logo', (props: any) => {
+      const t = useT()
+      return (
       <div className={`flex w-full items-center overflow-hidden ${props?.collapsed ? 'justify-center' : 'gap-2'}`}>
         <div className="flex h-7 w-7 items-center justify-center rounded bg-forge-500 text-sm font-bold text-ink-950">
           M
@@ -20,15 +22,16 @@ export const sidebarPlugin: PluginManifest = {
           <span className="truncate font-semibold">
             MOD Forge
             <span
-              title="V0.1.0 预览版"
-              className="ml-1.5 inline-block translate-y-[-1px] rounded border border-forge-500/50 bg-forge-500/10 px-1 py-px align-middle text-[9px] font-medium tracking-wide text-forge-300"
+              title={t('app.versionTag')}
+              className="badge-version ml-1.5 inline-block translate-y-[-1px] rounded px-1 py-px align-middle text-[9px] font-medium tracking-wide"
             >
-              V0.1.0 预览版
+              {t('app.versionTag')}
             </span>
           </span>
         )}
       </div>
-    ))
+      )
+    })
 
     ctx.slots.inject(SLOTS.sidebarWorkspaces, 'workspaces', (props: any) => {
       const { activeWorkspace } = useUi()

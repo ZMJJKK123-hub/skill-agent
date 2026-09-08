@@ -44,6 +44,14 @@ export const zh: Record<string, string> = {
   'plugins.title': '插件',
   'plugins.enabled': '已启用',
   'plugins.disabled': '已禁用',
+  'plugins.alwaysOn': '始终启用',
+  'plugins.modforge-sidebar': '侧栏',
+  'plugins.modforge-conversation': '对话',
+  'plugins.modforge-settings': '设置',
+  'plugins.modforge-generate': '生成监控',
+  'plugins.modforge-games': '小游戏',
+
+  'app.versionTag': 'V0.1.0 预览版',
 
   'agent.title': 'Agent 预设',
   'agent.standard': '标准（standard）',
