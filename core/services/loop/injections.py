@@ -200,3 +200,27 @@ def inject_runtime_context(state: LoopState, deps: LoopDeps) -> None:
             state.messages, "runtime-context",
             "Current runtime context. This snapshot supersedes earlier "
             "runtime-context snapshots.\n\n" + "\n\n".join(parts))
+
+
+def _append_skeleton_notice(state: LoopState, modid: str) -> None:
+    """输入：modid。返回：无。职责：注入骨架已写入的推进指令（旧文逐字）。"""
+    from ...domain.messages import UserMessage
+    state.messages.append(UserMessage(content=(
+        f"<auto-skeleton> 你已多次超预算未写码，系统已在 "
+        f"src/main/java/com/{modid}/ 写入最小可编译主类骨架"
+        f"（modid={modid}，1.21.11 注册写法已就位）。"
+        f"立刻基于它继续：①按命名规则同步 mods.toml 的 modId、"
+        f"build.gradle 的 group/archivesName、settings.gradle 的 "
+        f"rootProject.name；②在其上扩展物品/方块/BlockEntity 等注册与逻辑。"
+        f"本轮之后禁止再 read/grep starter 与 mc_java_sources，"
+        f"下一轮必须是 write_file 或 edit_file。</auto-skeleton>")))
+
+
+def _append_write_first_stop(state: LoopState) -> None:
+    """输入：无。返回：无。职责：注入写前超预算软提醒（旧文逐字）。"""
+    from ...domain.messages import UserMessage
+    state.messages.append(UserMessage(content=(
+        "<write-first-stop> 你已反复阅读 mc_java_sources/starter 但没有写文件。"
+        "立即停止阅读源码。如果还没加载相关技能，先调用一次 load_skill 加载最相关技能"
+        "（例如 forge-simple-min-mod）；然后立刻用 write_file 写出第一个最小 Java 文件，"
+        "再 build/compile 根据报错处理。不要继续 read_file/grep mc_java_sources。</write-first-stop>")))

@@ -18,6 +18,7 @@ from pathlib import Path
 
 from .config import client, MODEL, SUPERVISOR_SYSTEM, SUPERVISOR_MAX_TURNS, logger
 from .infrastructure.tools import tool_registry, task_manager
+from . import supervisor_evidence as evidence  # 证据采集（拆分模块）
 from .subagent import extract_text
 
 
@@ -25,7 +26,6 @@ from .subagent import extract_text
 SUPERVISOR_INTERVAL = 2.0          # 后台线程停止事件轮询间隔（秒）
 SUPERVISOR_EVERY_N_ROUNDS = 5      # 每 N 轮主循环触发一次监管分析
 SUPERVISOR_LOG_TAIL_CHARS = 6000   # run.log 尾部取多少字符
-SUPERVISOR_TRANSCRIPT_TAIL = 30    # 最新 transcript 取尾部多少行
 
 # ── 项目根（抗 chdir）────────────────────────────
 # Bug 修复：run_task.py 会把 cwd chdir 到 <session>/mod，导致
@@ -130,10 +130,10 @@ class SupervisorManager:
 
     # ── 一次监管分析：读证据 -> 调 LLM（先读 skill）-> 按需写信箱 ──
     def _analyze_once(self) -> None:
-        log_path = self._resolve_run_log()
-        log_tail = self._tail(log_path, SUPERVISOR_LOG_TAIL_CHARS) if log_path else "(no run.log)"
-        tasks_snapshot = self._tasks_summary()
-        transcript_tail = self._transcript_tail()
+        log_path = evidence.resolve_run_log()
+        log_tail = evidence.tail(log_path, SUPERVISOR_LOG_TAIL_CHARS) if log_path else "(no run.log)"
+        tasks_snapshot = evidence.tasks_summary()
+        transcript_tail = evidence.transcript_tail()
 
         prompt_parts = [
             f"监管轮次: {self._round_count}",
@@ -213,53 +213,6 @@ class SupervisorManager:
                 print(f"[supervisor:{tc.function.name}] {output}")  # noqa: T201 — run.log 协议输出（前端子代理行渲染依赖；2026-09-08 用户确认豁免）
                 msgs.append({"role": "tool", "tool_call_id": tc.id, "content": str(output)})
         return extract_text(message) if message else "(supervisor produced no output)"
-
-    # ── 证据采集 ──
-    def _resolve_run_log(self) -> Path | None:
-        """定位最新会话的 run.log（基于项目根，抗 cwd chdir）。
-
-        run_task.py 会把 cwd chdir 到 <session>/mod，因此不能用相对路径。
-        优先取 <项目根>/data/sessions/*/run.log 里最新修改的那个；
-        回退到 <项目根>/run.log。
-        """
-        base = _project_root() / "data" / "sessions"
-        if base.exists():
-            cands = sorted(base.glob("*/run.log"), key=lambda p: p.stat().st_mtime, reverse=True)
-            if cands:
-                return cands[0]
-        root = _project_root() / "run.log"
-        return root if root.exists() else None
-
-    def _tail(self, path: Path, chars: int) -> str:
-        try:
-            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
-            text = "\n".join(lines[-200:])
-            return text[-chars:]
-        except OSError as e:
-            return f"(run.log 读取失败: {e})"
-
-    def _tasks_summary(self) -> str:
-        try:
-            tasks = task_manager.list_tasks()
-            if not tasks:
-                return "(task board empty)"
-            lines = [f"- #{t.get('id')} [{t.get('status', '?')}] {t.get('subject', '')[:80]}" for t in tasks]
-            return "\n".join(lines)
-        except Exception:
-            return "(task board unavailable)"
-
-    def _transcript_tail(self) -> str | None:
-        base = _project_root() / ".transcripts"
-        if not base.exists():
-            return None
-        files = sorted(base.glob("*"), key=lambda p: p.stat().st_mtime, reverse=True)
-        if not files:
-            return None
-        try:
-            lines = files[0].read_text(encoding="utf-8", errors="replace").splitlines()
-            return "\n".join(lines[-SUPERVISOR_TRANSCRIPT_TAIL:])
-        except OSError:
-            return None
 
     # ── 信箱写入（原子：先写 tmp 再 rename）──
     def _write_advice(self, severity: str, content: str) -> None:
