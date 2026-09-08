@@ -378,7 +378,7 @@ class TeammateManager:
             # 打印队友思考过程
             reasoning = getattr(message, "reasoning_content", None)
             if reasoning:
-                print(f"\n[teammate 思考] {reasoning}")
+                print(f"\n[teammate 思考] {reasoning}")  # noqa: T201 — run.log 协议输出（前端子代理行渲染依赖；2026-09-08 用户确认豁免）
                 logger.info(f"teammate reasoning:\n{reasoning}")
 
             sub_messages.append(message.to_dict())
@@ -408,7 +408,7 @@ class TeammateManager:
                 output = handler(**args) if handler else f"Unknown tool: {tc.function.name}"
                 logger.info(f"teammate 工具调用: {tc.function.name}")
                 # 调试需要：完整输出写入 run.log，不截断
-                print(f"[teammate:{tc.function.name}] {output}")
+                print(f"[teammate:{tc.function.name}] {output}")  # noqa: T201 — run.log 协议输出（前端子代理行渲染依赖；2026-09-08 用户确认豁免）
                 sub_messages.append(
                     {
                         "role": "tool",

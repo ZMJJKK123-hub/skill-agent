@@ -194,7 +194,7 @@ class SupervisorManager:
             message = choice.message
             reasoning = getattr(message, "reasoning_content", None)
             if reasoning:
-                print(f"\n[supervisor 思考] {reasoning}")
+                print(f"\n[supervisor 思考] {reasoning}")  # noqa: T201 — run.log 协议输出（前端子代理行渲染依赖；2026-09-08 用户确认豁免）
                 logger.info(f"supervisor reasoning:\n{reasoning}")
             msgs.append(message.to_dict())
             if choice.finish_reason != "tool_calls":
@@ -210,7 +210,7 @@ class SupervisorManager:
                 # M3: 统一走注册表执行管线（total：异常转温和错误，不中断监管分析）
                 output = tool_registry.execute(tc.function.name, args)
                 logger.info(f"supervisor 工具调用: {tc.function.name}")
-                print(f"[supervisor:{tc.function.name}] {output}")
+                print(f"[supervisor:{tc.function.name}] {output}")  # noqa: T201 — run.log 协议输出（前端子代理行渲染依赖；2026-09-08 用户确认豁免）
                 msgs.append({"role": "tool", "tool_call_id": tc.id, "content": str(output)})
         return extract_text(message) if message else "(supervisor produced no output)"
 

@@ -93,7 +93,7 @@ def _run_subagent_impl(prompt: str, *, persona=None, tools=None,
         # 打印子 Agent 思考过程（不进 sub_messages）
         reasoning = getattr(message, "reasoning_content", None)
         if reasoning:
-            print(f"\n[subagent 思考] {reasoning}")
+            print(f"\n[subagent 思考] {reasoning}")  # noqa: T201 — run.log 协议输出（前端子代理行渲染依赖；2026-09-08 用户确认豁免）
             logger.info(f"subagent reasoning:\n{reasoning}")
 
         sub_messages.append(message.to_dict())
@@ -120,7 +120,7 @@ def _run_subagent_impl(prompt: str, *, persona=None, tools=None,
             output = tool_registry.execute(tc.function.name, args)
             logger.info(f"subagent 工具调用: {tc.function.name}")
             # 调试需要：完整输出写入 run.log，不截断
-            print(f"[subagent:{tc.function.name}] {output}")
+            print(f"[subagent:{tc.function.name}] {output}")  # noqa: T201 — run.log 协议输出（前端子代理行渲染依赖；2026-09-08 用户确认豁免）
             sub_messages.append(
                 {
                     "role": "tool",
