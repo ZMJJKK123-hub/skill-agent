@@ -11,11 +11,21 @@
 """
 from __future__ import annotations
 
-import json
+import json  # DSH_PROMPT_IMAGES JSON 解析
+import logging  # 子进程入口诊断日志（stdout=run.log，见下方 _log 装配）
 import os
 import sys
 from pathlib import Path
-from core.config import logger  # 统一日志：降级路径记录
+
+# 入口诊断通道：本进程 stdout 由 server 重定向追加进 run.log，
+# 用纯消息格式（%(message)s）保证落盘文本与旧 print 完全一致。
+_log = logging.getLogger("run_task")
+_h = logging.StreamHandler(sys.stdout)
+_h.setFormatter(logging.Formatter("%(message)s"))
+_log.addHandler(_h)
+_log.setLevel(logging.INFO)
+_log.propagate = False
+logger = _log  # 本模块内降级记录与诊断共用同一 stdout 通道
 
 # 仓库根入 sys.path（core 包与服务子包可导入，与 cwd 无关）
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -60,7 +70,7 @@ def _parse_prompt_images() -> list[str]:
         if isinstance(parsed, list):
             return [str(n) for n in parsed if isinstance(n, str) and n]
     except ValueError:
-        print("[run_task] DSH_PROMPT_IMAGES 解析失败，忽略图片附件", flush=True)
+        logger.warning("[run_task] DSH_PROMPT_IMAGES 解析失败，忽略图片附件")
     return []
 
 
@@ -76,7 +86,7 @@ def _early_write_user_prompt(store, mode: str, user_prompt: str,
     try:
         store.append_user(user_prompt, images=images or None)
     except Exception as e:
-        print(f"[run_task] 提前写入历史失败: {e}", flush=True)
+        logger.warning(f"[run_task] 提前写入历史失败: {e}")
 
 
 def _assemble_first_round(store, task_prompt: str,
@@ -92,20 +102,19 @@ def _assemble_first_round(store, task_prompt: str,
     if os.environ.get("DSH_RESUME", "") == "1":
         loaded = store.load_checkpoint()
         if loaded:
-            print(f"[run_task] 恢复模式 | 已从断点加载 {len(loaded)} 条消息",
-                  flush=True)
+            logger.info(f"[run_task] 恢复模式 | 已从断点加载 {len(loaded)} 条消息")
             return list(loaded)
-        print("[run_task] 恢复模式但无断点，回退到普通启动", flush=True)
+        logger.info("[run_task] 恢复模式但无断点，回退到普通启动")
     messages = list(store.load_recent_history())
     if not task_prompt:
         if not messages:
-            print("[run_task] 无 prompt 且无历史可续，退出", flush=True)
+            logger.info("[run_task] 无 prompt 且无历史可续，退出")
             return None
         return messages
     messages = strip_pending_messages(messages, store)  # 排队的属后续轮次
     for m in reversed(messages):  # 查重扫全列表（只看末条会重复 append）
         if isinstance(m, UserMessage) and m.content == task_prompt:
-            print("[run_task] 历史已包含当前 prompt，跳过重复追加", flush=True)
+            logger.info("[run_task] 历史已包含当前 prompt，跳过重复追加")
             if images:
                 m.images = images  # 图片挂到历史那条上
             return messages
@@ -128,13 +137,13 @@ def main() -> int:
 
     _reconfigure_stdout()
     if len(sys.argv) < 3:
-        print("Usage: python run_task.py <session_dir> <api_key> [task_prompt]")
+        logger.info("Usage: python run_task.py <session_dir> <api_key> [task_prompt]")
         return 1
     session_dir = Path(sys.argv[1]).resolve()
     api_key = sys.argv[2]
     task_prompt, err = _load_prompt(sys.argv)
     if task_prompt is None:
-        print(f"[run_task] {err}", flush=True)
+        logger.warning(f"[run_task] {err}")
         return 1
 
     mode = os.environ.get("DSH_MODE", "chat")
@@ -165,7 +174,7 @@ def main() -> int:
         settings = Settings.from_env()
         engine = build_engine(settings)
     except Exception as e:
-        print(f"[run_task] 引擎构建失败: {e}", flush=True)
+        logger.warning(f"[run_task] 引擎构建失败: {e}")
         return 1
 
     messages = _assemble_first_round(store, task_prompt, _parse_prompt_images())

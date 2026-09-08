@@ -94,15 +94,15 @@ def _process_request(req_path: Path) -> None:
 
 
 def main() -> None:
-    print(f"[session_daemon] started for {session_dir}", flush=True)
+    logger.info("[session_daemon] started for %s", session_dir)
     while True:
         try:
             for req_path in sorted(queue_dir.glob("*.json")):
                 _process_request(req_path)
         except Exception as e:  # noqa: BLE001
-            print(f"[session_daemon] loop error: {e}", flush=True)
+            logger.warning("[session_daemon] loop error: %s", e)
         if time.time() - last_activity > IDLE_TIMEOUT:
-            print(f"[session_daemon] idle timeout ({IDLE_TIMEOUT}s), exit", flush=True)
+            logger.info("[session_daemon] idle timeout (%ss), exit", IDLE_TIMEOUT)
             break
         time.sleep(0.2)
 

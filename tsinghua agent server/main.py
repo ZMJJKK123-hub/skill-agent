@@ -56,13 +56,13 @@ atexit.register(_cleanup_daemons)
 async def log_requests(request: Request, call_next):
     """请求日志：定位清小搭实际请求的路径与返回状态码。"""
     method, path = request.method, request.url.path
-    print(f"[req] {method} {path}", flush=True)
+    logger.info("[req] %s %s", method, path)
     try:
         response = await call_next(request)
     except Exception as e:
-        print(f"[req] {method} {path} -> EXCEPTION {e}", flush=True)
+        logger.warning("[req] %s %s -> EXCEPTION %s", method, path, e)
         raise
-    print(f"[req] {method} {path} -> {response.status_code}", flush=True)
+    logger.info("[req] %s %s -> %s", method, path, response.status_code)
     return response
 
 
