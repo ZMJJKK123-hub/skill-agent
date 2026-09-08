@@ -112,6 +112,16 @@ def finalize_known_issues(session_dir: Path, project_root: Path) -> None:
     logger.info("已追加 %d 条错误记录到 mod/KNOWN_ISSUES.md", len(added))
 
 
+def _scan_new_error_lines(log_text: str) -> list[str]:
+    """提取结构化 NEW_ERROR: 行正文（由 finalize_error_list 拆出）。"""
+    out = []
+    for raw in log_text.splitlines():
+        m = re.search(r"NEW_ERROR:\s*(.+)", raw, re.I)
+        if m:
+            out.append(m.group(1).strip())
+    return out
+
+
 def finalize_error_list(session_dir: Path, project_root: Path) -> None:
     """把本次运行新错误追加到 docs/agent/ERROR_LIST.md（共享知识库）。
 
@@ -131,11 +141,7 @@ def finalize_error_list(session_dir: Path, project_root: Path) -> None:
     new_entries: list[str] = []
     seen: set[str] = set()
 
-    for raw in log_text.splitlines():  # 1) 结构化 NEW_ERROR: 行
-        m = re.search(r"NEW_ERROR:\s*(.+)", raw, re.I)
-        if not m:
-            continue
-        body = m.group(1).strip()
+    for body in _scan_new_error_lines(log_text):  # 1) 结构化 NEW_ERROR: 行
         if body and body.lower() not in existing_lower and body not in seen:
             seen.add(body)
             new_entries.append(f"- **Auto-recorded:** {body}")

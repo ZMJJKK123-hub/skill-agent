@@ -24,6 +24,19 @@ def _run(cmd: list, timeout: int = 10) -> str:
         return f"(error: {e})"
 
 
+def _resource_namespace_lines(base: Path) -> list[str]:
+    """资源根 assets/data 命名空间清单行（由 detect_environment 拆出）。"""
+    res = base / "src/main/resources"
+    if not res.is_dir():
+        return []
+    assets = sorted((res / "assets").glob("*")) if (res / "assets").is_dir() else []
+    data = sorted((res / "data").glob("*")) if (res / "data").is_dir() else []
+    return [
+        f"Resource assets namespaces: {', '.join(p.name for p in assets) or '(none)'}",
+        f"Resource data namespaces: {', '.join(p.name for p in data) or '(none)'}",
+    ]
+
+
 def detect_environment() -> str:
     base = Path(_base_dir())
     lines = [f"Working directory: {base}"]
@@ -70,12 +83,6 @@ def detect_environment() -> str:
     lines.append(f"src/test: {'yes' if (base / 'src/test').is_dir() else 'no'}")
     lines.append(f"mc_java_sources: {'yes' if (base / 'mc_java_sources').is_dir() else 'no'}")
 
-    # Resource roots
-    res = base / "src/main/resources"
-    if res.is_dir():
-        assets = sorted((res / "assets").glob("*")) if (res / "assets").is_dir() else []
-        data = sorted((res / "data").glob("*")) if (res / "data").is_dir() else []
-        lines.append(f"Resource assets namespaces: {', '.join(p.name for p in assets) or '(none)'}")
-        lines.append(f"Resource data namespaces: {', '.join(p.name for p in data) or '(none)'}")
+    lines.extend(_resource_namespace_lines(base))
 
     return "\n".join(lines)

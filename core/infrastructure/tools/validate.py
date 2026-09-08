@@ -89,20 +89,24 @@ def _check_texture_ref(base: Path, ref: str, modid: str, errors: list, path: Pat
         errors.append(f"{path}: texture not found for '{ref}' -> expected {target.relative_to(base)}")
 
 
-def _validate_json_file(base: Path, rel: Path, modid: str, errors: list, warnings: list) -> None:
-    data, err = _load_json(base / rel)
-    if err:
-        errors.append(f"{rel}: invalid JSON -> {err}")
-        return
-    parts = rel.parts
-
-    # Item model definition: assets/<modid>/items/<name>.json
+def _validate_item_model_json(base: Path, rel: Path, parts, modid: str,
+                               data, errors: list) -> None:
+    """Item model 定义校验（assets/<modid>/items/*.json），由 _validate_json_file 拆出。"""
     if "assets" in parts and "items" in parts and len(parts) >= 4 and parts[parts.index("assets") + 1] == modid:
         model = (data or {}).get("model")
         if isinstance(model, dict):
             ref = model.get("model")
             if ref:
                 _check_model_ref(base, ref, modid, errors, rel)
+
+
+def _validate_json_file(base: Path, rel: Path, modid: str, errors: list, warnings: list) -> None:
+    data, err = _load_json(base / rel)
+    if err:
+        errors.append(f"{rel}: invalid JSON -> {err}")
+        return
+    parts = rel.parts
+    _validate_item_model_json(base, rel, parts, modid, data, errors)
 
     # Model JSON: assets/<modid>/models/...
     if "assets" in parts and "models" in parts and len(parts) >= 4 and parts[parts.index("assets") + 1] == modid:

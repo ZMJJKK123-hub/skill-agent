@@ -129,6 +129,37 @@ class _RunParser:
         self.events.append(_ev("todo", "\n".join(block), self.seq)); self.seq += 1
         return j - i
 
+    def _feed_thinking(self, stripped: str) -> int | None:
+        """思考标记族分发（[思考+]/[思考]/三类 peer 思考行）。
+
+        Returns:
+            推进步数；非思考标记返回 None（交回 feed 继续匹配）。
+        """
+        if stripped.startswith("[思考+]"):
+            self.flush_reply()
+            raw = _after(stripped, "[思考+]")
+            if raw.startswith(" "):
+                raw = raw[1:]
+            try:
+                frag = json.loads(raw)
+                if not isinstance(frag, str):
+                    frag = raw
+            except ValueError:
+                frag = raw
+            self.events.append(_ev("thinking_delta", frag, self.seq)); self.seq += 1
+            return 1
+        if stripped.startswith("[思考]"):
+            self.flush_reply()
+            self.events.append(_ev("thinking", _after(stripped, "[思考]"), self.seq)); self.seq += 1
+            return 1
+        for peer in ("teammate", "subagent", "supervisor"):
+            tag = f"[{peer} 思考]"
+            if stripped.startswith(tag):
+                self.events.append(_ev("thinking", _after(stripped, tag),
+                                       self.seq, peer=peer)); self.seq += 1
+                return 1
+        return None
+
     def feed(self, lines: list[str], i: int) -> int:
         """处理一行，返回推进步数（跨行块可大于 1）。"""
         line = lines[i].rstrip("\r")
@@ -162,35 +193,9 @@ class _RunParser:
                 self.flush_reply()
                 self.skip_final_reply = True
             return 1
-        if stripped.startswith("[思考+]"):
-            self.flush_reply()
-            raw = _after(stripped, "[思考+]")
-            if raw.startswith(" "):
-                raw = raw[1:]
-            try:
-                frag = json.loads(raw)
-                if not isinstance(frag, str):
-                    frag = raw
-            except ValueError:
-                frag = raw
-            self.events.append(_ev("thinking_delta", frag, self.seq)); self.seq += 1
-            return 1
-        if stripped.startswith("[思考]"):
-            self.flush_reply()
-            self.events.append(_ev("thinking", _after(stripped, "[思考]"), self.seq)); self.seq += 1
-            return 1
-        if stripped.startswith("[teammate 思考]"):
-            self.events.append(_ev("thinking", _after(stripped, "[teammate 思考]"), self.seq,
-                                   peer="teammate")); self.seq += 1
-            return 1
-        if stripped.startswith("[subagent 思考]"):
-            self.events.append(_ev("thinking", _after(stripped, "[subagent 思考]"), self.seq,
-                                   peer="subagent")); self.seq += 1
-            return 1
-        if stripped.startswith("[supervisor 思考]"):
-            self.events.append(_ev("thinking", _after(stripped, "[supervisor 思考]"), self.seq,
-                                   peer="supervisor")); self.seq += 1
-            return 1
+        handled = self._feed_thinking(stripped)
+        if handled is not None:
+            return handled
         if stripped.startswith("[reply]"):
             return self.on_reply(line)
         if stripped.startswith("[tool-result]"):

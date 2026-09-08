@@ -83,6 +83,40 @@ def _persona_query_reply(session_id: str) -> str:
     return f"我是你的专属 AI 助手，当前人格：{display}。想换人格的话，跟我说“切换成喵娘”就好啦～"
 
 
+def _status_reply(session_id: str) -> str:
+    """服务状态快捷回复文案（由 chat_completions 迁出）。"""
+    key = resolve_persona_key(session_id, session_workdir)
+    display = PERSONA_DISPLAY.get(key, key or "通用")
+    return f"✅ 服务运行中，AI 引擎在线，当前人格：{display}。我可以聊天、写代码、查资料～"
+
+
+def _egg_response(egg: str, stream: bool):
+    """彩蛋响应（流式 SSE / 非流式 JSON），由 chat_completions 迁出。"""
+    if stream:
+        cid, created = new_id(), int(time.time())
+
+        def gen():
+            yield sse_frame(cid, created, {"role": "assistant"})
+            for i in range(0, len(egg), 8):
+                yield sse_frame(cid, created, {"content": egg[i:i + 8]})
+            yield sse_frame(cid, created, {}, finish_reason="stop", usage=usage_zero())
+            yield "data: [DONE]\n\n"
+
+        return StreamingResponse(gen(), media_type="text/event-stream")
+    return JSONResponse({
+        "id": new_id(),
+        "object": "chat.completion",
+        "created": int(time.time()),
+        "model": "tsinghua-agent",
+        "choices": [{
+            "index": 0,
+            "message": {"role": "assistant", "content": egg},
+            "finish_reason": "stop",
+        }],
+        "usage": usage_zero(),
+    })
+
+
 @router.post("/v1/chat/completions")
 async def chat_completions(
     request: Request,
@@ -116,40 +150,14 @@ async def chat_completions(
         return quick_chat_response(reply, stream)
 
     # 服务状态快捷回复
-    status_queries = {"服务器状态", "服务状态", "系统状态"}
-    if last_user_content(messages) in status_queries:
-        key = resolve_persona_key(session_id, session_workdir)
-        display = PERSONA_DISPLAY.get(key, key or "通用")
-        reply = f"✅ 服务运行中，AI 引擎在线，当前人格：{display}。我可以聊天、写代码、查资料～"
+    if last_user_content(messages) in {"服务器状态", "服务状态", "系统状态"}:
+        reply = _status_reply(session_id)
         return quick_chat_response(reply, stream)
 
     # 轻量彩蛋：先于 agent 返回，保证快速、有趣
     egg = easter_egg_response(messages)
     if egg is not None:
-        if stream:
-            egg_cid = new_id()
-            egg_created = int(time.time())
-
-            def egg_gen():
-                yield sse_frame(egg_cid, egg_created, {"role": "assistant"})
-                for i in range(0, len(egg), 8):
-                    yield sse_frame(egg_cid, egg_created, {"content": egg[i:i + 8]})
-                yield sse_frame(egg_cid, egg_created, {}, finish_reason="stop", usage=usage_zero())
-                yield "data: [DONE]\n\n"
-
-            return StreamingResponse(egg_gen(), media_type="text/event-stream")
-        return JSONResponse({
-            "id": new_id(),
-            "object": "chat.completion",
-            "created": int(time.time()),
-            "model": "tsinghua-agent",
-            "choices": [{
-                "index": 0,
-                "message": {"role": "assistant", "content": egg},
-                "finish_reason": "stop",
-            }],
-            "usage": usage_zero(),
-        })
+        return _egg_response(egg, stream)
 
     if stream:
         return StreamingResponse(

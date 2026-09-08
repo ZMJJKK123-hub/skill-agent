@@ -82,42 +82,31 @@ def _render_gametest_summary(path, log_lines, passed, failed, errors) -> str:
     return "\n".join(out)
 
 
-def parse_gametest_results(lines: int = 200, log_path: str = None) -> str:
-    """Parse the tail of the GameTest log and return a concise pass/fail summary.
+def _resolve_log_path(log_path) -> tuple[Path, str | None]:
+    """解析日志路径（默认 run/logs/latest.log；相对挂基座；沙箱校验）。
 
-    Calls: _classify_log_lines / _render_gametest_summary。
+    Returns:
+        (路径, 错误消息或 None)。
     """
     base = _base_dir()
-    base_resolved = Path(base).resolve()
     path = Path(log_path) if log_path else Path(base) / DEFAULT_LOG
     if not path.is_absolute():
         path = Path(base) / path
-    if not path.resolve().is_relative_to(base_resolved):
-        return f"Error: log_path 越出工作区: {path}"
+    if not path.resolve().is_relative_to(Path(base).resolve()):
+        return path, f"Error: log_path 越出工作区: {path}"
     if not path.exists():
-        return f"Error: GameTest log not found: {path}"
-
-    text = _tail(path)
-    log_lines = text.splitlines()[-max(1, min(int(lines), 2000)):]
-
-    passed, failed, errors = _classify_log_lines(log_lines)
-    return _render_gametest_summary(path, log_lines, passed, failed, errors)
+        return path, f"Error: GameTest log not found: {path}"
+    return path, None
 
 
 def parse_gametest_results(lines: int = 200, log_path: str = None) -> str:
     """Parse the tail of the GameTest log and return a concise pass/fail summary.
 
-    Calls: _classify_log_lines / _render_gametest_summary。
+    Calls: _resolve_log_path / _classify_log_lines / _render_gametest_summary。
     """
-    base = _base_dir()
-    base_resolved = Path(base).resolve()
-    path = Path(log_path) if log_path else Path(base) / DEFAULT_LOG
-    if not path.is_absolute():
-        path = Path(base) / path
-    if not path.resolve().is_relative_to(base_resolved):
-        return f"Error: log_path 越出工作区: {path}"
-    if not path.exists():
-        return f"Error: GameTest log not found: {path}"
+    path, err = _resolve_log_path(log_path)
+    if err:
+        return err
 
     text = _tail(path)
     log_lines = text.splitlines()[-max(1, min(int(lines), 2000)):]

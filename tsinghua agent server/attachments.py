@@ -35,6 +35,18 @@ def guess_mime(path: Path) -> str:
     return mime or "application/octet-stream"
 
 
+def _deliverable(rel: Path, p: Path, start_ts: float) -> bool:
+    """是否可交付：白名单扩展 + 排除目录 + 时间窗（由 collect_attachments 拆出）。"""
+    if any(part in _ATTACHMENT_EXCLUDE_DIRS for part in rel.parts):
+        return False
+    if p.suffix.lower() not in _ATTACHMENT_EXTS:
+        return False
+    try:
+        return p.stat().st_mtime >= start_ts - 1
+    except OSError:
+        return False
+
+
 def collect_attachments(start_ts: float, base_url: str, limit: int = 10, scope: Path | None = None) -> list[dict]:
     """收集 start_ts 之后生成的可交付文件，构造清小搭 x_soda.attachments。"""
     root = scope if scope is not None else WORKSPACE
@@ -49,15 +61,8 @@ def collect_attachments(start_ts: float, base_url: str, limit: int = 10, scope: 
             rel = p.relative_to(WORKSPACE)
         except ValueError:
             continue
-        parts = rel.parts
-        if any(part in _ATTACHMENT_EXCLUDE_DIRS for part in parts):
+        if not _deliverable(rel, p, start_ts):
             continue
-        if p.suffix.lower() not in _ATTACHMENT_EXTS:
-            continue
-        try:
-            if p.stat().st_mtime < start_ts - 1:
-                continue
-        except OSError:
             continue
         key = rel.as_posix()
         if key in seen:

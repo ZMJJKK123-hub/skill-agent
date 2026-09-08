@@ -170,6 +170,54 @@ def run_search_api(symbol: str, path: str = "mc_java_sources", max_results: int 
         return f"Error: {e}"
 
 
+def _grep_emit(results: list, rel: str, src_lines: list, idx: int,
+               context_lines: int) -> None:
+    """命中行（含上下文）追加进结果（由 run_grep 迁出）。"""
+    ctx = context_lines if context_lines and context_lines > 0 else 0
+    lo = max(0, idx - 1 - ctx)
+    hi = min(len(src_lines), idx + ctx)
+    for n in range(lo, hi):
+        results.append(f"{rel}:{n + 1}: {src_lines[n][:300]}")
+
+
+def _grep_one_file(fp: Path, rel: str, rx, max_results: int,
+                   context_lines: int, already: int) -> list:
+    """单文件扫描（相对路径标签 rel 由调用方给定）。"""
+    out: list = []
+    try:
+        src = fp.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return out
+    for i, line in enumerate(src, 1):
+        if rx.search(line):
+            _grep_emit(out, rel, src, i, context_lines)
+            if len(out) + already >= max_results:
+                break
+    return out
+
+
+def _grep_walk(directory: Path, base: Path, rx, glob_filter,
+               max_results: int, context_lines: int) -> list:
+    """目录树扫描（跳过运行时目录；glob 过滤；达到上限即停）。"""
+    results: list = []
+    for dirpath, dirnames, filenames in os.walk(str(directory)):
+        dirnames[:] = [d for d in dirnames if d not in _SEARCH_SKIP_DIRS]
+        for fname in filenames:
+            if glob_filter and not fnmatch.fnmatch(fname, glob_filter):
+                continue
+            fp = Path(dirpath) / fname
+            try:
+                rel = str(fp.relative_to(base))
+            except ValueError:
+                rel = str(fp)
+            part = _grep_one_file(fp, rel, rx, max_results,
+                                  context_lines, len(results))
+            results.extend(part)
+            if len(results) >= max_results:
+                return results
+    return results
+
+
 def _grep_sandbox_ok(root: Path, base: Path) -> bool:
     """输入：目标路径 + 工作区根。返回：是否允许搜索。
 
@@ -206,48 +254,13 @@ def run_grep(pattern: str, path: str = ".", glob_filter: str = None,
             rx = re.compile(pattern)
         except re.error as e:
             return f"Error: invalid regex '{pattern}': {e}"
-        results = []
+        results = _grep_walk(root, base, rx, glob_filter,
+                             max_results, context_lines)
+        emitted = len(results)
 
-        def _emit(rel, src_lines, idx):
-            ctx = context_lines if context_lines and context_lines > 0 else 0
-            lo = max(0, idx - 1 - ctx)
-            hi = min(len(src_lines), idx + ctx)
-            for n in range(lo, hi):
-                results.append(f"{rel}:{n + 1}: {src_lines[n][:300]}")
-
-        def _walk(directory: Path):
-            for dirpath, dirnames, filenames in os.walk(str(directory)):
-                dirnames[:] = [d for d in dirnames if d not in _SEARCH_SKIP_DIRS]
-                for fname in filenames:
-                    if glob_filter and not fnmatch.fnmatch(fname, glob_filter):
-                        continue
-                    fp = Path(dirpath) / fname
-                    try:
-                        src = fp.read_text(encoding="utf-8", errors="replace").splitlines()
-                    except OSError:
-                        continue
-                    for i, line in enumerate(src, 1):
-                        if rx.search(line):
-                            try:
-                                rel = str(fp.relative_to(base))
-                            except ValueError:
-                                rel = str(fp)
-                            _emit(rel, src, i)
-                            if len(results) >= max_results:
-                                return
-
-        if root.is_dir():
-            _walk(root)
-        elif root.is_file():
-            try:
-                src = root.read_text(encoding="utf-8", errors="replace").splitlines()
-            except OSError:
-                return "(no matches)"
-            for i, line in enumerate(src, 1):
-                if rx.search(line):
-                    _emit(str(path), src, i)
-                    if len(results) >= max_results:
-                        break
+        if root.is_file():
+            results += _grep_one_file(root, str(path), rx, max_results,
+                                      context_lines, emitted)
         out = "\n".join(results) if results else "(no matches)"
         if len(results) >= max_results:
             out += f"\n... (截断，共显示 {max_results} 条)"
