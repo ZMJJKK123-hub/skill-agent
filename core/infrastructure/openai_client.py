@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import base64
+import json  # JSON 校验：tool_call 参数出站清洗（_sanitize_tool_args）
 import uuid
 from pathlib import Path
 from typing import Iterator
@@ -117,7 +118,6 @@ class OpenAIModelClient:
         不改动会话存储；工具执行侧的容错会向模型说明参数无效。
         Globals Used: 无（纯函数）。
         """
-        import json as _json
         for m in sdk_messages:
             if m.get("role") != "assistant":
                 continue
@@ -127,7 +127,7 @@ class OpenAIModelClient:
                 if args is None:
                     continue
                 try:
-                    _json.loads(args)
+                    json.loads(args)
                 except (ValueError, TypeError):
                     logger.warning("清洗非法 tool_call 参数（流式截断残片） | tool=%s",
                                    fn.get("name"))

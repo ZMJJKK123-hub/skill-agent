@@ -1347,3 +1347,7 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 - **Auto-recorded:** [思考+] "LoadingException: \"Mod example"
 - **Auto-recorded:** - Agent tried to generate texture via URL download but web tool failed too.
 - **Auto-recorded:** FAILURE: Build failed with an exception.
+
+## 2026-09-08 Auto-recorded from runtime
+
+- **Auto-recorded:** [4] tool len=49 | Error: Skill 'forge-items' not found. Available:
