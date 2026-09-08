@@ -67,6 +67,27 @@ def restore_user_window() -> None:
     _restore_user_foreground()
 
 
+def _visible_window_title(user32, hwnd) -> "str | None":
+    """读可见且非空标题窗口的标题文本（不可见/无标题返回 None）。
+
+    由 _focus_minecraft_window 的枚举回调拆出。
+    """
+    if not user32.IsWindowVisible(hwnd):
+        return None
+    length = user32.GetWindowTextLengthW(hwnd)
+    if not length:
+        return None
+    import ctypes
+    buf = ctypes.create_unicode_buffer(length + 1)
+    user32.GetWindowTextW(hwnd, buf, length + 1)
+    return buf.value
+
+
+def _is_mc_window_title(title: str) -> bool:
+    """窗口标题是否为 Minecraft（大小写不敏感），由 _focus_minecraft_window 拆出。"""
+    return "minecraft" in title.lower()
+
+
 def _focus_minecraft_window(wait: float = 0.8, maximize: bool = True):
     """把标题含 "Minecraft" 的窗口带到前台，返回其屏幕矩形 (l, t, r, b)。
 
@@ -88,14 +109,8 @@ def _focus_minecraft_window(wait: float = 0.8, maximize: bool = True):
         @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
         def _cb(hwnd, _lparam):
             try:
-                if not user32.IsWindowVisible(hwnd):
-                    return True
-                length = user32.GetWindowTextLengthW(hwnd)
-                if not length:
-                    return True
-                buf = ctypes.create_unicode_buffer(length + 1)
-                user32.GetWindowTextW(hwnd, buf, length + 1)
-                if "minecraft" in buf.value.lower():
+                title = _visible_window_title(user32, hwnd)
+                if title is not None and _is_mc_window_title(title):
                     rect = wintypes.RECT()
                     if user32.GetWindowRect(hwnd, ctypes.byref(rect)):
                         if (rect.right - rect.left) > 200 and (rect.bottom - rect.top) > 150:

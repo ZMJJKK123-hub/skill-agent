@@ -164,15 +164,20 @@ def main() -> int:
     messages = _assemble_first_round(store, task_prompt, _parse_prompt_images())
     if messages is None:
         return 1
+    _run_first_round_safely(engine, messages, session_dir, store, writer)
+
+    daemon_loop(engine, store, writer, session_dir, session_root, mode,
+                settings.daemon_idle_timeout_s, PROJECT_ROOT)
+    return 0
+
+
+def _run_first_round_safely(engine, messages, session_dir, store, writer) -> None:
+    """执行首轮（异常转通知与栈打印，不阻断 daemon 常驻）。"""
     try:
         run_one_round(engine, messages, session_dir, store, writer, PROJECT_ROOT)
     except Exception as e:
         print_round_trace(e)
         notify_round_error(store, e)
-
-    daemon_loop(engine, store, writer, session_dir, session_root, mode,
-                settings.daemon_idle_timeout_s, PROJECT_ROOT)
-    return 0
 
 
 def _prepare_workspace(session_dir: Path, session_root: Path, mode: str,

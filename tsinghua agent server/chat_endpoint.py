@@ -117,6 +117,47 @@ def _egg_response(egg: str, stream: bool):
     })
 
 
+def _nonstream_agent_response(messages: list, session_id: str, base_url: str):
+    """非流式 agent 响应（成功带 reasoning_content/附件；失败给友好文案）。
+    Args:
+        messages: 归一化消息。session_id/base_url: 会话与公网基址。
+    """
+    try:
+        final, attachments, reasoning = run_agent(messages, session_id, base_url)
+    except Exception as e:  # noqa: BLE001
+        err_msg = friendly_agent_error(e)
+        return JSONResponse({
+            "id": new_id(),
+            "object": "chat.completion",
+            "created": int(time.time()),
+            "model": "tsinghua-agent",
+            "choices": [{
+                "index": 0,
+                "message": {"role": "assistant", "content": err_msg},
+                "finish_reason": "stop",
+            }],
+            "usage": usage_zero(),
+        })
+    message = {"role": "assistant", "content": final}
+    if reasoning:
+        message["reasoning_content"] = reasoning
+    payload = {
+        "id": new_id(),
+        "object": "chat.completion",
+        "created": int(time.time()),
+        "model": "tsinghua-agent",
+        "choices": [{
+            "index": 0,
+            "message": message,
+            "finish_reason": "stop",
+        }],
+        "usage": usage_zero(),
+    }
+    if attachments:
+        payload["x_soda"] = {"attachments": attachments}
+    return JSONResponse(payload)
+
+
 @router.post("/v1/chat/completions")
 async def chat_completions(
     request: Request,
@@ -167,41 +208,7 @@ async def chat_completions(
         )
 
     # 非流式：完整 Agent 跑完再返回（message.reasoning_content 带思考全文）
-    try:
-        final, attachments, reasoning = run_agent(messages, session_id, base_url)
-    except Exception as e:  # noqa: BLE001
-        err_msg = friendly_agent_error(e)
-        return JSONResponse({
-            "id": new_id(),
-            "object": "chat.completion",
-            "created": int(time.time()),
-            "model": "tsinghua-agent",
-            "choices": [{
-                "index": 0,
-                "message": {"role": "assistant", "content": err_msg},
-                "finish_reason": "stop",
-            }],
-            "usage": usage_zero(),
-        })
-
-    message = {"role": "assistant", "content": final}
-    if reasoning:
-        message["reasoning_content"] = reasoning
-    payload = {
-        "id": new_id(),
-        "object": "chat.completion",
-        "created": int(time.time()),
-        "model": "tsinghua-agent",
-        "choices": [{
-            "index": 0,
-            "message": message,
-            "finish_reason": "stop",
-        }],
-        "usage": usage_zero(),
-    }
-    if attachments:
-        payload["x_soda"] = {"attachments": attachments}
-    return JSONResponse(payload)
+    return _nonstream_agent_response(messages, session_id, base_url)
 
 
 # 容错：兼容不带 /v1、或尾部带 / 的探测路径

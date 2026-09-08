@@ -44,6 +44,54 @@ def _format_answers(data: dict, qs: list[dict]) -> str:
     return json.dumps([{"question": qs[0]["question"], "answer": legacy}], ensure_ascii=False)
 
 
+def _auto_mode_reply() -> str | None:
+    """全自动模式的替代回复（开启时返回说明；关闭返回 None）。"""
+    if not config.AUTO_MODE:
+        return None
+    logger.info("ask_user_question | 全自动模式开启，跳过用户提问")
+    return (
+        "AUTO_MODE is enabled: cannot block for user input. "
+        "Use your best judgment / reasonable defaults, and clearly state assumptions "
+        "in your final summary."
+    )
+
+
+def _wait_answer_files(apath: Path, qpath: Path, deadline: float,
+                       qs: list) -> str | None:
+    """轮询 answer.json；读到即清理问答文件并返回结构化答案。
+
+    Args:
+        apath/qpath: 答案与问题文件。deadline: 截止时间戳。
+        qs: 问题列表（答案对齐用）。
+    Returns:
+        结构化答案 JSON 串；超时返回 None（清理交调用方）。
+    """
+    while time.time() < deadline:
+        if apath.exists():
+            try:
+                data = json.loads(apath.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                time.sleep(1)
+                continue
+            try:
+                apath.unlink()
+            except OSError as e:
+                logger.warning("_wait_answer_files 降级忽略 | %s", e)
+            _cleanup_question_file(qpath)
+            return _format_answers(data, qs)
+        time.sleep(1)
+    return None
+
+
+def _cleanup_question_file(qpath: Path) -> None:
+    """清理问题文件（超时/答后通用，避免前端一直显示）。"""
+    if qpath.exists():
+        try:
+            qpath.unlink()
+        except OSError as e:
+            logger.warning("_cleanup_question_file 降级忽略 | %s", e)
+
+
 def run_ask_user(questions, options: list = None) -> str:
     """向用户提出一个或多个问题并阻塞等待回答（文件 IPC：写 question.json，轮询 answer.json）。
 
@@ -61,13 +109,9 @@ def run_ask_user(questions, options: list = None) -> str:
     if not qs:
         return "Error: 问题为空"
 
-    if config.AUTO_MODE:
-        logger.info("ask_user_question | 全自动模式开启，跳过用户提问")
-        return (
-            "AUTO_MODE is enabled: cannot block for user input. "
-            "Use your best judgment / reasonable defaults, and clearly state assumptions "
-            "in your final summary."
-        )
+    auto = _auto_mode_reply()
+    if auto:
+        return auto
 
     base = Path.cwd()  # agent 子进程 cwd = 会话目录（run_task.py os.chdir）
     qpath = base / "question.json"
@@ -85,31 +129,12 @@ def run_ask_user(questions, options: list = None) -> str:
     # （防止前端已确认但消息丢失导致 agent 永久卡死）。
     deadline = time.time() + 300
     try:
-        while time.time() < deadline:
-            if apath.exists():
-                try:
-                    data = json.loads(apath.read_text(encoding="utf-8"))
-                except (OSError, json.JSONDecodeError):
-                    time.sleep(1)
-                    continue
-                try:
-                    apath.unlink()
-                except OSError as e:
-                    logger.warning("run_ask_user 降级忽略 | %s", e)
-                if qpath.exists():
-                    try:
-                        qpath.unlink()
-                    except OSError as e:
-                        logger.warning("run_ask_user 降级忽略 | %s", e)
-                return _format_answers(data, qs)
-            time.sleep(1)
+        answer = _wait_answer_files(apath, qpath, deadline, qs)
     except Exception as e:
         return f"Error: {e}"
-    # 超时：清掉问题，避免前端一直显示
-    if qpath.exists():
-        try:
-            qpath.unlink()
-        except OSError as e:
-            logger.warning("run_ask_user 降级忽略 | %s", e)
-    return "(用户未回答，已超时)"
+    if answer is None:
+        _cleanup_question_file(qpath)
+        return "(用户未回答，已超时)"
+    return answer
+
 

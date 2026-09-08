@@ -154,33 +154,48 @@ def run_screenshot(region: dict = None) -> str:
         return f"Error: screenshot failed: {e}"
 
 
+def _vision_preflight(image_path: str) -> "tuple[str | None, str | None]":
+    """识图前置校验（开关/配置/文件存在）。
+
+    Returns:
+        (错误消息或 None, 视觉模型名或 None)。
+    """
+    if not _vision_enabled():
+        return "Error: 识图模式未开启（DSH_VISION_ENABLED=0）", None
+    api_key, base_url, model = _resolve_vision_config()
+    if not api_key or not base_url or not model:
+        return ("Error: 视觉 API 未配置（需要 DSH_VISION_API_KEY / "
+                "DSH_VISION_BASE_URL / DSH_VISION_MODEL，"
+                "或桌面 glm4v-vision-mcp/server/.env 里有 ZHIPU_API_KEY）", None)
+    base = worktree_manager.resolve_dir() if worktree_manager else None
+    if not safe_path(image_path, base).is_file():
+        return f"Error: image not found: {image_path}", None
+    return None, model
+
+
+def _encode_image_b64(p) -> str:
+    """图片读取 + 缩放 + JPEG 压缩 + base64（由 run_analyze_image 拆出）。"""
+    from PIL import Image
+    import base64
+    import io
+    img = Image.open(p)
+    max_dim = 1280  # 缩放上限，降低 token/带宽消耗
+    if max(img.size) > max_dim:
+        img.thumbnail((max_dim, max_dim))
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=85)
+    return base64.b64encode(buf.getvalue()).decode("ascii")
+
+
 def run_analyze_image(image_path: str, prompt: str = None) -> str:
     """读取图片并调用视觉 API 识别，返回模型描述文本（用于判断游戏/MOD 画面是否正常）。"""
     try:
-        if not _vision_enabled():
-            return "Error: 识图模式未开启（DSH_VISION_ENABLED=0）"
-        api_key, base_url, model = _resolve_vision_config()
-        if not api_key or not base_url or not model:
-            return ("Error: 视觉 API 未配置（需要 DSH_VISION_API_KEY / "
-                    "DSH_VISION_BASE_URL / DSH_VISION_MODEL，"
-                    "或桌面 glm4v-vision-mcp/server/.env 里有 ZHIPU_API_KEY）")
-        base = worktree_manager.resolve_dir() if worktree_manager else None
-        p = safe_path(image_path, base)
-        if not p.is_file():
-            return f"Error: image not found: {image_path}"
-        from PIL import Image
-        import base64
-        import io
-        img = Image.open(p)
-        # 缩放 + JPEG 压缩，降低 token/带宽消耗
-        max_dim = 1280
-        if max(img.size) > max_dim:
-            img.thumbnail((max_dim, max_dim))
-        if img.mode != "RGB":
-            img = img.convert("RGB")
-        buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=85)
-        b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+        err, model = _vision_preflight(image_path)
+        if err:
+            return err
+        b64 = _encode_image_b64(safe_path(image_path, worktree_manager.resolve_dir() if worktree_manager else None))
         text = prompt or (
             "Describe this image in detail. Focus on game/MOD UI state, "
             "errors, crash screens, or anomalies."

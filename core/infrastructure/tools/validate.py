@@ -100,6 +100,31 @@ def _validate_item_model_json(base: Path, rel: Path, parts, modid: str,
                 _check_model_ref(base, ref, modid, errors, rel)
 
 
+def _validate_blockstate_json(base: Path, rel: Path, parts, modid: str,
+                               data, errors: list) -> None:
+    """Blockstate 校验（variants/multipart 模型引用），由 _validate_json_file 拆出。"""
+    if "assets" not in parts or "blockstates" not in parts or len(parts) < 4:
+        return
+    if parts[parts.index("assets") + 1] != modid:
+        return
+    variants = (data or {}).get("variants")
+    if isinstance(variants, dict):
+        for v in variants.values():
+            if isinstance(v, dict) and isinstance(v.get("model"), str):
+                _check_model_ref(base, v["model"], modid, errors, rel)
+            elif isinstance(v, list):
+                for entry in v:
+                    if isinstance(entry, dict) and isinstance(entry.get("model"), str):
+                        _check_model_ref(base, entry["model"], modid, errors, rel)
+    multipart = (data or {}).get("multipart")
+    if isinstance(multipart, list):
+        for part in multipart:
+            if isinstance(part, dict) and isinstance(part.get("apply"), dict):
+                apply = part["apply"]
+                if isinstance(apply.get("model"), str):
+                    _check_model_ref(base, apply["model"], modid, errors, rel)
+
+
 def _validate_json_file(base: Path, rel: Path, modid: str, errors: list, warnings: list) -> None:
     data, err = _load_json(base / rel)
     if err:
@@ -119,24 +144,7 @@ def _validate_json_file(base: Path, rel: Path, modid: str, errors: list, warning
                 if isinstance(val, str) and ":" in val:
                     _check_texture_ref(base, val, modid, errors, rel)
 
-    # Blockstate JSON: assets/<modid>/blockstates/<name>.json
-    if "assets" in parts and "blockstates" in parts and len(parts) >= 4 and parts[parts.index("assets") + 1] == modid:
-        variants = (data or {}).get("variants")
-        if isinstance(variants, dict):
-            for state, v in variants.items():
-                if isinstance(v, dict) and isinstance(v.get("model"), str):
-                    _check_model_ref(base, v["model"], modid, errors, rel)
-                elif isinstance(v, list):
-                    for entry in v:
-                        if isinstance(entry, dict) and isinstance(entry.get("model"), str):
-                            _check_model_ref(base, entry["model"], modid, errors, rel)
-        multipart = (data or {}).get("multipart")
-        if isinstance(multipart, list):
-            for part in multipart:
-                if isinstance(part, dict) and isinstance(part.get("apply"), dict):
-                    apply = part["apply"]
-                    if isinstance(apply.get("model"), str):
-                        _check_model_ref(base, apply["model"], modid, errors, rel)
+    _validate_blockstate_json(base, rel, parts, modid, data, errors)
 
     # Recipe JSON: data/<modid>/recipe/<name>.json
     if "data" in parts and "recipe" in parts and len(parts) >= 4 and parts[parts.index("data") + 1] == modid:

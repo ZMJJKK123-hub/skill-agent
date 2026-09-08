@@ -72,6 +72,26 @@ def _read_agent_events(agent_log: Path, agent_off: int) -> tuple[list[dict], int
     return [], agent_off
 
 
+def _finalize_events(events: list[dict]) -> None:
+    """事件后处理：跨轮唯一 id 重编号 + peer 传播（由 build_event_stream 拆出）。
+
+    peer 传播：[supervisor:xxx] 等工具的 [tool-result] 行自身不带 peer，
+    把最近一个带 peer 的 tool_call 的 peer 传给紧随其后的 tool_result。
+    Globals Used: _ID_COUNTER。
+    """
+    for ev in events:
+        ev["id"] = f"ev-{next(_ID_COUNTER)}"
+    last_peer = None
+    for ev in events:
+        if ev["type"] == "tool_call":
+            last_peer = ev.get("peer")
+        elif ev["type"] == "tool_result":
+            if last_peer and not ev.get("peer"):
+                ev["peer"] = last_peer
+            if not ev.get("peer"):
+                last_peer = None
+
+
 def build_event_stream(session_dir: Path, cursor: Optional[dict] = None) -> dict:
     """读取两条日志的新增内容，合并为事件列表。
 
@@ -113,24 +133,7 @@ def build_event_stream(session_dir: Path, cursor: Optional[dict] = None) -> dict
     else:
         next_cursor["agent"] = 0
 
-    # 统一重新编号，使用进程内单调计数器，保证 id 跨轮唯一
-    for ev in events:
-        ev["id"] = f"ev-{next(_ID_COUNTER)}"
-
-    # peer 传播：[supervisor:xxx]/[subagent:xxx] 工具的 [tool-result] 行自身
-    # 不带 peer 标记，前端按 peer 过滤内部工具时会漏掉这些红色失败行。
-    # 把最近一个带 peer 的 tool_call 的 peer 传给紧随其后的 tool_result。
-    last_peer = None
-    for ev in events:
-        if ev["type"] == "tool_call":
-            last_peer = ev.get("peer")
-        elif ev["type"] == "tool_result":
-            if last_peer and not ev.get("peer"):
-                ev["peer"] = last_peer
-            if not ev.get("peer"):
-                last_peer = None  # 主 agent 自己的工具结果，重置
-        else:
-            last_peer = None
+    _finalize_events(events)
 
     return {"events": events, "cursor": next_cursor}
 
