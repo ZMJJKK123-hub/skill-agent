@@ -11,7 +11,8 @@ import { ModConfirmBar } from './ModConfirmBar'
 import { SendControls } from './SendControls'
 import { UploadThumbStrip, handleTextareaKey } from './InputDecorations'
 import { SlashPalette } from './SlashPalette'
-import { MAX_IMAGES_PER_MESSAGE, fileToDataUrl } from '../lib/imageInput'
+import { addImageFiles } from '../lib/imageInput'
+import { dispatchModConfirm, dispatchSend } from '../lib/composerSend'
 
 /** '/' 命令面板条目 */
 const SLASH_COMMANDS = [
@@ -63,23 +64,6 @@ export function Composer() {
     ;(document.querySelector('main textarea') as HTMLTextAreaElement | null)?.focus()
   }
 
-  const addImageFiles = async (files: File[]) => {
-    const pics = files.filter((f) => f.type.startsWith('image/'))
-    if (pics.length === 0) return
-    const room = MAX_IMAGES_PER_MESSAGE - images.length
-    if (pics.length > room) alert(t('conv.tooManyImages'))
-    if (room <= 0) return
-    const encoded: string[] = []
-    for (const f of pics.slice(0, room)) {
-      try {
-        encoded.push(await fileToDataUrl(f))
-      } catch {
-        /* 单张解析失败跳过 */
-      }
-    }
-    if (encoded.length > 0) setImages((prev) => [...prev, ...encoded])
-  }
-
   // 发送重入防护：第一次 send 尚未把 phase 切到 running（网络往返中）时，
   // 双击/回车+点击的第二次触发会重发同一条（实测：两个相同气泡+重复排队）
   const sendingRef = useRef(false)
@@ -97,53 +81,39 @@ export function Composer() {
   }
   const send = () => {
     if (sendingRef.current) return
-    const prompt = text.trim()
-    if (!prompt && images.length === 0) return
-    const settings = buildSettings()
-    // /chat 拦截：显式切回对话模式（force_mode 让 server 不沿用 mod 记忆）
-    if (/^\/chat(\s|$)/i.test(prompt)) {
-      const chatPrompt = prompt.slice(5).trim()
-      if (!chatPrompt) {
-        alert('用法：/chat <内容> —— 切换到对话模式并发送。MOD 会话中用它可退出制作模式回到纯聊天。')
-        return
-      }
-      if (running) {
-        alert('当前任务运行中，请等本轮完成后再用 /chat 切换模式。')
-        return
-      }
-      setUi({ toast: '已切换到对话模式' })
-      sendingRef.current = true
-      void sendPrompt(chatPrompt, settings, 'chat', images, true).finally(() => { sendingRef.current = false })
-      setText('')
-      setImages([])
+    sendingRef.current = true
+    const outcome = dispatchSend(text, images, {
+      running, mode: sess.mode, buildSettings,
+      send: (p, s, m, imgs, force) => sendPrompt(p, s as never, m, imgs, force),
+    })
+    if (outcome.kind === 'rejected') {
+      sendingRef.current = false
       return
     }
-    // /mod 拦截（大小写不敏感——/MOD /Mod 同样生效）
-    if (/^\/mod(\s|$)/i.test(prompt)) {
-      const modPrompt = prompt.slice(4).trim()
-      if (!modPrompt) {
-        alert('用法：/mod <你的 MOD 需求描述>，例如：/mod 做一把钻石剑')
-        return
-      }
-      setModConfirm(modPrompt)
+    if (outcome.kind === 'mod-confirm') {
+      sendingRef.current = false
+      setModConfirm(outcome.prompt)
       setModImages(images)
       return
     }
-    // 普通消息：mod 会话沿用 mod 模式（防迭代需求被降级成只读咨询）
-    sendingRef.current = true
-    void sendPrompt(prompt, settings, sess.mode === 'mod' ? 'mod' : 'chat', images).finally(() => { sendingRef.current = false })
     setText('')
     setImages([])
+    outcome.promise.finally(() => { sendingRef.current = false })
   }
 
   const confirmMod = () => {
     if (!modConfirm || sendingRef.current) return
     sendingRef.current = true
-    void sendPrompt(modConfirm, buildSettings(), 'mod', modImages).finally(() => { sendingRef.current = false })
+    const pr = dispatchModConfirm(modConfirm, modImages, {
+      running, mode: sess.mode, buildSettings,
+      send: (p, s, m, imgs) => sendPrompt(p, s as never, m, imgs),
+    })
+    if (!pr) { sendingRef.current = false; return }
     setModConfirm(null)
     setModImages([])
     setText('')
     setImages([])
+    pr.finally(() => { sendingRef.current = false })
   }
 
   const canChat = hasModelConfig({ model, providers })
@@ -170,7 +140,7 @@ export function Composer() {
           e.preventDefault()
           setDragOver(false)
           const files = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith('image/'))
-          if (files.length > 0) void addImageFiles(files)
+          if (files.length > 0) void addImageFiles(files, images.length, (enc) => setImages((prev) => [...prev, ...enc]), t('conv.tooManyImages'))
         }}
       >
         {cmdOpen && (
@@ -189,7 +159,7 @@ export function Composer() {
             const files = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith('image/'))
             if (files.length > 0) {
               e.preventDefault()
-              void addImageFiles(files)
+              void addImageFiles(files, images.length, (enc) => setImages((prev) => [...prev, ...enc]), t('conv.tooManyImages'))
             }
           }}
           onKeyDown={(e) =>
@@ -216,7 +186,7 @@ export function Composer() {
             multiple
             className="hidden"
             onChange={(e) => {
-              void addImageFiles(Array.from(e.target.files ?? []))
+              void addImageFiles(Array.from(e.target.files ?? []), images.length, (enc) => setImages((prev) => [...prev, ...enc]), t('conv.tooManyImages'))
               e.target.value = '' // 允许重复选择同一张
             }}
           />

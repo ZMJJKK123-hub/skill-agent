@@ -36,3 +36,29 @@ export async function fileToDataUrl(file: File): Promise<string> {
     return raw
   }
 }
+
+/**
+ * 批量图片入选（由 Composer.tsx 迁出）：过滤非图片/超量截断/单张失败跳过。
+ * count = 当前已选数；onAdd 追加编码结果；alertText 超量提示文案。
+ */
+export async function addImageFiles(
+  files: File[],
+  count: number,
+  onAdd: (encoded: string[]) => void,
+  alertText: string,
+): Promise<void> {
+  const pics = files.filter((f) => f.type.startsWith('image/'))
+  if (pics.length === 0) return
+  const room = MAX_IMAGES_PER_MESSAGE - count
+  if (pics.length > room) alert(alertText)
+  if (room <= 0) return
+  const encoded: string[] = []
+  for (const f of pics.slice(0, room)) {
+    try {
+      encoded.push(await fileToDataUrl(f))
+    } catch {
+      /* 单张解析失败跳过 */
+    }
+  }
+  if (encoded.length > 0) onAdd(encoded)
+}
