@@ -8,6 +8,42 @@ from ... import config
 from ...config import logger
 from ...config import logger  # 统一日志：降级路径记录
 
+def _normalize_questions(questions, options: list) -> list[dict]:
+    """输入：多问题列表或 legacy 单问题。返回：标准 questions 列表（空=无效）。
+
+    职责：兼容 dict/str 两种多问题元素与 legacy (questions, options) 入参。
+    """
+    options = options or []
+    if isinstance(questions, list) and questions:
+        qs = []
+        for q in questions:
+            if isinstance(q, dict):
+                qs.append({"question": str(q.get("question", "")), "options": list(q.get("options") or [])})
+            else:
+                qs.append({"question": str(q), "options": []})
+        return qs
+    return [{"question": str(questions or ""), "options": options}]
+
+
+def _format_answers(data: dict, qs: list[dict]) -> str:
+    """输入：answer.json 内容 + 问题列表。返回：结构化多答案 JSON 串。
+
+    职责：多答案按序与 qs 对齐；兼容旧单答 {"answer": "..."}。
+    """
+    raw_answers = data.get("answers")
+    if isinstance(raw_answers, list):
+        out = []
+        for idx, q in enumerate(qs):
+            ans = ""
+            if idx < len(raw_answers):
+                candidate = raw_answers[idx]
+                ans = str(candidate.get("answer", "")) if isinstance(candidate, dict) else str(candidate)
+            out.append({"question": q["question"], "answer": ans})
+        return json.dumps(out, ensure_ascii=False)
+    legacy = str(data.get("answer", ""))
+    return json.dumps([{"question": qs[0]["question"], "answer": legacy}], ensure_ascii=False)
+
+
 def run_ask_user(questions, options: list = None) -> str:
     """向用户提出一个或多个问题并阻塞等待回答（文件 IPC：写 question.json，轮询 answer.json）。
 
@@ -21,18 +57,8 @@ def run_ask_user(questions, options: list = None) -> str:
     超时：从用户确认提交后开始计时 5 分钟（等待 agent 读取），
     用户填写阶段不设超时（避免慢慢填被强杀）。
     """
-    options = options or []
-    # 归一化为标准 questions 列表
-    if isinstance(questions, list) and questions:
-        qs = []
-        for q in questions:
-            if isinstance(q, dict):
-                qs.append({"question": str(q.get("question", "")), "options": list(q.get("options") or [])})
-            else:
-                qs.append({"question": str(q), "options": []})
-    else:
-        qs = [{"question": str(questions or ""), "options": options}]
-    if not qs or not qs[0]["question"].strip():
+    qs = _normalize_questions(questions, options)
+    if not qs:
         return "Error: 问题为空"
 
     if config.AUTO_MODE:
@@ -75,24 +101,7 @@ def run_ask_user(questions, options: list = None) -> str:
                         qpath.unlink()
                     except OSError as e:
                         logger.warning("run_ask_user 降级忽略 | %s", e)
-                # 结构化多答案：{answers: [{question, answer}, ...]}
-                raw_answers = data.get("answers")
-                if isinstance(raw_answers, list):
-                    # 归一化：与 qs 对齐（可能缺题/多余，按 question 文本匹配或按序）
-                    out = []
-                    for idx, q in enumerate(qs):
-                        ans = ""
-                        if idx < len(raw_answers):
-                            candidate = raw_answers[idx]
-                            if isinstance(candidate, dict):
-                                ans = str(candidate.get("answer", ""))
-                            else:
-                                ans = str(candidate)
-                        out.append({"question": q["question"], "answer": ans})
-                    return json.dumps(out, ensure_ascii=False)
-                # 兼容旧单答格式：{"answer": "..."}
-                legacy = str(data.get("answer", ""))
-                return json.dumps([{"question": qs[0]["question"], "answer": legacy}], ensure_ascii=False)
+                return _format_answers(data, qs)
             time.sleep(1)
     except Exception as e:
         return f"Error: {e}"

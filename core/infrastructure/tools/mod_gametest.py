@@ -32,6 +32,27 @@ def _ensure_game_test_eula(base: os.PathLike | str) -> None:
         logger.info(f"_ensure_game_test_eula 失败: {e}")
 
 
+def _render_game_test_report(returncode: int, out: str) -> str:
+    """输入：进程退出码 + 完整输出。返回：给模型的结果报告（截断 + 下一步提示）。
+
+    职责：异常退出识别、read_game_test_log 引导、命名空间检查提示。
+    """
+    tail = out[-50000:]
+    summary = "[gametest] runGameTestServer 已完成"
+    if returncode != 0 and "GameTest" not in out:
+        summary = "[gametest] runGameTestServer 进程异常退出（可能编译/运行错误）"
+    hint = (
+        "\n→ 请接着调用 read_game_test_log 读取 run/logs/latest.log 的最新日志，"
+        "根据错误修复后重新调用本工具即可实现自循环调试。"
+    )
+    if "forge.enabledGameTestNamespaces" not in out and "tutorial_mod" not in out:
+        hint += (
+            "\n提示：若你的 GameTest 没有运行，检查 build.gradle 的 "
+            "forge.enabledGameTestNamespaces 是否与你 mods.toml 的 modId 一致。"
+        )
+    return f"{summary}\n{tail}\n{hint}"
+
+
 def _run_game_test_server(kw: dict) -> str:
     """run_game_test_server 工具：编译并运行 Forge GameTestServer。
 
@@ -45,16 +66,8 @@ def _run_game_test_server(kw: dict) -> str:
     base = worktree_manager.resolve_dir() if worktree_manager else os.getcwd()
     _ensure_game_test_eula(base)
 
-    if os.name == "nt" or sys.platform == "win32":
-        if os.path.exists(os.path.join(base, "gradlew.bat")):
-            cmd = ["cmd", "/c", "gradlew.bat", task]
-        else:
-            cmd = ["cmd", "/c", "gradle", task, "--console=plain"]
-    else:
-        if os.path.exists(os.path.join(base, "gradlew")):
-            cmd = ["./gradlew", task, "--console=plain"]
-        else:
-            cmd = ["gradle", task, "--console=plain"]
+    from .mod import _gradle_cmd  # 命令构造与 build 工具共用一份
+    cmd = _gradle_cmd(base, task)
 
     try:
         proc = subprocess.Popen(
@@ -83,21 +96,7 @@ def _run_game_test_server(kw: dict) -> str:
             f"请用 read_game_test_log 读取 run/logs/latest.log 查看测试结果与错误。"
         )
 
-    ok = proc.returncode == 0
-    tail = (out or "")[-50000:]
-    summary = "[gametest] runGameTestServer 已完成"
-    if not ok and "GameTest" not in (out or ""):
-        summary = "[gametest] runGameTestServer 进程异常退出（可能编译/运行错误）"
-    hint = (
-        f"\n→ 请接着调用 read_game_test_log 读取 run/logs/latest.log 的最新日志，"
-        f"根据错误修复后重新调用本工具即可实现自循环调试。"
-    )
-    if "forge.enabledGameTestNamespaces" not in (out or "") and "tutorial_mod" not in (out or ""):
-        hint += (
-            "\n提示：若你的 GameTest 没有运行，检查 build.gradle 的 "
-            "forge.enabledGameTestNamespaces 是否与你 mods.toml 的 modId 一致。"
-        )
-    return f"{summary}\n{tail}\n{hint}"
+    return _render_game_test_report(proc.returncode, out or "")
 
 
 GAME_TEST_LOG_PATH = "run/logs/latest.log"  # 相对 mod 工作目录

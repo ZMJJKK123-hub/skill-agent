@@ -41,6 +41,48 @@ def check_auth(authorization, x_api_key):
         raise HTTPException(status_code=401, detail="invalid credential")
 
 
+def _persona_switch_response(persona_cmd, session_id: str, stream: bool):
+    """人格切换确认（流式 SSE / 非流式 JSON），由 chat_completions 迁出。"""
+    key, label = persona_cmd
+    reply = f"🎭 人格已切换为：{label}！接下来我会用这个人格陪你聊天～"
+    if not set_persona(session_id, key, session_workdir):
+        reply = "⚠️ 人格切换失败，请稍后再试。"
+    if stream:
+        cid, created = new_id(), int(time.time())
+
+        def gen():
+            yield sse_frame(cid, created, {"role": "assistant"})
+            for i in range(0, len(reply), 8):
+                yield sse_frame(cid, created, {"content": reply[i:i + 8]})
+            yield sse_frame(cid, created, {}, finish_reason="stop", usage=usage_zero())
+            yield "data: [DONE]\n\n"
+
+        return StreamingResponse(gen(), media_type="text/event-stream")
+    return JSONResponse({
+        "id": new_id(),
+        "object": "chat.completion",
+        "created": int(time.time()),
+        "model": "tsinghua-agent",
+        "choices": [{
+            "index": 0,
+            "message": {"role": "assistant", "content": reply},
+            "finish_reason": "stop",
+        }],
+        "usage": usage_zero(),
+    })
+
+
+def _persona_query_reply(session_id: str) -> str:
+    """当前人格查询回复文案（按人格差异化口吻）。"""
+    key = resolve_persona_key(session_id, session_workdir)
+    display = PERSONA_DISPLAY.get(key, key or "通用")
+    if display == "喵娘":
+        return "我是你的专属喵娘助手喵～当前人格：喵娘。想换人格跟我说“切换成高冷”就可以喵！"
+    if display == "高冷技术助理":
+        return "我是你的专属 AI 助手。当前人格：高冷技术助理。想换人格就说“切换成喵娘”。"
+    return f"我是你的专属 AI 助手，当前人格：{display}。想换人格的话，跟我说“切换成喵娘”就好啦～"
+
+
 @router.post("/v1/chat/completions")
 async def chat_completions(
     request: Request,
@@ -66,46 +108,11 @@ async def chat_completions(
     # 人格切换命令：先于 agent 返回确认
     persona_cmd = session_persona_command(messages)
     if persona_cmd is not None:
-        key, label = persona_cmd
-        reply = f"🎭 人格已切换为：{label}！接下来我会用这个人格陪你聊天～"
-        if not set_persona(session_id, key, session_workdir):
-            reply = "⚠️ 人格切换失败，请稍后再试。"
-        if stream:
-            cmd_cid = new_id()
-            cmd_created = int(time.time())
-
-            def cmd_gen():
-                yield sse_frame(cmd_cid, cmd_created, {"role": "assistant"})
-                for i in range(0, len(reply), 8):
-                    yield sse_frame(cmd_cid, cmd_created, {"content": reply[i:i + 8]})
-                yield sse_frame(cmd_cid, cmd_created, {}, finish_reason="stop", usage=usage_zero())
-                yield "data: [DONE]\n\n"
-
-            return StreamingResponse(cmd_gen(), media_type="text/event-stream")
-        return JSONResponse({
-            "id": new_id(),
-            "object": "chat.completion",
-            "created": int(time.time()),
-            "model": "tsinghua-agent",
-            "choices": [{
-                "index": 0,
-                "message": {"role": "assistant", "content": reply},
-                "finish_reason": "stop",
-            }],
-            "usage": usage_zero(),
-        })
+        return _persona_switch_response(persona_cmd, session_id, stream)
 
     # 当前人格查询
-    current_queries = {"你现在是什么人格", "当前人格", "你是什么人格", "你是谁", "你叫什么名字"}
-    if last_user_content(messages) in current_queries:
-        key = resolve_persona_key(session_id, session_workdir)
-        display = PERSONA_DISPLAY.get(key, key or "通用")
-        if display == "喵娘":
-            reply = "我是你的专属喵娘助手喵～当前人格：喵娘。想换人格跟我说“切换成高冷”就可以喵！"
-        elif display == "高冷技术助理":
-            reply = "我是你的专属 AI 助手。当前人格：高冷技术助理。想换人格就说“切换成喵娘”。"
-        else:
-            reply = f"我是你的专属 AI 助手，当前人格：{display}。想换人格的话，跟我说“切换成喵娘”就好啦～"
+    if last_user_content(messages) in {"你现在是什么人格", "当前人格", "你是什么人格", "你是谁", "你叫什么名字"}:
+        reply = _persona_query_reply(session_id)
         return quick_chat_response(reply, stream)
 
     # 服务状态快捷回复

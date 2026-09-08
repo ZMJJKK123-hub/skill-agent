@@ -129,22 +129,21 @@ class SupervisorManager:
                     logger.warning(f"Supervisor 分析异常: {e}")
 
     # ── 一次监管分析：读证据 -> 调 LLM（先读 skill）-> 按需写信箱 ──
-    def _analyze_once(self) -> None:
+    def _build_analysis_prompt(self) -> str:
+        """采集证据并组装监管分析提示词（轮次/日志/任务板/对话尾）。"""
         log_path = evidence.resolve_run_log()
         log_tail = evidence.tail(log_path, SUPERVISOR_LOG_TAIL_CHARS) if log_path else "(no run.log)"
-        tasks_snapshot = evidence.tasks_summary()
-        transcript_tail = evidence.transcript_tail()
-
         prompt_parts = [
             f"监管轮次: {self._round_count}",
             f"追踪日志: {log_path}",
             "任务板状态:\n---",
-            tasks_snapshot,
+            evidence.tasks_summary(),
             "---",
             "run.log 尾部(可引用行内证据):\n---",
             log_tail,
             "---",
         ]
+        transcript_tail = evidence.transcript_tail()
         if transcript_tail:
             prompt_parts += [
                 "最新对话记录尾部(参考上下文):\n---",
@@ -154,8 +153,10 @@ class SupervisorManager:
         prompt_parts.append(
             "请按你的输出契约分析。无问题就输出 NO_ISSUE，不要编造问题。"
         )
+        return "\n".join(prompt_parts)
 
-        text = self._run_analysis("\n".join(prompt_parts))
+    def _analyze_once(self) -> None:
+        text = self._run_analysis(self._build_analysis_prompt())
 
         if "NO_ISSUE" in text:
             logger.info("Supervisor 判定当前无问题")

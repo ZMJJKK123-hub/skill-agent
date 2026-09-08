@@ -48,6 +48,74 @@ def _build_source_zip() -> str:
         return f"[build] 源码 zip 预生成失败: {e}"
 
 
+def _gradle_cmd(base: str, task: str) -> list[str]:
+    """输入：工程根 + gradle 任务。返回：命令向量（Windows 优先 gradlew.bat）。"""
+    if os.name == "nt" or sys.platform == "win32":
+        if os.path.exists(os.path.join(base, "gradlew.bat")):
+            return ["cmd", "/c", "gradlew.bat", task]
+        return ["cmd", "/c", "gradle", task, "--console=plain"]
+    if os.path.exists(os.path.join(base, "gradlew")):
+        return ["./gradlew", task, "--console=plain"]
+    return ["gradle", task, "--console=plain"]
+
+
+def _build_failure_report(returncode: int, out: str, tail: str) -> str:
+    """输入：退出码 + 完整输出 + 日志尾。返回：带原因提示的失败报告。
+
+    职责：按输出特征匹配 JDK/SSL 两类已知失败给修复提示，其余给通用提示。
+    """
+    if "Failed to find JDK for version 8" in out and "JavaProvisionerException" in out:
+        hint = (
+            "原因：ForgeGradle 的 Mavenizer 在配置阶段需要自动下载其内部使用的 JDK"
+            "（含 Java 8），但服务器 SSL/证书校验失败（PKIX path building failed）"
+            "导致下载被拦截。\n"
+            "注意：不需要手动安装或切换 JAVA_HOME 到 JDK 8——Gradle 本身要求 JVM 17 或更高，"
+            "系统主 JDK 保持 25（或 21）即可。\n"
+            "解决：修复服务器 SSL 证书/网络代理（放行 github.com 与 adoptium 下载）后重新生成。"
+        )
+    elif "SSLHandshakeException" in out or "PKIX path building failed" in out:
+        hint = (
+            "原因：Gradle 下载依赖时 SSL 证书校验失败"
+            "（多为代理/公司网络拦截或系统根证书不全）。\n"
+            "解决：修复证书/代理后重新生成。"
+        )
+    else:
+        hint = "原因：构建过程出错（详见日志尾部）。"
+    return f"[build] Gradle 构建失败 (exit={returncode})。\n{hint}\n日志尾部:\n{tail}"
+
+
+def _collect_jars(base: str, tail: str) -> str:
+    """输入：工程根 + 日志尾。返回：成功报告（复制 jar 到 dist/ 并列尺寸）。
+
+    职责：build/libs/*.jar → dist/；无 jar 时给失败说明。
+    """
+    import shutil as _sh
+    libs_dir = os.path.join(base, "build", "libs")
+    jars = []
+    if os.path.isdir(libs_dir):
+        for fname in sorted(os.listdir(libs_dir)):
+            if fname.endswith(".jar"):
+                jars.append(fname)
+                try:
+                    ddist = os.path.join(base, "dist")
+                    os.makedirs(ddist, exist_ok=True)
+                    _sh.copy2(os.path.join(libs_dir, fname), os.path.join(ddist, fname))
+                except Exception as e:
+                    return f"[build] 构建成功但复制 jar 失败: {e}"
+    if not jars:
+        return f"[build] 构建完成但未在 build/libs 找到 jar。\n日志尾部:\n{tail}"
+    sizes = []
+    for j in jars:
+        try:
+            sizes.append(f"{j} ({os.path.getsize(os.path.join(base,'dist',j))} B)")
+        except OSError:
+            sizes.append(j)
+    return (
+        f"[build] 构建成功 ✓ 产出 jar：\n  " + "\n  ".join(sizes) +
+        "\n已复制到工程根的 dist/ 目录，可直接放入 .minecraft/mods/。"
+    )
+
+
 def _forge_build_jar(kw: dict) -> str:
     """build_mod_jar_forge：构建 Forge mod 项目为可安装 jar（gradlew build）。
 
@@ -57,17 +125,7 @@ def _forge_build_jar(kw: dict) -> str:
     """
     task = kw.get("gradle_task", "build")
     base = worktree_manager.resolve_dir() if worktree_manager else os.getcwd()
-
-    if os.name == "nt" or sys.platform == "win32":
-        if os.path.exists(os.path.join(base, "gradlew.bat")):
-            cmd = ["cmd", "/c", "gradlew.bat", task]
-        else:
-            cmd = ["cmd", "/c", "gradle", task, "--console=plain"]
-    else:
-        if os.path.exists(os.path.join(base, "gradlew")):
-            cmd = ["./gradlew", task, "--console=plain"]
-        else:
-            cmd = ["gradle", task, "--console=plain"]
+    cmd = _gradle_cmd(base, task)
 
     try:
         proc = subprocess.Popen(
@@ -92,56 +150,9 @@ def _forge_build_jar(kw: dict) -> str:
     tail = (out or "")[-3000:]
 
     if not ok:
-        hint = ""
-        if "Failed to find JDK for version 8" in (out or "") and "JavaProvisionerException" in (out or ""):
-            hint = (
-                "原因：ForgeGradle 的 Mavenizer 在配置阶段需要自动下载其内部使用的 JDK"
-                "（含 Java 8），但服务器 SSL/证书校验失败（PKIX path building failed）"
-                "导致下载被拦截。\n"
-                "注意：不需要手动安装或切换 JAVA_HOME 到 JDK 8——Gradle 本身要求 JVM 17 或更高，"
-                "系统主 JDK 保持 25（或 21）即可。\n"
-                "解决：修复服务器 SSL 证书/网络代理（放行 github.com 与 adoptium 下载）后重新生成。"
-            )
-        elif "SSLHandshakeException" in (out or "") or "PKIX path building failed" in (out or ""):
-            hint = (
-                "原因：Gradle 下载依赖时 SSL 证书校验失败"
-                "（多为代理/公司网络拦截或系统根证书不全）。\n"
-                "解决：修复证书/代理后重新生成。"
-            )
-        else:
-            hint = "原因：构建过程出错（详见日志尾部）。"
-        return (
-            f"[build] Gradle 构建失败 (exit={proc.returncode})。\n"
-            f"{hint}\n日志尾部:\n{tail}"
-        )
+        return _build_failure_report(proc.returncode, out or "", tail)
 
-    libs_dir = os.path.join(base, "build", "libs")
-    jars = []
-    if os.path.isdir(libs_dir):
-        for fname in sorted(os.listdir(libs_dir)):
-            if fname.endswith(".jar"):
-                jars.append(fname)
-                try:
-                    ddist = os.path.join(base, "dist")
-                    os.makedirs(ddist, exist_ok=True)
-                    import shutil as _sh
-                    _sh.copy2(os.path.join(libs_dir, fname), os.path.join(ddist, fname))
-                except Exception as e:
-                    return f"[build] 构建成功但复制 jar 失败: {e}"
-
-    if not jars:
-        return f"[build] 构建完成但未在 build/libs 找到 jar。\n日志尾部:\n{tail}"
-
-    sizes = []
-    for j in jars:
-        try:
-            sizes.append(f"{j} ({os.path.getsize(os.path.join(base,'dist',j))} B)")
-        except OSError:
-            sizes.append(j)
-    return (
-        f"[build] 构建成功 ✓ 产出 jar：\n  " + "\n  ".join(sizes) +
-        "\n已复制到工程根的 dist/ 目录，可直接放入 .minecraft/mods/。"
-    )
+    return _collect_jars(base, tail)
 
 
 # ========== GameTest 自循环调试工具（仅主 agent 可用） ==========

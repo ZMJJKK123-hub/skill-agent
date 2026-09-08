@@ -17,18 +17,13 @@ def parse_protocol_flag(content: str):
     return parts[0], parts[1:]
 
 
-def inject_pending_requests(messages: list, agent_id: str) -> None:
-    """把需要该 agent 注意的协议请求以 <pending-requests> 标签注入。
+def _render_pending_requests(agent_id: str) -> list[str]:
+    """渲染两类协议请求文本块（由 inject_pending_requests 拆出）。
 
-    让模型明确区分这是协议事件，而非用户输入或工具结果。
-
-    注入两类：
-    1. 发给该 agent 且仍 PENDING 的请求（leader 需要审批 plan；队友需要处理 shutdown）
-    2. 该 agent 发起、已决议的 plan 请求（队友看到自己的审批结果）
+    1. 发给该 agent 且仍 PENDING 的请求；2. 自己发起、已决议的请求。
+    Globals Used: coordinator.tracker / RequestStatus。
     """
     parts = []
-
-    # 1. 待响应 / 待处理的 pending 请求
     for req in coordinator.tracker.get_pending(agent_id):
         if req.req_type == "plan":
             p = req.payload
@@ -46,8 +41,6 @@ def inject_pending_requests(messages: list, agent_id: str) -> None:
                 f"[{req.req_id}] type={req.req_type} from={req.from_agent} "
                 f"payload={req.payload}"
             )
-
-    # 2. 自己发起、已决议的请求（队友看计划审批结果；leader 看关机结果）
     for req in coordinator.tracker.get_resolved(agent_id):
         if req.from_agent == agent_id:
             if req.req_type == "plan":
@@ -68,7 +61,19 @@ def inject_pending_requests(messages: list, agent_id: str) -> None:
                     f"[{req.req_id}] type=shutdown from={req.from_agent} → {req.to_agent}: {outcome}"
                     + (f" | reason: {reason}" if reason else "")
                 )
+    return parts
 
+
+def inject_pending_requests(messages: list, agent_id: str) -> None:
+    """把需要该 agent 注意的协议请求以 <pending-requests> 标签注入。
+
+    让模型明确区分这是协议事件，而非用户输入或工具结果。
+
+    注入两类：
+    1. 发给该 agent 且仍 PENDING 的请求（leader 需要审批 plan；队友需要处理 shutdown）
+    2. 该 agent 发起、已决议的 plan 请求（队友看到自己的审批结果）
+    """
+    parts = _render_pending_requests(agent_id)
     if not parts:
         return
 
