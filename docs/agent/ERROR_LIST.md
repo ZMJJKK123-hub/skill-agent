@@ -1368,3 +1368,8 @@ Backfill pass (user request): re-scanned itertest11~16 run.logs for compile erro
 ## 2026-09-08 Auto-recorded from runtime
 
 - **Auto-recorded:** [思考+] " RuntimeException"
+
+## 2026-09-09 Auto-recorded from runtime
+
+- **Auto-recorded:** Error: Skill 'forge-concept-events' not found. Available:
+- **Auto-recorded:** [6] tool len=58 | Error: Skill 'forge-concept-events' not found. Available:
