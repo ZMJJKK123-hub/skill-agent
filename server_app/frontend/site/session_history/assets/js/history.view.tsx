@@ -1,0 +1,118 @@
+// 本分区样式仅在当前分区模块加载时挂载。
+import '../css/session_history.css'
+// React hooks 用于组件状态、订阅和生命周期。
+import { useEffect } from 'react'
+// 类型契约约束分区间的数据和组件通信。
+import type { PluginManifest, PluginContext, SlotProps } from '../../../assets/js/slots.types.ts'
+// 命名槽位让本分区只注册自己使用的界面。
+import { SLOTS } from '../../../assets/js/slots.ts'
+// 通过当前应用 Context 获取状态和注入的控制器。
+import { useUiActions, useUi, useSession, useSessionActions } from '../../../assets/js/application-context.tsx'
+// 翻译 hook 为本分区提供当前语言文案。
+import { useT } from '../../../assets/js/i18n.ts'
+
+export const sidebarPlugin: PluginManifest = {
+  id: 'modforge-sidebar',
+  name: '侧栏',
+  apply(ctx: PluginContext): void {
+    // 顶栏 logo（占位）
+    ctx.slots.inject(SLOTS.sidebarLogo, 'logo', (props: SlotProps) => (
+      <div className="flex items-center gap-2">
+        <div className="flex h-7 w-7 items-center justify-center rounded bg-forge-500 text-sm font-bold text-ink-950">
+          M
+        </div>
+        {!props?.collapsed && <span className="truncate font-semibold">MOD Forge</span>}
+      </div>
+    ))
+
+    ctx.slots.inject(SLOTS.sidebarWorkspaces, 'workspaces', (props: SlotProps) => {
+      const { setUi } = useUiActions()
+      const { newConversation } = useSessionActions()
+      const { activeWorkspace } = useUi()
+      const t = useT()
+      // 固定显示"新对话"（不跟随当前会话 title）
+      const label = t('nav.newChat')
+      return (
+        <div className="px-2 py-3">
+          <div className="mb-2 px-1 text-xs text-faint">
+            {!props?.collapsed && <span>{t('nav.workspace')}</span>}
+          </div>
+          {!props?.collapsed && (
+            <div className="space-y-1">
+              <button
+                onClick={() => {
+                  newConversation()
+                  setUi({ activeWorkspace: null, toast: t('toast.newChat') })
+                }}
+                title={t('nav.newChat')}
+                className={`block w-full truncate rounded px-2 py-1.5 text-left text-sm ${
+                  activeWorkspace === null ? 'bg-subtle text-main' : 'text-muted hoverable'
+                }`}
+              >
+                💬 {label}
+              </button>
+            </div>
+          )}
+        </div>
+      )
+    })
+
+    ctx.slots.inject(SLOTS.sidebarSessions, 'sessions', (props: SlotProps) => {
+      const { setUi } = useUiActions()
+      const { loadHistory, openHistorySession, deleteSession } = useSessionActions()
+      const { history } = useSession()
+      const { user } = useUi()
+      const t = useT()
+      useEffect(() => {
+        if (user) void loadHistory()
+      }, [user, loadHistory])
+
+      if (props?.collapsed) return <div className="px-2 py-3" />
+
+      const remove = async (id: string) => {
+        // 删除不可恢复，先弹确认
+        const ok = window.confirm('确定删除该会话吗？删除后无法恢复。')
+        if (!ok) return
+        await deleteSession(id)
+      }
+
+      return (
+        <div className="px-2 py-3">
+          <div className="mb-2 px-1 text-xs text-faint">{t('nav.sessions')}</div>
+          {!user ? (
+            <div className="px-2 text-xs text-faint">{t('nav.loginToSee')}</div>
+          ) : history.length === 0 ? (
+            <div className="px-2 text-xs text-faint">{t('nav.noSessions')}</div>
+          ) : (
+            <div className="space-y-1">
+              {history.map((h) => (
+                <div key={h.sessionId} className="group flex items-center gap-1">
+                  <button
+                    onClick={() => {
+                      openHistorySession(h.sessionId)
+                      setUi({ activeWorkspace: h.sessionId })
+                    }}
+                    className="flex-1 overflow-hidden rounded px-2 py-1.5 text-left text-sm text-muted hoverable"
+                  >
+                    <div className="truncate">{h.title || h.sessionId.slice(0, 8)}</div>
+                    <div className="flex items-center gap-1 text-[10px] text-faint">
+                      <span>{h.date}</span>
+                      {h.has_jar && <span className="text-forge-400">· jar ✓</span>}
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => remove(h.sessionId)}
+                    title="删除会话"
+                    className="rounded px-1 text-xs text-faint opacity-0 hoverable group-hover:opacity-100"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )
+    })
+  },
+}

@@ -1,0 +1,6 @@
+#!/bin/sh
+# 本地安装后，任何推送前都必须通过前端类型和结构门禁。
+set -eu
+frontend="$(git rev-parse --show-toplevel)/server_app/frontend"
+npm --prefix "$frontend" run typecheck
+npm --prefix "$frontend" run check:architecture

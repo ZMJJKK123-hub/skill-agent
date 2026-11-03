@@ -343,6 +343,8 @@ python -m uvicorn server:app --host 0.0.0.0 --port 8000
 
 浏览器打开 `http://127.0.0.1:8000`。详见 [`server_app/README.md`](server_app/README.md)。
 
+前端开发与验证见 [`server_app/frontend/README.md`](server_app/frontend/README.md)，架构与逐文件流程见 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) 和 [`Frontend.md`](Frontend.md)。
+
 还有 [`tsinghua agent server/README.md`](tsinghua%20agent%20server/README.md)：把 agent 以 OpenAI 兼容 API（8001 端口）暴露给第三方平台接入。
 
 ---
@@ -381,11 +383,19 @@ skill-agent/
 ├── mc_java_sources_1.21.11/  # MC+Forge 反编译源码（agent 报错后查 API 用，只读）
 ├── mod_templates/            # Forge 工程模板（会话创建时复制）
 ├── docs/
+│   ├── ARCHITECTURE.md       # 前端分区、依赖方向与现有 API 边界
 │   ├── agent/                # 给 agent 读的运行期文档（ERROR_LIST/TOOL_GUIDE）
 │   └── dev/                  # 给人看的开发/交接文档
 ├── server_app/               # 网页版（FastAPI，8000）
+│   ├── frontend/             # React + 严格 TypeScript 前端
+│   │   ├── site/             # 分区源码：index/user_auth/conversation/settings/session_history/generation/games
+│   │   │   └── assets/       # 跨分区共享的基础设施和样式
+│   │   ├── tests/            # 前端契约、状态机、结构门禁与隔离回归夹具
+│   │   └── hooks/            # 前端推送前类型与架构检查
+│   └── web/                  # Vite 生成的生产静态资源
 ├── tsinghua agent server/    # 外部平台接入服务（OpenAI 兼容 API，8001）
 ├── data/sessions/            # 运行时生成：每个会话一个目录（mod 工作区 + run.log + 产物）
+├── Frontend.md               # 前端逐文件参数、分支、请求与界面状态
 └── requirements.txt
 ```
 

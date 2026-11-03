@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  margin: 0;
+}
+
+/* ── 设计令牌（仿 dsh 的 --dsw-* 语义令牌）── */
+:root {
+  /* 深色（默认） */
+  --bg: #0b0e14;
+  --panel: #11141c;
+  --field: #1a1f2b;
+  --border: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --text: #e2e8f0;
+  --text-muted: #94a3b8;
+  --text-faint: #64748b;
+  --hover: rgba(255, 255, 255, 0.06);
+  --subtle: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='light'] {
+  --bg: #f4f6f9;
+  --panel: #ffffff;
+  --field: #eef1f5;
+  --border: rgba(15, 23, 42, 0.1);
+  --border-strong: rgba(15, 23, 42, 0.16);
+  --text: #0f172a;
+  --text-muted: #475569;
+  --text-faint: #64748b;
+  --hover: rgba(15, 23, 42, 0.05);
+  --subtle: rgba(15, 23, 42, 0.08);
+}
+
+/* 语义工具类：组件只吃令牌，不吃具体颜色 */
+.bg-app {
+  background: var(--bg);
+}
+.bg-panel {
+  background: var(--panel);
+}
+.bg-field {
+  background: var(--field);
+}
+.bg-subtle {
+  background: var(--subtle);
+}
+.text-main {
+  color: var(--text);
+}
+.text-muted {
+  color: var(--text-muted);
+}
+.text-faint {
+  color: var(--text-faint);
+}
+.border-line {
+  border-color: var(--border);
+}
+.border-strong {
+  border-color: var(--border-strong);
+}
+.hoverable {
+  transition: background 0.12s ease;
+}
+.hoverable:hover {
+  background: var(--hover);
+}
