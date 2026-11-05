@@ -1,1 +1,33 @@
-/* session_history 分区样式入口；共用设计令牌来自 site/assets/css/base.css。 */
+/* 侧栏分区的品牌、会话和空态。 */
+.studio-brand { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+.studio-mark { display: grid; place-items: center; width: 36px; height: 38px; color: var(--accent-text); }
+.studio-brand-name { display: block; font-size: 18px; font-weight: 650; letter-spacing: -.65px; }
+.brand-period { color: var(--accent-text); }
+.studio-brand-caption { display: block; font-size: 8px; letter-spacing: .18em; color: var(--text-faint); margin-top: 2px; }
+.workspace-section { padding: 22px 16px 16px; }
+.sidebar-section-label { display: flex; align-items: center; justify-content: space-between; color: var(--text-faint); font-size: 10px; letter-spacing: .06em; padding: 0 10px; margin-bottom: 12px; }
+.sidebar-section-label > span { font-size: 9px; }
+.new-conversation-button { display: flex; align-items: center; gap: 10px; width: 100%; height: 43px; border-radius: 10px; padding: 0 12px; border: 1px solid var(--accent-border); background: var(--accent-soft); color: var(--accent-text); font-size: 12px; transition: .18s ease; }
+.new-conversation-button:hover { border-color: var(--accent-text); background: var(--subtle); }
+.new-conversation-hint { margin-left: auto; opacity: .45; }
+.workspace-section[data-collapsed='true'] { padding: 20px 16px; }
+.workspace-section[data-collapsed='true'] .new-conversation-button { padding: 0; justify-content: center; width: 40px; }
+.history-section { padding: 10px 16px; }
+.history-empty { padding: 18px 12px; color: var(--text-faint); font-size: 11px; }
+.history-empty > svg { opacity: .6; margin-bottom: 10px; }
+.history-empty p { margin: 0 0 5px; color: var(--text-muted); }
+.history-empty > span { font-size: 10px; }
+.history-row { border: 1px solid transparent; border-radius: 9px; margin-bottom: 4px; transition: .18s ease; }
+.history-row:hover { background: var(--hover); }
+.history-row.is-active { background: var(--accent-soft); border-color: var(--accent-border); }
+.history-item { padding: 10px 9px; font-size: 12px; }
+.history-item-title { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.history-item-title > svg { color: var(--text-faint); }
+.history-item > div:last-child { margin-left: 22px; opacity: .7; }
+.history-delete { width: 25px; height: 28px; margin-right: 4px; }
+.sidebar-creative-note { margin: 36px 0 16px; position: relative; overflow: hidden; padding: 19px 15px 28px; border: 1px solid var(--border); border-radius: 12px; background: linear-gradient(135deg, var(--accent-soft), transparent); }
+.sidebar-creative-note > svg { color: var(--accent-text); margin-bottom: 12px; }
+.sidebar-creative-note strong { display: block; font-size: 11px; font-weight: 500; color: var(--text-muted); }
+.sidebar-creative-note p { font-size: 10px; color: var(--text-faint); margin: 5px 0 0; }
+.note-grid { position: absolute; bottom: -26px; right: -25px; width: 130px; height: 75px; opacity: .18; transform: rotate(-20deg); background-image: linear-gradient(var(--accent-text) 1px, transparent 1px), linear-gradient(90deg, var(--accent-text) 1px, transparent 1px); background-size: 18px 18px; mask-image: linear-gradient(transparent, #000); }
+@media (hover: none) { .history-delete { opacity: 1; } }

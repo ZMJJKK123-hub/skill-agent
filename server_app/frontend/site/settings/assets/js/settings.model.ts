@@ -8,7 +8,7 @@ export function defaultUiState(config: FrontendConfig): UiState {
   return {
     settingsOpen: false, user: null, activeWorkspace: null, viewMode: 'chat', apiKey: '',
     game: 'minecraft', loader: 'forge', version: '1.21.11', locale: 'zh', theme: 'dark',
-    model: config.officialModel, sandbox: 'full-access', providers: [], disabledPlugins: [], toast: null,
+    model: config.officialModel, sandbox: 'full-access', providers: [], disabledPlugins: [], toast: null, promptDraft: '',
     visionEnabled: false, visionApiKey: '', visionBaseUrl: '', visionModel: '', autoMode: false, searchApiKey: '',
   }
 }
@@ -54,6 +54,6 @@ export function resolveModelConfig(state: Pick<UiState, 'apiKey' | 'model' | 'pr
 
 /** 只投影可持久化设置；用户、消息、弹窗、运行状态永不写入设置存储。 */
 export function savedSettings(state: UiState): SavedSettings {
-  const { settingsOpen: _settingsOpen, user: _user, activeWorkspace: _workspace, viewMode: _viewMode, toast: _toast, ...settings } = state
+  const { settingsOpen: _settingsOpen, user: _user, activeWorkspace: _workspace, viewMode: _viewMode, toast: _toast, promptDraft: _promptDraft, ...settings } = state
   return settings
 }

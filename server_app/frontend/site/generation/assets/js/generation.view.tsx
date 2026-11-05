@@ -9,7 +9,9 @@ import { SLOTS } from '../../../assets/js/slots.ts'
 // 翻译 hook 为本分区提供当前语言文案。
 import { useT } from '../../../assets/js/i18n.ts'
 // 通过当前应用 Context 获取状态和注入的控制器。
-import { useSession } from '../../../assets/js/application-context.tsx'
+import { useSession, useUi } from '../../../assets/js/application-context.tsx'
+// 详情卡片与其他分区使用相同图标。
+import { Icon } from '../../../assets/js/icons.tsx'
 
 /** 展示当前生成模式、运行阶段、耗时和会话信息，无独立轮询。
  * Args: 无参数；读取当前会话阶段、模式、耗时和 ID。
@@ -20,31 +22,30 @@ function GeneratePanel(): ReactElement {
   const t = useT()
   const sess = useSession()
   const { phase, elapsed, sessionId, mode } = sess
+  const { version } = useUi()
+  const status = { idle: t('studio.ready'), creating: t('conv.starting'), running: t('conv.running'), paused: t('conv.pause'), finished: t('studio.finished'), error: t('conv.failed') }[phase]
 
   return (
-    <div className="p-4">
-      <h2 className="mb-3 text-sm font-semibold">{t('conv.section')}</h2>
-      <div className="space-y-2 text-sm text-muted">
+    <div className="generation-details">
+      <div className="generation-status-card" data-phase={phase}><span className="generation-icon"><Icon name="cube" size={24} /></span><span className="eyebrow">MOD FORGE</span><h2>{status}</h2><span className="generation-status-label"><span className="status-dot" />{mode === 'mod' ? t('studio.modMode') : t('studio.chatMode')}</span></div>
+      <div className="generation-metrics text-muted">
         <div className="flex justify-between">
-          <span>{t('nav.sessions')}</span>
-          <span className={phase === 'running' ? 'text-forge-400' : phase === 'finished' ? 'text-emerald-400' : 'text-faint'}>
-            {phase === 'running' ? t('conv.running') : phase === 'finished' ? t('conv.done') : '—'}
-          </span>
+          <span>{t('studio.version')}</span><span>Minecraft {version}</span>
         </div>
         <div className="flex justify-between">
-          <span>{t('conv.running')}</span>
-          <span className="text-faint">{elapsed ? `${elapsed}s` : '—'}</span>
+          <span>{t('studio.elapsed')}</span>
+          <span>{elapsed !== null ? `${elapsed}s` : '—'}</span>
         </div>
         <div className="flex justify-between">
-          <span>模式</span>
-          <span className="text-faint">{mode === 'mod' ? 'MOD 制作' : mode === 'chat' ? '普通对话' : '—'}</span>
+          <span>{t('studio.mode')}</span>
+          <span>{mode === 'mod' ? t('studio.modMode') : mode === 'chat' ? t('studio.chatMode') : '—'}</span>
         </div>
         <div className="flex justify-between">
           <span>ID</span>
-          <span className="text-faint">{sessionId ? sessionId.slice(0, 8) + '…' : '—'}</span>
+          <span>{sessionId ? sessionId.slice(0, 8) + '…' : '—'}</span>
         </div>
       </div>
-      <p className="mt-2 text-xs text-faint">模组制作完成后，可在对话底部下载模组和源码。</p>
+      <p className="generation-hint">{t('conv.desc')}</p>
     </div>
   )
 }

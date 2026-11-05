@@ -12,6 +12,8 @@ import { useUi, useAuthActions } from '../../../assets/js/application-context.ts
 import { useT } from '../../../assets/js/i18n.ts'
 // 本分区样式仅在当前分区模块加载时挂载。
 import '../css/user_auth.css'
+// 登录入口和弹窗沿用共享品牌图标。
+import { Icon } from '../../../assets/js/icons.tsx'
 
 /** 显示账户入口并恢复既有登录态；网络失败保留令牌，退出由认证控制器清理账户。
  * Args: 无参数；读取当前用户与认证控制器。
@@ -31,12 +33,12 @@ function AuthButton(): ReactElement {
   return (
     <>
       {user ? (
-        <button onClick={onLogout} title={t('auth.logout')} className="hoverable rounded-md border border-strong px-3 py-1 text-sm">
-          {user.username}
+        <button onClick={onLogout} title={t('auth.logout')} className="auth-entry auth-account">
+          <span className="account-avatar">{user.username.slice(0, 1).toUpperCase()}</span><span>{user.username}</span>
         </button>
       ) : (
-        <button onClick={() => setOpen(true)} className="hoverable rounded-md border border-strong px-3 py-1 text-sm">
-          {t('auth.login')}
+        <button onClick={() => setOpen(true)} className="auth-entry">
+          <Icon name="login" size={15} />{t('auth.login')}
         </button>
       )}
       {open && <AuthModal onClose={() => setOpen(false)} />}
@@ -76,25 +78,34 @@ function AuthModal({ onClose }: { onClose: () => void }): ReactElement {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div className="w-80 rounded-xl border border-strong bg-panel p-5" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-4 flex gap-2">
+    <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-labelledby="auth-heading" className="auth-dialog surface-dialog border border-strong bg-panel" onKeyDown={(event) => { if (event.key === 'Escape') onClose() }} onClick={(e) => e.stopPropagation()}>
+        <button className="auth-close icon-button" title={t('studio.close')} aria-label={t('studio.close')} onClick={onClose}><Icon name="close" size={17} /></button>
+        <div className="auth-brand-mark"><Icon name="cube" size={30} /></div>
+        <h2 id="auth-heading">{t('studio.authTitle')}</h2><p className="auth-description">{t('studio.authDesc')}</p>
+        <div className="auth-tabs flex gap-1">
           <button
             onClick={() => setMode('login')}
-            className={`flex-1 rounded-md py-1.5 text-sm ${mode === 'login' ? 'bg-forge-500 text-ink-950' : 'bg-subtle'}`}
+            aria-pressed={mode === 'login'}
+            className="flex-1 rounded-md py-2 text-sm"
           >
             {t('auth.login')}
           </button>
           <button
             onClick={() => setMode('register')}
-            className={`flex-1 rounded-md py-1.5 text-sm ${mode === 'register' ? 'bg-forge-500 text-ink-950' : 'bg-subtle'}`}
+            aria-pressed={mode === 'register'}
+            className="flex-1 rounded-md py-2 text-sm"
           >
             {t('auth.register')}
           </button>
         </div>
-        <div className="space-y-2">
-          <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder={t('auth.username')} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500" />
+        <div className="auth-fields">
+          <label htmlFor="auth-username">{t('auth.username')}</label>
+          <input id="auth-username" autoFocus autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder={t('auth.username')} className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500" />
+          <label htmlFor="auth-password">{t('auth.password')}</label>
           <input
+            id="auth-password"
+            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             type="password"
@@ -102,11 +113,12 @@ function AuthModal({ onClose }: { onClose: () => void }): ReactElement {
             onKeyDown={(e) => e.key === 'Enter' && submit()}
             className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm outline-none focus:border-forge-500"
           />
-          {error && <div className="text-xs text-red-400">{error}</div>}
-          <button onClick={submit} disabled={busy} className="w-full rounded-md bg-forge-500 py-2 text-sm font-medium text-ink-950 hover:bg-forge-400 disabled:opacity-50">
+          {error && <div role="alert" className="auth-error text-xs text-red-400">{error}</div>}
+          <button onClick={submit} disabled={busy} className="auth-submit primary-button w-full py-2.5 text-sm">
             {busy ? t('auth.submitting') : mode === 'login' ? t('auth.login') : t('auth.registerLogin')}
           </button>
         </div>
+        <p className="auth-footnote">{t('studio.authFootnote')}</p>
       </div>
     </div>
   )

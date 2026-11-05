@@ -10,7 +10,7 @@ import type { SettingsRepository, UiState, UiStore } from './settings.types.ts'
 import { restoreUiState, savedSettings } from './settings.model.ts'
 
 /** 组装设置状态；读取仓储并应用主题只在显式创建时发生。
- * set 更新内存后写回设置并通知订阅者；设置插件不可关闭。
+ * set 发布新快照并保存设置；仅更新 promptDraft 时跳过仓储，草稿永不落盘；设置插件不可关闭。
  * Args: repository/config/theme 为组合根提供。Returns: UiStore。Globals Used: None。
  */
 export function createUiStore(repository: SettingsRepository, config: FrontendConfig, theme: ThemePort): UiStore {
@@ -23,7 +23,8 @@ export function createUiStore(repository: SettingsRepository, config: FrontendCo
       if (next.disabledPlugins) next.disabledPlugins = next.disabledPlugins.filter((id: string): boolean => id !== 'modforge-settings')
       const prior = store.getSnapshot().theme
       const state = { ...store.getSnapshot(), ...next }
-      repository.save(savedSettings(state))
+      // 输入草稿不持久化；纯输入更新也不重复写入其他设置。
+      if (Object.keys(patch).some((key: string): boolean => key !== 'promptDraft')) repository.save(savedSettings(state))
       if (state.theme !== prior) theme.apply(state.theme)
       store.set(next)
     },

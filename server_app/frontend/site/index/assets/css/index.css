@@ -1,1 +1,26 @@
-/* index 分区样式入口；共用设计令牌来自 site/assets/css/base.css。 */
+/* 首页壳层与响应式栏位，仅由 AppShell 挂载。 */
+.app-shell { overflow: hidden; position: relative; }
+.app-sidebar { width: 248px; background: var(--sidebar); transition: width .22s ease; z-index: 25; }
+.app-sidebar[data-collapsed='true'] { width: 72px; }
+.sidebar-brand { height: 80px; padding: 0 23px; }
+.app-sidebar[data-collapsed='true'] .sidebar-brand { padding: 0 17px; }
+.sidebar-footer { padding: 15px 16px; }
+.app-sidebar[data-collapsed='true'] .sidebar-footer { padding: 15px 12px; }
+.app-main { position: relative; isolation: isolate; }
+.app-main::before { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: -1; background: radial-gradient(ellipse at 50% 25%, var(--accent-soft), transparent 58%); }
+.app-header { height: 72px; flex-shrink: 0; padding: 0 26px; }
+.header-breadcrumb { display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--text-faint); min-width: 0; }
+.breadcrumb-divider { color: var(--border-strong); }
+.header-title { color: var(--text-muted); max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.version-chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 7px; color: var(--text-muted); font-size: 10px; white-space: nowrap; }
+.status-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent-text); box-shadow: 0 0 9px var(--accent-border); }
+.header-separator { height: 18px; width: 1px; background: var(--border); margin: 0 6px; }
+.conversation-scroll { scroll-behavior: smooth; }
+.composer-dock { flex-shrink: 0; padding: 8px 36px 20px; position: relative; }
+.details-panel { width: 292px; background: var(--sidebar); z-index: 20; }
+.details-panel-heading { display: flex; justify-content: space-between; align-items: center; height: 72px; padding: 0 18px; border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 600; }
+.app-toast { display: flex; gap: 10px; align-items: center; max-width: 90vw; color: var(--accent-text); }
+.sidebar-backdrop { display: none; }
+@media (max-width: 1100px) { .app-sidebar { width: 224px; } .app-header { padding: 0 18px; } .details-panel { position: absolute; right: 12px; top: 82px; bottom: 12px; width: 292px; max-width: calc(100vw - 24px); border: 1px solid var(--border-strong); border-radius: 16px; box-shadow: var(--shadow); } .details-panel-heading { height: 54px; } .header-breadcrumb > span:first-child, .breadcrumb-divider { display: none; } }
+@media (max-width: 760px) { .app-sidebar[data-collapsed='false'] { position: absolute; inset: 0 auto 0 0; width: 248px; box-shadow: var(--shadow); } .sidebar-backdrop { display: block; position: absolute; inset: 0; background: var(--veil); z-index: 24; } .app-header { height: 60px; padding: 0 14px; } .header-title { max-width: 120px; } .version-chip { display: none; } .composer-dock { padding: 8px 16px 14px; } }
+@media (max-width: 540px) { .app-sidebar[data-collapsed='true'] { display: none; } .header-separator { margin: 0; } }

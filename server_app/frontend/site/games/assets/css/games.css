@@ -1,1 +1,6 @@
-/* games 分区样式入口；共用设计令牌来自 site/assets/css/base.css。 */
+/* 游戏入口避开输入操作，窗口沿用已有游戏页面。 */
+.game-launcher { position: fixed; bottom: 20px; right: 20px; z-index: 30; width: 36px; height: 36px; display: grid; place-items: center; color: var(--text-faint); background: var(--panel); border: 1px solid var(--border-strong); border-radius: 12px; transition: .2s ease; }
+.game-launcher:hover { color: var(--accent-text); border-color: var(--accent-border); transform: translateY(-2px); }
+.game-launcher[data-running='true'] { color: var(--accent-text); border-color: var(--accent-border); }
+.game-window { box-shadow: var(--shadow); }
+@media (max-width: 760px) { .game-launcher { top: 76px; bottom: auto; right: 16px; width: 32px; height: 32px; border-radius: 10px; } }

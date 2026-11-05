@@ -1,1 +1,20 @@
-/* user_auth 分区样式入口；共用设计令牌来自 site/assets/css/base.css。 */
+/* 账户入口与独立认证弹窗。 */
+.auth-entry { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 32px; border: 1px solid var(--border-strong); border-radius: 8px; padding: 4px 13px; color: var(--text-muted); font-size: 11px; transition: .18s ease; }
+.auth-entry:hover { color: var(--accent-text); border-color: var(--accent-border); background: var(--accent-soft); }
+.auth-account { border-color: transparent; }
+.auth-account > span:last-child { max-width: 100px; overflow: hidden; text-overflow: ellipsis; }
+.account-avatar { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-text); border: 1px solid var(--accent-border); font-size: 10px; }
+.auth-dialog { width: 400px; max-width: 100%; position: relative; border-radius: 22px; padding: 34px; }
+.auth-close { position: absolute; right: 12px; top: 12px; }
+.auth-brand-mark { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 17px; background: var(--accent-soft); color: var(--accent-text); border: 1px solid var(--accent-border); margin-bottom: 24px; }
+.auth-dialog > h2 { font-size: 21px; letter-spacing: -.6px; font-weight: 600; }
+.auth-description { color: var(--text-faint); font-size: 12px; margin-top: 8px; }
+.auth-tabs { background: var(--field); border: 1px solid var(--border); border-radius: 10px; padding: 4px; margin: 24px 0; }
+.auth-tabs > button { color: var(--text-faint); font-size: 12px; }
+.auth-tabs > button[aria-pressed='true'] { background: var(--surface-raised); color: var(--text); box-shadow: 0 2px 6px #00000012; }
+.auth-fields > label { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
+.auth-fields > input { padding: 11px 12px; border-radius: 9px; font-size: 12px; margin-bottom: 18px; }
+.auth-submit { margin-top: 4px; font-size: 12px; }
+.auth-error { padding: 0 0 14px; color: var(--danger); }
+.auth-footnote { text-align: center; font-size: 10px; color: var(--text-faint); margin: 24px 0 0; }
+@media (max-width: 440px) { .auth-dialog { padding: 28px 24px; } }

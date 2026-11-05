@@ -10,6 +10,8 @@ import { SLOTS } from '../../../assets/js/slots.ts'
 import { useUiActions, useUi, useSession, useSessionActions } from '../../../assets/js/application-context.tsx'
 // 翻译 hook 为本分区提供当前语言文案。
 import { useT } from '../../../assets/js/i18n.ts'
+// 侧栏与其他分区使用相同的描边图标。
+import { Icon } from '../../../assets/js/icons.tsx'
 
 export const sidebarPlugin: PluginManifest = {
   id: 'modforge-sidebar',
@@ -17,42 +19,36 @@ export const sidebarPlugin: PluginManifest = {
   apply(ctx: PluginContext): void {
     // 顶栏 logo（占位）
     ctx.slots.inject(SLOTS.sidebarLogo, 'logo', (props: SlotProps) => (
-      <div className="flex items-center gap-2">
-        <div className="flex h-7 w-7 items-center justify-center rounded bg-forge-500 text-sm font-bold text-ink-950">
-          M
+      <div className="studio-brand">
+        <div className="studio-mark">
+          <Icon name="cube" size={24} />
         </div>
-        {!props?.collapsed && <span className="truncate font-semibold">MOD Forge</span>}
+        {!props?.collapsed && <div><span className="studio-brand-name">MOD Forge<span className="brand-period">.</span></span><span className="studio-brand-caption">CREATIVE STUDIO</span></div>}
       </div>
     ))
 
     ctx.slots.inject(SLOTS.sidebarWorkspaces, 'workspaces', (props: SlotProps) => {
       const { setUi } = useUiActions()
       const { newConversation } = useSessionActions()
-      const { activeWorkspace } = useUi()
       const t = useT()
       // 固定显示"新对话"（不跟随当前会话 title）
       const label = t('nav.newChat')
       return (
-        <div className="px-2 py-3">
-          <div className="mb-2 px-1 text-xs text-faint">
-            {!props?.collapsed && <span>{t('nav.workspace')}</span>}
-          </div>
-          {!props?.collapsed && (
-            <div className="space-y-1">
+        <div className="workspace-section" data-collapsed={props?.collapsed}>
+          {!props?.collapsed && <div className="sidebar-section-label">{t('nav.workspace')}</div>}
+            <div>
               <button
                 onClick={() => {
                   newConversation()
-                  setUi({ activeWorkspace: null, toast: t('toast.newChat') })
+                  setUi({ activeWorkspace: null, promptDraft: '', toast: t('toast.newChat') })
                 }}
                 title={t('nav.newChat')}
-                className={`block w-full truncate rounded px-2 py-1.5 text-left text-sm ${
-                  activeWorkspace === null ? 'bg-subtle text-main' : 'text-muted hoverable'
-                }`}
+                aria-label={label}
+                className="new-conversation-button"
               >
-                💬 {label}
+                <Icon name="plus" size={18} />{!props?.collapsed && <><span>{label}</span><span className="new-conversation-hint"><Icon name="chat" size={14} /></span></>}
               </button>
             </div>
-          )}
         </div>
       )
     })
@@ -60,7 +56,7 @@ export const sidebarPlugin: PluginManifest = {
     ctx.slots.inject(SLOTS.sidebarSessions, 'sessions', (props: SlotProps) => {
       const { setUi } = useUiActions()
       const { loadHistory, openHistorySession, deleteSession } = useSessionActions()
-      const { history } = useSession()
+      const { history, sessionId } = useSession()
       const { user } = useUi()
       const t = useT()
       useEffect(() => {
@@ -77,24 +73,25 @@ export const sidebarPlugin: PluginManifest = {
       }
 
       return (
-        <div className="px-2 py-3">
-          <div className="mb-2 px-1 text-xs text-faint">{t('nav.sessions')}</div>
+        <div className="history-section">
+          <div className="sidebar-section-label">{t('nav.sessions')}<span>{user ? history.length : '—'}</span></div>
           {!user ? (
-            <div className="px-2 text-xs text-faint">{t('nav.loginToSee')}</div>
+            <div className="history-empty"><Icon name="clock" size={20} /><p>{t('nav.loginToSee')}</p><span>{t('studio.historyEmpty')}</span></div>
           ) : history.length === 0 ? (
-            <div className="px-2 text-xs text-faint">{t('nav.noSessions')}</div>
+            <div className="history-empty"><Icon name="chat" size={20} /><p>{t('nav.noSessions')}</p><span>{t('studio.historyEmpty')}</span></div>
           ) : (
             <div className="space-y-1">
               {history.map((h) => (
-                <div key={h.sessionId} className="group flex items-center gap-1">
+                <div key={h.sessionId} className={`history-row group flex items-center gap-1 ${sessionId === h.sessionId ? 'is-active' : ''}`}>
                   <button
                     onClick={() => {
                       openHistorySession(h.sessionId)
                       setUi({ activeWorkspace: h.sessionId })
                     }}
-                    className="flex-1 overflow-hidden rounded px-2 py-1.5 text-left text-sm text-muted hoverable"
+                    className="history-item flex-1 overflow-hidden text-left text-sm text-muted"
+                    aria-current={sessionId === h.sessionId ? 'page' : undefined}
                   >
-                    <div className="truncate">{h.title || h.sessionId.slice(0, 8)}</div>
+                    <div className="history-item-title"><Icon name="chat" size={14} /><span className="truncate">{h.title || h.sessionId.slice(0, 8)}</span></div>
                     <div className="flex items-center gap-1 text-[10px] text-faint">
                       <span>{h.date}</span>
                       {h.has_jar && <span className="text-forge-400">· jar ✓</span>}
@@ -103,14 +100,15 @@ export const sidebarPlugin: PluginManifest = {
                   <button
                     onClick={() => remove(h.sessionId)}
                     title="删除会话"
-                    className="rounded px-1 text-xs text-faint opacity-0 hoverable group-hover:opacity-100"
+                    className="history-delete icon-button text-faint opacity-0 group-hover:opacity-100 focus:opacity-100"
                   >
-                    ✕
+                    <Icon name="close" size={13} />
                   </button>
                 </div>
               ))}
             </div>
           )}
+          <div className="sidebar-creative-note"><Icon name="sparkles" size={19} /><strong>{t('studio.privateSpace')}</strong><p>{t('studio.spaceHint')}</p><div className="note-grid" aria-hidden="true" /></div>
         </div>
       )
     })

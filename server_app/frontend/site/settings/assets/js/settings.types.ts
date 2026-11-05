@@ -23,6 +23,8 @@ export interface UiState {
   providers: Provider[]
   disabledPlugins: string[]
   toast: string | null
+  /** 当前输入框草稿；只存在内存，示例卡片与输入区共享。 */
+  promptDraft: string
   visionEnabled: boolean
   visionApiKey: string
   visionBaseUrl: string
@@ -30,7 +32,7 @@ export interface UiState {
   autoMode: boolean
   searchApiKey: string
 }
-export type SavedSettings = Omit<UiState, 'settingsOpen' | 'user' | 'activeWorkspace' | 'viewMode' | 'toast'>
+export type SavedSettings = Omit<UiState, 'settingsOpen' | 'user' | 'activeWorkspace' | 'viewMode' | 'toast' | 'promptDraft'>
 export interface SettingsRepository { load(): unknown; save(settings: SavedSettings): void }
 export type UiStore = StateStore<UiState>
 export type SectionKey = 'general' | 'models' | 'vision' | 'plugins' | 'language' | 'appearance' | 'agent'

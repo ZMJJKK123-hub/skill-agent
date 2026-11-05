@@ -10,6 +10,8 @@ import { defaultUiState, restoreUiState, resolveModelConfig } from '../site/sett
 import { createSettingsRepository } from '../site/settings/assets/js/settings.repository.ts'
 // 通用容器便于验证隔离状态。
 import { createStateStore } from '../site/assets/js/state-store.ts'
+// 实际 UI 存储验证提示词草稿不会触发持久化。
+import { createUiStore } from '../site/settings/assets/js/settings.store.ts'
 // 认证服务与令牌仓储分别验证。
 import { createAuthService } from '../site/user_auth/assets/js/auth.service.ts'
 // 令牌存储需要覆盖浏览器存储不可用的回退。
@@ -59,6 +61,19 @@ test('settings: custom model resolves to its provider; unknown model falls back'
   state.model = 'two'
   assert.equal(resolveModelConfig(state, DEFAULT_CONFIG).baseUrl, 'https://fixture.invalid')
   state.model = 'missing'; assert.equal(resolveModelConfig(state, DEFAULT_CONFIG).model, DEFAULT_CONFIG.officialModel)
+})
+
+test('settings: prompt drafts stay in memory and do not write or restore from settings', (): void => {
+  const saved: unknown[] = []
+  const ui = createUiStore({ load: () => ({ promptDraft: 'old private prompt' }), save(value): void { saved.push(value) } }, DEFAULT_CONFIG,
+    { apply: (): void => undefined, dispose: (): void => undefined })
+  assert.equal(ui.getSnapshot().promptDraft, '')
+  ui.set({ promptDraft: 'private prompt draft' })
+  assert.equal(ui.getSnapshot().promptDraft, 'private prompt draft')
+  assert.equal(saved.length, 0)
+  ui.set({ locale: 'en' })
+  assert.equal(saved.length, 1)
+  assert.doesNotMatch(JSON.stringify(saved), /promptDraft|private prompt draft/)
 })
 
 test('settings: malformed JSON and unavailable storage emit safe diagnostics', (): void => {

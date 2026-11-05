@@ -14,6 +14,8 @@ import { SLOTS } from '../../../assets/js/slots.ts'
 import { useT } from '../../../assets/js/i18n.ts'
 // 通过当前应用 Context 获取状态和注入的控制器。
 import { useSession } from '../../../assets/js/application-context.tsx'
+// 启动入口使用统一图形；游戏本体继续使用原有 iframe。
+import { Icon } from '../../../assets/js/icons.tsx'
 
 // 主页小游戏浮窗：可拖拽 + 可缩放
 // 游戏本体复用 debug 维护页的游戏，零重复实现。
@@ -32,8 +34,8 @@ function GameWindow(): ReactElement {
   const [nonce, setNonce] = useState(0)
 
   // 窗口位置和尺寸
-  const [pos, setPos] = useState({ x: window.innerWidth - INIT_W - 20, y: 80 })
-  const [size, setSize] = useState({ w: INIT_W, h: INIT_H })
+  const [pos, setPos] = useState({ x: Math.max(16, window.innerWidth - INIT_W - 20), y: 80 })
+  const [size, setSize] = useState({ w: Math.min(INIT_W, window.innerWidth - 32), h: Math.min(INIT_H, window.innerHeight - 110) })
   const panelRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
@@ -111,11 +113,11 @@ function GameWindow(): ReactElement {
       <button
         onClick={() => setOpen(true)}
         title={t('games.launch')}
-        className={`fixed bottom-4 right-4 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-line bg-panel text-xl shadow-xl hoverable ${
-          running ? 'animate-pulse' : ''
-        }`}
+        aria-label={t('games.launch')}
+        className="game-launcher"
+        data-running={running}
       >
-        🎮
+        <Icon name="gamepad" size={18} />
       </button>
     )
   }
@@ -123,7 +125,7 @@ function GameWindow(): ReactElement {
   return (
     <div
       ref={panelRef}
-      className="fixed z-50 flex flex-col overflow-hidden rounded-xl border border-strong bg-panel shadow-2xl"
+      className="game-window fixed z-50 flex flex-col overflow-hidden rounded-xl border border-strong bg-panel shadow-2xl"
       style={{ left: pos.x, top: pos.y, width: size.w, height: size.h }}
     >
       {/* 拖拽标题栏 */}

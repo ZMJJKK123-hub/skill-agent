@@ -1,1 +1,12 @@
-/* generation 分区样式入口；共用设计令牌来自 site/assets/css/base.css。 */
+/* 只由生成详情分区引用。 */
+.generation-details { padding: 24px 20px; }
+.generation-status-card { display: flex; flex-direction: column; align-items: center; padding: 26px 12px; border: 1px solid var(--accent-border); border-radius: 13px; background: linear-gradient(160deg, var(--accent-soft), transparent); }
+.generation-icon { display: grid; place-items: center; width: 48px; height: 48px; color: var(--accent-text); border: 1px solid var(--accent-border); background: var(--accent-soft); border-radius: 14px; margin-bottom: 17px; }
+.generation-status-card .eyebrow { font-size: 8px; }
+.generation-status-card h2 { font-size: 18px; font-weight: 500; margin: 10px 0 12px; }
+.generation-status-label { display: inline-flex; gap: 6px; align-items: center; font-size: 10px; color: var(--text-muted); }
+.generation-status-card[data-phase='error'] h2 { color: var(--danger); }
+.generation-metrics { margin-top: 24px; font-size: 11px; }
+.generation-metrics > div { padding: 12px 0; border-bottom: 1px solid var(--border); gap: 12px; }
+.generation-metrics > div > span:last-child { color: var(--text); font-size: 10px; text-align: right; }
+.generation-hint { margin-top: 22px; font-size: 10px; line-height: 1.9; color: var(--text-faint); }

@@ -1,1 +1,20 @@
-/* settings 分区样式入口；共用设计令牌来自 site/assets/css/base.css。 */
+/* 设置表单保留原有草稿和提交行为，仅调整分区容器。 */
+.settings-dialog { width: 820px; max-width: 96vw; height: min(740px, 87vh); border-radius: 19px; }
+.settings-dialog-heading { display: flex; align-items: center; justify-content: space-between; padding: 24px 26px 22px; border-bottom: 1px solid var(--border); }
+.settings-dialog-heading h2 { font-size: 18px; font-weight: 600; letter-spacing: -.4px; }
+.settings-dialog-heading p { margin-top: 6px; color: var(--text-faint); font-size: 11px; }
+.settings-nav { width: 185px; padding: 18px 12px; background: var(--sidebar); }
+.settings-nav-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 13px; margin-bottom: 5px; border: 1px solid transparent; border-radius: 9px; font-size: 12px; color: var(--text-muted); white-space: nowrap; transition: .18s ease; }
+.settings-nav-item:hover { background: var(--hover); }
+.settings-nav-item[aria-pressed='true'] { color: var(--accent-text); border-color: var(--accent-border); background: var(--accent-soft); }
+.settings-content { padding: 25px 30px; }
+.settings-content h2 { font-size: 16px; margin-bottom: 22px; }
+.settings-content input:not([type='checkbox']), .settings-content select { border-radius: 9px; padding: 10px 12px; font-size: 12px; }
+.settings-content input[type='checkbox'] { accent-color: var(--accent-text); }
+.settings-content .text-sm { font-size: 12px; }
+.settings-content .text-xs { font-size: 10px; line-height: 1.8; }
+.settings-actions { padding: 16px 24px; }
+.settings-actions > button:first-child { font-size: 12px; border-radius: 9px; }
+.settings-entry { color: var(--text-muted); min-height: 38px; }
+.settings-entry:hover { color: var(--text); }
+@media (max-width: 640px) { .settings-dialog { height: 90dvh; max-width: 100%; } .settings-dialog-heading { padding: 20px; } .settings-dialog > div:nth-child(2) { flex-direction: column; } .settings-nav { width: 100%; padding: 10px; border-right: 0; border-bottom: 1px solid var(--border); display: flex; overflow-x: auto; flex-shrink: 0; } .settings-nav-item { width: auto; margin: 0 4px 0 0; padding: 8px 10px; } .settings-content { padding: 22px 20px; } .settings-actions { padding: 14px 18px; } }

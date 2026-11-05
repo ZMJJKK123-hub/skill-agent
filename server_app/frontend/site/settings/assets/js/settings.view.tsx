@@ -18,6 +18,10 @@ import type { Provider, ThemePref, SandboxMode, SectionKey, SettingsDraft as Dra
 import { useT } from '../../../assets/js/i18n.ts'
 // 共享插件元数据避免设置面板反向依赖组合根。
 import { PLUGIN_CATALOG } from '../../../assets/js/plugin-catalog.ts'
+// 设置导航使用共享图标，图形不承担业务状态。
+import { Icon } from '../../../assets/js/icons.tsx'
+// 图标名称与导航项均为显式契约。
+import type { IconName } from '../../../assets/js/icons.types.ts'
 
 
 /** 维护设置草稿；应用后写状态，取消不提交通用草稿，关闭时不渲染。
@@ -64,47 +68,49 @@ function SettingsPanel(): ReactElement | null {
   }
   const cancel = () => setUi({ settingsOpen: false })
 
-  const SECTIONS: { key: SectionKey; label: string }[] = [
-    { key: 'general', label: t('settings.general') },
-    { key: 'models', label: t('settings.models') },
-    { key: 'vision', label: t('settings.vision') },
-    { key: 'plugins', label: t('settings.plugins') },
-    { key: 'agent', label: t('settings.agent') },
-    { key: 'language', label: t('settings.language') },
-    { key: 'appearance', label: t('settings.appearance') },
+  const SECTIONS: { key: SectionKey; label: string; icon: IconName }[] = [
+    { key: 'general', label: t('settings.general'), icon: 'sliders' },
+    { key: 'models', label: t('settings.models'), icon: 'layers' },
+    { key: 'vision', label: t('settings.vision'), icon: 'eye' },
+    { key: 'plugins', label: t('settings.plugins'), icon: 'cube' },
+    { key: 'agent', label: t('settings.agent'), icon: 'sparkles' },
+    { key: 'language', label: t('settings.language'), icon: 'globe' },
+    { key: 'appearance', label: t('settings.appearance'), icon: 'sun' },
   ]
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={cancel}>
+    <div className="modal-backdrop fixed inset-0 z-40 flex items-center justify-center" onClick={cancel}>
       <div
-        className="flex h-[80vh] w-[760px] max-w-[92vw] flex-col overflow-hidden rounded-xl border border-strong bg-panel"
+        role="dialog" aria-modal="true" aria-labelledby="settings-heading"
+        className="settings-dialog surface-dialog flex flex-col overflow-hidden border border-strong bg-panel"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(event) => { if (event.key === 'Escape') cancel() }}
       >
+        <div className="settings-dialog-heading"><div><h2 id="settings-heading">{t('studio.settingsTitle')}</h2><p>{t('studio.settingsDesc')}</p></div><button className="icon-button" aria-label={t('studio.close')} onClick={cancel}><Icon name="close" /></button></div>
         <div className="flex min-h-0 flex-1">
-          <nav className="w-44 shrink-0 border-r border-line p-2">
+          <nav className="settings-nav shrink-0 border-r border-line">
             {SECTIONS.map((s) => (
               <button
                 key={s.key}
                 onClick={() => setSection(s.key)}
-                className={`block w-full rounded-md px-3 py-2 text-left text-sm ${
-                  section === s.key ? 'bg-subtle text-main' : 'text-muted hoverable'
-                }`}
+                aria-pressed={section === s.key}
+                className="settings-nav-item"
               >
-                {s.label}
+                <Icon name={s.icon} size={16} />{s.label}
               </button>
             ))}
           </nav>
-          <div className="flex-1 overflow-y-auto p-5">
+          <div className="settings-content min-w-0 flex-1 overflow-y-auto">
             <SectionContent section={section} draft={draft} setDraft={setDraft} />
           </div>
         </div>
         {/* 底部：取消 / 应用 */}
-        <div className="flex justify-end gap-2 border-t border-line p-3">
+        <div className="settings-actions flex justify-end gap-2 border-t border-line">
           <button onClick={cancel} className="hoverable rounded-md border border-strong px-4 py-1.5 text-sm">
             {t('settings.cancel')}
           </button>
-          <button onClick={apply} className="rounded-md bg-forge-500 px-4 py-1.5 text-sm font-medium text-ink-950 hover:bg-forge-400">
-            {t('settings.apply')}
+          <button onClick={apply} className="primary-button px-5 py-2 text-xs">
+            <Icon name="check" size={15} />{t('settings.apply')}
           </button>
         </div>
       </div>
@@ -490,10 +496,10 @@ function SettingsEntry({ collapsed }: { collapsed?: boolean }): ReactElement {
   return (
     <button
       onClick={() => setUi({ settingsOpen: true })}
-      className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hoverable"
+      className="settings-entry flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-xs hoverable"
       title={t('nav.settings')}
     >
-      <span>⚙️</span>
+      <Icon name="settings" size={17} />
       {!collapsed && <span>{t('nav.settings')}</span>}
     </button>
   )

@@ -18,6 +18,10 @@ import { useT } from '../../../assets/js/i18n.ts'
 import type { EventItem } from './session.types.ts'
 // 清洗后的 Markdown 组件负责助手消息展示。
 import { Markdown } from './markdown.tsx'
+// 图标来自共享展示层；欢迎插画只由当前分区加载。
+import { Icon } from '../../../assets/js/icons.tsx'
+// 本地 SVG 提供 Minecraft 方块语义，不影响对话生命周期。
+import { ForgeScene } from './forge-scene.tsx'
 
 /** 将未知失败转换为界面文案；Error 使用消息，其他值转换为字符串。
  * Args: 未知异常值；不要求必须是 Error。
@@ -53,7 +57,7 @@ function ChatBubble({ role, content }: { role: 'user' | 'assistant'; content: st
   if (isUser) {
     return (
       <div className="fade-in-up flex justify-end">
-        <div className="max-w-[80%] rounded-2xl rounded-br-md bg-forge-500 px-4 py-2.5 text-sm text-ink-950">
+        <div className="chat-bubble chat-bubble-user max-w-[80%] text-sm">
           <div className="whitespace-pre-wrap break-words">{content}</div>
         </div>
       </div>
@@ -62,12 +66,7 @@ function ChatBubble({ role, content }: { role: 'user' | 'assistant'; content: st
   return (
     <div className="fade-in-up flex justify-start">
       <div
-        className="max-w-[88%] rounded-xl px-4 py-3 text-sm leading-relaxed backdrop-blur-sm"
-        style={{
-          background: 'rgba(20, 25, 40, 0.7)',
-          border: '1px solid rgba(200, 180, 150, 0.4)',
-          borderRadius: '12px',
-        }}
+        className="chat-bubble chat-bubble-assistant max-w-[88%] text-sm leading-relaxed"
       >
         <Markdown content={content} />
       </div>
@@ -86,10 +85,10 @@ function ThinkingGroup({ events, t }: { events: EventItem[]; t: (k: string) => s
   const totalLines = events.reduce(
     (n, ev) => n + ev.content.split('\n').filter((l) => l.trim()).length, 0)
   return (
-    <div className="fade-in-up opacity-70">
+    <div className="fade-in-up">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 py-0.5 text-[13px] text-blue-100/60 transition hover:text-blue-100/90"
+        className="flex items-center gap-1.5 py-0.5 text-[13px] text-muted transition hover:text-main"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
           <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
@@ -100,8 +99,8 @@ function ThinkingGroup({ events, t }: { events: EventItem[]; t: (k: string) => s
       {open && (
         <div className="mt-1 space-y-2 pl-5">
           {events.map((ev, i) => (
-            <div key={ev.id} className="text-[12px] leading-relaxed text-blue-100/50">
-              <span className="text-blue-200/40">#{i + 1} {thinkingName(ev, t)}</span>
+            <div key={ev.id} className="text-[12px] leading-relaxed text-muted">
+              <span className="text-faint">#{i + 1} {thinkingName(ev, t)}</span>
               <div className="mt-0.5 whitespace-pre-wrap break-words">{ev.content}</div>
             </div>
           ))}
@@ -121,19 +120,19 @@ function ToolCallRow({ ev }: { ev: EventItem }): ReactElement {
   const tool = ev.tool ?? 'tool'
   const oneLine = ev.content.replace(/\s+/g, ' ').trim().slice(0, 120)
   return (
-    <div className="fade-in-up opacity-70">
+    <div className="fade-in-up">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-1.5 py-0.5 text-left text-[13px] text-blue-100/60 transition hover:text-blue-100/90"
+        className="flex w-full items-center gap-1.5 py-0.5 text-left text-[13px] text-muted transition hover:text-main"
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-white/50">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-faint">
           <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
         </svg>
-        <span className="shrink-0">Tool call · <span className="text-blue-200/80">{tool}</span> · </span>
-        <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-slate-400">{oneLine}</span>
+        <span className="shrink-0">Tool call · <span className="text-main">{tool}</span> · </span>
+        <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-muted">{oneLine}</span>
       </button>
       {open && (
-        <div className="ml-5 mt-0.5 max-h-48 overflow-auto whitespace-pre-wrap break-all font-mono text-[11px] text-slate-400/80">
+        <div className="ml-5 mt-0.5 max-h-48 overflow-auto whitespace-pre-wrap break-all font-mono text-[11px] text-muted">
           {ev.content}
         </div>
       )}
@@ -152,11 +151,11 @@ function ToolResultRow({ ev }: { ev: EventItem }): ReactElement {
   const lines = ev.content.split('\n')
   const body = (lines.slice(1).join('\n').trim() || (lines[0] ?? '')).trim()
   return (
-    <div className="fade-in-up opacity-70">
+    <div className="fade-in-up">
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center gap-1.5 py-0.5 text-left text-[13px] transition"
-        style={{ color: ok ? 'rgba(134, 239, 172, 0.6)' : 'rgba(248, 113, 113, 0.6)' }}
+        style={{ color: ok ? 'var(--accent-text)' : 'var(--danger)' }}
       >
         <span className="shrink-0">{ok ? '✓' : '✗'}</span>
         <span className="shrink-0">{ok ? 'Result' : 'Failed'}</span>
@@ -164,7 +163,7 @@ function ToolResultRow({ ev }: { ev: EventItem }): ReactElement {
         <span className="shrink-0 text-[11px] text-faint">{open ? '收起' : `${body.length}`}</span>
       </button>
       {open && (
-        <pre className="ml-5 mt-0.5 max-h-48 overflow-auto whitespace-pre-wrap break-all font-mono text-[11px] leading-relaxed text-slate-400/70">
+        <pre className="ml-5 mt-0.5 max-h-48 overflow-auto whitespace-pre-wrap break-all font-mono text-[11px] leading-relaxed text-muted">
           {body}
         </pre>
       )}
@@ -421,20 +420,36 @@ function Messages(): ReactElement {
   )
 }
 
-/** 显示未选择会话的欢迎内容；不请求数据或注册全局接口。
- * Args: 无参数；从翻译 hook 读取欢迎文案。
+/** 显示欢迎内容与需求示例；点击示例只填草稿，仍由用户确认发送。
+ * Args: 无参数；从翻译 hook 读取文案，从 UI 控制器更新临时草稿。
  * Returns: React 展示元素。
  * Globals Used: 当前应用 Context（纯展示辅助函数无状态依赖）。Calls/Dependencies: 本文件显式导入的 React hooks、类型化动作和展示组件。
  */
 function EmptyState(): ReactElement {
   const t = useT()
+  const { setUi } = useUiActions()
+  const examples = [
+    { icon: 'sword', key: 'sword', prompt: 'conv.quickSword' },
+    { icon: 'leaf', key: 'food', prompt: 'conv.quickFood' },
+    { icon: 'cube', key: 'block', prompt: 'conv.quickBlock' },
+  ] as const
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-forge-500 text-3xl font-bold text-ink-950">
-        M
+    <div className="welcome-screen">
+      <div className="welcome-hero">
+        <ForgeScene />
+        <div className="welcome-eyebrow"><span />{t('studio.heroLabel')}</div>
+        <h1>{t('studio.titleLead')}<br /><span>{t('studio.titleAccent')}</span></h1>
+        <p>{t('studio.description')}</p>
       </div>
-      <div className="text-lg font-semibold">{t('conv.title')}</div>
-      <div className="max-w-md text-sm text-muted">{t('conv.desc')}</div>
+      <section className="inspiration-section" aria-label={t('studio.examples')}>
+        <div className="inspiration-heading"><span><Icon name="sparkles" size={13} />{t('studio.examples')}</span><span>{t('studio.examplesHint')}</span></div>
+        <div className="inspiration-grid">
+          {examples.map((example): ReactElement => <button key={example.key} className={`inspiration-card inspiration-${example.key}`} onClick={() => setUi({ promptDraft: `/mod ${t(example.prompt)}` })}>
+            <div className="inspiration-card-top"><span className="inspiration-icon"><Icon name={example.icon} size={20} /></span><Icon name="arrow" size={14} /></div>
+            <strong>{t(`studio.${example.key}Title`)}</strong><p>{t(`studio.${example.key}Desc`)}</p>
+          </button>)}
+        </div>
+      </section>
     </div>
   )
 }
@@ -482,7 +497,7 @@ function QuestionCard(): ReactElement | null {
   const allAnswered = answeredCount === qs.length
 
   return (
-    <div className="mb-2 rounded-xl border border-forge-500/40 bg-forge-500/10 p-3">
+    <div className="question-card mb-3 rounded-xl border border-forge-500/40 bg-forge-500/10 p-4">
       <div className="mb-1 text-xs text-faint">
         {t('conv.questionTitle')}（{answeredCount}/{qs.length}）
       </div>
@@ -555,10 +570,11 @@ function Composer(): ReactElement {
   const { setUi } = useUiActions()
   const { sendPrompt, pauseTask, resumeTask } = useSessionActions()
   const { config } = useApplication()
-  const { user, apiKey, model, providers, version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey, settingsOpen } = useUi()
+  const { user, apiKey, model, providers, version, sandbox, visionEnabled, visionApiKey, visionBaseUrl, visionModel, autoMode, searchApiKey, settingsOpen, promptDraft: text } = useUi()
   const t = useT()
   const sess = useSession()
-  const [text, setText] = useState('')
+  // 示例卡片和输入区共享内存草稿；不写入设置仓储。
+  const setText = (value: string): void => setUi({ promptDraft: value })
   const running = sess.phase === 'running' || sess.phase === 'creating'
   const paused = sess.phase === 'paused' || sess.paused
 
@@ -622,23 +638,25 @@ function Composer(): ReactElement {
     <button
       onClick={send}
       disabled={!text.trim() || !canChat}
-      title={canChat ? '' : notReadyReason}
-      className="rounded-lg bg-forge-500 px-4 py-1.5 text-sm font-medium text-ink-950 hover:bg-forge-400 disabled:opacity-40"
+      title={canChat ? t('conv.send') : notReadyReason}
+      aria-label={t('conv.send')}
+      className="composer-send primary-button"
     >
-      {t('conv.send')}
+      <Icon name="send" size={19} />
     </button>
   )
 
   return (
-    <div className="mx-auto w-full max-w-4xl">
+    <div className="composer-container mx-auto w-full max-w-4xl">
       <QuestionCard />
       {!canChat && (
-        <div className="mb-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-400">
-          {notReadyReason}
+        <div className="composer-readiness">
+          <Icon name={user ? 'settings' : 'login'} size={14} /><span>{notReadyReason}</span>
         </div>
       )}
-      <div className="rounded-xl border border-line bg-panel p-3">
+      <div className="composer-surface">
         <textarea
+          aria-label={t('studio.prompt')}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
@@ -652,16 +670,18 @@ function Composer(): ReactElement {
               }
             }
           }}
-          rows={3}
+          rows={2}
           disabled={!canChat}
-          placeholder={canChat ? t('conv.placeholder') : notReadyReason}
-          className="w-full resize-none bg-transparent text-sm outline-none placeholder:text-faint disabled:opacity-60"
+          placeholder={t('studio.prompt')}
+          className="composer-textarea w-full resize-none bg-transparent text-sm outline-none placeholder:text-faint disabled:opacity-60"
         />
-          <div className="mt-2 flex items-center gap-2">
+          <div className="composer-toolbar flex items-center gap-2">
+            <Icon name="sparkles" size={14} className="composer-model-icon" />
             <select
               value={model}
+              aria-label={t('conv.model')}
               onChange={(e) => setUi({ model: e.target.value })}
-              className="rounded-md border border-line bg-field px-2 py-1 text-xs text-muted outline-none"
+              className="composer-model text-xs text-muted outline-none"
             >
               <optgroup label="DeepSeek">
                 {config.officialModels.map((name: string): ReactElement => <option key={name} value={name}>{name}（官方）</option>)}
@@ -675,12 +695,14 @@ function Composer(): ReactElement {
               ))}
             </select>
             <div className="flex-1" />
+            <button className="icon-button composer-settings" title={t('studio.modelSettings')} aria-label={t('studio.modelSettings')} onClick={() => setUi({ settingsOpen: true })}><Icon name="sliders" size={17} /></button>
             {running && sess.pending > 0 && (
               <span className="text-xs text-faint">{sess.pending} 条排队…</span>
             )}
             {actionButton}
           </div>
         </div>
+        <div className="composer-caption"><span><span className="command-tag">/mod</span> {t('studio.modMode')}</span><span>{t('studio.keyboard')}</span></div>
     </div>
   )
 }

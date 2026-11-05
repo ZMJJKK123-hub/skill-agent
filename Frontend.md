@@ -1,6 +1,6 @@
 # Frontend.md
 
-覆盖状态：完整；最后核对：2026-10-30。逐文件说明以当前 site/ 源码为准。
+覆盖状态：完整；最后核对：2026-11-03。逐文件说明以当前 site/ 源码为准。
 
 每节以仓库根目录相对路径开头。交互按“触发 → 分支 → 请求 → 展示 → 日志”描述。组件不挂载 window.* 业务接口；状态与动作从当前应用 Context 取得。
 
@@ -87,10 +87,10 @@ createStateStore 接收初始对象，返回互相隔离的 getSnapshot/set/subs
 
 conversationPlugin.apply 接收槽位写入器，挂载 Messages/Composer，无返回。Messages 无参数，空会话显示欢迎页；运行时订阅服务轮询并更新本地计时；事件白名单过滤后按配置截取，回复分组、旧助手文本去重，错误显示在对话底部。卸载清计时器/订阅。
 
-- Composer 无参数返回输入区。send 无参数、无返回：空文本跳过；登录/配置缺失时禁用；/mod 解析需求并显示确认，取消不发送，确认调用 sendPrompt；普通文字调用 chat 动作，已有 mod 由服务保留模式。暂停按钮调用 pauseTask，继续按钮调用 resumeTask；模型选择更新设置。
+- Composer 无参数返回输入区；setText 接收字符串并更新内存 promptDraft，无返回、不写仓储；发送后清草稿；配置模型按钮打开设置。send 无参数、无返回：空文本跳过；登录/配置缺失时禁用；/mod 解析需求并显示确认，取消不发送，确认调用 sendPrompt；普通文字调用 chat 动作，已有 mod 由服务保留模式。暂停按钮调用 pauseTask，继续按钮调用 resumeTask；模型选择更新设置。
 - QuestionCard 无参数，无问题返回 null；pick 接收题目索引/选项，type 接收索引/文本，更新本地草稿。confirmAll 无参数，提交类型化答案数组；全部回答才启用；失败保留草稿，问题消失后清草稿。
 - ChatBubble 接收角色/正文：用户纯文本，助手调用 Markdown。ThinkingGroup 接收思考事件/翻译器，空数组返回 null，点击展开；thinkingName 接收事件/翻译器返回来源名，未知来源用主 Agent 名称。
-- ToolCallRow/ToolResultRow/ReplyRow/DividerRow/LogRow 接收单个事件返回展示元素；展开只改本地状态，结果状态决定颜色。EventView 接收事件，按映射选择组件，未知类型回退 LogRow。EmptyState 无参数返回欢迎元素。errMsg 接收未知失败返回展示字符串；下载失败由按钮显示错误。
+- ToolCallRow/ToolResultRow/ReplyRow/DividerRow/LogRow 接收单个事件返回展示元素；展开只改本地状态，结果状态决定颜色。EventView 接收事件，按映射选择组件，未知类型回退 LogRow。EmptyState 无参数返回欢迎插画和需求示例；点击示例只将带 /mod 的需求写入内存草稿，可继续修改，不发送请求；未登录时输入与发送仍禁用。errMsg 接收未知失败返回展示字符串；下载失败由按钮显示错误。
 
 本文件不直接 fetch 或操作浏览器存储；运行日志由服务发出。缺 Provider 属于入口装配错误。
 
@@ -139,7 +139,7 @@ GAMES 定义当前可选游戏；FORWARD_KEYS 是键盘转发白名单。INIT_W/
 
 ## server_app/frontend/site/games/assets/js/games.view.tsx
 
-GameWindow 无参数，关闭态返回入口，打开态返回浮动窗口与 /debug/game.html?g=... iframe。选择改变游戏，重开增加 nonce；标题拖动接受鼠标事件，窗口移动限制在视口内；尺寸拖动遵守最小值。键盘监听仅打开时启用，输入/选择控件中不转发，其他白名单键发送给已挂载 iframe；关闭/卸载解绑 mouse/keyboard 监听。gamesPlugin.apply 注册浮层，无返回。静态资源由既有 /debug 路径提供，不增加后端路由。
+GameWindow 无参数，关闭态返回入口，打开态返回浮动窗口与 /debug/game.html?g=... iframe。初始尺寸限制在当前视口内，窄屏入口移到顶部以避开输入；选择改变游戏，重开增加 nonce；标题拖动接受鼠标事件，窗口移动限制在视口内；尺寸拖动遵守最小值。键盘监听仅打开时启用，输入/选择控件中不转发，其他白名单键发送给已挂载 iframe；关闭/卸载解绑 mouse/keyboard 监听。gamesPlugin.apply 注册浮层，无返回。静态资源由既有 /debug 路径提供，不增加后端路由。
 
 ## server_app/frontend/site/generation/assets/css/generation.css
 
@@ -147,7 +147,7 @@ GameWindow 无参数，关闭态返回入口，打开态返回浮动窗口与 /d
 
 ## server_app/frontend/site/generation/assets/js/generation.view.tsx
 
-GeneratePanel 无参数，订阅当前会话，返回阶段、耗时、模式和截断 ID 的详情面板；无会话显示占位。generatePlugin.apply 接收槽位写入器并挂载 details，无返回。不额外轮询、不请求后端、不打印日志。
+GeneratePanel 无参数，订阅会话和设置，返回阶段卡片、游戏版本、耗时、模式和截断 ID；阶段覆盖 idle/creating/running/paused/finished/error，无会话显示准备创作和字段占位，零秒显示 0s。generatePlugin.apply 接收槽位写入器并挂载 details，无返回。不额外轮询、不请求后端、不打印日志。
 
 ## server_app/frontend/site/index/assets/css/index.css
 
@@ -155,7 +155,7 @@ GeneratePanel 无参数，订阅当前会话，返回阶段、耗时、模式和
 
 ## server_app/frontend/site/index/assets/js/app-shell.tsx
 
-AppShell 无参数，返回三栏与浮层；折叠按钮只改本地宽度，详情按钮只改本地显隐，分区关闭时整栏及分隔线消失。Toast 无参数，通知为空返回 null；非空时按配置延时通过 setUi 清除，卸载取消定时器。依赖应用 Context，缺 Provider 是装配异常；本文件不发请求、不自行打印日志。
+AppShell 无参数，返回三栏与浮层；首次视口小于 900 像素时初始化为折叠侧栏。折叠按钮只改宽度，窄屏展开为抽屉，遮罩按钮关闭；详情按钮及关闭按钮只改显隐，窄屏详情浮于主区。标题跟随会话，版本跟随设置；分区关闭时整栏及分隔线消失。Toast 无参数，通知为空返回 null；非空时按配置延时通过 setUi 清除，卸载取消定时器。依赖应用 Context，缺 Provider 是装配异常；本文件不发请求、不自行打印日志。
 
 ## server_app/frontend/site/index/assets/js/browser-adapters.ts
 
@@ -179,7 +179,7 @@ createBrowserAdapters 接收当前 Window/Document，返回 storage、timer、th
 
 ## server_app/frontend/site/session_history/assets/js/history.view.tsx
 
-sidebarPlugin.apply 接收自身槽位写入器，注册 logo、新对话、历史列表，无返回。新对话调用 newConversation 并更新选择/通知；登录后通过 loadHistory 读取列表，未登录显示提示、空列表显示空态。历史点击传 ID 给 openHistorySession；remove 接收 ID 返回 Promise<void>，先确认，取消不请求，确认调用控制器删除；错误由会话服务展示。折叠时隐藏列表文本；无直接 HTTP、令牌或存储操作。
+sidebarPlugin.apply 接收自身槽位写入器，注册 logo、新对话、历史列表，无返回。新对话调用 newConversation 并清输入草稿、更新选择/通知；登录后通过 loadHistory 读取列表，未登录显示提示、空列表显示空态。历史点击传 ID 给 openHistorySession；remove 接收 ID 返回 Promise<void>，先确认，取消不请求，确认调用控制器删除；错误由会话服务展示。折叠时隐藏列表文本，保留新对话按钮；无直接 HTTP、令牌或存储操作。
 
 ## server_app/frontend/site/settings/assets/css/settings.css
 
@@ -191,7 +191,7 @@ VERSIONS 保留 1.21.11/1.21.10/1.21.9；LOADERS 保留 forge/neoforge/fabric。
 
 ## server_app/frontend/site/settings/assets/js/settings.model.ts
 
-defaultUiState 接收配置返回完整默认值；restoreUiState 接收未知存储值/配置，按字段校验并回退，忽略账户/消息/弹窗恢复，过滤损坏 provider 和不能禁用的设置项。resolveModelConfig 接收 apiKey/model/providers 及公开配置，返回 API Key/baseUrl/model；官方模型用官方地址，自定义命中取提供方，未知模型回退默认。savedSettings 接收完整 UI 快照，返回可持久化投影；其余字段不落盘。所有函数无 I/O。
+defaultUiState 接收配置返回完整默认值；restoreUiState 接收未知存储值/配置，按字段校验并回退，忽略账户/消息/弹窗/输入草稿恢复，过滤损坏 provider 和不能禁用的设置项。resolveModelConfig 接收 apiKey/model/providers 及公开配置，返回 API Key/baseUrl/model；官方模型用官方地址，自定义命中取提供方，未知模型回退默认。savedSettings 接收完整 UI 快照，返回可持久化投影；promptDraft 等临时字段不落盘。所有函数无 I/O。
 
 ## server_app/frontend/site/settings/assets/js/settings.repository.ts
 
@@ -199,15 +199,15 @@ createSettingsRepository 接收 StoragePort/键/logger，返回 load/save。load
 
 ## server_app/frontend/site/settings/assets/js/settings.store.ts
 
-createUiStore 接收设置仓储、配置、主题端口，返回 UiStore。显式创建时 load → restore → applyTheme；set 接收类型化补丁，无返回，合并后持久化、按需应用主题、发布快照；设置插件无法被禁用。getSnapshot/subscribe 语义见共享容器。无导入期 localStorage 或 document 访问。
+createUiStore 接收设置仓储、配置、主题端口，返回 UiStore。显式创建时 load → restore → applyTheme；set 接收类型化补丁，无返回，合并后保存设置、按需应用主题、发布快照；仅更新 promptDraft 时跳过仓储，输入文字永不落盘；设置插件无法被禁用。getSnapshot/subscribe 语义见共享容器。无导入期 localStorage 或 document 访问。
 
 ## server_app/frontend/site/settings/assets/js/settings.types.ts
 
-Provider/ModelConfig 定义提供方和模型解析结果；UiState 定义界面/配置快照，SavedSettings 排除用户、当前会话和临时界面态。Locale=zh/en，ThemePref=system/light/dark，SandboxMode=full-access/workspace-write/read-only。SettingsRepository.load 无参数返回未知存储值，save 接收 SavedSettings、无返回；UiStore 使用通用状态契约。SettingsDraft/SectionKey 约束表单与分区选择。
+Provider/ModelConfig 定义提供方和模型解析结果；UiState 定义界面/配置快照，SavedSettings 排除用户、当前会话、promptDraft 和临时界面态。Locale=zh/en，ThemePref=system/light/dark，SandboxMode=full-access/workspace-write/read-only。SettingsRepository.load 无参数返回未知存储值，save 接收 SavedSettings、无返回；UiStore 使用通用状态契约。SettingsDraft/SectionKey 约束表单与分区选择。
 
 ## server_app/frontend/site/settings/assets/js/settings.view.tsx
 
-SettingsPanel 无参数，返回弹窗或 null。打开时复制通用/视觉设置为草稿；apply 无参数、无返回，trim Key 后 setUi 并关闭；cancel 只关闭、不提交通用草稿。GeneralSection/VisionSection 接收草稿及更新回调，返回表单。ModelsSection 的 save/remove 接收表单状态/提供方 ID，名称或模型空不保存，提供方增删立即持久化；插件、语言、外观也即时生效。PluginsSection.toggle 接收插件 ID，设置项锁定。SectionContent 接收 SectionKey/草稿，按映射返回面板。Field 接收标签/children 返回布局；SettingsEntry 接收可选 collapsed，点击打开设置。无独立网络或日志。
+SettingsPanel 无参数，返回可关闭的 dialog 或 null；关闭按钮、遮罩和弹窗内 Escape 均调用取消，窄屏导航可横向滚动。打开时复制通用/视觉设置为草稿；apply 无参数、无返回，trim Key 后 setUi 并关闭；cancel 只关闭、不提交通用草稿。GeneralSection/VisionSection 接收草稿及更新回调，返回表单。ModelsSection 的 save/remove 接收表单状态/提供方 ID，名称或模型空不保存，提供方增删立即持久化；插件、语言、外观也即时生效。PluginsSection.toggle 接收插件 ID，设置项锁定。SectionContent 接收 SectionKey/草稿，按映射返回面板。Field 接收标签/children 返回布局；SettingsEntry 接收可选 collapsed，点击打开设置。无独立网络或日志。
 
 ## server_app/frontend/site/user_auth/assets/css/user_auth.css
 
@@ -227,7 +227,7 @@ User/AuthResult 声明认证响应。AuthRepository.login/register 接收用户�
 
 ## server_app/frontend/site/user_auth/assets/js/auth.view.tsx
 
-AuthButton 无参数：挂载调用 restore，显示登录入口或用户名；退出按钮调用 logout。AuthModal 接收关闭回调、返回弹窗；登录/注册切换只改本地状态，用户名/密码空则显示本地错误；submit 无参数、返回 Promise<void>，调用对应认证动作，成功关闭、失败在弹窗显示消息，finally 恢复按钮。表单不接触 localStorage/token，不单独打印日志。
+AuthButton 无参数：挂载调用 restore，显示登录入口或用户名；退出按钮调用 logout。AuthModal 接收关闭回调、返回 dialog，打开时聚焦用户名；关闭按钮、遮罩或弹窗内 Escape 调用关闭回调；登录/注册切换只改本地状态，用户名/密码空则显示本地错误；submit 无参数、返回 Promise<void>，调用对应认证动作，成功关闭、失败在弹窗显示消息，finally 恢复按钮。表单不接触 localStorage/token，不单独打印日志。
 
 ## 开发门禁与回归入口
 
@@ -242,3 +242,15 @@ AuthButton 无参数：挂载调用 restore，显示登录入口或用户名；�
 - `server_app/frontend/tests/fixture-server.ts` — 仅回环地址内存接口夹具；不写 data/，不调用模型，不导入真实后端。用于浏览器关键操作；关闭进程即丢弃夹具会话。
 
 执行：`npm run check` → `npm run build`。安装本地推送门禁：`npm run hooks:install`。测试脚本使用 Node 原生 TypeScript 支持，要求 Node 24+。
+
+## server_app/frontend/site/assets/js/icons.types.ts
+
+IconName 限定已使用的图形名称；IconProps 约定名称、可选像素尺寸和样式类。图标的可访问名称由外层控件提供。本文件没有运行逻辑。
+
+## server_app/frontend/site/assets/js/icons.tsx
+
+Icon 接收名称、可选尺寸（默认 18 像素）与样式类，返回对辅助技术隐藏且不接收焦点的 SVG。按强类型映射选择图形，没有未知名称回退，由 TypeScript 约束调用方；不读取存储、不请求资源、不打印日志。仅使用本地路径，不加载远程字体或图片。
+
+## server_app/frontend/site/conversation/assets/js/forge-scene.tsx
+
+ForgeScene 无参数，返回欢迎页装饰 SVG，使用当前主题令牌，隐藏于辅助技术。没有网络、存储、状态更新、业务接口或日志；动画遵循减少动态效果偏好。
